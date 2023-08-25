@@ -1,0 +1,697 @@
+---
+title: "Assessment Factors"
+author: "Scott Coffin"
+date: "3/30/2021"
+output: 
+  html_document:
+    code_folding: hide
+    theme: journal
+    toc: yes
+    toc_float: yes
+    toc_depth: 6
+    number_sections: true
+  word_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      warning=FALSE, message=FALSE,time_it = TRUE) #report
+library(tidyverse)
+library(ggpubr)
+```
+
+```{r include=FALSE}
+require(readr)
+#load aoc_z into dataframe. This file is generated from RDA_Maker.R
+source("Tox Data/RDA_Maker.R")
+#aoc_z <- readRDS("Tox Data/aoc_z.Rda") 
+#must have "EValuate Chunks in directory: Project" in Global Options _> R Markdown in order for above line to work
+```
+
+# NOEC & LOEC Distribution
+
+There doesn't seem to be much separation between acute and chronic NOEC/LOEC distributions. If this is the case, is an assessment factor even necessary?
+
+Attempts to be more selective/curate the data further don't really seem to change anything (e.g., filtering for certain size fractions, using quality filters, etc.)
+
+```{r NOEC & LOEC Distributions}
+
+dist <- aoc_z # %>% 
+ 
+  ##leachates already removed in RDAmaker.RmD
+   #Remove leachate and additive/chemical transfer experiments
+ # replace_na(list(chem.exp.typ.nominal = "Particle Only")) %>% 
+#  dplyr::filter(leachate.only != "Y") %>%
+ # mutate(chem.exp.typ.nominal_f = factor(case_when(chem.exp.typ.nominal == "Particle Only" ~ "Particle Only",
+                                                #   chem.exp.typ.nominal == "co.exp" ~ "Chemical Co-Exposure",
+                                                #   chem.exp.typ.nominal == "sorbed" ~ "Chemical Transfer"))) %>% 
+#  dplyr::filter(chem.exp.typ.nominal_f == "Particle Only") 
+  # filter(tier_zero_tech_f == "Red Criteria Passed")  
+  # filter(tier_zero_risk_f == "Red Criteria Passed")
+
+#Dose in mass per volume 
+Dist_NOEC_Mass <- dist %>% 
+     #Select data where acute and chronic exposure is defined
+     filter(acute.chronic_f == c("Acute", "Chronic")) %>%
+     #Select NOECs
+     filter(effect.metric == "NOEC") %>%
+     #Drop rows where there is no dosing data in mass per volume
+     drop_na(dose.mg.L.master) %>%  
+     select(org_f, effect.metric, acute.chronic_f, dose.mg.L.master) %>%  
+     ggplot(aes(x = dose.mg.L.master, fill = acute.chronic_f)) +
+     geom_histogram(bins = 50)+
+     facet_wrap(~org_f)+
+     scale_x_log10() +
+     labs(title = "Distribution of Derived NOEC Values", x = "Dose (mg/L)", y = "Count", fill = "Acute vs. Chronic")
+
+plot(Dist_NOEC_Mass)
+
+Dist_LOEC_Mass <- dist %>% 
+     #Select data where acute and chronic exposure is defined
+     filter(acute.chronic_f == c("Acute", "Chronic")) %>%
+     #Select NOECs
+     filter(effect.metric == "LOEC") %>%
+     #Drop rows where there is no dosing data in mass per volume
+     drop_na(dose.mg.L.master) %>% 
+     select(org_f, effect.metric, acute.chronic_f, dose.mg.L.master) %>%  
+     ggplot(aes(x = dose.mg.L.master, fill = acute.chronic_f)) +
+     geom_histogram(bins = 50)+
+     facet_wrap(~org_f)+
+     scale_x_log10()+
+     labs(title = "Distribution of Derived LOEC Values", x = "Dose (mg/L)", y = "Count", fill = "Acute vs. Chronic")
+
+plot(Dist_LOEC_Mass)
+
+#Dose in count per volume
+Dist_NOEC_Count <- dist %>% 
+     #Select data where acute and chronic exposure is defined
+     filter(acute.chronic_f == c("Acute", "Chronic")) %>%
+     #Select NOECs
+     filter(effect.metric == "NOEC") %>%
+     #Drop rows where there is no dosing data in mass per volume
+     drop_na(dose.particles.mL.master) %>% 
+     select(org_f, effect.metric, acute.chronic_f, dose.particles.mL.master) %>%  
+     ggplot(aes(x = dose.particles.mL.master, fill = acute.chronic_f)) +
+     geom_histogram(bins = 50)+
+     facet_wrap(~org_f)+
+     scale_x_log10() +
+     labs(title = "Distribution of Derived NOEC Values", x = "Dose (particles/mL)", y = "Count", fill = "Acute vs. Chronic")
+
+plot(Dist_NOEC_Count)
+
+Dist_LOEC_Count <- dist %>% 
+     #Select data where acute and chronic exposure is defined
+     filter(acute.chronic_f == c("Acute", "Chronic")) %>%
+     #Select NOECs
+     filter(effect.metric == "LOEC") %>%
+     #Drop rows where there is no dosing data in mass per volume
+     drop_na(dose.particles.mL.master) %>% 
+     select(org_f, effect.metric, acute.chronic_f, dose.particles.mL.master) %>%  
+     ggplot(aes(x = dose.particles.mL.master, fill = acute.chronic_f)) +
+     geom_histogram(bins = 50)+
+     facet_wrap(~org_f)+
+     scale_x_log10()+
+     labs(title = "Distribution of Derived LOEC Values", x = "Dose (particles/mL)", y = "Count", fill = "Acute vs. Chronic")
+
+plot(Dist_LOEC_Count)
+
+```
+
+```{r How many species within each taxa have both acute and chronic values? }
+
+Species_Taxa_Mass <- aoc_z %>% 
+     #Select NOECs
+     filter(effect.metric == c("NOEC", "LOEC")) %>%
+     #Select data where acute and chronic exposure is defined
+     filter(acute.chronic_f == c("Acute", "Chronic")) %>%
+     #Drop rows where there is no dosing data in mass per volume
+     drop_na(dose.mg.L.master) %>%
+     #Group the data by organism group and acute vs chronic data 
+     group_by(org_f, species_f, acute.chronic_f, effect.metric) %>%
+     #Create a new column for the average NOEC
+     summarise() %>% 
+     ungroup() %>% 
+     group_by(org_f, acute.chronic_f, effect.metric) %>% 
+     mutate(species_count = n_distinct(species_f)) %>% 
+     ungroup() %>% 
+     distinct(org_f, acute.chronic_f, effect.metric, species_count)
+
+Species_Taxa_Mass
+```
+
+```{r NOECs}
+
+#Compare differences between acute and chronic values for NOECs in each organism group
+
+Mean_NOEC <- aoc_z %>% 
+     #Select NOECs
+     filter(effect.metric == "NOEC") %>%
+     #Select data where acute and chronic exposure is defined
+     filter(acute.chronic_f == c("Acute", "Chronic")) %>%
+     #Drop rows where there is no dosing data in mass per volume
+     drop_na(dose.mg.L.master) %>%
+     #Group the data by organism group and acute vs chronic data 
+     group_by(org_f, acute.chronic_f) %>%
+     #Create a new column for the average NOEC
+     summarise(averageNOEC = mean(dose.mg.L.master)) 
+     
+acute <- Mean_NOEC %>% 
+     #Select only acute data
+     filter(acute.chronic_f == "Acute") %>% 
+     rename(averageNOEC_acute = averageNOEC)
+     
+chronic <- Mean_NOEC %>% 
+     #Select only chronic data
+     filter(acute.chronic_f == "Chronic") %>% 
+     rename(averageNOEC_chronic = averageNOEC)
+
+acute_chronic <- left_join(acute, chronic, by = c("org_f" = "org_f")) %>% 
+  mutate(change_NOEC = averageNOEC_acute/averageNOEC_chronic)
+
+#Regression between acute and chronic NOECs
+
+plot <- acute_chronic %>% 
+  ggplot(aes(x = log10(averageNOEC_chronic), y = log10(averageNOEC_acute))) +
+  geom_point() 
+
+plot(plot)
+```
+
+```{r LOECs}
+
+#Compare differences between acute and chronic values for NOECs in each organism group
+
+Mean_LOEC <- aoc_z %>% 
+     #Select NOECs
+     filter(effect.metric == "LOEC") %>%
+     #Select data where acute and chronic exposure is defined
+     filter(acute.chronic_f == c("Acute", "Chronic")) %>%
+     #Drop rows where there is no dosing data in mass per volume
+     drop_na(dose.mg.L.master) %>%
+     #Group the data by organism group and acute vs chronic data 
+     group_by(org_f, acute.chronic_f) %>%
+     #Create a new column for the average LOEC
+     summarise(averageLOEC = mean(dose.mg.L.master)) 
+     
+acute <- Mean_LOEC %>% 
+     #Select only acute data
+     filter(acute.chronic_f == "Acute") %>% 
+     rename(averageLOEC_acute = averageLOEC)
+     
+chronic <- Mean_LOEC %>% 
+     #Select only chronic data
+     filter(acute.chronic_f == "Chronic") %>% 
+     rename(averageLOEC_chronic = averageLOEC)
+
+acute_chronic <- left_join(acute, chronic, by = c("org_f" = "org_f")) %>% 
+  mutate(change_LOEC = averageLOEC_acute/averageLOEC_chronic)
+
+#Regression between acute and chronic LOECs
+
+plot <- acute_chronic %>% 
+  ggplot(aes(x = log10(averageLOEC_chronic), y = log10(averageLOEC_acute))) +
+  geom_point() 
+
+plot(plot)
+```
+
+
+# Data Filtering and Grouping
+
+```{r}
+# collapse data (average) for all combinations of selected variables
+grouped <- aoc_z %>% 
+   filter(tier_zero_tech_f == "Red Criteria Passed") %>% 
+   filter(tier_zero_risk_f == "Red Criteria Passed") %>% 
+  #Select NOECs/LOECs
+  #filter(effect.metric == c("NOEC", "LOEC")) %>%
+  #Select data where acute and chronic exposure is defined
+  filter(acute.chronic_f == c("Acute", "Chronic")) %>%
+  filter(size_f != "Not Reported") %>% 
+  #Drop rows where there is no dosing data in mass per volume
+ # drop_na(dose.mg.L.master) %>%
+  #Group the data by organism group and acute vs chronic data 
+  group_by(org_f, acute.chronic_f, effect.metric, lvl1_f, size_f) %>% 
+           #size_f) 
+  droplevels() %>% 
+  #Create a new column for the average effect for each combination of the matrix
+  summarise(meanEffect.particles = mean(dose.particles.mL.master),
+            meanEffect.mass = mean(dose.mg.L.master),
+            meanEffect.volume = mean(dose.um3.mL.master),
+            sdEffect.mass = sd(dose.mg.L.master),
+            nstudies = n()) #%>% 
+  #drop_na()
+
+grouped
+```
+## NOEC/LOEC
+```{r}
+#create unique ID for each combo of interest for NOECs and LOECs
+NOEC <- grouped %>% 
+  mutate(combo = paste(org_f, acute.chronic_f, 
+                       size_f,
+                       lvl1_f)) %>% 
+  filter(effect.metric == "NOEC") %>% 
+  mutate(effectNOEC.particles = meanEffect.particles,
+         effectNOEC.mass = meanEffect.mass,
+         effectNOEC.volume = meanEffect.volume,
+         sdNOEC.mass = sdEffect.mass) %>% 
+  mutate(stderrorNOEC.mass = sdNOEC.mass / nstudies)
+
+LOEC <- grouped %>% 
+  mutate(combo = paste(org_f, acute.chronic_f,
+                       size_f,
+                       lvl1_f)) %>% 
+  filter(effect.metric == "LOEC") %>% 
+    mutate(effectLOEC.particles = meanEffect.particles,
+         effectLOEC.mass = meanEffect.mass,
+         effectLOEC.volume = meanEffect.volume,
+         sdLOEC.mass = sdEffect.mass) %>% 
+  mutate(stderrorLOEC.mass = sdLOEC.mass / nstudies)
+
+# join NOEC and LOEC dataframes and compute LOEC/NOEC ratio for each combo
+NOEC.LOEC <- full_join(NOEC, LOEC, by = "combo") %>%
+  select(c(combo,effectNOEC.particles, 
+           effectLOEC.particles, 
+           effectNOEC.mass, 
+           effectLOEC.mass, 
+           effectNOEC.volume,
+           effectLOEC.volume,
+           size_f.x,
+           size_f.y,
+           nstudies.x, 
+           nstudies.y,
+           sdLOEC.mass,
+           sdNOEC.mass,
+           stderrorNOEC.mass,
+           stderrorLOEC.mass)) %>% 
+  mutate(LOEC.NOEC.ratio.mass = effectLOEC.mass / effectNOEC.mass) %>%
+  mutate(LOEC.NOEC.ratio.particles = effectLOEC.particles / effectNOEC.particles) %>% 
+  mutate(LOEC.NOEC.ratio.volume = effectLOEC.volume / effectNOEC.volume) %>%
+  filter(nstudies.y > 1) %>% 
+  filter(nstudies.x > 1) %>% 
+  #filter(LOEC.NOEC.ratio.mass > 1) %>%
+  #filter(LOEC.NOEC.ratio.particles > 1) %>% 
+  drop_na()
+
+NOEC.LOEC
+```
+### Mass
+```{r}
+noec.loec.lm <- summary(lm(effectLOEC.mass ~ effectNOEC.mass, data = NOEC.LOEC))
+noec.loec.lm
+```
+### Particle Count
+
+```{r}
+noec.loec.lm.particle <- summary(lm(effectLOEC.particles ~ effectNOEC.particles, data = NOEC.LOEC))
+noec.loec.lm.particle
+```
+
+### Volume
+```{r}
+noec.loec.lm.volume <- summary(lm(effectLOEC.volume ~ effectNOEC.volume, data = NOEC.LOEC[-3,]))
+noec.loec.lm.volume
+```
+
+```{r}
+NOEC.LOEC %>% 
+  ggplot(aes(x = effectNOEC.mass, y = effectLOEC.mass)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = effectLOEC.mass - stderrorLOEC.mass, ymax = effectLOEC.mass + stderrorLOEC.mass,
+                    xmin = effectNOEC.mass - stderrorNOEC.mass, xmax = effectNOEC.mass + stderrorNOEC.mass)) +
+  geom_smooth(method = "lm") +
+  stat_regline_equation(label.x = 1, label.y = 35) +
+  stat_cor(label.x = 1, label.y = 30) +
+  geom_text(x = 5, y= 40, color = "forestgreen",
+    label = paste("NOEC/LOEC AF:",
+    round(noec.loec.lm$coefficients[2,1],2), #coefficient
+            "+-",
+            round(noec.loec.lm$coefficients[2,2],2), #std error
+    "(mean +- std.error)"))+
+  ggrepel::geom_text_repel(aes(label = combo), color = "red") +
+  labs(title = "LOEC/NOEC Assessment Factor Derivation",
+       subtitle = "Grouped (averaged) by taxa, acute/chronic, particle size bin, level 1 effect",
+       caption = "Data filtered for red criteria. Aquatic Tox database. 03-30-2021.") +
+  xlab("Average NOEC (mg/L)") +
+  ylab("Average LOEC (mg/L)") +
+  theme_minimal() +
+  theme(legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 14),
+        axis.title = element_text(size = 16),
+        axis.text =  element_text(size = 16),
+        legend.text = element_text(size =14),
+        legend.title = element_blank(),
+        plot.subtitle = element_text(hjust = 0.5, size = 14))
+```
+
+## HONEC/NOEC
+```{r}
+#create unique ID for each combo of interest for NOECs and HONECs
+NOEC <- grouped %>% 
+  mutate(combo = paste(org_f, acute.chronic_f, 
+                       size_f,
+                       lvl1_f)) %>% 
+  filter(effect.metric == "NOEC") %>% 
+  mutate(effectNOEC.particles = meanEffect.particles,
+         effectNOEC.mass = meanEffect.mass,
+         effectNOEC.volume = meanEffect.volume,
+         sdNOEC.mass = sdEffect.mass) %>% 
+  mutate(stderrorNOEC.mass = sdNOEC.mass / nstudies)
+
+HONEC <- grouped %>% 
+  mutate(combo = paste(org_f, acute.chronic_f,
+                       size_f,
+                       lvl1_f)) %>% 
+  filter(effect.metric == "HONEC") %>% 
+    mutate(effectHONEC.particles = meanEffect.particles,
+         effectHONEC.mass = meanEffect.mass,
+         effectHONEC.volume = meanEffect.volume,
+         sdHONEC.mass = sdEffect.mass) %>% 
+  mutate(stderrorHONEC.mass = sdHONEC.mass / nstudies)
+
+# join NOEC and HONEC dataframes and compute HONEC/NOEC ratio for each combo
+NOEC.HONEC <- full_join(NOEC, HONEC, by = "combo") %>%
+  select(c(combo,effectNOEC.particles, 
+           effectHONEC.particles, 
+           effectNOEC.mass, 
+           effectHONEC.mass, 
+           effectNOEC.volume, 
+           effectHONEC.volume, 
+           size_f.x,
+           size_f.y,
+           nstudies.x, 
+           nstudies.y,
+           sdHONEC.mass,
+           sdNOEC.mass,
+           stderrorNOEC.mass,
+           stderrorHONEC.mass)) %>% 
+  mutate(HONEC.NOEC.ratio.mass = effectHONEC.mass / effectNOEC.mass) %>%
+  mutate(HONEC.NOEC.ratio.particles = effectHONEC.particles / effectNOEC.particles) %>% 
+  mutate(HONEC.NOEC.ratio.volume = effectHONEC.volume / effectNOEC.volume) %>% 
+  filter(nstudies.y > 1) %>% 
+  filter(nstudies.x > 1) %>% 
+  #filter(HONEC.NOEC.ratio.mass > 1) %>%
+  #filter(HONEC.NOEC.ratio.particles > 1) %>% 
+  drop_na()
+
+NOEC.HONEC
+```
+
+### Mass
+```{r}
+honec.loec.lm <- summary(lm(effectHONEC.mass ~ effectNOEC.mass, data = NOEC.HONEC))
+honec.loec.lm
+```
+
+### Particle Count
+
+```{r}
+honec.noec.lm <- summary(lm(effectHONEC.particles ~ effectNOEC.particles, data = NOEC.HONEC))
+honec.noec.lm
+```
+### Volume
+```{r}
+honec.noec.lm.volume <- summary(lm(effectHONEC.volume ~ effectNOEC.volume, data = NOEC.HONEC[-3:-4,]))
+honec.noec.lm.volume
+```
+
+```{r}
+NOEC.HONEC %>% 
+  ggplot(aes(x = effectNOEC.mass, y = effectHONEC.mass)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = effectHONEC.mass - stderrorHONEC.mass, ymax = effectHONEC.mass + stderrorHONEC.mass,
+                    xmin = effectNOEC.mass - stderrorNOEC.mass, xmax = effectNOEC.mass + stderrorNOEC.mass)) +
+  geom_smooth(method = "lm") +
+  stat_regline_equation(label.x = 1, label.y = 150) +
+  stat_cor(label.x = 1, label.y = 135) +
+  geom_text(x = 25, y= 155,color = "forestgreen",
+    label = paste("HONEC/NOEC AF:",
+    round(honec.noec.lm$coefficients[2,1],2), #coefficient
+            "+-",
+            round(honec.noec.lm$coefficients[2,2],2), #std error
+    "(mean +- std.error)"))+
+  ggrepel::geom_text_repel(aes(label = combo), color = "red") +
+  labs(title = "HONEC/NOEC Assessment Factor Derivation",
+       subtitle = "Grouped (averaged) by taxa, acute/chronic, particle size bin, level 1 effect",
+       caption = "Data filtered for red criteria. Aquatic Tox database. 03-30-2021.") +
+  xlab("Average NOEC (mg/L)") +
+  ylab("Average HONEC (mg/L)") +
+  theme_minimal() +
+  theme(legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 14),
+        axis.title = element_text(size = 16),
+        axis.text =  element_text(size = 16),
+        legend.text = element_text(size =14),
+        legend.title = element_blank(),
+        plot.subtitle = element_text(hjust = 0.5, size = 14))
+```
+
+## EC50/NOEC
+```{r}
+#create unique ID for each combo of interest for NOECs and HONECs
+NOEC <- grouped %>% 
+  mutate(combo = paste(org_f, acute.chronic_f, 
+                       size_f,
+                       lvl1_f)) %>% 
+  filter(effect.metric == "NOEC") %>% 
+  mutate(effectNOEC.particles = meanEffect.particles,
+         effectNOEC.mass = meanEffect.mass,
+         effectNOEC.volume = meanEffect.volume,
+         sdNOEC.mass = sdEffect.mass) %>% 
+  mutate(stderrorNOEC.mass = sdNOEC.mass / nstudies)
+
+EC50 <- grouped %>% 
+  mutate(combo = paste(org_f, acute.chronic_f,
+                       size_f,
+                       lvl1_f)) %>% 
+  filter(effect.metric %in% c("EC50",
+                              "EC10", 
+                              "EMT50" ,
+                              "LC50"
+                              )) %>% 
+    mutate(effectEC50.particles = meanEffect.particles,
+         effectEC50.mass = meanEffect.mass,
+         effectEC50.volume = meanEffect.volume,
+         sdEC50.mass = sdEffect.mass) %>% 
+  mutate(stderrorEC50.mass = sdEC50.mass / nstudies)
+
+# join NOEC and EC50 dataframes and compute EC50/NOEC ratio for each combo
+NOEC.EC50 <- full_join(NOEC, EC50, by = "combo") %>%
+  select(c(combo,effectNOEC.particles, 
+           effectEC50.particles, 
+           effectNOEC.mass, 
+           effectEC50.mass, 
+           effectNOEC.volume, 
+           effectEC50.volume, 
+           size_f.x,
+           size_f.y,
+           nstudies.x, 
+           nstudies.y,
+           sdEC50.mass,
+           sdNOEC.mass,
+           stderrorNOEC.mass,
+           stderrorEC50.mass)) %>% 
+  mutate(EC50.NOEC.ratio.mass = effectEC50.mass / effectNOEC.mass) %>%
+  mutate(EC50.NOEC.ratio.particles = effectEC50.particles / effectNOEC.particles) %>% 
+  mutate(EC50.NOEC.ratio.volume = effectEC50.volume / effectNOEC.volume) %>%
+  filter(nstudies.y > 1) %>% 
+  filter(nstudies.x > 1) %>% 
+  #filter(EC50.NOEC.ratio.mass > 1) %>%
+  #filter(EC50.NOEC.ratio.particles > 1) %>% 
+  drop_na()
+
+NOEC.EC50
+```
+### Mass
+```{r}
+EC50.noec.lm <- summary(lm(effectEC50.mass ~ effectNOEC.mass, data = NOEC.EC50))
+EC50.noec.lm
+```
+### Volume
+```{r}
+EC50.noec.lm.volume <- summary(lm(effectEC50.volume ~ effectNOEC.volume, data = NOEC.EC50))
+EC50.noec.lm.volume
+```
+
+
+```{r}
+NOEC.EC50 %>% 
+  ggplot(aes(x = effectNOEC.mass, y = effectEC50.mass)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = effectEC50.mass - stderrorEC50.mass, ymax = effectEC50.mass + stderrorEC50.mass,
+                    xmin = effectNOEC.mass - stderrorNOEC.mass, xmax = effectNOEC.mass + stderrorNOEC.mass)) +
+  geom_smooth(method = "lm") +
+  stat_regline_equation(label.x = 1, label.y = 150) +
+  stat_cor(label.x = 1, label.y = 135) +
+  geom_text(x = 25, y= 155,color = "forestgreen",
+    label = paste("EC50/NOEC AF:",
+    round(EC50.noec.lm$coefficients[2,1],2), #coefficient
+            "+-",
+            round(EC50.noec.lm$coefficients[2,2],2), #std error
+    "(mean +- std.error)"))+
+  ggrepel::geom_text_repel(aes(label = combo), color = "red") +
+  labs(title = "EC50/NOEC Assessment Factor Derivation",
+       subtitle = "Grouped (averaged) by taxa, acute/chronic, particle size bin, level 1 effect",
+       caption = "Data filtered for red criteria. Aquatic Tox database. 03-30-2021.") +
+  xlab("Average NOEC (mg/L)") +
+  ylab("Average EC50 (mg/L)") +
+  theme_minimal() +
+  theme(legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 14),
+        axis.title = element_text(size = 16),
+        axis.text =  element_text(size = 16),
+        legend.text = element_text(size =14),
+        legend.title = element_blank(),
+        plot.subtitle = element_text(hjust = 0.5, size = 14))
+```
+
+# Acute/Chronic
+## Grouping
+```{r}
+# collapse data (average) for all combinations of selected variables
+grouped2 <- aoc_z %>% 
+   filter(tier_zero_tech_f == "Red Criteria Passed") %>% 
+   filter(tier_zero_risk_f == "Red Criteria Passed") %>% 
+  #Select NOECs/LOECs
+  filter(effect.metric == c("NOEC", "LOEC")) %>%
+  #Select data where acute and chronic exposure is defined
+  filter(acute.chronic_f == c("Acute", "Chronic")) %>%
+  filter(size_f != "Not Reported") %>% 
+  #Drop rows where there is no dosing data in mass per volume
+ # drop_na(dose.mg.L.master) %>%
+  #Group the data by organism group and acute vs chronic data 
+  group_by(org_f, 
+           acute.chronic_f, 
+           effect.metric,
+           #size_f,
+           lvl1_f) %>% 
+           #size_f) 
+  droplevels() %>% 
+  #Create a new column for the average effect for each combination of the matrix
+  summarise(meanEffect.particles = mean(dose.particles.mL.master),
+            meanEffect.mass = mean(dose.mg.L.master),
+            sdEffect.mass = sd(dose.mg.L.master),
+            nstudies = n()) #%>% 
+  #drop_na()
+
+grouped2
+```
+
+## Subsetting
+```{r}
+#create unique ID for each combo of interest for NOECs and LOECs
+Acute <- grouped2 %>% 
+  mutate(combo = paste(org_f, 
+                       effect.metric,
+                       #size_f,
+                       lvl1_f)) %>% 
+  filter(acute.chronic_f == "Acute") %>% 
+  mutate(effectAcute.particles = meanEffect.particles,
+         effectAcute.mass = meanEffect.mass,
+         sdAcute.mass = sdEffect.mass) %>% 
+  mutate(stderrorAcute.mass = sdAcute.mass / nstudies)
+
+Chronic <- grouped2 %>% 
+  mutate(combo = paste(org_f, 
+                       effect.metric,
+                      # size_f,
+                       lvl1_f)) %>% 
+  filter(acute.chronic_f == "Chronic") %>% 
+    mutate(effectChronic.particles = meanEffect.particles,
+         effectChronic.mass = meanEffect.mass,
+         sdChronic.mass = sdEffect.mass) %>% 
+  mutate(stderrorChronic.mass = sdChronic.mass / nstudies)
+
+# join Acute and Chronic dataframes and compute Chronic/Acute ratio for each combo
+Acute.Chronic <- full_join(Acute, Chronic, by = "combo") %>%
+  select(c(combo,effectAcute.particles, 
+           effectChronic.particles, 
+           effectAcute.mass, 
+           effectChronic.mass, 
+          # size_f.x,
+           #size_f.y,
+           nstudies.x, 
+           nstudies.y,
+           sdChronic.mass,
+           sdAcute.mass,
+           stderrorAcute.mass,
+           stderrorChronic.mass)) %>% 
+  mutate(Chronic.Acute.ratio.mass = effectChronic.mass / effectAcute.mass) %>%
+  mutate(Chronic.Acute.ratio.particles = effectChronic.particles / effectAcute.particles) %>% 
+  #filter(nstudies.y > 1) %>% 
+  #filter(nstudies.x > 1) %>% 
+  filter(Chronic.Acute.ratio.mass > 1) %>%
+  filter(Chronic.Acute.ratio.mass < 1000) %>% 
+  drop_na(effectAcute.mass, effectChronic.mass)
+
+Acute.Chronic
+```
+```{r}
+acute.chronic.lm <- summary(lm(effectChronic.mass ~ effectAcute.mass, data = Acute.Chronic))
+acute.chronic.lm
+```
+
+```{r}
+Acute.Chronic %>% 
+  ggplot(aes(x = effectAcute.mass, y = effectChronic.mass)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = effectChronic.mass - stderrorChronic.mass, ymax = effectChronic.mass + stderrorChronic.mass,
+                    xmin = effectAcute.mass - stderrorAcute.mass, xmax = effectAcute.mass + stderrorAcute.mass)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  stat_regline_equation(label.x = 5, label.y = 50) +
+  stat_cor(label.x = 5, label.y = 30) +
+   geom_text(x = 5, y= 150,color = "forestgreen",
+    label = paste("Acute/Chronic AF:",
+    round(acute.chronic.lm$coefficients[2,1],2), #coefficient
+            "+-",
+            round(acute.chronic.lm$coefficients[2,2],2), #std error
+    "(mean +- std.error)"))+
+  ggrepel::geom_text_repel(aes(label = combo), color = "red") +
+  labs(title = "Chronic/Acute Assessment Factor Derivation",
+       subtitle = "Grouped (averaged) by taxa, Acute/chronic, particle size bin, level 1 effect",
+       caption = "Data filtered for red criteria. Aquatic Tox database. 03-30-2021.") +
+  xlab("Average Acute (mg/L)") +
+  ylab("Average Chronic (mg/L)") +
+  theme_minimal() +
+  theme(legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 14),
+        axis.title = element_text(size = 16),
+        axis.text =  element_text(size = 16),
+        legend.text = element_text(size =14),
+        legend.title = element_blank(),
+        plot.subtitle = element_text(hjust = 0.5, size = 14))
+```
+
+
+## Multiple regression approach
+```{r}
+#alt approach 
+filtered <- aoc_z %>% 
+  #Remove leachate and additive/chemical transfer experiments
+  replace_na(list(chem.exp.typ.nominal = "Particle Only")) %>% 
+  dplyr::filter(leachate.only != "Y") %>%
+  mutate(chem.exp.typ.nominal_f = factor(case_when(chem.exp.typ.nominal == "Particle Only" ~ "Particle Only",
+                                                   chem.exp.typ.nominal == "co.exp" ~ "Chemical Co-Exposure",
+                                                   chem.exp.typ.nominal == "sorbed" ~ "Chemical Transfer"))) %>% 
+  dplyr::filter(chem.exp.typ.nominal_f == "Particle Only") %>% 
+  #Select NOECs/LOECs
+  filter(effect.metric == c("NOEC", "LOEC")) %>%
+  #Select data where acute and chronic exposure is defined
+  filter(acute.chronic_f == c("Acute", "Chronic")) %>%
+  filter(size_f != "Not Reported") %>% 
+  #Drop rows where there is no dosing data in mass per volume
+  drop_na(dose.mg.L.master) %>%
+  droplevels()
+
+summary(lm(dose.mg.L.master ~ effect.metric + lvl2_f + size_f + species_f + life.stage, 
+   data = filtered))
+```
+```{r}
+filtered %>% 
+  ggplot(aes(y = dose.mg.L.master, x = effect.metric)) +
+  geom_boxplot() +
+  scale_y_log10()
+```
+
