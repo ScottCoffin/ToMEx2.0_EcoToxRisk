@@ -3881,7 +3881,7 @@ list_of_datasets <- list("Thresholds 1_2,1-5000um,Vol" = study_list_fooddilution
                          "Thresholds 1_2,1-83um,SA" = study_list_translocation_1_2, 
                          "Thresholds 3_4, 1-83um,SA" = study_list_translocation_3_4)
 
-# write.xlsx(list_of_datasets, file = "./Concentration data/Threshold_Manuscript_Figs/SSD_rawdata.xlsx")
+# write.xlsx(list_of_datasets, file = "./output/Threshold_Manuscript_Figs/SSD_rawdata.xlsx")
 
 #Data Collapse
 
@@ -3893,7 +3893,7 @@ Data_Collapse_Figure <- ggarrange(FoodDilution_Tier1_2_DataCollapse, FoodDilutio
 plot(Data_Collapse_Figure)
 
 ggsave(filename = "Data_Collapse_Figure_SI2.tiff",
-       path = "./Concentration data/Threshold_Manuscript_Figs/", 
+       path = "./output/Threshold_Manuscript_Figs/", 
        plot = Data_Collapse_Figure, width = 14, height = 12, units = "in")
 
 #SSDs
@@ -3906,13 +3906,13 @@ SSD_Figure <- ggarrange(FoodDilution_Tier1_2_SSD, FoodDilution_Tier3_4_SSD,
 plot(SSD_Figure)
 
 ggsave(filename = "SSD_Figure_Fig2.tiff",
-       path = "./Concentration data/Threshold_Manuscript_Figs/", 
+       path = "./output/Threshold_Manuscript_Figs/", 
        plot = SSD_Figure, width = 14, height = 12, units = "in")
 
 ```
 ```{r}
 ggsave(filename = "FoodDilution_Tier3_4_SSD.jpeg",
-       path = "./Concentration data/Threshold_Manuscript_Figs/", 
+       path = "./output/Threshold_Manuscript_Figs/", 
        plot = FoodDilution_Tier3_4_SSD, width = 14, height = 12, units = "in")
 ```
 
@@ -4405,7 +4405,7 @@ food_environment_ssds
 
 ggsave(plot = food_environment_ssds,
        filename = "food_environment_ssds_SI-Fig4.tiff",
-       path = "./Concentration data/Threshold_Manuscript_Figs/", 
+       path = "./output/Threshold_Manuscript_Figs/", 
        width = 14, height = 12, units = "in",
        dpi = 300)
 ```
@@ -4480,7 +4480,7 @@ gt(simple.summary) %>%
 # Probabilistic Species Sensitivity Distribution Plus
 
 The below code will not run with an open environment due to memory constraints.
-```{r eval=FALSE, include=FALSE}
+```{r eval=TRUE, include=FALSE}
 #library(gdata)
 #keep(tier1_2_large, sure = TRUE)
 write.csv(tier1_2_large, "output/tier1_2_large.csv")
@@ -4489,7 +4489,7 @@ write.csv(tier1_2_large, "output/tier1_2_large.csv")
 tier1_2_large <- read.csv("output/tier1_2_large.csv")
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r eval=TRUE, include=FALSE}
 # -------------------------------------------------------------------------------------------------
 # Code based on PSSD and PNEC calculations using the tool PSSD+ developed by Wigger et al. (2019)
 # -------------------------------------------------------------------------------------------------
@@ -4527,7 +4527,7 @@ CV.DP <- 0.3
 CV.UF <- 0.5
 ```
 ## Data preparation
-```{r eval=FALSE, include=FALSE}
+```{r eval=TRUE, include=FALSE}
 memory.limit(size=56000) #force R to use more memory than what's phyiscally available
 library(reshape2)
 require(tidyverse)
@@ -4542,26 +4542,26 @@ DP_1_large_volume <-  t2 %>%
   mutate(id = row_number()) %>% 
   mutate(particles_L = EC_env_v.particles.mL * 1000) %>% #must *10 to eliminate sub-zero values, can't go above 10 b/c R can't handle integers above certain value
   mutate(particles_L_round = as.integer(round(particles_L,digits = 1))) %>%  #must make integer for below code to work
-  select(id, species, particles_L_round) %>% 
-  acast(id ~ species, value.var = "particles_L_round") %>% 
+  select(id, Species, particles_L_round) %>% 
+  acast(id ~ Species, value.var = "particles_L_round") %>% 
   Matrix(sparse = TRUE) # makes a smaller object than using as.matrix()
 
 #prep uncertainty factors for conversion from acute to chronic values
 UFt_1_large_volume <- t2 %>% 
   mutate(id = row_number()) %>% 
-  select(id, species, af.time) %>% 
-  acast(id ~ species, value.var = "af.time")
+  select(id, Species, af.time) %>% 
+  acast(id ~ Species, value.var = "af.time")
 
 # uncertainty factors for conversion of dose descriptors to NOEC
 UFdd_1_large_volume <- t2 %>% 
   mutate(id = row_number()) %>% 
-  select(id, species, af.noec) %>% 
-  acast(id ~ species, value.var = "af.noec")
+  select(id, Species, af.noec) %>% 
+  acast(id ~ Species, value.var = "af.noec")
 #rm(tier1_2_large)
 ```
 
 ## Tier 1_2_Large_volume
-```{r eval=FALSE, include=FALSE}
+```{r eval=TRUE, include=FALSE}
 # read toxicity data
 # data points from the literature
 DP   <- DP_1_large_volume
@@ -4575,7 +4575,7 @@ UFdd <- UFdd_1_large_volume
 ##### CALCULATION OF NOECs and PSSDs ##############################################################
 ###################################################################################################
 
-# estimate the NOEC distributions for each species
+# estimate the NOEC distributions for each Species
 NOEC_t1_volume <- do.pSSD(DP, UFt, UFdd, SIM, CV.DP, CV.UF)
 
 # calculate the deterministic (modal) values of the NOEC
@@ -4586,14 +4586,14 @@ NOEC2_t1_volume = NOEC_t1_volume * 1000 #correction factor from getting into int
 NOEC.det2_t1_volume = NOEC.det_t1_volume * 1000
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r eval=TRUE, include=FALSE}
 ###################################################################################################
 ##### EXAMPLES OF RESULTS #########################################################################
 ###################################################################################################
 
-### Plot the probability densities of some species
+### Plot the probability densities of some Species
 
-## For a species with 1 endpoint (T. thermophila)
+## For a Species with 1 endpoint (T. thermophila)
 # histogram
 hist(log10(NOEC2_t1_volume[3,]), freq = F, main = "Ceriodaphnia dupia - 14 endpoints", xlab = "NOEC log[particles/L]")
 # probability density
@@ -4602,8 +4602,8 @@ lines(density(log10(NOEC2_t1_volume[3,])), col = "red", lwd = 2)
 abline(v = median(log10(NOEC.det2_t1_volume[,3]), na.rm = TRUE), col = "green", lty = 2, lwd = 2)
 ```
 
-```{r eval=FALSE, include=FALSE}
-## For a species with 1 endpoints (Danio rerio)
+```{r eval=TRUE, include=FALSE}
+## For a Species with 1 endpoints (Danio rerio)
 hist(NOEC_t1_volume[11,], freq = F, main = "Danio rero - 1 endpoints", xlab = "NOEC [ug/l]")
 lines(density(NOEC_t1_volume[11,]), col = "red", lwd = 2)
 abline(v = median(NOEC.det_t1_volume[,11], na.rm = TRUE), col = "green", lty = 2, lwd = 2)
@@ -4614,7 +4614,7 @@ abline(v = median(NOEC.det_t1_volume[,11], na.rm = TRUE), col = "green", lty = 2
 
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r eval=TRUE, include=FALSE}
 ### Plot PSSDs
 
 # calculate all PSSD curves
@@ -4628,7 +4628,7 @@ for(i in 1:SIM){
 
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r eval=TRUE, include=FALSE}
 # Plot the mean PSSD
 plot(c(-2,6), c(0,1),
      main = "Microplastics Probabilistic SSD (1-5,000 um; volumetric)",
@@ -4646,9 +4646,9 @@ legend("topleft", "Mean PSSD", col = "red", lwd = 1.5)
 ```
 
 ## Tier 1_2_Small_SurfaceArea
-```{r eval=FALSE, include=FALSE}
+```{r eval=TRUE, include=FALSE}
 t2_s <- tier1_2_small#%>% 
- # filter(species == "magna")
+ # filter(Species == "magna")
 
 # prep dataframe for tox datapoints
 DP_1_small_surfaceArea <-  t2_s %>% 
@@ -4656,21 +4656,21 @@ DP_1_small_surfaceArea <-  t2_s %>%
   mutate(id = row_number()) %>% 
   mutate(particles_L = EC_env_sa.particles.mL * 1000) %>% #must *10 to eliminate sub-zero values, can't go above 10 b/c R can't handle integers above certain value
   mutate(particles_L_round = as.integer(round(particles_L,digits = 1))) %>%  #must make integer for below code to work
-  select(id, species, particles_L_round) %>% 
-  acast(id ~ species, value.var = "particles_L_round") %>% 
+  select(id, Species, particles_L_round) %>% 
+  acast(id ~ Species, value.var = "particles_L_round") %>% 
   Matrix(sparse = TRUE) # makes a smaller object than using as.matrix()
 
 #prep uncertainty factors for conversion from acute to chronic values
 UFt_1_small_surfaceArea <- t2_s %>% 
   mutate(id = row_number()) %>% 
-  select(id, species, af.time) %>% 
-  acast(id ~ species, value.var = "af.time")
+  select(id, Species, af.time) %>% 
+  acast(id ~ Species, value.var = "af.time")
 
 # uncertainty factors for conversion of dose descriptors to NOEC
 UFdd_1_small_surfaceArea <- t2_s %>% 
   mutate(id = row_number()) %>% 
-  select(id, species, af.noec) %>% 
-  acast(id ~ species, value.var = "af.noec")
+  select(id, Species, af.noec) %>% 
+  acast(id ~ Species, value.var = "af.noec")
 
 # read toxicity data
 # data points from the literature
@@ -4685,7 +4685,7 @@ UFdd <- UFdd_1_small_surfaceArea
 ##### CALCULATION OF NOECs and PSSDs ##############################################################
 ###################################################################################################
 
-# estimate the NOEC distributions for each species
+# estimate the NOEC distributions for each Species
 NOEC_t1_SA <- do.pSSD(DP, UFt, UFdd, SIM, CV.DP, CV.UF)
 
 # calculate the deterministic (modal) values of the NOEC
@@ -4697,7 +4697,7 @@ NOEC.det2_t1_SA = NOEC.det_t1_SA * 1000
 ```
 
 ## Plotting
-```{r eval=FALSE, include=FALSE}
+```{r eval=TRUE, include=FALSE}
 # calculate PNEC (HC5) for volume and surface area
 PNEC_t1_SA <- apply(NOEC_t1_SA,2,function(x){quantile(x, probs = 0.05, na.rm = TRUE) })
 
@@ -5229,7 +5229,7 @@ plot(sensitivity_Figure)
 
 ggsave(plot = sensitivity_Figure,
        filename = "sensitivity_Figure_SI-Fig3.tiff",
-       path = "./Concentration data/Threshold_Manuscript_Figs/", 
+       path = "./output/Threshold_Manuscript_Figs/", 
        width = 14, height = 12, units = "in",
        dpi = 300)
 ```
