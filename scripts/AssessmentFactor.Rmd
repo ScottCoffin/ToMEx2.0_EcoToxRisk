@@ -24,7 +24,14 @@ library(ggpubr)
 ```{r include=FALSE}
 require(readr)
 #load aoc_z into dataframe. This file is generated from RDA_Maker.R
-source("Tox Data/RDA_Maker.R")
+#source("Tox Data/RDA_Maker.R")
+
+aoc_z <- readRDS(file = "data/output/aoc_final.RDS") %>% #read in data with alignments from ToMEx2_EcoTox.Rmd
+  
+  #rename columns so they fir the OG script
+#  rename(environment = env_f) %>% 
+  mutate(org_f = Group, # copy this columnn to work with the legacy code
+         species_f = Species) # copy this columnn to work with the legacy code
 #aoc_z <- readRDS("Tox Data/aoc_z.Rda") 
 #must have "EValuate Chunks in directory: Project" in Global Options _> R Markdown in order for above line to work
 ```
@@ -239,6 +246,8 @@ grouped <- aoc_z %>%
   summarise(meanEffect.particles = mean(dose.particles.mL.master),
             meanEffect.mass = mean(dose.mg.L.master),
             meanEffect.volume = mean(dose.um3.mL.master),
+            meanEffect.FoodDilution = mean(particles.mL.food.dilution),
+            meanEffect.TissueTranslocation = mean(particles.mL.ox.stress),
             sdEffect.mass = sd(dose.mg.L.master),
             nstudies = n()) #%>% 
   #drop_na()
@@ -256,7 +265,8 @@ NOEC <- grouped %>%
   mutate(effectNOEC.particles = meanEffect.particles,
          effectNOEC.mass = meanEffect.mass,
          effectNOEC.volume = meanEffect.volume,
-         sdNOEC.mass = sdEffect.mass) %>% 
+         sdNOEC.mass = sdEffect.mass,
+         ) %>% 
   mutate(stderrorNOEC.mass = sdNOEC.mass / nstudies)
 
 LOEC <- grouped %>% 
@@ -424,9 +434,9 @@ NOEC.HONEC %>%
   geom_errorbar(aes(ymin = effectHONEC.mass - stderrorHONEC.mass, ymax = effectHONEC.mass + stderrorHONEC.mass,
                     xmin = effectNOEC.mass - stderrorNOEC.mass, xmax = effectNOEC.mass + stderrorNOEC.mass)) +
   geom_smooth(method = "lm") +
-  stat_regline_equation(label.x = 1, label.y = 150) +
-  stat_cor(label.x = 1, label.y = 135) +
-  geom_text(x = 25, y= 155,color = "forestgreen",
+  stat_regline_equation(label.x = 10, label.y = 110) +
+  stat_cor(label.x = 1, label.y = 125) +
+  geom_text(x = 10, y= 100,color = "forestgreen",
     label = paste("HONEC/NOEC AF:",
     round(honec.noec.lm$coefficients[2,1],2), #coefficient
             "+-",
@@ -516,7 +526,7 @@ EC50.noec.lm.volume
 ```
 
 
-```{r}
+```{r; eval =FALSE}
 NOEC.EC50 %>% 
   ggplot(aes(x = effectNOEC.mass, y = effectEC50.mass)) +
   geom_point() +
@@ -546,6 +556,133 @@ NOEC.EC50 %>%
         legend.title = element_blank(),
         plot.subtitle = element_text(hjust = 0.5, size = 14))
 ```
+
+# ERM Aligned Doses
+## Food Dilution
+
+# Data Filtering and Grouping
+
+```{r}
+# collapse data (average) for all combinations of selected variables
+grouped_food <- aoc_z %>% 
+   filter(tier_zero_tech_f == "Red Criteria Passed") %>% 
+   filter(tier_zero_risk_f == "Red Criteria Passed") %>% 
+  #Select NOECs/LOECs
+  #filter(effect.metric == c("NOEC", "LOEC")) %>%
+  #Select data where acute and chronic exposure is defined
+  filter(acute.chronic_f == c("Acute", "Chronic")) %>%
+  filter(size_f != "Not Reported") %>% 
+  drop_na(particles.mL.food.dilution) %>% 
+  #Drop rows where there is no dosing data in mass per volume
+ # drop_na(dose.mg.L.master) %>%
+  #Group the data by organism group and acute vs chronic data 
+  group_by(org_f,
+           acute.chronic_f,
+           effect.metric,
+           lvl1_f#, 
+           #size_f
+           ) %>% 
+           #size_f) 
+  droplevels() %>% 
+  #Create a new column for the average effect for each combination of the matrix
+  summarise(#meanEffect.particles = mean(dose.particles.mL.master),
+            #meanEffect.mass = mean(dose.mg.L.master),
+            #meanEffect.volume = mean(dose.um3.mL.master),
+            meanEffect.food = mean(particles.mL.food.dilution),
+            #meanEffect.TissueTranslocation = mean(particles.mL.ox.stress),
+            #sdEffect.mass = sd(dose.mg.L.master),
+            sdEffect.food =sd(particles.mL.food.dilution),
+            nstudies = n()) #%>% 
+  #drop_na()
+
+grouped_food
+```
+## NOEC/LOEC
+```{r}
+#create unique ID for each combo of interest for NOECs and LOECs
+NOEC_food <- grouped_food %>% 
+  mutate(combo = paste(org_f, acute.chronic_f, 
+                       #size_f,
+                       lvl1_f)) %>% 
+  filter(effect.metric == "NOEC") %>% 
+  mutate(effectNOEC.food = meanEffect.food,
+         sdNOEC.food = sdEffect.food,
+         ) %>% 
+  mutate(stderrorNOEC.food = sdNOEC.food / nstudies)
+
+LOEC_food <- grouped_food %>% 
+  mutate(combo = paste(org_f, acute.chronic_f,
+                     #  size_f,
+                       lvl1_f)) %>% 
+  filter(effect.metric == "LOEC") %>% 
+ mutate(effectLOEC.food = meanEffect.food,
+         sdLOEC.food = sdEffect.food,
+         ) %>% 
+  mutate(stderrorLOEC.food = sdLOEC.food / nstudies)
+
+# join NOEC and LOEC dataframes and compute LOEC/NOEC ratio for each combo
+NOEC.LOEC_food <- full_join(NOEC_food, LOEC_food, by = "combo") %>%
+  select(c(combo,
+           effectNOEC.food,
+           effectLOEC.food,
+        #   size_f.x,
+         #  size_f.y,
+           nstudies.x, 
+           nstudies.y,
+           sdLOEC.food,
+           sdNOEC.food,
+           stderrorNOEC.food,
+           stderrorLOEC.food)) %>% 
+  mutate(LOEC.NOEC.ratio.food = effectLOEC.food / effectNOEC.food) %>%
+  filter(nstudies.y > 1) %>% 
+  filter(nstudies.x > 1) %>% 
+  #filter(LOEC.NOEC.ratio.mass > 1) %>%
+  #filter(LOEC.NOEC.ratio.particles > 1) %>% 
+  drop_na()
+
+NOEC.LOEC_food
+```
+### Regression
+```{r}
+noec.loec.lm_food <- summary(lm(effectLOEC.food ~ effectNOEC.food, data = NOEC.LOEC_food))
+noec.loec.lm_food
+```
+
+
+```{r}
+NOEC.LOEC_food %>% 
+  ggplot(aes(x = effectNOEC.food, y = effectLOEC.food)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = effectLOEC.food - stderrorLOEC.food, ymax = effectLOEC.food + stderrorLOEC.food,
+                    xmin = effectNOEC.food - stderrorNOEC.food, xmax = effectNOEC.food + stderrorNOEC.food)) +
+  geom_smooth(method = "lm") +
+  stat_regline_equation(label.x = 1, label.y = 35) +
+  stat_cor(label.x = 1, label.y = 30) +
+  geom_text(x = 5, y= 40, color = "forestgreen",
+    label = paste("NOEC/LOEC AF:",
+    round(noec.loec.lm_food$coefficients[2,1],2), #coefficient
+            "+-",
+            round(noec.loec.lm_food$coefficients[2,2],2), #std error
+    "(mean +- std.error)"))+
+  ggrepel::geom_text_repel(aes(label = combo), color = "red") +
+  labs(title = "LOEC/NOEC Assessment Factor Derivation",
+       subtitle = "Grouped (averaged) by taxa, acute/chronic, particle size bin, level 1 effect",
+       caption = "Data filtered for red criteria. Aquatic Tox database. 03-30-2021.") +
+  xlab("Average NOEC (mg/L)") +
+  ylab("Average LOEC (mg/L)") +
+  theme_minimal() +
+  theme(legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 14),
+        axis.title = element_text(size = 16),
+        axis.text =  element_text(size = 16),
+        legend.text = element_text(size =14),
+        legend.title = element_blank(),
+        plot.subtitle = element_text(hjust = 0.5, size = 14))
+```
+```{r}
+particles.mL.food.dilution
+```
+
 
 # Acute/Chronic
 ## Grouping
@@ -671,26 +808,27 @@ Acute.Chronic %>%
 filtered <- aoc_z %>% 
   #Remove leachate and additive/chemical transfer experiments
   replace_na(list(chem.exp.typ.nominal = "Particle Only")) %>% 
-  dplyr::filter(leachate.only != "Y") %>%
-  mutate(chem.exp.typ.nominal_f = factor(case_when(chem.exp.typ.nominal == "Particle Only" ~ "Particle Only",
-                                                   chem.exp.typ.nominal == "co.exp" ~ "Chemical Co-Exposure",
-                                                   chem.exp.typ.nominal == "sorbed" ~ "Chemical Transfer"))) %>% 
-  dplyr::filter(chem.exp.typ.nominal_f == "Particle Only") %>% 
+ # dplyr::filter(leachate.only != "Y") %>%
+  # mutate(chem.exp.typ.nominal_f = factor(case_when(chem.exp.typ.nominal == "Particle Only" ~ "Particle Only",
+  #                                                  chem.exp.typ.nominal == "co.exp" ~ "Chemical Co-Exposure",
+  #                                                  chem.exp.typ.nominal == "sorbed" ~ "Chemical Transfer"))) %>% 
+  dplyr::filter(exp_type_f == "Particle Only") %>% 
   #Select NOECs/LOECs
   filter(effect.metric == c("NOEC", "LOEC")) %>%
   #Select data where acute and chronic exposure is defined
   filter(acute.chronic_f == c("Acute", "Chronic")) %>%
   filter(size_f != "Not Reported") %>% 
-  #Drop rows where there is no dosing data in mass per volume
-  drop_na(dose.mg.L.master) %>%
+  #Drop rows where there is no dosing data for food dilution
+  #drop_na(dose.mg.L.master) %>%
+  drop_na(particles.mL.food.dilution) %>% 
   droplevels()
 
-summary(lm(dose.mg.L.master ~ effect.metric + lvl2_f + size_f + species_f + life.stage, 
+summary(lm(particles.mL.food.dilution ~ effect.metric + lvl2_f + size_f + species_f + life_f, 
    data = filtered))
 ```
 ```{r}
 filtered %>% 
-  ggplot(aes(y = dose.mg.L.master, x = effect.metric)) +
+  ggplot(aes(y = particles.mL.food.dilution, x = effect.metric)) +
   geom_boxplot() +
   scale_y_log10()
 ```

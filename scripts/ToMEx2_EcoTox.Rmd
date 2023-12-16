@@ -71,7 +71,7 @@ color.type <- scale_color_nejm()
 ```{r Data Import, include = FALSE}
 #Load aoc_z into dataframe. This file is generated from aq_mp_tox_shiny repo / ToMEx2.0_Onboarding / ToMEx2.0_Data_Tidying.R
 
-aoc_z <- readRDS(file = "data/aoc_z_tomex2.RDS") %>% 
+aoc_z <- readRDS(file = "data/input/aoc_z_tomex2.RDS") %>% 
   #rename columns so they fir the OG script
   rename(environment = env_f)
 ```
@@ -389,6 +389,12 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
          particles.mL.food.dilution = EC_env_v.particles.mL_ingest)
 ```
 
+###### Save Aligned dataset
+```{r}
+saveRDS(aoc_final,"data/output/aoc_final.RDS")
+```
+
+
 ####Test to see if same thresholds attained in main risk calculation
 ##### SSD Functions
 ```{r}
@@ -459,6 +465,8 @@ hc <- c(preds$est[hcx]) #HC5
 print(hc)
 }
 ```
+
+
 ##### Base Thresholds
 ```{r}
 #filter out risk criteria (not done above)#
