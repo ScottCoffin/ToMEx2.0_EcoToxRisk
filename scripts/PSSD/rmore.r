@@ -138,7 +138,7 @@ rmore <- function(values,
   
   # Creates a distribution between each pair of consecutive unique values
   for(i in 1:(length(uni.values)-1)){
-    
+    print(i)
     if(height.values[i] == 1 & height.values[i+1] == 1){
       # Calculate the uniform distributions in between
       
