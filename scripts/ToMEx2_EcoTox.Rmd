@@ -592,8 +592,8 @@ require(tidyverse)
 require(Matrix)
 
 t2 <- tier1_2_large %>% 
-  distinct(dose_new, .keep_all = TRUE)  %>% 
-  filter(Species %in% c("Daphnia magna", "Oryzias latipes"))
+  distinct(dose_new, .keep_all = TRUE)#  %>% 
+  #filter(Species %in% c("Daphnia magna", "Oryzias latipes"))
 
 # prep dataframe for tox datapoints
 DP_1_large_volume <-  t2 %>% 
@@ -662,8 +662,8 @@ NOEC.det2_t1_volume_tbl %>%
   geom_histogram(aes(y = ..density..,
                      color = Species)) +
   geom_density(alpha = 0.4) +
-  scale_fill_manual(values = cal_palette(name = "superbloom1", type = "continuous", n = 2)) +
-  scale_color_manual(values = cal_palette(name = "superbloom1", type = "continuous", n = 2)) +
+  scale_fill_manual(values = cal_palette(name = "superbloom1", type = "continuous", n = 22)) +
+  scale_color_manual(values = cal_palette(name = "superbloom1", type = "continuous", n = 22)) +
   scale_x_log10() +
   theme.type
 ```
