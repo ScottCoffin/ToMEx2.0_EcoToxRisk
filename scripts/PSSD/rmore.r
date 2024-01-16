@@ -106,7 +106,7 @@ rmore <- function(values,
       
     } else {
       left <- rtrunc("rtriang",
-                     n = A,
+                     n = N,
                      min = dist.min,
                      mode = val.min,
                      max = val.min,
@@ -121,7 +121,7 @@ rmore <- function(values,
     A <- N*(val.min-dist.min)/(2*(sort.values[2]-val.min))
     
     left <- rtrunc("rtriang",
-                   n = A,
+                   n = N,
                    min = dist.min,
                    mode = val.min,
                    max = val.min,
@@ -166,10 +166,11 @@ rmore <- function(values,
       # extreme edge of triangle
       max.trunc.distr <- (h1*uni.values[i+1]-h2*uni.values[i])/(h1-h2)
       # area of the triangle
+      # When this gets really big, the number of simulations gets really big. ----
       A <- ((max.trunc.distr - uni.values[i])*h1 - (max.trunc.distr - uni.values[i+1])*h2)/2
       
       mid[[i]] <- rtrunc("rtriang",
-                         n = A,
+                         n = N,
                          min = uni.values[i],
                          mode = uni.values[i],
                          max = max.trunc.distr,
@@ -189,7 +190,7 @@ rmore <- function(values,
       A <- ((uni.values[i+1] - min.trunc.distr)*h2 - ( uni.values[i] - min.trunc.distr )*h1)/2
       
       mid[[i]] <- rtrunc("rtriang",
-                         n = A,
+                         n = N,
                          min = min.trunc.distr,
                          mode = uni.values[i+1],
                          max = uni.values[i+1],
@@ -225,7 +226,7 @@ rmore <- function(values,
       
     } else {
       right <- rtrunc("rtriang",
-                      n = A,
+                      n = N,
                       min = val.max,
                       mode = val.max,
                       max = dist.max,
@@ -240,7 +241,7 @@ rmore <- function(values,
     A <- N*(dist.max-val.max)/(2*(val.max-sort.values[length(sort.values)-1]))
     
     right <- rtrunc("rtriang",
-                    n = A, 
+                    n = N, 
                     min = sort.values[length(sort.values)], 
                     mode = sort.values[length(sort.values)],
                     max = dist.max,
