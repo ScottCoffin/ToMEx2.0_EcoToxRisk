@@ -571,6 +571,7 @@ tier1_2_large <- filtered.data.small.default_t1.2
 # -------------------------------------------------------------------------------------------------
 
 ##### Build functions ####
+getwd()
 source("G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/scripts/PSSD/rmore.r")
 source("G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/scripts/PSSD/do.pssd.r")
 #source("PSSD/do.pssd.troph.r")
@@ -597,27 +598,19 @@ library(reshape2)
 require(tidyverse)
 require(Matrix)
 
-<<<<<<< HEAD
 t2 <- tier1_2_large %>% 
   distinct(dose_new, .keep_all = TRUE)#  %>% 
   #filter(Species %in% c("Daphnia magna", "Oryzias latipes"))
-=======
-t2 <- tier1_2_large
 
-myt <- t2 %>%
-  filter(Species == "Mytilus galloprovincialis")
->>>>>>> 102b578c12f83c99ce8213082bc8e9aba2beeb6c
 
 # prep dataframe for tox datapoints
 DP_1_large_volume <-  t2 %>% 
   #mutate(tier = "A") %>% 
   mutate(id = row_number()) %>% 
   mutate(particles_L = EC_env_v.particles.mL_ingest * 1000) %>% #must *10 to eliminate sub-zero values, can't go above 10 b/c R can't handle integers above certain value
-<<<<<<< HEAD
+
 #  mutate(particles_L_round = as.integer(round(particles_L,digits = 1))) %>%  #must make integer for below code to work
-=======
-  #mutate(particles_L_round = as.integer(round(particles_L,digits = 1))) %>%  #must make integer for below code to work
->>>>>>> 102b578c12f83c99ce8213082bc8e9aba2beeb6c
+
   select(id, Species, particles_L) %>% 
   acast(id ~ Species, value.var = "particles_L") %>% 
   Matrix(sparse = TRUE) # makes a smaller object than using as.matrix()
@@ -698,19 +691,13 @@ NOEC.det2_t1_volume_tbl %>%
 
 ## For a Species with 1 endpoint (T. thermophila)
 # histogram
-<<<<<<< HEAD
+
 hist(log10(NOEC2_t1_volume[2,]), freq = F, main = "Ceriodaphnia dupia - 14 endpoints", xlab = "NOEC log[particles/L]")
 # probability density
 lines(density(log10(NOEC2_t1_volume[2,])), col = "red", lwd = 2) 
 # Deterministic NOEC
 abline(v = median(log10(NOEC.det2_t1_volume[,2]), na.rm = TRUE), col = "green", lty = 2, lwd = 2)
-=======
-hist(log10(NOEC2_t1_volume[4,]), freq = F, main = "Ceriodaphnia dupia - 14 endpoints", xlab = "NOEC log[particles/L]")
-# probability density
-lines(density(log10(NOEC2_t1_volume[4,])), col = "red", lwd = 2) 
-# Deterministic NOEC
-abline(v = median(log10(NOEC.det2_t1_volume[4]), na.rm = TRUE), col = "green", lty = 2, lwd = 2)
->>>>>>> 102b578c12f83c99ce8213082bc8e9aba2beeb6c
+
 ```
 
 ```{r eval=TRUE, include=FALSE}
