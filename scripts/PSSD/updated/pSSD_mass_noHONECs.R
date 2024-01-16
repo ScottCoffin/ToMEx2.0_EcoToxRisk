@@ -130,7 +130,7 @@ pSSD <- cbind(pSSD1, pSSD2, pSSD3, pSSD4, pSSD5, pSSD6, pSSD7, pSSD8, pSSD9, pSS
 
 save(pSSD, file = "pSSD_mass.RData")
 
-corr.endpoints <- Datapoints/(UFd*UFt)
+#corr.endpoints <- Datapoints/(UFd*UFt)
 
 ##### PLOT THE PSSDs ##############################################################################
 
