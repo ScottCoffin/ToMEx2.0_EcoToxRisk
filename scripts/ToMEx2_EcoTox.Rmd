@@ -14,9 +14,14 @@ output:
     toc: yes
 ---
 #Setup
+
+```{r, setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk")
+```
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(fig.width=10, fig.height=8, fig.path='output/figures',
-                      warning=FALSE, message=FALSE,time_it = TRUE) #report
+                      warning=FALSE, message=FALSE,time_it = TRUE) 
 ```
 
 ## Libraries
@@ -40,6 +45,7 @@ library(gt)
 library(ggsci)
 library(openxlsx)
 library(ggpubr)
+getwd()
 
 ```
 
@@ -71,7 +77,7 @@ color.type <- scale_color_nejm()
 ```{r Data Import, include = FALSE}
 #Load aoc_z into dataframe. This file is generated from aq_mp_tox_shiny repo / ToMEx2.0_Onboarding / ToMEx2.0_Data_Tidying.R
 
-aoc_z <- readRDS(file = "data/input/aoc_z_tomex2.RDS") %>% 
+aoc_z <- readRDS(file = "G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/data/input/aoc_z_tomex2.RDS") %>% 
   #rename columns so they fir the OG script
   rename(environment = env_f)
 ```
@@ -395,7 +401,7 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
 
 ###### Save Aligned dataset
 ```{r}
-saveRDS(aoc_final,"data/output/aoc_final.RDS")
+saveRDS(aoc_final,"G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/data/output/aoc_final.RDS")
 ```
 
 
@@ -565,8 +571,8 @@ tier1_2_large <- filtered.data.small.default_t1.2
 # -------------------------------------------------------------------------------------------------
 
 ##### Build functions ####
-source("scripts/PSSD/rmore.r")
-source("scripts/PSSD/do.pssd.r")
+source("G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/scripts/PSSD/rmore.r")
+source("G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/scripts/PSSD/do.pssd.r")
 #source("PSSD/do.pssd.troph.r")
 #source("PSSD/do.pssd.ag.r")
 
@@ -591,16 +597,27 @@ library(reshape2)
 require(tidyverse)
 require(Matrix)
 
+<<<<<<< HEAD
 t2 <- tier1_2_large %>% 
   distinct(dose_new, .keep_all = TRUE)#  %>% 
   #filter(Species %in% c("Daphnia magna", "Oryzias latipes"))
+=======
+t2 <- tier1_2_large
+
+myt <- t2 %>%
+  filter(Species == "Mytilus galloprovincialis")
+>>>>>>> 102b578c12f83c99ce8213082bc8e9aba2beeb6c
 
 # prep dataframe for tox datapoints
 DP_1_large_volume <-  t2 %>% 
   #mutate(tier = "A") %>% 
   mutate(id = row_number()) %>% 
   mutate(particles_L = EC_env_v.particles.mL_ingest * 1000) %>% #must *10 to eliminate sub-zero values, can't go above 10 b/c R can't handle integers above certain value
+<<<<<<< HEAD
 #  mutate(particles_L_round = as.integer(round(particles_L,digits = 1))) %>%  #must make integer for below code to work
+=======
+  #mutate(particles_L_round = as.integer(round(particles_L,digits = 1))) %>%  #must make integer for below code to work
+>>>>>>> 102b578c12f83c99ce8213082bc8e9aba2beeb6c
   select(id, Species, particles_L) %>% 
   acast(id ~ Species, value.var = "particles_L") %>% 
   Matrix(sparse = TRUE) # makes a smaller object than using as.matrix()
@@ -624,6 +641,9 @@ UFdd_1_large_volume <- t2 %>%
 # read toxicity data
 # data points from the literature
 DP   <- DP_1_large_volume
+
+test <- as.matrix(DP)
+
 # uncertainty factors for conversion from acute to chronic values
 UFt  <- UFt_1_large_volume
 # uncertainty factors for conversion of dose descriptors to NOEC
@@ -678,11 +698,19 @@ NOEC.det2_t1_volume_tbl %>%
 
 ## For a Species with 1 endpoint (T. thermophila)
 # histogram
+<<<<<<< HEAD
 hist(log10(NOEC2_t1_volume[2,]), freq = F, main = "Ceriodaphnia dupia - 14 endpoints", xlab = "NOEC log[particles/L]")
 # probability density
 lines(density(log10(NOEC2_t1_volume[2,])), col = "red", lwd = 2) 
 # Deterministic NOEC
 abline(v = median(log10(NOEC.det2_t1_volume[,2]), na.rm = TRUE), col = "green", lty = 2, lwd = 2)
+=======
+hist(log10(NOEC2_t1_volume[4,]), freq = F, main = "Ceriodaphnia dupia - 14 endpoints", xlab = "NOEC log[particles/L]")
+# probability density
+lines(density(log10(NOEC2_t1_volume[4,])), col = "red", lwd = 2) 
+# Deterministic NOEC
+abline(v = median(log10(NOEC.det2_t1_volume[4]), na.rm = TRUE), col = "green", lty = 2, lwd = 2)
+>>>>>>> 102b578c12f83c99ce8213082bc8e9aba2beeb6c
 ```
 
 ```{r eval=TRUE, include=FALSE}
@@ -701,13 +729,38 @@ abline(v = median(NOEC.det_t1_volume[,11], na.rm = TRUE), col = "green", lty = 2
 ### Plot PSSDs
 
 # calculate all PSSD curves
-xvalues <- seq(-6,7,0.001)
+xvalues <- seq(-6,7,0.01)
 PSSD <- matrix(NA, SIM, length(xvalues))
 # calculate the ecdf function
 for(i in 1:SIM){
   the.ecdf.f <- ecdf(log(NOEC_t1_volume[,i], base = 10))
   PSSD[i,] <- the.ecdf.f(xvalues)
 }
+
+mean_PSSD <- apply(PSSD,2,function(x) {mean(x)})
+
+melted_species <- melt(NOEC_t1_volume) %>%
+  group_by(Var1) %>%
+  mutate(mean = mean(value)) %>%
+  ungroup() %>%
+  mutate(rank = as.numeric(factor(Var1, levels = distinct(., mean, Var1) %>%
+  arrange(mean) %>%
+  pull(Var1)))) %>%
+  mutate(rank = (rank - min(rank))/(max(rank)- min(rank))) 
+
+raw_data <- t2 %>%
+  mutate(particles_L = EC_env_v.particles.mL_ingest * 1000) %>%
+  select(Species, particles_L) %>%
+  left_join(melted_species %>% select(Var1, rank), by = c("Species" = "Var1"))
+
+melted_ssd <- melt(PSSD)
+
+ggplot() +
+  geom_line(aes(y = mean_PSSD, x = 10^xvalues), color = "black") +
+  geom_bin2d(aes(x = melted_species$value, y = melted_species$rank)) +
+  geom_point(aes(x = raw_data$particles_L, y = raw_data$rank), color = "black") +
+  scale_x_log10()
+
 
 ```
 
