@@ -16,10 +16,9 @@ CV.UF <- 0.5
 
 ## read functions
 setwd("scripts")
-setwd("PSSD")
 
-source("do.pssd.r")
-
+source("G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/scripts/PSSD/do.pssd.r")
+source("G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/scripts/PSSD/rmore.r")
 
 #import dataset#
 
@@ -29,7 +28,7 @@ library(readxl)
 
 getwd()
 
-setwd("updated")
+setwd("PSSD/updated")
 
 
 # requires species values as endpoint value 
@@ -66,11 +65,11 @@ Diameter <- as.matrix(read_excel("MPs_NoHONECs_mass_V.xlsx",
 Diameterlog <- 3+log10(Diameter)
 ########################
 
-# run 10 separate pSSDs if necessary
+# run 10 separate pSSDs if necessary, why, this is probably a ram issue?
 pSSD1 <- do.pSSD(DP = Datapoints,
                  UFt = UFt,
                  UFdd = UFd,
-                 SIM/10,
+                 SIM/10, 
                  CV.DP,
                  CV.UF)
 pSSD2 <- do.pSSD(DP = Datapoints,

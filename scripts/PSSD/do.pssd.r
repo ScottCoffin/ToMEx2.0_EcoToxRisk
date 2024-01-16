@@ -90,15 +90,15 @@ do.pSSD <- function(DP,
       # For species with three endpoints or more:
     } else {
       
-      low <- (1-(sqrt((CV.DP/2.45)^2 + (CV.UF/2.45)^2 + (CV.UF/2.45)^2)*2.45))
-      high <- (1+(sqrt((CV.DP/2.45)^2 + (CV.UF/2.45)^2 + (CV.UF/2.45)^2)*2.45))
-      uncertainty_factor <- sample(c(low, high), size = SIM, replace = T)
-      data <- sample(sort.endpoints[[sp]], size = SIM, replace = T)
-      NOEC_comb[sp,] <- data * uncertainty_factor
+      #low <- (1-(sqrt((CV.DP/2.45)^2 + (CV.UF/2.45)^2 + (CV.UF/2.45)^2)*2.45))
+      #high <- (1+(sqrt((CV.DP/2.45)^2 + (CV.UF/2.45)^2 + (CV.UF/2.45)^2)*2.45))
+      #uncertainty_factor <- sample(c(low, high), size = SIM, replace = T)
+      #data <- sample(sort.endpoints[[sp]], size = SIM, replace = T)
+      #NOEC_comb[sp,] <- data * uncertainty_factor
 
       
       # Sample from this step distribution for each species
-      #NOEC_comb[sp,] <- rmore(values = sort.endpoints[[sp]], max = sp.max, min = sp.min, N = SIM, linf = 0)
+      NOEC_comb[sp,] <- rmore(values = sort.endpoints[[sp]], max = sp.max, min = sp.min, N = SIM, linf = 0)
       
     } 
   }
