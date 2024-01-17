@@ -15,7 +15,7 @@
 # Associated publication: Systematic consideration of parameter uncertainty and variability in
 #                         probabilistic species sensitivity distributions
 # 
-# Authors: Henning Wigger, Delphine Kawecki, Bernd Nowack and V?ronique Adam
+# Authors: Henning Wigger, Delphine Kawecki, Bernd Nowack and Vronique Adam
 # 
 # Institute: Empa, Swiss Federal Laboratories for Materials Science and Technology,
 #            Technology and Society Laboratory, Lerchenfeldstrasse 5, 9014 St. Gallen, Switzerland
@@ -95,7 +95,6 @@ do.pSSD <- function(DP,
       #uncertainty_factor <- sample(c(low, high), size = SIM, replace = T)
       #data <- sample(sort.endpoints[[sp]], size = SIM, replace = T)
       #NOEC_comb[sp,] <- data * uncertainty_factor
-
       
       # Sample from this step distribution for each species
       NOEC_comb[sp,] <- rmore(values = sort.endpoints[[sp]], max = sp.max, min = sp.min, N = SIM, linf = 0)
