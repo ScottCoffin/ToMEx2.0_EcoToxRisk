@@ -65,7 +65,7 @@ color.type <- scale_color_nejm()
 ```{r Data Import, include = FALSE}
 #Load aoc_z into dataframe. This file is generated from aq_mp_tox_shiny repo / ToMEx2.0_Onboarding / ToMEx2.0_Data_Tidying.R
 
-aoc_z <- readRDS(file = "data/aoc_z_tomex2.RDS") %>% 
+aoc_z <- readRDS(file = "data/input/aoc_z_tomex2.RDS") %>% 
   #rename columns so they fir the OG script
   rename(environment = env_f)
 ```
@@ -4480,7 +4480,7 @@ gt(simple.summary) %>%
 # Probabilistic Species Sensitivity Distribution Plus
 
 The below code will not run with an open environment due to memory constraints.
-```{r eval=TRUE, include=FALSE}
+```{r eval=FALSE, include=FALSE}
 #library(gdata)
 #keep(tier1_2_large, sure = TRUE)
 write.csv(tier1_2_large, "output/tier1_2_large.csv")
@@ -4489,7 +4489,7 @@ write.csv(tier1_2_large, "output/tier1_2_large.csv")
 tier1_2_large <- read.csv("output/tier1_2_large.csv")
 ```
 
-```{r eval=TRUE, include=FALSE}
+```{r eval=FALSE, include=FALSE}
 # -------------------------------------------------------------------------------------------------
 # Code based on PSSD and PNEC calculations using the tool PSSD+ developed by Wigger et al. (2019)
 # -------------------------------------------------------------------------------------------------
@@ -4527,7 +4527,7 @@ CV.DP <- 0.3
 CV.UF <- 0.5
 ```
 ## Data preparation
-```{r eval=TRUE, include=FALSE}
+```{r eval=FALSE, include=FALSE}
 memory.limit(size=56000) #force R to use more memory than what's phyiscally available
 library(reshape2)
 require(tidyverse)
@@ -4561,7 +4561,7 @@ UFdd_1_large_volume <- t2 %>%
 ```
 
 ## Tier 1_2_Large_volume
-```{r eval=TRUE, include=FALSE}
+```{r eval=FALSE, include=FALSE}
 # read toxicity data
 # data points from the literature
 DP   <- DP_1_large_volume
@@ -4586,7 +4586,7 @@ NOEC2_t1_volume = NOEC_t1_volume * 1000 #correction factor from getting into int
 NOEC.det2_t1_volume = NOEC.det_t1_volume * 1000
 ```
 
-```{r eval=TRUE, include=FALSE}
+```{r eval=FALSE, include=FALSE}
 ###################################################################################################
 ##### EXAMPLES OF RESULTS #########################################################################
 ###################################################################################################
@@ -4602,7 +4602,7 @@ lines(density(log10(NOEC2_t1_volume[3,])), col = "red", lwd = 2)
 abline(v = median(log10(NOEC.det2_t1_volume[,3]), na.rm = TRUE), col = "green", lty = 2, lwd = 2)
 ```
 
-```{r eval=TRUE, include=FALSE}
+```{r eval=FALSE, include=FALSE}
 ## For a Species with 1 endpoints (Danio rerio)
 hist(NOEC_t1_volume[11,], freq = F, main = "Danio rero - 1 endpoints", xlab = "NOEC [ug/l]")
 lines(density(NOEC_t1_volume[11,]), col = "red", lwd = 2)
@@ -4614,7 +4614,7 @@ abline(v = median(NOEC.det_t1_volume[,11], na.rm = TRUE), col = "green", lty = 2
 
 ```
 
-```{r eval=TRUE, include=FALSE}
+```{r eval=FALSE, include=FALSE}
 ### Plot PSSDs
 
 # calculate all PSSD curves
@@ -4628,7 +4628,7 @@ for(i in 1:SIM){
 
 ```
 
-```{r eval=TRUE, include=FALSE}
+```{r eval=FALSE, include=FALSE}
 # Plot the mean PSSD
 plot(c(-2,6), c(0,1),
      main = "Microplastics Probabilistic SSD (1-5,000 um; volumetric)",
@@ -4646,7 +4646,7 @@ legend("topleft", "Mean PSSD", col = "red", lwd = 1.5)
 ```
 
 ## Tier 1_2_Small_SurfaceArea
-```{r eval=TRUE, include=FALSE}
+```{r eval=FALSE, include=FALSE}
 t2_s <- tier1_2_small#%>% 
  # filter(Species == "magna")
 
@@ -4697,7 +4697,7 @@ NOEC.det2_t1_SA = NOEC.det_t1_SA * 1000
 ```
 
 ## Plotting
-```{r eval=TRUE, include=FALSE}
+```{r eval=FALSE, include=FALSE}
 # calculate PNEC (HC5) for volume and surface area
 PNEC_t1_SA <- apply(NOEC_t1_SA,2,function(x){quantile(x, probs = 0.05, na.rm = TRUE) })
 

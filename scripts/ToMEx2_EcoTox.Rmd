@@ -16,7 +16,7 @@ output:
 #Setup
 
 ```{r, setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk")
+#knitr::opts_knit$set(root.dir = "G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk")
 ```
 
 ```{r setup, include=FALSE}
@@ -77,8 +77,11 @@ color.type <- scale_color_nejm()
 ```{r Data Import, include = FALSE}
 #Load aoc_z into dataframe. This file is generated from aq_mp_tox_shiny repo / ToMEx2.0_Onboarding / ToMEx2.0_Data_Tidying.R
 
-aoc_z <- readRDS(file = "G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/data/input/aoc_z_tomex2.RDS") %>% 
+#aoc_z <- readRDS(file = "G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/data/input/aoc_z_tomex2.RDS") %>% 
   #rename columns so they fir the OG script
+getwd()
+
+aoc_z <- readRDS("data/input/aoc_z_tomex2.RDS") %>% 
   rename(environment = env_f)
 ```
 
@@ -401,7 +404,10 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
 
 ###### Save Aligned dataset
 ```{r}
-saveRDS(aoc_final,"G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/data/output/aoc_final.RDS")
+#saveRDS(aoc_final,"G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/data/output/aoc_final.RDS")
+
+saveRDS(aoc_final,
+        "data/output/aoc_final.RDS")
 ```
 
 
@@ -489,7 +495,7 @@ aoc_risk_paper <- aoc_final %>%
 filtered.data.small.default_t1.2 <- aoc_risk_paper %>% 
           mutate(dose_new = particles.mL.ox.stress / (af.time * af.noec)) %>%  
          drop_na(dose_new) %>% 
-         mutate(dose_new = dose_new * 1000) %>% 
+         mutate(dose_new = dose_new * 1000) %>% #convert particles/mL to particles/L
   filter(between(size.length.um.used.for.conversions, 1, upper.tissue.trans.size.um),
          shape_f != "Not Reported",
          poly_f != "Not Reported",
@@ -514,7 +520,7 @@ filtered.data.large.default_t1.2 <- aoc_risk_paper %>%
   filter(Group != "Algae") %>% 
          mutate(dose_new = particles.mL.food.dilution / (af.time * af.noec)) %>%  
          drop_na(dose_new) %>% 
-         mutate(dose_new = dose_new * 1000) %>% 
+         mutate(dose_new = dose_new * 1000) %>% #convert particles/mL to particles/L
   filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
          poly_f != "Not Reported",
          !environment %in% c("Terrestrial", "Not Reported"),
@@ -539,6 +545,59 @@ base_thresholds <- tibble(
 
 base_thresholds
 ```
+![Agreed-upon framework](assets/treshold_framework.png)
+
+**Threshold 1:**
+*HC*: HC5
+*Data collapsing*: 1st quartile
+*Point estimate*: lower 95% (of distribution)
+*Biological scale of endpoints*: molecular to population
+
+**Threshold 2:**
+*HC*: HC5
+*Data collapsing*: 1st quartile
+*Point estimate*: median (of distribution)
+*Biological scale of endpoints*: molecular to population
+
+**Threshold 3:**
+*HC*: HC5
+*Data collapsing*: median
+*Point estimate*: median
+*Biological scale of endpoints*: organismal and population
+
+**Threshold 3:**
+*HC*: HC10
+*Data collapsing*: median
+*Point estimate*: median
+*Biological scale of endpoints*: organismal and population
+
+The figure above displays the working threshold framework for the ambient threshold group for the Microplastics Health Effects Workshop. 
+
+The current framework for generating SSDs includes the following parameters:
+
+Data pertaining to only aquatic organisms are included (marine and freshwater).  
+
+All taxa are included with the exception of bacterium and plants.  
+
+HONEC (Highest Observed No Effect Concentration) are excluded.  
+
+Assessment factors are applied to convert all other effect metrics into NOECs:
+
+![](www/AF_EM.png)
+
+Reference: Wigger et al. 2020 (doi: 10.1002/ieam.4214)  
+
+Assessment factors are applied to convert acute data into chronic:  
+
+![](www/AF_chronic.png)
+
+Green rows are from Wigger et al. 2020. Grey rows were agreed upon by the ambient threshold working group.
+
+Reference: Wigger et al. 2020 (doi: 10.1002/ieam.4214)
+
+Note: Values may be slightly different than those presented in the shiny app as concentrations are converted from particles/mL to particles/L ahead of calculations.
+
+
 # Probabilistic Species Sensitivity Distribution Plus
 
 The below code will not run with an open environment due to memory constraints.
@@ -570,10 +629,10 @@ tier1_2_large <- filtered.data.small.default_t1.2
 # 
 # -------------------------------------------------------------------------------------------------
 
-##### Build functions ####
+##### Build fun4ctions ####
 getwd()
-source("G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/scripts/PSSD/rmore.r")
-source("G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/scripts/PSSD/do.pssd.r")
+source("scripts/PSSD/rmore.r")
+source("scripts/PSSD/do.pssd.r")
 #source("PSSD/do.pssd.troph.r")
 #source("PSSD/do.pssd.ag.r")
 
