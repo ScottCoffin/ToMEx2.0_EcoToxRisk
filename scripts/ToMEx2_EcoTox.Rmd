@@ -642,7 +642,7 @@ source("scripts/PSSD/do.pssd.r")
 ###################################################################################################
 
 # number of simulations for the triangular distributions of the data points and uncertainty factors
-SIM <- 10 #10 is minimum, 10,000 is recommended
+SIM <- 1000 #10 is minimum, 10,000 is recommended
 
 # coefficient of variation for the data point distributions
 CV.DP <- 0.3
@@ -652,7 +652,7 @@ CV.UF <- 0.5
 ```
 ## Data preparation
 ```{r eval=TRUE, include=FALSE}
-memory.limit(size=56000) #force R to use more memory than what's phyiscally available
+#memory.limit(size=56000) #force R to use more memory than what's phyiscally available
 library(reshape2)
 require(tidyverse)
 require(Matrix)
@@ -715,6 +715,307 @@ NOEC.det_t1_volume <- DP/(UFdd*UFt)
 ###convert to particles/L
 NOEC2_t1_volume = NOEC_t1_volume #* 1000 #correction factor from getting into integer values (above)
 NOEC.det2_t1_volume = NOEC.det_t1_volume #* 1000
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+Datapoints <- DP
+pSSD <- NOEC_t1_volume
+
+plot_microplastics_data <- function(pSSD, Datapoints, Shape, Polymer, UFd, UFt) {
+  # Preparing data for plotting
+  iv <- seq(-3, 7, 0.01)
+  ECDF.data <- replicate(length(iv), replicate(1000, ecdf(log(pSSD[, sample(ncol(pSSD))], base = 10))(iv)))
+  
+  # ECDF Plot
+  ecdf_plot <- ggplot() +
+    geom_ribbon(aes(x = iv, ymin = apply(ECDF.data, 1, min), ymax = apply(ECDF.data, 1, max)), fill = "coral", alpha = 0.2) +
+    geom_ribbon(aes(x = iv, ymin = apply(ECDF.data, 1, function(x) quantile(x, 0.05)), ymax = apply(ECDF.data, 1, function(x) quantile(x, 0.95))), fill = "coral", alpha = 0.5) +
+    geom_ribbon(aes(x = iv, ymin = apply(ECDF.data, 1, function(x) quantile(x, 0.25)), ymax = apply(ECDF.data, 1, function(x) quantile(x, 0.75))), fill = "coral") +
+    geom_line(aes(x = iv, y = apply(ECDF.data, 1, mean)), color = "firebrick4", size = 1) +
+    labs(title = "PSSD of microplastics in freshwater", x = "NOEC (ug/L)", y = "Cumulative probability") +
+    theme_minimal()
+
+  # Save ECDF Plot
+  ggsave("ECDF_plot.png", ecdf_plot, width = 5, height = 4, units = "in")
+
+  # Preparing data for NOEC plot
+  NOEC.det <- Datapoints / (UFd * UFt)
+  NOEC.gmean <- apply(NOEC.det, 2, geometric.mean, na.rm = TRUE)
+  prop <- seq_along(NOEC.gmean) / length(NOEC.gmean)
+  point_data <- data.frame(NOEC = log10(NOEC.det), Prop = rep(prop, each = nrow(Datapoints)), Polymer = Polymer, Shape = Shape)
+
+  # NOEC Plot
+  noec_plot <- ggplot(point_data, aes(x = NOEC, y= Prop, color = Polymer, shape = Shape)) +
+geom_point() +
+scale_shape_manual(values = c(4, 16, 15, 17)) + # Assign specific shapes to different types
+scale_color_manual(values = c("green4", "blue", "gray18", "skyblue", "darkgray", "lightgreen", "red", "yellow", "mediumpurple")) + # Assign colors to polymers
+labs(title = "NOEC Distribution of Microplastics", x = "Log10(NOEC)", y = "Proportion") +
+theme_minimal()
+
+#Save NOEC Plot
+ggsave("NOEC_plot.png", noec_plot, width = 5, height = 4, units = "in")
+
+#Return paths of saved PNG files
+return(c("ECDF_plot.png", "NOEC_plot.png"))
+}
+
+#Additional function for geometric mean
+geometric.mean <- function(x, na.rm = FALSE) {
+if(na.rm) x <- na.omit(x)
+exp(mean(log(x)))
+}
+
+                                      
+```
+
+
+
+```{r}
+
+{ pdf(file = "PSSD_NoHONECs_mass_V.pdf",
+      height = 4,
+      width  = 5,
+      pointsize = 10)
+  #some parameters for margins
+  par(mfrow = c(1,1), mar = c(4,4.5,3,1), mgp = c(2.5,1,0), xpd = F)
+  
+  # empty plot with annotations
+  plot(c(-4, 8), c(0,1),
+       main="PSSD of microplastics in freshwater",
+       xlab = "NOEC (ug/L)", ylab = "Cumulative probability",
+       type = "n", axes = F)
+  #axis(1, at = c( -4, -2, 0, 2, 4, 6, 8), 
+  #     labels = expression(10^-4, 10^-2, 1, 10^2, 10^4, 10^6, 10^8), lwd = 0.5)
+  axis(2, lwd = 0.5)
+  abline(h = seq(0, 1, 0.2), lty = 1, col = "gray90", lwd = 0.5)
+  abline(v = seq(-4, 8, 1), lty = 1, col = "gray90", lwd = 0.5)
+  box(lwd = 0.5)
+  
+  # plot some ecdfs
+  iv <- seq(-3, 7, 0.001)
+  ECDF.data <- matrix(NA, SIM, length(iv))
+  
+  for(i in 1:SIM){
+    # calculate the ecdf function
+    the.ecdf.f <- ecdf(log(NOEC2_t1_volume[,i], base = 10))
+    ECDF.data[i,] <- the.ecdf.f(iv)
+  }
+  
+  # to plot quantiles of ECDFs:
+  polygon(c(iv,rev(iv)),
+          c(apply(ECDF.data,2,function(x){ min(x) }),
+            rev(apply(ECDF.data,2,function(x){ max(x) }))),
+          border = NA, col = adjustcolor("coral", alpha.f = 0.2))
+  
+  polygon(c(iv,rev(iv)),
+          c(apply(ECDF.data,2,function(x){ quantile(x,0.05) }),
+            rev(apply(ECDF.data,2,function(x){ quantile(x,0.95) }))),
+          border = NA, col = adjustcolor("coral", alpha.f = 0.5))
+  
+  polygon(c(iv,rev(iv)),
+          c(apply(ECDF.data,2,function(x){ quantile(x,0.25) }),
+            rev(apply(ECDF.data,2,function(x){ quantile(x,0.75) }))),
+          border = NA, col = adjustcolor("coral"))
+  
+  
+  # calculate and plot the median for each x value of every ecdf pSSD
+  # lines(iv, apply(ECDF.data, 2, median), col = "firebrick4", lwd = 2)
+  # 
+  # # OR calculate and plot the mean for each x value of every ecdf pSSD
+  lines(iv, apply(ECDF.data, 2, mean), col = "firebrick4", lwd = 2)
+  # 
+  # then calculate the geometric mean of the endpoints to show on curve
+  
+  # deterministic values of NOEC (for plotting)
+  NOEC.det <- DP /( UFdd * UFt)
+  
+  # calculate the geometric mean
+  NOEC.gmean <- apply(NOEC.det, 2, function(x) geometric.mean(x, na.rm =T ))
+  
+  # calculate where to put the endpoints on the y axis
+  #prop <- 1:ncol(Datapoints)/(ncol(Datapoints)+1)
+  prop <- rep(NA, length(NOEC.gmean))
+  for (i in 1:length(NOEC.gmean)) {
+    prop[i] <- i/(length(NOEC.gmean))-(1/(length(NOEC.gmean))/2)
+  }
+  
+  ind <- rank(NOEC.gmean)
+  
+  #ind[4] <-4
+  #ind[12]<-21
+  #ind[14]<-23
+  
+  # overlap for two species
+  library(stringr)
+  
+  # whose with additives  
+  for (sp in 1:ncol(DP)){
+    for (i in 1:nrow(DP)){
+      if (str_detect(("fiber"), "fiber") && !is.na("fiber")){
+        if (str_detect("PET", "PET") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 4, cex = 1, col = "green4")
+        } else if (str_detect("PET", "PP") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 4, cex = 1, col = "blue")
+        }
+      }
+      else if (str_detect(("fiber"), "sphere") && !is.na("fiber")){
+        if (str_detect("PET", "PS") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 16, cex = 1, col = "gray18")
+        } else if (str_detect("PET", "PET") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 16, cex = 1, col = "green4") 
+        } else if (str_detect("PET", "PVC") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 16, cex = 1, col = "skyblue")
+        } else if (str_detect("PET", "PE") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 16, cex = 1, col = "darkgray")
+        } else if (str_detect("PET", "PLA") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 16, cex = 1, col = "lightgreen")  
+        } else if (str_detect("PET", "PA") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 16, cex = 1, col = "red")
+        } else if (str_detect("PET", "PUR") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 16, cex = 1, col = "yellow")
+        } else if (str_detect("PET", "PP") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 16, cex = 1, col = "blue")  
+        } else if (str_detect("PET", "AF") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 16, cex = 1, col = "mediumpurple")
+        }
+      }
+      else if (str_detect(("fiber"), "fragment") && !is.na("fiber")){
+        if (str_detect("PET", "PS") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 15, cex = 1, col = "gray18")
+        } else if (str_detect("PET", "PET") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 15, cex = 1, col = "green4") 
+        } else if (str_detect("PET", "PVC") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 15, cex = 1, col = "skyblue")
+        } else if (str_detect("PET", "PE") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 15, cex = 1, col = "darkgray")
+        } else if (str_detect("PET", "PLA") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 15, cex = 1, col = "lightgreen")  
+        } else if (str_detect("PET", "PA") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 15, cex = 1, col = "red")
+        } else if (str_detect("PET", "PUR") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 15, cex = 1, col = "yellow")  
+        } else if (str_detect("PET", "PP") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 15, cex = 1, col = "blue")  
+        } else if (str_detect("PET", "AF") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 15, cex = 1, col = "mediumpurple")
+        }
+      }
+      else if (str_detect(("fiber"), "irregular") && !is.na("fiber")){
+        if (str_detect("PET", "PS") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 17, cex = 1, col = "gray18")
+        } else if (str_detect("PET", "PET") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 17, cex = 1, col = "green4") 
+        } else if (str_detect("PET", "PVC") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 17, cex = 1, col = "skyblue")
+        } else if (str_detect("PET", "PE") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 17, cex = 1, col = "darkgray")
+        } else if (str_detect("PET", "PLA") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 17, cex = 1, col = "lightgreen")
+        } else if (str_detect("PET", "PA") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 17, cex = 1, col = "red")
+        } else if (str_detect("PET", "PUR") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 17, cex = 1, col = "yellow")
+        } else if (str_detect("PET", "PP") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 17, cex = 1, col = "blue")
+        } else if (str_detect("PET", "AF") == T){
+          points(x = log10(NOEC.det[i,sp]),
+                 y = prop[ind[sp]],
+                 pch = 17, cex = 1, col = "mediumpurple")
+        }
+      }
+      
+      xoffset <- c(0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 
+                   0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+      
+      text(x = min(log10((NOEC.det[,sp])), na.rm = T) - xoffset[sp],
+           adj = 1,
+           y = prop[ind[sp]],
+           labels = colnames(DP)[sp],
+           cex = 0.6, font = 3)
+    } 
+  }
+  
+  
+  #legend("bottomright", c("Mean PSSD", "PMMA", "PHB", "PS", "PS-COOH", "PS-NH2","with Sodium Azide"),
+  #pch = c(NA, 16, 16, 16, 16, 16, 2), col = c("firebrick4", "yellow", "forestgreen", "black","red", "blue","black"),
+  #lty = c(1, NA, NA, NA, NA, NA, NA), cex = 0.7, bg = "white", box.lwd = 0.4)
+  
+  ### NEW PLOT FOR THE PNEC ON NEW PDF PAGE
+  
+  # calculate it
+  # activate when running for the first time
+  PNEC1 <- apply(NOEC_t1_volume, 2, function(x) quantile(x, probs = 0.05, type = 1))
+  hist(PNEC1, freq = F, breaks = 100, col = rgb(255, 127, 80, max = 255, alpha = 50), border = "coral",
+       xlab = "PNEC (ug/L)", ylab = "Probability density", main = "Probability density of the PNEC", lwd = 0.5)
+  #lines(density(log(PNEC,10)), lwd = 2, col = "red")
+  box(lwd = 0.5)
+  
+  
+  #activate when running for the first time
+    save(PNEC1, file = "PNEC_mass.RData")
+  
+  #close the graph
+  dev.off()
+}
 ```
 
 ```{r}
