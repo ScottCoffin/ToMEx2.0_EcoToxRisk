@@ -69,6 +69,9 @@ do.pSSD <- function(DP,
     sp.min <- corr.endpoints[ind.min,sp]*(1-(sqrt((CV.DP/2.45)^2 + (CV.UF/2.45)^2 + (CV.UF/2.45)^2)*2.45))
     sp.max <- corr.endpoints[ind.max,sp]*(1+(sqrt((CV.DP/2.45)^2 + (CV.UF/2.45)^2 + (CV.UF/2.45)^2)*2.45))
     
+    #{Scott} - why is the CV.UF term included twice here?#
+    #{Substitute CVs with probabilistically-determined alignments based on Alpha value, etc.}
+    
     # For species with one unique data point, NOEC stays the same:
     if(length(unique(sort.endpoints[[sp]])) == 1){
       NOEC_comb[sp,] <- rtrunc("rtriang", min = sp.min, 

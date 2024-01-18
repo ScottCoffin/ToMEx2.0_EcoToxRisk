@@ -565,7 +565,7 @@ base_thresholds
 *Point estimate*: median
 *Biological scale of endpoints*: organismal and population
 
-**Threshold 3:**
+**Threshold 4:**
 *HC*: HC10
 *Data collapsing*: median
 *Point estimate*: median
@@ -1182,13 +1182,19 @@ NOEC.det2_t1_SA = NOEC.det_t1_SA * 1000
 ## Plotting
 ```{r eval=TRUE, include=FALSE}
 # calculate PNEC (HC5) for volume and surface area
-PNEC_t1_SA <- apply(NOEC_t1_SA,2,function(x){quantile(x, probs = 0.05, na.rm = TRUE) })
+#PNEC_t1_SA <- apply(NOEC_t1_SA,2,function(x){quantile(x, probs = 0.05, na.rm = TRUE) })
 
-PNEC_t1_volume <- apply(NOEC_t1_SA,2,function(x){quantile(x, probs = 0.05, na.rm = TRUE) })
+PNEC_t1_volume <- apply(NOEC_t1_volume,2,function(x){quantile(x, probs = 0.05, na.rm = TRUE) })
 
+summary(PNEC_t1_volume)
+```
+
+
+
+```{r}
 #make into dataframe
 PNECs <- data.frame( = PNEC_t1_SA,
-                    
+              
 
 PNEC %>% 
   data.frame(PNEC) %>% 
