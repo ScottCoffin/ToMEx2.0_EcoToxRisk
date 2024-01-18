@@ -787,8 +787,8 @@ exp(mean(log(x)))
        main="PSSD of microplastics in freshwater",
        xlab = "NOEC (ug/L)", ylab = "Cumulative probability",
        type = "n", axes = F)
-  #axis(1, at = c( -4, -2, 0, 2, 4, 6, 8), 
-  #     labels = expression(10^-4, 10^-2, 1, 10^2, 10^4, 10^6, 10^8), lwd = 0.5)
+  axis(1, at = c( -4, -2, 0, 2, 4, 6, 8), 
+       labels = expression(10^-4, 10^-2, 1, 10^2, 10^4, 10^6, 10^8), lwd = 0.5)
   axis(2, lwd = 0.5)
   abline(h = seq(0, 1, 0.2), lty = 1, col = "gray90", lwd = 0.5)
   abline(v = seq(-4, 8, 1), lty = 1, col = "gray90", lwd = 0.5)
