@@ -81,13 +81,14 @@ color.type <- scale_color_nejm()
   #rename columns so they fir the OG script
 getwd()
 
-aoc_z <- readRDS("data/input/aoc_z_tomex2.RDS") %>% 
+aoc_z <- readRDS("../data/input/aoc_z_tomex2.RDS") %>% 
   rename(environment = env_f)
+
 ```
 
 #Framework Summary
 
-![Agreed-upon framework](www/Treshold_Framework.png)
+![Agreed-upon framework](../assets/threshold_framework.png)
 
 The figure above displays the working threshold framework for the ambient threshold group for the Microplastics Health Effects Workshop. 
 
@@ -101,13 +102,13 @@ HONEC (Highest Observed No Effect Concentration) are excluded.
 
 Assessment factors are applied to convert all other effect metrics into NOECs:
 
-![](www/AF_EM.png)
+![](../assets/AF_EM.png)
 
 Reference: Wigger et al. 2020 (doi: 10.1002/ieam.4214)  
 
 Assessment factors are applied to convert acute data into chronic:  
 
-![](www/AF_chronic.png)
+![](../assets/AF_chronic.png)
 
 Green rows are from Wigger et al. 2020. Grey rows were agreed upon by the ambient threshold working group.
 
@@ -407,7 +408,7 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
 #saveRDS(aoc_final,"G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/data/output/aoc_final.RDS")
 
 saveRDS(aoc_final,
-        "data/output/aoc_final.RDS")
+        "../data/output/aoc_final.RDS")
 ```
 
 
@@ -583,13 +584,13 @@ HONEC (Highest Observed No Effect Concentration) are excluded.
 
 Assessment factors are applied to convert all other effect metrics into NOECs:
 
-![](www/AF_EM.png)
+![](../assets/AF_EM.png)
 
 Reference: Wigger et al. 2020 (doi: 10.1002/ieam.4214)  
 
 Assessment factors are applied to convert acute data into chronic:  
 
-![](www/AF_chronic.png)
+![](../assets/AF_chronic.png)
 
 Green rows are from Wigger et al. 2020. Grey rows were agreed upon by the ambient threshold working group.
 
@@ -631,8 +632,8 @@ tier1_2_large <- filtered.data.small.default_t1.2
 
 ##### Build fun4ctions ####
 getwd()
-source("scripts/PSSD/rmore.r")
-source("scripts/PSSD/do.pssd.r")
+source("PSSD/rmore.r")
+source("PSSD/do.pssd.r")
 #source("PSSD/do.pssd.troph.r")
 #source("PSSD/do.pssd.ag.r")
 
@@ -656,6 +657,7 @@ CV.UF <- 0.5
 library(reshape2)
 require(tidyverse)
 require(Matrix)
+library(truncdist)
 
 t2 <- tier1_2_large %>% 
   distinct(dose_new, .keep_all = TRUE)#  %>% 
