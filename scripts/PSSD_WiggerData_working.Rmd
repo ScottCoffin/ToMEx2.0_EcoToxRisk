@@ -1,10 +1,52 @@
+---
+title: "PSSD_WiggerData_updated"
+output:
+  html_document:
+    code_folding: hide
+    theme: journal
+    toc: yes
+    toc_float: yes
+    toc_depth: 6
+    number_sections: true
+  word_document:
+    toc: yes
+---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=10, fig.height=8, fig.path='output/figures',
+                      warning=FALSE, message=FALSE,time_it = TRUE) 
+```
+
+#Setup
+##Libraries
+```{r}
 library(xlsx)
 library(psych)
 library(mc2d)
 library(trapezoid)
-# Code runs pSSD for number-based concentrations
+```
+--
+This script uses Wigger et al data, and is intended to serve as a proof-of-concept that the modified code works on their data and produces identical results. Use the ToMEx version of this script for ToMEx data.
 
+
+ Code based on PSSD and PNEC calculations using the tool PSSD+ developed by Wigger et al. (2019)
+ -------------------------------------------------------------------------------------------------
+
+ Associated publication: Systematic consideration of parameter uncertainty and variability in
+                         probabilistic species sensitivity distributions
+ Authors: Henning Wigger, Delphine Kawecki, Bernd Nowack and V?ronique Adam
+
+ Institute: Empa, Swiss Federal Laboratories for Materials Science and Technology,
+            Technology and Society Laboratory, Lerchenfeldstrasse 5, 9014 St. Gallen, Switzerland
+
+ submitted to Integrated Environmental Assessment and Management in December 2018
+
+ -------------------------------------------------------------------------------------------------
+
+This script was updated by Dr. Win Cowger to run without an error that amplified simulation magnitude based on a value (Win - fill in details).
+
+## Parameters and Functions
+```{r}
 #### Main parameters ####
 
 # number of simulations for the triangular distributions of the endpoints and assessment factors
@@ -17,125 +59,74 @@ CV.DP <- 0.3
 CV.UF <- 0.5
 
 ## read functions
-setwd("scripts")
-
 source("PSSD/do.pssd.r")
 source("PSSD/rmore.r")
+```
 
-#import dataset#
-
+## Demonstration with Wigger et al. data
+```{r include=FALSE}
+#import Wigger dataset#
 #### read input data ####
-
 library(readxl)
 
-getwd()
-
-setwd("PSSD/updated")
-
-
 # requires species values as endpoint value 
-
-Datapoints <- as.matrix(read_excel("MPs_NoHONECs_mass_V.xlsx", 
+Datapoints <- as.matrix(read_excel("PSSD/updated/MPs_NoHONECs_mass_V.xlsx", 
                                    sheet = "pSSD_mass"))
 
 #Datapoints_number <- as.matrix(read_excel("MPs_NoHONECs_mass_V.xlsx",
  #                                       sheet = "pSSD_number"))
 
 # requires assessment factors per species endpoint value - AF for time
-UFt <- as.matrix(read_excel("MPs_NoHONECs_mass_V.xlsx", 
+UFt <- as.matrix(read_excel("PSSD/updated/MPs_NoHONECs_mass_V.xlsx", 
                             sheet = "UFt"))
 
 # AF for endpoint
-UFd <- as.matrix(read_excel("MPs_NoHONECs_mass_V.xlsx", 
+UFd <- as.matrix(read_excel("PSSD/updated/MPs_NoHONECs_mass_V.xlsx", 
                             sheet = "UFd"))
 
 # Polymers used for each endpoint
-Polymer <- as.matrix(read_excel("MPs_NoHONECs_mass_V.xlsx", 
+Polymer <- as.matrix(read_excel("PSSD/updated/MPs_NoHONECs_mass_V.xlsx", 
                                 sheet = "Polymer"))
 
 # Shape of microplastics for each endpoint
-Shape <- as.matrix(read_excel("MPs_NoHONECs_mass_V.xlsx", 
+Shape <- as.matrix(read_excel("PSSD/updated/MPs_NoHONECs_mass_V.xlsx", 
                               sheet = "Shape"))
 
 # Dose descriptors of toxicity
-DDescriptor <- as.matrix(read_excel("MPs_NoHONECs_mass_V.xlsx", 
+DDescriptor <- as.matrix(read_excel("PSSD/updated/MPs_NoHONECs_mass_V.xlsx", 
                                     sheet = "Dose descriptor"))
 
 # Diameter of the nanoplastics
-Diameter <- as.matrix(read_excel("MPs_NoHONECs_mass_V.xlsx", 
+Diameter <- as.matrix(read_excel("PSSD/updated/MPs_NoHONECs_mass_V.xlsx", 
                                  sheet = "Diameter"))
 Diameterlog <- 3+log10(Diameter)
 ########################
 
 # run 10 separate pSSDs if necessary, why, this is probably a ram issue?
-pSSD1 <- do.pSSD(DP = Datapoints,
-                 UFt = UFt,
-                 UFdd = UFd,
-                 SIM/10, 
-                 CV.DP,
-                 CV.UF)
-pSSD2 <- do.pSSD(DP = Datapoints,
-                 UFt = UFt,
-                 UFdd = UFd,
-                 SIM/10,
-                 CV.DP,
-                 CV.UF)
-pSSD3 <- do.pSSD(DP = Datapoints,
-                 UFt = UFt,
-                 UFdd = UFd,
-                 SIM/10,
-                 CV.DP,
-                 CV.UF)
-pSSD4 <- do.pSSD(DP = Datapoints,
-                 UFt = UFt,
-                 UFdd = UFd,
-                 SIM/10,
-                 CV.DP,
-                 CV.UF)
-pSSD5 <- do.pSSD(DP = Datapoints,
-                 UFt = UFt,
-                 UFdd = UFd,
-                 SIM/10,
-                 CV.DP,
-                 CV.UF)
-pSSD6 <- do.pSSD(DP = Datapoints,
-                 UFt = UFt,
-                 UFdd = UFd,
-                 SIM/10,
-                 CV.DP,
-                 CV.UF)
-pSSD7 <- do.pSSD(DP = Datapoints,
-                 UFt = UFt,
-                 UFdd = UFd,
-                 SIM/10,
-                 CV.DP,
-                 CV.UF)
-pSSD8 <- do.pSSD(DP = Datapoints,
-                 UFt = UFt,
-                 UFdd = UFd,
-                 SIM/10,
-                 CV.DP,
-                 CV.UF)
-pSSD9 <- do.pSSD(DP = Datapoints,
-                 UFt = UFt,
-                 UFdd = UFd,
-                 SIM/10,
-                 CV.DP,
-                 CV.UF)
-pSSD10 <- do.pSSD(DP = Datapoints,
-                  UFt = UFt,
-                  UFdd = UFd,
-                  SIM/10,
-                  CV.DP,
-                  CV.UF)
-pSSD <- cbind(pSSD1, pSSD2, pSSD3, pSSD4, pSSD5, pSSD6, pSSD7, pSSD8, pSSD9, pSSD10)
+# Initialize an empty list to store the results
+pSSD_list <- vector("list", 10)
 
-save(pSSD, file = "pSSD_mass.RData")
+# Loop through each iteration
+for(i in 1:10) {
+  pSSD_list[[i]] <- do.pSSD(DP = Datapoints,
+                            UFt = UFt,
+                            UFdd = UFd,
+                            SIM/10, 
+                            CV.DP,
+                            CV.UF)
+}
 
-#corr.endpoints <- Datapoints/(UFd*UFt)
+# Combine all the results into a single object
+pSSD <- do.call(cbind, pSSD_list)
 
-##### PLOT THE PSSDs ##############################################################################
+save(pSSD, file = "PSSD/updated/pSSD_mass.RData")
 
+corr.endpoints <- Datapoints/(UFd*UFt)
+```
+
+#Plotting
+## Original code from Wigger et al
+````{r}
 library(psych) # To use the geometric.mean function
 
 #open a pdf file to start plotting
@@ -401,6 +392,141 @@ Stat_PNEC[2,6] <- quantile(PNEC1, 0.75)
 Stat_PNEC[2,7] <- quantile(PNEC1, 0.95)
 Stat_PNEC[2,8] <- max(PNEC1)
 
-write.csv(Stat_PNEC, file = "Stats_PNEC_NoHONECs_V.csv")
+write.csv(Stat_PNEC, file = "PSSD/updated/Stats_PNEC_NoHONECs_V.csv")
 
-Stat_PNEC
+data.frame(t(Stat_PNEC))
+```
+
+## PSSD Ggplot code
+### Preparation
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Assuming ECDF.data is already calculated as shown in your code
+iv_vec <- seq(-3, 7, length.out = ncol(ECDF.data))
+
+# Preparing dataframe for ggplot
+ecdf_df <- data.frame(iv = rep(iv_vec, times = nrow(ECDF.data)), 
+                      ecdf_value = as.vector(t(ECDF.data)))
+
+# Calculating quantiles for shading
+quantiles_df <- ecdf_df %>%
+  group_by(iv) %>%
+  summarise(min = min(ecdf_value),
+            max = max(ecdf_value),
+            q05 = quantile(ecdf_value, 0.05),
+            q95 = quantile(ecdf_value, 0.95),
+            q25 = quantile(ecdf_value, 0.25),
+            q75 = quantile(ecdf_value, 0.75),
+            mean = mean(ecdf_value)) %>%
+  ungroup()
+
+# deterministic values of NOEC (for plotting)
+NOEC.det <- Datapoints /( UFd * UFt)
+
+ # calculate the geometric mean
+  NOEC.gmean <- apply(NOEC.det, 2, function(x) geometric.mean(x, na.rm =T ))
+  
+  # calculate where to put the endpoints on the y axis
+  #prop <- 1:ncol(Datapoints)/(ncol(Datapoints)+1)
+  prop <- rep(NA, length(NOEC.gmean))
+  for (i in 1:length(NOEC.gmean)) {
+    prop[i] <- i/(length(NOEC.gmean))-(1/(length(NOEC.gmean))/2)
+  }
+
+  # Calculate where to put the endpoints on the y axis
+prop <- seq_along(NOEC.gmean) / (length(NOEC.gmean) + 1)
+  
+ind <- rank(NOEC.gmean)
+
+# Creating a dataframe for ggplot
+species_data <- data.frame(
+  Species = colnames(NOEC.det),
+  NOEC_log10 = log10(NOEC.gmean),
+  NOEC = NOEC.gmean,
+  Prop = ind/(length(NOEC.gmean) + 1)
+)
+
+# Join metadata to species
+#species_data
+
+
+# Adjusting ind if necessary
+# Assuming specific adjustments to 'prop' based on 'ind' calculations or other criteria
+# Include those adjustments here if they are necessary for your plot
+# Example:
+# species_data$Prop[4] <- 4 / (length(NOEC.gmean) + 1)
+# Adjust as needed based on your original 'ind' vector adjustments
+
+```
+
+## Plotting
+```{r}
+ggplot() +
+  geom_ribbon(data = quantiles_df, aes(x = iv, ymin = min, ymax = max), fill = "coral", alpha = 0.2) +
+  geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q05, ymax = q95), fill = "coral", alpha = 0.5) +
+  geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q25, ymax = q75), fill = "coral", alpha = 1) +
+  geom_point(data = species_data, aes(x = NOEC_log10, y = Prop), color = "blue") +
+  geom_text(data = species_data, aes(x = NOEC_log10, y = Prop, label = Species, color = "blue"), hjust = -0.2, vjust = 0) +
+  geom_line(data = quantiles_df, aes(x = iv, y = mean), color = "firebrick4", size = 1) +
+  scale_x_continuous(name = "NOEC (ug/L)", breaks = c(-4, -2, 0, 2, 4, 6, 8),
+                     labels = expression(10^-4, 10^-2, 1, 10^2, 10^4, 10^6, 10^8)) +
+  scale_y_continuous(name = "Cumulative probability", limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
+  theme_minimal() +
+  ggtitle("PSSD of microplastics in freshwater")
+
+# Note: Replace `mean` with `median` in `aes(y = ...)` of `geom_line` for plotting the median
+
+# Saving the plot to a PDF file
+```
+
+## PNEC
+```{r}
+library(ggplot2)
+
+# Assuming pSSD and PNEC1 are already calculated as shown
+# Calculate PNEC1 if not already calculated
+# PNEC1 <- apply(pSSD, 2, function(x) quantile(x, probs = 0.05, type = 1))
+
+# Convert PNEC1 to a dataframe for ggplot
+PNEC1_df <- data.frame(PNEC1 = PNEC1)
+
+# Plotting
+ggplot(PNEC1_df, aes(x = PNEC1)) +
+  geom_histogram(aes(y = ..density..), fill = rgb(255, 127, 80, max = 255, alpha = 50), color = "coral", bins = 100) +
+  labs(x = "PNEC (ug/L)", y = "Probability density", title = "Probability density of the PNEC") +
+  theme_minimal() +
+  geom_density(col = "red", lwd = 1)  # Optionally add a density line
+
+# Save PNEC1 if needed
+# save(PNEC1, file = "PNEC_mass.RData")
+```
+
+```{r}
+# Mode calculation using density
+Mode_Y <- function(x) {
+  dens <- density(x)
+  ind <- which(dens$y == max(dens$y))
+  return(dens$x[ind])
+}
+
+# Calculate statistics for PNEC1
+Stat_PNEC <- data.frame(
+  Min = min(PNEC1),
+  Q5 = quantile(PNEC1, 0.05),
+  Q25 = quantile(PNEC1, 0.25),
+  Mean = mean(PNEC1),
+  Mode = Mode_Y(PNEC1),
+  Q75 = quantile(PNEC1, 0.75),
+  Q95 = quantile(PNEC1, 0.95),
+  Max = max(PNEC1)
+)
+
+# Transposing for similar structure to your matrix
+Stat_PNEC_t <- t(Stat_PNEC)
+colnames(Stat_PNEC_t) <- "Statistics"
+print(Stat_PNEC_t)
+
+```
+

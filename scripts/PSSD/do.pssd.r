@@ -93,6 +93,7 @@ do.pSSD <- function(DP,
       # For species with three endpoints or more:
     } else {
       
+      #Use this in place of below to bootstrap. 
       #low <- (1-(sqrt((CV.DP/2.45)^2 + (CV.UF/2.45)^2 + (CV.UF/2.45)^2)*2.45))
       #high <- (1+(sqrt((CV.DP/2.45)^2 + (CV.UF/2.45)^2 + (CV.UF/2.45)^2)*2.45))
       #uncertainty_factor <- sample(c(low, high), size = SIM, replace = T)

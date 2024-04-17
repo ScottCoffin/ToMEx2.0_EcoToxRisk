@@ -2,11 +2,21 @@
 title: "pSSD_ToMEx2"
 author: "Scott Coffin"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document:
+    code_folding: hide
+    theme: journal
+    toc: yes
+    toc_float: yes
+    toc_depth: 6
+    number_sections: true
+  word_document:
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.width=10, fig.height=8, fig.path='output/figures',
+                      warning=FALSE, message=FALSE,time_it = TRUE) 
 ```
 
 # Probabilistic Species Sensitivity Distribution Plus
@@ -39,8 +49,8 @@ tier1_2_large <- read.csv("tier1_2_large.csv")
 # -------------------------------------------------------------------------------------------------
 
 ##### Build functions ####
-source("scripts/EcoTox/PSSD/rmore.r")
-source("scripts/EcoTox/PSSD/do.pssd.r")
+source("PSSD/rmore.r")
+source("PSSD/do.pssd.r")
 #source("PSSD/do.pssd.troph.r")
 #source("PSSD/do.pssd.ag.r")
 
