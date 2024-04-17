@@ -46,6 +46,10 @@ library(ggsci)
 library(openxlsx)
 library(ggpubr)
 library(psych) # To use the geometric.mean function
+library(Matrix)
+library(mc2d)
+library(trapezoid)
+library(reshape2)
 getwd()
 
 ```
@@ -609,7 +613,7 @@ tier3_4_food <- filtered.data.large.default_t3.4
 
 #tissue translocation
 tier1_2_tissue <- filtered.data.small.default_t1.2
-tier3_4_tissue <- filtered.data.large.default_t3.4
+tier3_4_tissue <- filtered.data.small.default_t3.4
 ```
 
 ```{r eval=TRUE, include=FALSE}
@@ -674,24 +678,24 @@ prep_data <- function(data) {
         select(id, Species, af.noec) %>% 
         acast(id ~ Species, value.var = "af.noec") %>% 
         Matrix(sparse = T),
-    doseDescriptor <- t2 %>% mutate(id = row_number()) %>% 
+    doseDescriptor <- data %>% mutate(id = row_number()) %>% 
       select(id, Species, effect.metric) %>% 
       acast(id ~ Species, value.var = "effect.metric") %>% 
       Matrix(sparse = T),
-    polymer_matrix <- t2 %>% mutate(id = row_number()) %>% 
+    polymer_matrix <- data %>% mutate(id = row_number()) %>% 
       select(id, Species, poly_f) %>% 
       acast(id ~ Species, value.var = "poly_f") %>% 
       Matrix(sparse = T),
-    shape__matrix <- t2 %>% 
+    shape__matrix <- data %>% 
       mutate(id = row_number()) %>% 
       select(id, Species, shape_f) %>% 
       acast(id ~ Species, value.var = "shape_f") %>% 
       Matrix(sparse = T),
-    env_1_large_volume <- t2 %>% mutate(id = row_number()) %>% 
+    env_matrix <- data %>% mutate(id = row_number()) %>% 
       select(id, Species, environment) %>% 
       acast(id ~ Species, value.var = "environment") %>% 
       Matrix(sparse = T),
-    group_1_large_volume <- t2 %>% mutate(id = row_number()) %>% 
+    group_matrix <- data %>% mutate(id = row_number()) %>% 
       select(id, Species, Group) %>% 
       acast(id ~ Species, value.var = "Group") %>% 
       Matrix(sparse = T)
@@ -705,7 +709,7 @@ prep_data <- function(data) {
 }
 
 #example usage
-tier1_2_food_matrices <- prep_data(tier1_2_food)
+#tier1_2_food_matrices <- prep_data(tier1_2_food)
 ```
 
 ### Run PSSD
@@ -839,10 +843,12 @@ ggplot() +
                      labels = expression(10^-4, 10^-2, 1, 10^2, 10^4, 10^6, 10^8, 10^10),
                      limits = c(-4, 10)) +
   scale_y_continuous(name = "Cumulative probability", limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
-  #theme_minimal() +
+  fill.type +
+    color.type +
   labs(title = ("Microplastics Probabilistic Species Sensitivity Distribution"),
        subtitle = data_name) +
-  dark_theme_minimal(base_size = 15) 
+    theme.type
+ # dark_theme_minimal(base_size = 15) 
  }
 
 # example usage
@@ -855,8 +861,8 @@ ggplot() +
 #### PNEC ggplot Function
 ```{r}
 # Calculate PNEC1 if not already calculated
-PNEC_plot <- function(pssd_results, data_name){
-  PNEC <- apply(pssd_results$pSSD, 2, function(x) quantile(x, probs = 0.05, type = 1))
+PNEC_plot <- function(pssd_results, hcx, data_name){
+  PNEC <- apply(pssd_results$pSSD, 2, function(x) quantile(x, probs = hcx, type = 1))
   # Convert PNEC1 to a dataframe for ggplot
   PNEC_df <- data.frame(PNEC = PNEC)
   
@@ -868,11 +874,13 @@ PNEC_plot <- function(pssd_results, data_name){
          subtitle = data_name) +
     #theme_minimal() +
     geom_density(col = "red", lwd = 1) +  # Optionally add a density line
-    dark_theme_minimal(base_size = 18)
+    theme.type
+   # dark_theme_minimal(base_size = 18)
 }
 
 #example
 # PNEC_plot(pssd_results = tier1_2_food_pssd,
+#            hcx = 0.05
 #           data_name = "Tier 2 (Food Dilution)")
 ```
 #### PNEC Data Summary
@@ -932,7 +940,7 @@ tier1_2_food_pssd <- run_pSSD_analysis(
   data_matrices = tier1_2_food_matrices,
   num_iterations = 10,
   sim = SIM,
-  cv_dp = CV.DP,  # Example coefficient of variation for DP
+  cv_dp = CV.DP,  # Default coefficeint
   cv_uf = CV.UF,  # Example coefficient of variation for UF
   data_name = "tier1_2_food"
 )
@@ -949,6 +957,7 @@ tier1_2_food_pssdPlot <-  pSSD_plot(quantiles_df = tier1_2_food_plot_prep$quanti
 
 #Step 4b: generate ggplot (PNEC)
 tier1_2_food_PNECPlot <-  PNEC_plot(pssd_results = tier1_2_food_pssd,
+                                    hcx = 0.05,
                                     data_name = "Tier 2 (Food Dilution)")
 
 # Step 5: extract PNEC values for table
@@ -991,8 +1000,13 @@ tier3_4_food_pssdPlot <-  pSSD_plot(quantiles_df = tier3_4_food_plot_prep$quanti
                                     data_name = "Tier 3 (Food Dilution)")
 
 #Step 4b: generate ggplot (PNEC)
-tier3_4_food_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_food_pssd,
+tier3_food_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_food_pssd,
+                                    hcx = 0.05,
                                     data_name = "Tier 3 (Food Dilution)")
+
+tier4_food_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_food_pssd,
+                                    hcx = 0.10,
+                                    data_name = "Tier 4 (Food Dilution)")
 
 # Step 5: extract PNEC values for table
 tier3_food_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_food_pssd,
@@ -1005,8 +1019,13 @@ tier4_food_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_food_pssd,
 ```
 
 ```{r}
-ggarrange(tier3_4_food_pssdPlot, tier3_4_food_PNECPlot,
-          ncol = 1)
+food_plots <- ggarrange(tier3_4_food_pssdPlot,  
+                        ggarrange(tier3_food_PNECPlot,
+                                  tier4_food_PNECPlot,
+                                  ncol = 2, nrow = 1),
+                        ncol = 1, nrow = 2)
+
+food_plots
 ```
 ```{r}
 cbind(tier3_food_PNEC_summary$stats, tier4_food_PNEC_summary$stats)
@@ -1038,8 +1057,13 @@ tier3_4_tissue_pssdPlot <-  pSSD_plot(quantiles_df = tier3_4_tissue_plot_prep$qu
                                     data_name = "Tier 3 (Tissue Translocation)")
 
 #Step 4b: generate ggplot (PNEC)
-tier3_4_tissue_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_tissue_pssd,
-                                    data_name = "Tier 3 (Tissue Translocation)")
+tier3_tissue_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_tissue_pssd,
+                                      hcx = 0.05,
+                                      data_name = "Tier 3 (Tissue Translocation)")
+
+tier4_tissue_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_tissue_pssd,
+                                      hcx = 0.10,
+                                      data_name = "Tier 3 (Tissue Translocation)")
 
 # Step 5: extract PNEC values for table
 tier3_tissue_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_tissue_pssd,
@@ -1052,8 +1076,13 @@ tier4_tissue_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_tissue_pss
 ```
 
 ```{r}
-ggarrange(tier3_4_tissue_pssdPlot,tier3_4_tissue_PNECPlot,
-          ncol = 1)
+tissue_plots <- ggarrange(tier3_4_tissue_pssdPlot,  
+                        ggarrange(tier3_tissue_PNECPlot,
+                                  tier4_tissue_PNECPlot,
+                                  ncol = 2, nrow = 1),
+                        ncol = 1, nrow = 2)
+
+tissue_plots
 ```
 
 ```{r}
@@ -1112,5 +1141,67 @@ PNEC_boxPlot <- ggplot(data = PNEC_dfs, aes(x = PNEC, y = Tier, fill = ERM, colo
     dark_theme_minimal(base_size = 18)
 
 PNEC_boxPlot
+```
+## Supplemental
+### Freshwater Only
+#### Data Filtering
+```{r}
+#food dilution
+tier1_2_food_freshwater <- tier1_2_food %>% filter(environment == "Freshwater")
+tier3_4_food_freshwater <- tier3_4_food %>% filter(environment == "Freshwater")
+
+#tissue translocation
+tier1_2_tissue_freshwater <- tier1_2_tissue %>% filter(environment == "Freshwater")
+tier3_4_tissue_freshwater <- tier3_4_tissue %>% filter(environment == "Freshwater")
+```
+#### Processing
+```{r}
+### Food Dilution
+#Step 1: prep data matrices
+tier3_4_food_freshwater_matrices <- prep_data(tier3_4_food_freshwater)
+
+#Step 2: run pSSD
+tier3_4_food_freshwater_pssd <- run_pSSD_analysis(data_matrices = tier3_4_food_freshwater_matrices,
+  num_iterations = 10,
+  sim = SIM,
+  cv_dp = CV.DP,  # Example coefficient of variation for DP
+  cv_uf = CV.UF,  # Example coefficient of variation for UF
+  data_name = "tier3_4_food_freshwater")
+
+#Step 3: prep for ggplot
+tier3_4_food_freshwater_plot_prep <- prepare_plot_data(pSSD = tier3_4_food_freshwater_pssd$pSSD,
+                                            data_matrices = tier3_4_food_freshwater_matrices,
+                                            species_data_source = tier3_4_food_freshwater)
+
+#Step 4a: generate ggplot (pSSD)
+tier3_4_food_freshwater_pssdPlot <-  pSSD_plot(quantiles_df = tier3_4_food_freshwater_plot_prep$quantiles_df,
+                                    species_data = tier3_4_food_freshwater_plot_prep$species_data,
+                                    data_name = "Tier 3 (Food Dilution - Freshwater Only)")
+
+#Step 4b: generate ggplot (PNEC)
+tier3_food_freshwater_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_food_freshwater_pssd,
+                                             hcx = 0.05,
+                                             data_name = "Tier 3 (Food Dilution - Freshwater Only)")
+
+tier4_food_freshwater_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_food_freshwater_pssd,
+                                             hcx = 0.10,
+                                             data_name = "Tier 4 (Food Dilution - Freshwater Only)")
+
+# Step 5: extract PNEC values for table
+tier3_food_freshwater_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_food_freshwater_pssd,
+                                               hcx = 0.05,
+                                               data_name = "Tier 3 (Food Dilution - Freshwater Only)")
+
+tier4_food_freshwater_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_food_freshwater_pssd,
+                                               hcx = 0.10,
+                                               data_name = "Tier 4 (Food Dilution - Freshwater Only)")
+
+freshwater_food_plots <- ggarrange(tier3_4_food_freshwater_pssdPlot,  
+                        ggarrange(tier3_food_freshwater_PNECPlot,
+                                  tier4_food_freshwater_PNECPlot,
+                                  ncol = 2, nrow = 1),
+                        ncol = 1, nrow = 2)
+
+freshwater_food_plots
 ```
 
