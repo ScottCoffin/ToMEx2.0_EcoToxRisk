@@ -79,6 +79,7 @@ fill.type <-  scale_fill_nejm()
 color.type <- scale_color_nejm()
 ```
 
+### Data Import
 ```{r Data Import, include = FALSE}
 #Load aoc_z into dataframe. This file is generated from aq_mp_tox_shiny repo / ToMEx2.0_Onboarding / ToMEx2.0_Data_Tidying.R
 
@@ -87,9 +88,47 @@ color.type <- scale_color_nejm()
 getwd()
 
 aoc_z <- readRDS("../data/input/aoc_z_tomex2.RDS") %>% 
-  rename(environment = env_f)
+  rename(environment = env_f) %>% 
+  select(-rowid)# %>% #existing rowid is actually replicated (not sure how)
+  #mutate(rowid = row_number())
 
+aoc_z$rowid <- sapply(seq_len(nrow(aoc_z)), function(x) uuid::UUIDgenerate())
 ```
+
+### Data Cleanup
+A large number of values is getting filtered out during alignments. This should not be the case. We can debug by looking at missing values for the parameters that are relevant to alignments.
+```{r}
+aoc_simple <- aoc_z %>%
+   filter(!environment %in% c("Terrestrial", "Not Reported"),
+         Group != "Bacterium",
+         Group != "Plant",
+         effect.metric != "HONEC",
+         exp_type_f == "Particle Only",
+         tier_zero_tech_f == "Red Criteria Passed",
+         tier_zero_risk_f == "Red Criteria Passed", #All thresholds must pass technical and risk red criteria
+         risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been scored) - KEEP THIS AFTER THE RED CRITERIA FILTERS  
+         ) %>% 
+  ungroup()# %>% 
+  #select(c(rowid, max.size.ingest.mm, dose.particles.mL.master, particle.surface.area.um2,
+         #  particle.surface.area.um2.min, particle.surface.area.um2.max, polydispersity)) 
+
+# for polydisperse data, we need the particle.surface.area.um2.min and max to be filled out. For monodisperse data, just the particle.surface.area.um2 is needed.
+
+aoc_simple_check <- aoc_simple %>% 
+   mutate(data_available = case_when(
+    # Condition for polydisperse: particle.surface.area.um2.min and .max cannot be NA
+    polydispersity == "polydisperse" & !is.na(particle.surface.area.um2.min) & !is.na(particle.surface.area.um2.max) ~ TRUE,
+    # Condition for monodisperse: particle.surface.area.um2 cannot be NA
+    polydispersity == "monodisperse" & !is.na(particle.surface.area.um2) ~ TRUE,
+    # Otherwise, data is not available according to the criteria
+    TRUE ~ FALSE
+  )) %>% 
+  drop_na(dose.particles.mL.master)
+
+aoc_simple_check %>% 
+  filter(!data_available)
+```
+
 
 #Framework Summary
 
@@ -604,6 +643,229 @@ Reference: Wigger et al. 2020 (doi: 10.1002/ieam.4214)
 Note: Values may be slightly different than those presented in the shiny app as concentrations are converted from particles/mL to particles/L ahead of calculations.
 
 
+## Monte Carlo Alignments
+### Base values
+```{r}
+# number of Monte-Carlo Simluaitons
+n_sim <- 10 #probably should do 10,000 for final assessment, but keep number low for beta-testing 
+
+###define sizes for alignment##
+x1M_set <- 1 #um lower size for all alignments
+x1D_set <- 1 #um lower size for all alignments
+x2D_set <- 5000 #um
+upper.tissue.trans.size.um <- 83 #10 #um #set size for x2M
+```
+
+### PDF Distributions
+Values from Kooi et al (2021) supplementary information.
+https://linkinghub.elsevier.com/retrieve/pii/S0043135421006278 
+```{r}
+## parametrization ##
+# Define params for correction #
+alpha = 2.07 #table s4 for marine surface water. length
+alpha.sd = 0.07 #table s4 for marine surface water. lengthj
+alpha_samples <- rnorm(n_sim, mean = alpha, sd = alpha.sd)
+
+# define parameters for power law coefficients
+a.sa = 1.5 #marine surface area power law
+a.sa.sd = 0.009 #marine surface water surface area power law - table s4
+a.sa_samples <- rnorm(n_sim, mean = a.sa, sd = a.sa.sd)
+
+a.v = 1.48 #a_V for marine surface water volume
+a.v.sd = 0.063
+a.v_samples <- rnorm(n_sim, mean = a.v, sd = a.v.sd)
+
+a.m = 1.32 # upper limit fora_m for mass for marine surface water in table S4 
+a.m.sd = 0.009
+a.m_samples <- rnorm(n_sim, mean = a.m, sd = a.m.sd)
+
+a.ssa = 1.98 # A_SSA for marine surface water
+a.ssa.sd = 0.297
+a.ssa_samples <- rnorm(n_sim, mean = a.ssa, sd = a.ssa.sd)
+
+#define additional parameters for calculations based on averages in the environment
+R.ave = 0.77 #average width to length ratio for microplastics in marine enviornment
+R.ave.sd = 0.29 #Tablse s3. Marine surfac water
+R.ave_samples <- rnorm(n_sim, mean = R.ave, sd = R.ave.sd)
+
+p.ave = 1.10 #average density in marine surface water
+p.ave.sd = 0.14 #Tablse s3. Marine surfac water
+p.ave_samples <- rnorm(n_sim, mean = p.ave, sd = p.ave.sd)
+```
+
+
+### Alignment Monte-Carlo Simulation
+```{r}
+#initiate empty list
+MC_results <- vector("list", n_sim)
+
+for (i in 1:n_sim) {
+
+  #parameters to iterate
+   alpha <- alpha_samples[i]
+   a.sa <- a.sa_samples[i]
+   a.v <- a.v_samples[i]
+   a.m <- a.m_samples[i]
+   a.ssa <- a.ssa_samples[i]
+  # R.ave <- R.ave_samples[i] #not used
+  # p.ave <- p.ave_samples[i] #not used
+
+# calculate ERM for each species
+aoc_final <- aoc_intermediate  %>% 
+   #### TISSUE TRANSLOCATION ####
+# define upper size length for Translocation 
+#set to 83um for upper limit or max size ingest, whichever is smaller
+mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size.um, 
+                             max.size.ingest.um  < upper.tissue.trans.size.um ~  max.size.ingest.um,
+                             max.size.ingest.um  > upper.tissue.trans.size.um ~ upper.tissue.trans.size.um)) %>% 
+  
+ # calculate effect threshold for particles
+  mutate(EC_mono_p.particles.mL_trans = dose.particles.mL.master) %>% 
+  mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
+  mutate(mu.p.poly_trans = mux.polyfnx(a.x = alpha, #alpha for particles
+                                 x_UL= x2M_trans, #upper ingestible size limit (width of particle)
+                                 x_LL = x1M_set)) %>% 
+  # polydisperse effect threshold for particles
+  mutate(EC_poly_p.particles.mL_trans = (EC_mono_p.particles.mL_trans * mu.p.mono)/mu.p.poly_trans) %>% 
+   #calculate CF_bio for all conversions
+  mutate(CF_bio_trans = CFfnx(x1M = x1M_set,#lower size bin
+                        x2M = x2M_trans, #upper translocatable
+                        x1D = x1D_set, #default
+                        x2D = x2D_set,  #default
+                        a = alpha)) %>%  
+  ## Calculate environmentally relevant effect threshold for particles
+  mutate(EC_env_p.particles.mL_trans = EC_poly_p.particles.mL_trans * CF_bio_trans) %>%  #aligned particle effect concentraiton (1-5000 um)
+  
+  #### Surface area ERM ####
+##--- environmental calculations ---###
+  #calculate lower translocatable surface area
+  mutate(x_LL_sa_trans = SAfnx(a = 0.5 * x1D_set, #length
+                               b = 0.5 * x1D_set, #0.5 * R.ave * x1D_set, #width
+                               c = 0.5 * x1D_set  #0.5 * R.ave * 0.67 * x1D_set #height
+                               )) %>%  
+  #calculate upper translocatable surface area
+  mutate(x_UL_sa_trans = SAfnx(a = 0.5 * x2M_trans, 
+                               b = 0.5 * x2M_trans, #width #0.5 * R.ave * x2M, 
+                               c = 0.5 * x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
+                               )) %>%  
+  #calculate mu_x_poly (env) for surface area
+  mutate(mu.sa.poly_trans = mux.polyfnx(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
+  
+  ##--- laboratory calculations ---###
+  ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
+  #(note that if mixed particles were used, a different equation must be used)
+  mutate(mu.sa.mono = case_when(
+    polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported surface area in monodisperse
+    polydispersity == "polydisperse" ~  mux.polyfnx(a.x = a.sa, 
+                                  x_LL = particle.surface.area.um2.min,
+                                  x_UL = particle.surface.area.um2.max))) %>% 
+  
+   #calculate polydisperse effect concentration for surface area (particles/mL)
+  mutate(EC_poly_sa.particles.mL_trans = (EC_mono_p.particles.mL_trans * mu.sa.mono)/mu.sa.poly_trans) %>%  
+  #calculate environmentally realistic effect threshold
+  mutate(EC_env_sa.particles.mL_trans = EC_poly_sa.particles.mL_trans * CF_bio_trans) %>% 
+  
+  ##### FOOD DILUTION ####
+  # define upper size length for ingestion 
+  mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ x2D_set, 
+                         max.size.ingest.um < x2D_set ~ max.size.ingest.um,
+                         max.size.ingest.um > x2D_set ~ x2D_set
+                         )) %>%  #set to 5,000 as upper limit or max size ingest, whichever is smaller
+ # calculate effect threshold for particles
+  mutate(EC_mono_p.particles.mL_ingest = dose.particles.mL.master) %>% 
+  mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
+  mutate(mu.p.poly_ingest = mux.polyfnx(a.x = alpha, #alpha for particles
+                                 x_UL= x2M_ingest, #upper ingestible size limit
+                                 x_LL = x1M_set)) %>% 
+  # polydisperse effect threshold for particles
+  mutate(EC_poly_p.particles.mL_ingest = (EC_mono_p.particles.mL_ingest * mu.p.mono)/mu.p.poly_ingest) %>% 
+   #calculate CF_bio for all conversions
+  mutate(CF_bio_ingest = CFfnx(x1M = x1M_set,#lower size bin
+                        x2M = x2M_ingest, #upper ingestible length
+                        x1D = x1D_set, #default
+                        x2D = x2D_set,  #default upper size range
+                        a = alpha)) %>%  
+  ## Calculate environmentally relevant effect threshold for particles
+  mutate(EC_env_p.particles.mL_ingest = EC_poly_p.particles.mL_ingest * CF_bio_ingest) %>%  #aligned particle effect concentraiton (1-5000 um)
+  
+  
+  #### volume ERM ####
+##--- environmental calculations ---###
+  #calculate lower ingestible volume 
+  mutate(x_LL_v_ingest = volumefnx_poly(length = x1D_set,
+                                 width = x1D_set)) %>% 
+  #calculate maximum ingestible volume 
+  mutate(x_UL_v_ingest = volumefnx_poly(length = x2M_ingest, # length-limited
+                                 #x2D_set, #upper definiton (accouunts for fibers) CONSERVATIVE
+                                 width = x2M_ingest)) %>% #ingestion-limited
+  # calculate mu.v.poly
+  mutate(mu.v.poly_ingest = mux.polyfnx(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
+  ##--- laboratory calculations ---###
+  ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
+  #(note that if mixed particles were used, a different equation must be used)
+  mutate(mu.v.mono = case_when(
+    polydispersity == "monodisperse" ~ particle.volume.um3, # use reported volume in monodisperse
+    polydispersity == "polydisperse" ~ mux.polyfnx(a.x = a.v, 
+                                                   x_LL = particle.volume.um3.min,
+                                                   x_UL = particle.volume.um3.max))) %>% 
+  
+  #calculate polydisperse effect concentration for volume (particles/mL)
+  mutate(EC_poly_v.particles.mL_ingest = (EC_mono_p.particles.mL_ingest * mu.v.mono)/mu.v.poly_ingest) %>%  
+    #calculate environmentally realistic effect threshold
+  mutate(EC_env_v.particles.mL_ingest = EC_poly_v.particles.mL_ingest * CF_bio_ingest) %>% 
+   ###### CLEANUP #####
+  mutate(particles.mL.ox.stress = EC_env_sa.particles.mL_trans,
+         particles.mL.food.dilution = EC_env_v.particles.mL_ingest) %>% 
+  # some values are empty (this is a problem that we need to address - there shouldn't be so many)
+  drop_na(particles.mL.food.dilution,
+          particles.mL.ox.stress)
+
+#store results in a list
+ # Store results in a list
+  MC_results[[i]] <- list(particles_mL_ox_stress = aoc_final$particles.mL.ox.stress,
+                          particles_mL_food_dilution = aoc_final$particles.mL.food.dilution,
+                          rowid = aoc_final$rowid)
+}
+```
+Convert to coefficient of variation:
+
+The coefficient of variation is calculated as the ratio of the standard deviation to the mean of the dataset: CoV= μ / σ
+
+```{r}
+## STEP 1: 
+# Create a dataframe from the list
+results_df <- do.call(rbind, lapply(MC_results, function(x) {
+  data.frame(
+    rowid = x$rowid,
+    particles_mL_ox_stress = x$particles_mL_ox_stress,
+    particles_mL_food_dilution = x$particles_mL_food_dilution
+  )
+}))
+
+# Convert factors to numeric if necessary
+results_df$particles_mL_ox_stress <- as.numeric(as.character(results_df$particles_mL_ox_stress))
+results_df$particles_mL_food_dilution <- as.numeric(as.character(results_df$particles_mL_food_dilution))
+
+## Step 2:
+# Calculate CoV
+cov_results <- results_df %>%
+  group_by(rowid) %>%
+  summarise(
+    CoV_ox_stress = sd(particles_mL_ox_stress, na.rm = TRUE) / mean(particles_mL_ox_stress, na.rm = TRUE),
+    CoV_food_dilution = sd(particles_mL_food_dilution, na.rm = TRUE) / mean(particles_mL_food_dilution, na.rm = TRUE)
+  )
+
+# View the results
+print(cov_results)
+
+
+# Step 3:
+# Assuming original_data is your original dataset
+aoc_MC <- merge(aoc_final, cov_results, by = "rowid", all.x = TRUE)
+```
+
+
+
 # Probabilistic Species Sensitivity Distribution Plus
 
 ```{r eval=TRUE, include=FALSE}
@@ -649,10 +911,10 @@ source("PSSD/do.pssd.r")
 SIM <- 1000 #10 is minimum, 10,000 is recommended
 
 # coefficient of variation for the data point distributions
-CV.DP <- 0.3
+CV.DP <- 0.3 #this arbitray value should be changed to the matrix corresponding to the actual CV for each datapoint, which is calculated above. 
 
 # coefficient of variation for the uncertainty factor distributions
-CV.UF <- 0.5
+CV.UF <- 0.5 #unclear how this value was derived... I believe it corresponds to the combined uncertainties of the effect metric uncertainty facotr (e.g., LOEC to NOEC, etc.) and the acute to chronic uncertainty factor... maybe just leave as-is for now?
 ```
 
 ## Functions
@@ -764,7 +1026,7 @@ prepare_plot_data <- function(pSSD, data_matrices, species_data_source) {
   }
 
   # Define interpolation values
-  iv <- seq(-3, 7, 0.001)
+  iv <- seq(-5, 10, 0.001)
   ECDF.data <- matrix(NA, 10000, length(iv))
   
   # Compute ECDF for each column in pSSD
@@ -774,7 +1036,7 @@ prepare_plot_data <- function(pSSD, data_matrices, species_data_source) {
   }
 
   # Preparing dataframe for ggplot
-  iv_vec <- seq(-3, 7, length.out = ncol(ECDF.data))
+  iv_vec <- seq(-5, 10, length.out = ncol(ECDF.data))
   ecdf_df <- data.frame(iv = rep(iv_vec, times = nrow(ECDF.data)), 
                         ecdf_value = as.vector(t(ECDF.data)))
 
