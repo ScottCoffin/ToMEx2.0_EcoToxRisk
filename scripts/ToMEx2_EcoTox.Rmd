@@ -63,6 +63,8 @@ upper.tissue.trans.size.um <- 83 #um #set size for filtering data and x2M
 # larger size bin
 large_tier_lower_size <- 1 #um
 large_tier_upper_size <- 5000 #um
+
+nboot = 100 #number of bootstrap iterations for the traditional SSD (keep at 10 for beta testing, but use 1000 for final)
 ```
 
 ```{r Aesthetics, include = FALSE}
@@ -471,9 +473,9 @@ dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("weibull", "llogis", 
 #use average distribution with weighthing based on AICC
 preds <- predict(dists, average = TRUE, 
                  #ic = "aicc",
-                 nboot = 10, ci= TRUE) 
+                 nboot = nboot, ci= TRUE) 
 #report HC metrics of interest
-hc5lcl <- c(preds$lcl[hcxlcl]) #CI95
+hc5lcl <- c(preds$lcl[hcxlcl]) #CI05
 #values to extract
 print(hc5lcl)
 }
@@ -492,15 +494,19 @@ collapsed <- filtered.data %>%
   group_by(Species, Group) %>% 
   summarize(Conc = quantile(dose_new, 0.25))
 #fit distributions
-dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("weibull", "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
+dists <- ssd_fit_dists(collapsed, left = "Conc", 
+                       dists = c("weibull", "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
 #use average distribution with weighthing based on AICC
 preds <- predict(dists, average = TRUE,# ic = "aicc",
-                 nboot = 10, ci= TRUE) 
+                 nboot = nboot, ci= TRUE) 
 #report HC metrics of interest
-hc <- c(preds$est[hcx]) #HC5
+hcx_est <- c(preds$est[hcx]) #HC5
+hcx05cl <- c(preds$lcl[hcx]) #CI05
+hcx95cl <- c(preds$ucl[hcx]) #CI95
 #values to extract
-#print(hc5)
-print(hc)
+list(hcx_est = hcx_est,
+     hcx05cl = hcx05cl,
+     hcx95cl = hcx95cl)
 }
 
 #### define function for SSD generation for tiers 3 and 4 ####
@@ -518,12 +524,15 @@ dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("weibull", "llogis", 
 #use average distribution with weighthing based on AICC
 preds <- predict(dists, average = TRUE, 
                  #ic = "aicc", 
-                 nboot = 10, ci= TRUE) 
+                 nboot = nboot, ci= TRUE) 
 #report HC metrics of interest
-hc <- c(preds$est[hcx]) #HC5
+hcx_est <- c(preds$est[hcx]) #HC5
+hcx05cl <- c(preds$lcl[hcx]) #CI05
+hcx95cl <- c(preds$ucl[hcx]) #CI95
 #values to extract
-#print(hc5)
-print(hc)
+list(hcx_est = hcx_est,
+     hcx05cl = hcx05cl,
+     hcx95cl = hcx95cl)
 }
 ```
 
@@ -585,8 +594,13 @@ large.default.t4 <- SSD_function_t3_4(filtered.data = filtered.data.large.defaul
 
 base_thresholds <- tibble(
   "Tier" = c('Tier1', 'Tier2', 'Tier3', 'Tier4'),
-  "Tissue Translocation (Default)" = c(small.default.t1, small.default.t2, small.default.t3, small.default.t4),
-  "Food Dilution (Default)" = c(large.default.t1, large.default.t2, large.default.t3, large.default.t4))
+  "Tissue Translocation (Default)" = c(small.default.t1, small.default.t2$hcx_est, small.default.t3$hcx_est, small.default.t4$hcx_est),
+  "Food Dilution (Default)" = c(large.default.t1, large.default.t2$hcx_est, large.default.t3$hcx_est, large.default.t4$hcx_est),  "Tissue Translocation (5th %)" = c(NA, small.default.t2$hcx05cl, small.default.t3$hcx05cl, small.default.t4$hcx05cl),
+  "Tissue Translocation (95th %)" = c(NA, small.default.t2$hcx95cl, small.default.t3$hcx95cl, small.default.t4$hcx95cl),
+  "Food Dilution (5th %)" = c(NA, large.default.t2$hcx05cl, large.default.t3$hcx05cl, large.default.t4$hcx05cl),
+  "Food Dilution (95th %)" = c(NA, large.default.t2$hcx95cl, large.default.t3$hcx95cl, large.default.t4$hcx95cl))
+
+
 
 base_thresholds
 ```
@@ -1481,17 +1495,59 @@ summary_table
 ```{r}
 base_tissue <- data.frame(Tier = c("1", "2", "3", "4"),
                           ERM = "Tissue Translocation", 
-                          PNEC = base_thresholds$`Tissue Translocation (Default)`)
+                          PNEC = base_thresholds$`Tissue Translocation (Default)`,
+                          PNEClcl = base_thresholds$`Tissue Translocation (5th %)`,
+                          PNECucl = base_thresholds$`Tissue Translocation (95th %)`)
 
 base_food <- data.frame(Tier = c("1", "2", "3", "4"),
-                          ERM = "Food Dilution", 
-                          PNEC = base_thresholds$`Food Dilution (Default)`)
+                        ERM = "Food Dilution", 
+                        PNEC = base_thresholds$`Food Dilution (Default)`,
+                        PNEClcl = base_thresholds$`Food Dilution (5th %)`,
+                        PNECucl = base_thresholds$`Food Dilution (95th %)`)
 
-base_thesholds_df <- rbind(base_tissue, base_food)
+base_thesholds_df <- rbind(base_tissue, base_food) %>% 
+   mutate(y_position = (as.numeric(Tier) - 2) + (as.numeric(factor(ERM)) - 1.5) * 0.9)  # Adjust 0.1 or other value as needed
 
 base_thesholds_df
 ```
-### Plot
+
+```{r}
+theme.light <- theme_minimal(base_size = 15) +
+  theme(legend.position = c(0.2, 0.85),
+        legend.title = element_text(size = 16, face = "bold"),
+        legend.text = element_text(size = 14),
+        legend.title.align = 0.5,
+        legend.text.align = 0.5,
+     #   legend.box.background = element_rect(color = "black", linetype =
+      #                                         "solid", size = 1),
+  #legend.background = element_rect(fill = "gray90", size = 0.5, linetype =
+                   #                  "solid"),  # Light gray background forlegend
+        plot.title = element_text(hjust = 0.5),     # Center the main title
+        plot.subtitle = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5),   # Center the caption
+        axis.title.x = element_text(hjust = 0.5, size = 18),  # Center the x-axis title
+        axis.text = element_text(size = 16),
+        axis.title.y = element_text(vjust = 0.5, size = 18))   # Center the y-axis title (vertically))   # Center the subtitle)
+
+theme.dark <- dark_theme_minimal(base_size = 15) +
+  theme(legend.position = c(0.2, 0.85),
+        legend.title = element_text(size = 16, face = "bold"),
+        legend.text = element_text(size = 14),
+        legend.title.align = 0.5,
+        legend.text.align = 0.5,
+     #   legend.box.background = element_rect(color = "black", linetype =
+      #                                         "solid", size = 1),
+  #legend.background = element_rect(fill = "gray90", size = 0.5, linetype =
+                   #                  "solid"),  # Light gray background forlegend
+        plot.title = element_text(hjust = 0.5),     # Center the main title
+        plot.subtitle = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5),   # Center the caption
+        axis.title.x = element_text(hjust = 0.5, size = 18),  # Center the x-axis title
+        axis.text = element_text(size = 16),
+        axis.title.y = element_text(vjust = 0.5, size = 18))   # Center the y-axis title (vertically))   # Center the subtitle)
+```
+
+### Plot Comparisons with Deterministic Approach
 ```{r}
 #data prep
 t3f <- data.frame(ERM = "Food Dilution", Tier = "3",PNEC = tier3_food_PNEC_summary$df)
@@ -1500,27 +1556,59 @@ t3t <- data.frame(ERM = "Tissue Translocation", Tier = "3",PNEC = tier3_tissue_P
 t4t <- data.frame(ERM = "Tissue Translocation", Tier = "4",PNEC = tier4_tissue_PNEC_summary$df)
 
 ## join DFs
-PNEC_dfs <- rbind(t3f, t4f, t3t, t4t)
+PNEC_dfs <- rbind(t3f, t4f, t3t, t4t) %>% 
+  mutate(y_position = (as.numeric(Tier) - 2) + (as.numeric(factor(ERM)) - 1.5) * 0.4)  # Adjust 0.1 or other value as needed
 
 #plot
-PNEC_boxPlot <- ggplot(data = PNEC_dfs, aes(x = PNEC, y = Tier, fill = ERM, color = ERM)) +
-   geom_violin(draw_quantiles = c(0.25, 0.5, 0.75), color = "white") +
-   geom_jitter(width = 0.5, size = 1.5, alpha = 0.01) +  # Jittered points
-   #geom_boxplot(width = 0.1, outlier.shape = NA, fill = NA) +  # Boxplot lines
-   geom_point(data = base_thesholds_df %>% filter(Tier>2), aes(xintercept = PNEC, y = Tier, fill = ERM),
-              size = 10, shape = 23, 
+PNEC_pSSDvSSD <- ggplot() +
+   geom_violin(data = PNEC_dfs, aes(x = PNEC, y = Tier, fill = ERM, color = ERM),
+               draw_quantiles = c(0.05, 0.5, 0.95), color = "white", linewidth = 1.2,
+               alpha = 0.75) +
+   geom_jitter(data = PNEC_dfs, aes(x = PNEC, y = y_position, fill = ERM, color = ERM),
+               height = 0.15, size = 1.5, alpha = 0.03) +  # Jittered points
+   geom_point(data = base_thesholds_df %>% filter(Tier>2), 
+              aes(x = PNEC, y = y_position, fill = ERM),
+              size = 5, shape = 23, 
               color = "white",
-              stroke = 1.5 #thickness of outline
+              alpha = 0.95,
+              stroke = 1.8 #thickness of outline
               ) +
-   scale_x_log10() +
-    # geom_histogram(aes(y = ..density..), fill = rgb(255, 127, 80, max = 255, alpha = 50), color = "coral",
-    #                bins = 100)   +
-    #labs(x = "PNEC (Particles/L)", y = "Probability density", title = "Probability density of the PNEC",
-     #    subtitle = data_name) +
-    #theme_minimal() +
-    dark_theme_minimal(base_size = 18)
+   geom_errorbarh(data = base_thesholds_df %>% filter(Tier>2), 
+                  aes(xmin = PNEClcl, xmax = PNECucl, y = y_position, fill = ERM, color = ERM),
+                  height = 0.2,
+                  alpha = 0.75,
+                  linewidth = 1.2) +
+   scale_x_log10(breaks = c(0.01, 0.1, 1, 10, 100, 1000, 10000, 1000000, 10000000),
+                 #limits = c(0.001, 10000000),
+                 labels = scales::label_comma()) +
+  labs(title = "Comparison of pSSD and SSD Tier Thresholds",
+       subtitle = "(Violin Plots/Points = pSSD; Diamonds/Error-Bars = SSD)",
+       fill = "Ecologically-Relevant Metric",
+       color = "Ecologically-Relevant Metric"
+       ) +
+  xlab("PNEC (Particles/L; 1 to 5,000 um)") +
+  ylab("Threshold Tier")
 
-PNEC_boxPlot
+PNEC_pSSDvSSD_dark <- PNEC_pSSDvSSD + theme.dark
+PNEC_pSSDvSSD_light <- PNEC_pSSDvSSD + theme.light
+
+# ggsave(filename = "PNEC_pSSDvSSD.tiff",
+#        path = "../output/presentation_Figs/", 
+#        plot = PNEC_pSSDvSSD_dark, width = 12, height = 10, units = "in")
+
+ggsave(filename = "PNEC_pSSDvSSD.jpg",
+       path = "../output/presentation_Figs/", 
+       plot = PNEC_pSSDvSSD_dark, width = 12, height = 10, units = "in")
+
+ggsave(filename = "PNEC_pSSDvSSD.tiff",
+       path = "../output/Manuscript_Figs/", 
+       plot = PNEC_pSSDvSSD_light, width = 10, height = 8, units = "in")
+
+ggsave(filename = "PNEC_pSSDvSSD.jpg",
+       path = "../output/Manuscript_Figs/", 
+       plot = PNEC_pSSDvSSD_light, width = 10, height = 8, units = "in")
+
+PNEC_pSSDvSSD_dark
 ```
 ## Supplemental
 ### Freshwater Only
