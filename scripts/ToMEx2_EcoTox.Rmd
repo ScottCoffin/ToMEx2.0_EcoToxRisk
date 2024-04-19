@@ -1168,7 +1168,51 @@ tier3_4_food <- filtered.data.large.default_t3.4_MC
 #tissue translocation
 tier1_2_tissue <- filtered.data.small.default_t1.2_MC
 tier3_4_tissue <- filtered.data.small.default_t3.4_MC
+
+##  save datasets for other scripts and the paper
+saveRDS(tier1_2_food, "../data/output/tier1_2_food.RDS")
+saveRDS(tier3_4_food, "../data/output/tier3_4_food.RDS")
+saveRDS(tier1_2_tissue, "../data/output/tier1_2_tissue.RDS")
+saveRDS(tier3_4_tissue, "../data/output/tier3_4_tissue.RDS")
 ```
+
+## Summarize datasets
+```{r}
+### count unique studies, datapoints, and species
+#function
+summarize_distinct <- function(data, name) {
+  summary <- data %>%
+    summarize(
+      Count_Distinct_Species = n_distinct(Species),
+      Count_Distinct_doi = n_distinct(doi),
+      Count_Distinct_dp = n_distinct(dose_new_particles_L),
+      Count_Distinct_group = n_distinct(Group)
+    ) %>%
+    mutate(Dataset = name)  # Adding a column to identify the dataframe
+  return(summary)
+}
+
+#application
+tier1_2_food_summary <- summarize_distinct(tier1_2_food, "Tier 1-2 Food")
+tier3_4_food_summary <- summarize_distinct(tier3_4_food, "Tier 3-4 Food")
+tier1_2_tissue_summary <- summarize_distinct(tier1_2_tissue, "Tier 1-2 Tissue")
+tier3_4_tissue_summary <- summarize_distinct(tier3_4_tissue, "Tier 3-4 Tissue")
+
+tier1_2_food_summary_OG <- summarize_distinct(tier1_2_food %>% filter(source != "ToMEx 2.0"), "Tier 1-2 Food - ToMEx 1")
+tier3_4_food_summary_OG <- summarize_distinct(tier3_4_food %>% filter(source != "ToMEx 2.0"), "Tier 3-4 Food - ToMEx 1")
+tier1_2_tissue_summary_OG <- summarize_distinct(tier1_2_tissue %>% filter(source != "ToMEx 2.0"),"Tier 1-2 Tissue - ToMEx 1")
+tier3_4_tissue_summary_OG <- summarize_distinct(tier3_4_tissue %>% filter(source != "ToMEx 2.0"), "Tier 3-4 Tissue - ToMEx 1")
+
+#combine into single dataframe
+final_summary <- bind_rows(tier1_2_food_summary, tier3_4_food_summary,
+                           tier1_2_tissue_summary, tier3_4_tissue_summary,
+                           tier1_2_food_summary_OG, tier3_4_food_summary_OG,
+                           tier1_2_tissue_summary_OG, tier3_4_tissue_summary_OG,)
+
+#display
+print(final_summary)
+```
+
 
 ```{r eval=TRUE, include=FALSE}
 # -------------------------------------------------------------------------------------------------
