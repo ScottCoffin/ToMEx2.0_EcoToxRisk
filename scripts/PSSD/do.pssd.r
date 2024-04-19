@@ -6,6 +6,7 @@
 #              - UFt : matrix of uncertainty factors for the exposure time
 #              - UFdd : matrix of uncertainty factors for the dose-descriptor
 #              - SIM : number of iterations in the simulation
+#              - CV.SD: Data point level coefficients of variation based on transformations. 
 #              - CV.DP : coefficient of variation for the interlaboratory variation
 #              - CV.UF : coefficient of variation for the use of non-substance-specific
 #                uncertainty factors 
@@ -31,6 +32,7 @@ do.pSSD <- function(DP,
                     UFdd,
                     SIM,
                     CV.DP,
+                    CV.SD,
                     CV.UF){
   
   # test if there is no data available for one species
@@ -96,13 +98,15 @@ do.pSSD <- function(DP,
       
       #Use this in place of below to bootstrap. 
       # The low end of the CV correction factors
-      low <- (1-(sqrt(sum(c(CV.SD[[sp]], CV.UF)^2))))
+      low <- (1-(sqrt(sum(c(CV.SD[[sp]], CV.DP, CV.UF)^2))))
       # The high end of the CV correction factors
-      high <- (1+(sqrt(sum(c(CV.SD[[sp]], CV.UF)^2))))
+      high <- (1+(sqrt(sum(c(CV.SD[[sp]], CV.DP, CV.UF)^2))))
       # Create a boostrap of the correction factors
       uncertainty_factor <- runif(min = low, max = high, n = SIM)
       # Create a boostrap of the species data distributions
-      data <- rnorm(mean = mean(sort.endpoints[[sp]]), sd = sd(sort.endpoints[[sp]]),  n = SIM)
+      data <- rnorm(mean = mean(sort.endpoints[[sp]]), 
+                    sd = sd(sort.endpoints[[sp]]),  
+                    n = SIM)
       # Create the final simulation dataset
       NOEC_comb[sp,] <- data * uncertainty_factor
       
