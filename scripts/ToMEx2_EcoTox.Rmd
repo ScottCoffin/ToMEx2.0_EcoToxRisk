@@ -45,6 +45,11 @@ library(gt)
 library(ggsci)
 library(openxlsx)
 library(ggpubr)
+library(psych) # To use the geometric.mean function
+library(Matrix)
+library(mc2d)
+library(trapezoid)
+library(reshape2)
 getwd()
 
 ```
@@ -58,6 +63,8 @@ upper.tissue.trans.size.um <- 83 #um #set size for filtering data and x2M
 # larger size bin
 large_tier_lower_size <- 1 #um
 large_tier_upper_size <- 5000 #um
+
+nboot = 100 #number of bootstrap iterations for the traditional SSD (keep at 10 for beta testing, but use 1000 for final)
 ```
 
 ```{r Aesthetics, include = FALSE}
@@ -72,8 +79,45 @@ fill.type <-  scale_fill_nejm()
 
 #Color
 color.type <- scale_color_nejm()
+
+#ggplot themes
+theme.light <- theme_minimal(base_size = 15) +
+  theme(legend.position = c(0.2, 0.85),
+        legend.title = element_text(size = 16, face = "bold"),
+        legend.text = element_text(size = 14),
+        legend.title.align = 0.5,
+        legend.text.align = 0.5,
+     #   legend.box.background = element_rect(color = "black", linetype =
+      #                                         "solid", size = 1),
+  #legend.background = element_rect(fill = "gray90", size = 0.5, linetype =
+                   #                  "solid"),  # Light gray background forlegend
+        plot.title = element_text(hjust = 0.5),     # Center the main title
+        plot.subtitle = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5),   # Center the caption
+        axis.title.x = element_text(hjust = 0.5, size = 18),  # Center the x-axis title
+        axis.text = element_text(size = 16),
+        axis.title.y = element_text(vjust = 0.5, size = 18))   # Center the y-axis title (vertically))   # Center the subtitle)
+
+theme.dark <- dark_theme_minimal(base_size = 15) +
+  theme(legend.position = c(0.2, 0.85),
+        legend.title = element_text(size = 16, face = "bold"),
+        legend.text = element_text(size = 14),
+        legend.title.align = 0.5,
+        legend.text.align = 0.5,
+     #   legend.box.background = element_rect(color = "black", linetype =
+      #                                         "solid", size = 1),
+  #legend.background = element_rect(fill = "gray90", size = 0.5, linetype =
+                   #                  "solid"),  # Light gray background forlegend
+        plot.title = element_text(hjust = 0.5),     # Center the main title
+        plot.subtitle = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5),   # Center the caption
+        axis.title.x = element_text(hjust = 0.5, size = 18),  # Center the x-axis title
+        axis.text = element_text(size = 16),
+        axis.title.y = element_text(vjust = 0.5, size = 18))   # Center the y-axis title (vertically))   # Center the subtitle)
 ```
 
+
+### Data Import
 ```{r Data Import, include = FALSE}
 #Load aoc_z into dataframe. This file is generated from aq_mp_tox_shiny repo / ToMEx2.0_Onboarding / ToMEx2.0_Data_Tidying.R
 
@@ -82,9 +126,47 @@ color.type <- scale_color_nejm()
 getwd()
 
 aoc_z <- readRDS("../data/input/aoc_z_tomex2.RDS") %>% 
-  rename(environment = env_f)
+  rename(environment = env_f) %>% 
+  select(-rowid)# %>% #existing rowid is actually replicated (not sure how)
+  #mutate(rowid = row_number())
 
+aoc_z$rowid <- sapply(seq_len(nrow(aoc_z)), function(x) uuid::UUIDgenerate())
 ```
+
+### Data Cleanup
+A large number of values is getting filtered out during alignments. This should not be the case. We can debug by looking at missing values for the parameters that are relevant to alignments.
+```{r}
+aoc_simple <- aoc_z %>%
+   filter(!environment %in% c("Terrestrial", "Not Reported"),
+         Group != "Bacterium",
+         Group != "Plant",
+         effect.metric != "HONEC",
+         exp_type_f == "Particle Only",
+         tier_zero_tech_f == "Red Criteria Passed",
+         tier_zero_risk_f == "Red Criteria Passed", #All thresholds must pass technical and risk red criteria
+         risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been scored) - KEEP THIS AFTER THE RED CRITERIA FILTERS  
+         ) %>% 
+  ungroup()# %>% 
+  #select(c(rowid, max.size.ingest.mm, dose.particles.mL.master, particle.surface.area.um2,
+         #  particle.surface.area.um2.min, particle.surface.area.um2.max, polydispersity)) 
+
+# for polydisperse data, we need the particle.surface.area.um2.min and max to be filled out. For monodisperse data, just the particle.surface.area.um2 is needed.
+
+aoc_simple_check <- aoc_simple %>% 
+   mutate(data_available = case_when(
+    # Condition for polydisperse: particle.surface.area.um2.min and .max cannot be NA
+    polydispersity == "polydisperse" & !is.na(particle.surface.area.um2.min) & !is.na(particle.surface.area.um2.max) ~ TRUE,
+    # Condition for monodisperse: particle.surface.area.um2 cannot be NA
+    polydispersity == "monodisperse" & !is.na(particle.surface.area.um2) ~ TRUE,
+    # Otherwise, data is not available according to the criteria
+    TRUE ~ FALSE
+  )) %>% 
+  drop_na(dose.particles.mL.master)
+
+aoc_simple_check %>% 
+  filter(!data_available)
+```
+
 
 #Framework Summary
 
@@ -427,9 +509,9 @@ dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("weibull", "llogis", 
 #use average distribution with weighthing based on AICC
 preds <- predict(dists, average = TRUE, 
                  #ic = "aicc",
-                 nboot = 10, ci= TRUE) 
+                 nboot = nboot, ci= TRUE) 
 #report HC metrics of interest
-hc5lcl <- c(preds$lcl[hcxlcl]) #CI95
+hc5lcl <- c(preds$lcl[hcxlcl]) #CI05
 #values to extract
 print(hc5lcl)
 }
@@ -448,15 +530,19 @@ collapsed <- filtered.data %>%
   group_by(Species, Group) %>% 
   summarize(Conc = quantile(dose_new, 0.25))
 #fit distributions
-dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("weibull", "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
+dists <- ssd_fit_dists(collapsed, left = "Conc", 
+                       dists = c("weibull", "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
 #use average distribution with weighthing based on AICC
 preds <- predict(dists, average = TRUE,# ic = "aicc",
-                 nboot = 10, ci= TRUE) 
+                 nboot = nboot, ci= TRUE) 
 #report HC metrics of interest
-hc <- c(preds$est[hcx]) #HC5
+hcx_est <- c(preds$est[hcx]) #HC5
+hcx05cl <- c(preds$lcl[hcx]) #CI05
+hcx95cl <- c(preds$ucl[hcx]) #CI95
 #values to extract
-#print(hc5)
-print(hc)
+list(hcx_est = hcx_est,
+     hcx05cl = hcx05cl,
+     hcx95cl = hcx95cl)
 }
 
 #### define function for SSD generation for tiers 3 and 4 ####
@@ -474,12 +560,15 @@ dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("weibull", "llogis", 
 #use average distribution with weighthing based on AICC
 preds <- predict(dists, average = TRUE, 
                  #ic = "aicc", 
-                 nboot = 10, ci= TRUE) 
+                 nboot = nboot, ci= TRUE) 
 #report HC metrics of interest
-hc <- c(preds$est[hcx]) #HC5
+hcx_est <- c(preds$est[hcx]) #HC5
+hcx05cl <- c(preds$lcl[hcx]) #CI05
+hcx95cl <- c(preds$ucl[hcx]) #CI95
 #values to extract
-#print(hc5)
-print(hc)
+list(hcx_est = hcx_est,
+     hcx05cl = hcx05cl,
+     hcx95cl = hcx95cl)
 }
 ```
 
@@ -541,11 +630,21 @@ large.default.t4 <- SSD_function_t3_4(filtered.data = filtered.data.large.defaul
 
 base_thresholds <- tibble(
   "Tier" = c('Tier1', 'Tier2', 'Tier3', 'Tier4'),
-  "Tissue Translocation (Default)" = c(small.default.t1, small.default.t2, small.default.t3, small.default.t4),
-  "Food Dilution (Default)" = c(large.default.t1, large.default.t2, large.default.t3, large.default.t4))
+  "Tissue Translocation (Default)" = c(small.default.t1, small.default.t2$hcx_est, small.default.t3$hcx_est, small.default.t4$hcx_est),
+  "Food Dilution (Default)" = c(large.default.t1, large.default.t2$hcx_est, large.default.t3$hcx_est, large.default.t4$hcx_est),  "Tissue Translocation (5th %)" = c(NA, small.default.t2$hcx05cl, small.default.t3$hcx05cl, small.default.t4$hcx05cl),
+  "Tissue Translocation (95th %)" = c(NA, small.default.t2$hcx95cl, small.default.t3$hcx95cl, small.default.t4$hcx95cl),
+  "Food Dilution (5th %)" = c(NA, large.default.t2$hcx05cl, large.default.t3$hcx05cl, large.default.t4$hcx05cl),
+  "Food Dilution (95th %)" = c(NA, large.default.t2$hcx95cl, large.default.t3$hcx95cl, large.default.t4$hcx95cl))
+
+
 
 base_thresholds
 ```
+```{r}
+kable(base_thresholds)
+```
+
+
 ![Agreed-upon framework](assets/treshold_framework.png)
 
 **Threshold 1:**
@@ -599,18 +698,470 @@ Reference: Wigger et al. 2020 (doi: 10.1002/ieam.4214)
 Note: Values may be slightly different than those presented in the shiny app as concentrations are converted from particles/mL to particles/L ahead of calculations.
 
 
+## Monte Carlo Alignments
+### Base values
+```{r}
+# number of Monte-Carlo Simluaitons
+n_sim <- 10 #probably should do 10,000 for final assessment, but keep number low for beta-testing 
+
+###define sizes for alignment##
+x1M_set <- 1 #um lower size for all alignments
+x1D_set <- 1 #um lower size for all alignments
+x2D_set <- 5000 #um
+upper.tissue.trans.size.um <- 83 #10 #um #set size for x2M
+```
+
+### PDF Distributions
+Values from Kooi et al (2021) supplementary information.
+https://linkinghub.elsevier.com/retrieve/pii/S0043135421006278 
+```{r}
+## parametrization ##
+# Define params for correction #
+alpha = 2.07 #table s4 for marine surface water. length
+alpha.sd = 0.07 #table s4 for marine surface water. lengthj
+alpha_samples <- rnorm(n_sim, mean = alpha, sd = alpha.sd)
+
+# define parameters for power law coefficients
+a.sa = 1.5 #marine surface area power law
+a.sa.sd = 0.009 #marine surface water surface area power law - table s4
+a.sa_samples <- rnorm(n_sim, mean = a.sa, sd = a.sa.sd)
+
+a.v = 1.48 #a_V for marine surface water volume
+a.v.sd = 0.063
+a.v_samples <- rnorm(n_sim, mean = a.v, sd = a.v.sd)
+
+a.m = 1.32 # upper limit fora_m for mass for marine surface water in table S4 
+a.m.sd = 0.009
+a.m_samples <- rnorm(n_sim, mean = a.m, sd = a.m.sd)
+
+a.ssa = 1.98 # A_SSA for marine surface water
+a.ssa.sd = 0.297
+a.ssa_samples <- rnorm(n_sim, mean = a.ssa, sd = a.ssa.sd)
+
+#define additional parameters for calculations based on averages in the environment
+R.ave = 0.77 #average width to length ratio for microplastics in marine enviornment
+R.ave.sd = 0.29 #Tablse s3. Marine surfac water
+R.ave_samples <- rnorm(n_sim, mean = R.ave, sd = R.ave.sd)
+
+p.ave = 1.10 #average density in marine surface water
+p.ave.sd = 0.14 #Tablse s3. Marine surfac water
+p.ave_samples <- rnorm(n_sim, mean = p.ave, sd = p.ave.sd)
+```
+
+
+### Alignment Monte-Carlo Simulation
+```{r}
+#initiate empty list
+MC_results <- vector("list", n_sim)
+
+for (i in 1:n_sim) {
+
+  #parameters to iterate
+   alpha <- alpha_samples[i]
+   a.sa <- a.sa_samples[i]
+   a.v <- a.v_samples[i]
+   a.m <- a.m_samples[i]
+   a.ssa <- a.ssa_samples[i]
+  # R.ave <- R.ave_samples[i] #not used
+  # p.ave <- p.ave_samples[i] #not used
+
+# calculate ERM for each species
+aoc_final <- aoc_intermediate  %>% 
+  mutate(dose.particles.L.master = dose.particles.mL.master * 1000) %>% 
+  filter(size.length.um.used.for.conversions >= x1M_set) %>% #alignments not valid below 1 um, so filter them before they become problems later
+   #### TISSUE TRANSLOCATION ####
+# define upper size length for Translocation 
+#set to 83um for upper limit or max size ingest, whichever is smaller
+mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size.um, 
+                             max.size.ingest.um  < upper.tissue.trans.size.um ~  max.size.ingest.um,
+                             max.size.ingest.um  > upper.tissue.trans.size.um ~ upper.tissue.trans.size.um)) %>% 
+  
+ # calculate effect threshold for particles
+  mutate(EC_mono_p.particles.L_trans = dose.particles.L.master) %>% 
+  mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
+  mutate(mu.p.poly_trans = mux.polyfnx(a.x = alpha, #alpha for particles
+                                 x_UL= x2M_trans, #upper ingestible size limit (width of particle)
+                                 x_LL = x1M_set)) %>% 
+  # polydisperse effect threshold for particles
+  mutate(EC_poly_p.particles.L_trans = (EC_mono_p.particles.L_trans * mu.p.mono)/mu.p.poly_trans) %>% 
+   #calculate CF_bio for all conversions
+  mutate(CF_bio_trans = CFfnx(x1M = x1M_set,#lower size bin
+                        x2M = x2M_trans, #upper translocatable
+                        x1D = x1D_set, #default
+                        x2D = x2D_set,  #default
+                        a = alpha)) %>%  
+  ## Calculate environmentally relevant effect threshold for particles
+  mutate(EC_env_p.particles.L_trans = EC_poly_p.particles.L_trans * CF_bio_trans) %>%  #aligned particle effect concentraiton (1-5000 um)
+  
+  #### Surface area ERM ####
+##--- environmental calculations ---###
+  #calculate lower translocatable surface area
+  mutate(x_LL_sa_trans = SAfnx(a = 0.5 * x1D_set, #length
+                               b = 0.5 * x1D_set, #0.5 * R.ave * x1D_set, #width
+                               c = 0.5 * x1D_set  #0.5 * R.ave * 0.67 * x1D_set #height
+                               )) %>%  
+  #calculate upper translocatable surface area
+  mutate(x_UL_sa_trans = SAfnx(a = 0.5 * x2M_trans, 
+                               b = 0.5 * x2M_trans, #width #0.5 * R.ave * x2M, 
+                               c = 0.5 * x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
+                               )) %>%  
+  #calculate mu_x_poly (env) for surface area
+  mutate(mu.sa.poly_trans = mux.polyfnx(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
+  
+  ##--- laboratory calculations ---###
+  ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
+  #(note that if mixed particles were used, a different equation must be used)
+  mutate(mu.sa.mono = case_when(
+    polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported surface area in monodisperse
+    polydispersity == "polydisperse" ~  mux.polyfnx(a.x = a.sa, 
+                                  x_LL = particle.surface.area.um2.min,
+                                  x_UL = particle.surface.area.um2.max))) %>% 
+  
+   #calculate polydisperse effect concentration for surface area (particles/mL)
+  mutate(EC_poly_sa.particles.L_trans = (EC_mono_p.particles.L_trans * mu.sa.mono)/mu.sa.poly_trans) %>%  
+  #calculate environmentally realistic effect threshold
+  mutate(EC_env_sa.particles.L_trans = EC_poly_sa.particles.L_trans * CF_bio_trans) %>% 
+  
+  ##### FOOD DILUTION ####
+  # define upper size length for ingestion 
+  mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ x2D_set, 
+                         max.size.ingest.um < x2D_set ~ max.size.ingest.um,
+                         max.size.ingest.um > x2D_set ~ x2D_set
+                         )) %>%  #set to 5,000 as upper limit or max size ingest, whichever is smaller
+ # calculate effect threshold for particles
+  mutate(EC_mono_p.particles.L_ingest = dose.particles.L.master) %>% 
+  mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
+  mutate(mu.p.poly_ingest = mux.polyfnx(a.x = alpha, #alpha for particles
+                                 x_UL= x2M_ingest, #upper ingestible size limit
+                                 x_LL = x1M_set)) %>% 
+  # polydisperse effect threshold for particles
+  mutate(EC_poly_p.particles.L_ingest = (EC_mono_p.particles.L_ingest * mu.p.mono)/mu.p.poly_ingest) %>% 
+   #calculate CF_bio for all conversions
+  mutate(CF_bio_ingest = CFfnx(x1M = x1M_set,#lower size bin
+                        x2M = x2M_ingest, #upper ingestible length
+                        x1D = x1D_set, #default
+                        x2D = x2D_set,  #default upper size range
+                        a = alpha)) %>%  
+  ## Calculate environmentally relevant effect threshold for particles
+  mutate(EC_env_p.particles.L_ingest = EC_poly_p.particles.L_ingest * CF_bio_ingest) %>%  #aligned particle effect concentraiton (1-5000 um)
+  
+  
+  #### volume ERM ####
+##--- environmental calculations ---###
+  #calculate lower ingestible volume 
+  mutate(x_LL_v_ingest = volumefnx_poly(length = x1D_set,
+                                 width = x1D_set)) %>% 
+  #calculate maximum ingestible volume 
+  mutate(x_UL_v_ingest = volumefnx_poly(length = x2M_ingest, # length-limited
+                                 #x2D_set, #upper definiton (accouunts for fibers) CONSERVATIVE
+                                 width = x2M_ingest)) %>% #ingestion-limited
+  # calculate mu.v.poly
+  mutate(mu.v.poly_ingest = mux.polyfnx(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
+  ##--- laboratory calculations ---###
+  ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
+  #(note that if mixed particles were used, a different equation must be used)
+  mutate(mu.v.mono = case_when(
+    polydispersity == "monodisperse" ~ particle.volume.um3, # use reported volume in monodisperse
+    polydispersity == "polydisperse" ~ mux.polyfnx(a.x = a.v, 
+                                                   x_LL = particle.volume.um3.min,
+                                                   x_UL = particle.volume.um3.max))) %>% 
+  
+  #calculate polydisperse effect concentration for volume (particles/mL)
+  mutate(EC_poly_v.particles.L_ingest = (EC_mono_p.particles.L_ingest * mu.v.mono)/mu.v.poly_ingest) %>%  
+    #calculate environmentally realistic effect threshold
+  mutate(EC_env_v.particles.L_ingest = EC_poly_v.particles.L_ingest * CF_bio_ingest) %>% 
+   ###### CLEANUP #####
+  mutate(particles.L.ox.stress = EC_env_sa.particles.L_trans,
+         particles.L.food.dilution = EC_env_v.particles.L_ingest) %>% 
+  # some values are empty (this is a problem that we need to address - there shouldn't be so many)
+  drop_na(particles.L.food.dilution,
+          particles.L.ox.stress)
+
+#store results in a list
+ # Store results in a list
+  MC_results[[i]] <- list(particles_L_ox_stress = aoc_final$particles.L.ox.stress,
+                          particles_L_food_dilution = aoc_final$particles.L.food.dilution,
+                          rowid = aoc_final$rowid)
+}
+```
+Convert to coefficient of variation:
+
+The coefficient of variation is calculated as the ratio of the standard deviation to the mean of the dataset: CoV= μ / σ
+### CoV Determination
+```{r}
+## STEP 1: 
+# Create a dataframe from the list
+results_df <- do.call(rbind, lapply(MC_results, function(x) {
+  data.frame(
+    rowid = x$rowid,
+    particles_L_ox_stress = x$particles_L_ox_stress,
+    particles_L_food_dilution = x$particles_L_food_dilution
+  )
+}))
+
+# Convert factors to numeric if necessary
+results_df$particles_L_ox_stress <- as.numeric(as.character(results_df$particles_L_ox_stress))
+results_df$particles_L_food_dilution <- as.numeric(as.character(results_df$particles_L_food_dilution))
+
+skimr::skim(results_df)
+```
+
+
+```{r}
+## Step 2:
+# Calculate CoV
+cov_results <- results_df %>%
+  group_by(rowid) %>%
+  summarise(
+    CoV_ox_stress = sd(particles_L_ox_stress, na.rm = TRUE) / mean(particles_L_ox_stress, na.rm = TRUE),
+    CoV_food_dilution = sd(particles_L_food_dilution, na.rm = TRUE) / mean(particles_L_food_dilution, na.rm = TRUE)
+  )
+
+# View the results
+print(cov_results)
+
+skimr::skim(cov_results)
+
+
+# Step 3:
+# Assuming original_data is your original dataset
+aoc_MC <- merge(aoc_final, cov_results, by = "rowid", all.x = TRUE)
+```
+```{r}
+#define limites
+min_val <- min(aoc_MC$CoV_food_dilution, na.rm = TRUE)
+max_val <- max(aoc_MC$CoV_food_dilution, na.rm = TRUE)
+
+# You may want to add some padding around the min and max
+pad <- (max_val - min_val) * 0.05
+xlims <- c(min_val - pad, max_val + pad)
+
+hist_cv_food <- aoc_MC %>% 
+  ggplot(aes(x = CoV_food_dilution, fill = polydispersity)) +
+  geom_histogram(position = "identity", alpha = 0.5) +
+  xlim(xlims) +  # Set x limits
+  scale_x_log10() +
+  xlab("Coefficient of Variation (unitless)") +
+  ylab("Toxicity Data Points") +
+  fill.type +
+  theme.light #+
+  #theme(axis.title.x = element_blank())
+
+hist_cv_ox <- aoc_MC %>% 
+  ggplot(aes(x = CoV_ox_stress, fill = polydispersity)) +
+  geom_histogram(position = "identity", alpha = 0.5) +
+  fill.type +
+  scale_x_log10() +
+ # xlim(xlims) +  # Set x limits
+  xlab("Coefficient of Variation (unitless)") +
+  ylab("Toxicity Data Points") +
+  theme.light +
+  theme(legend.position = "none",
+        axis.title.y = element_blank())
+
+CoV_plots <- ggarrange(hist_cv_food, hist_cv_ox,
+                       labels = c("A", "B"),
+                       ncol = 2,
+                       common.legend = TRUE, legend = "top")
+
+ggsave(filename = "CoV_plots.jpg",
+       dpi = 300,
+       path = "../output/Manuscript_Figs/", 
+       plot = CoV_plots, width = 10, height = 8, units = "in")
+
+CoV_plots
+```
+
+```{r}
+#define limites
+min_val <- min(aoc_MC$CoV_food_dilution, na.rm = TRUE)
+max_val <- max(aoc_MC$CoV_food_dilution, na.rm = TRUE)
+
+# You may want to add some padding around the min and max
+pad <- (max_val - min_val) * 0.05
+xlims <- c(min_val - pad, max_val + pad)
+
+points_cv_food <- aoc_MC %>% 
+  ggplot(aes(x = CoV_food_dilution, y = size.length.um.used.for.conversions, color = polydispersity)) +
+  geom_point() +
+  xlim(xlims) +  # Set x limits
+  color.type +
+  theme_minimal()
+
+points_cv_ox <- aoc_MC %>% 
+  ggplot(aes(x = CoV_ox_stress, y = size.length.um.used.for.conversions, color = polydispersity)) +
+  geom_point() +
+ # xlim(xlims) +  # Set x limits
+  color.type +
+  theme_minimal()
+  theme(legend.position = "none")
+
+ggarrange(points_cv_food, points_cv_ox,
+          nrow = 2,
+          common.legend = TRUE, legend = "right")
+```
+
+
+```{r}
+mouth_lm_food <- lm(data = aoc_MC, CoV_food_dilution ~ max.size.ingest.um * polydispersity)
+summary(mouth_lm_food)
+```
+```{r}
+mouth_lm_ox_stress <- lm(data = aoc_MC, CoV_ox_stress ~ max.size.ingest.um * polydispersity)
+summary(mouth_lm_ox_stress)
+```
+
+
+```{r}
+mouth_cv_food <- aoc_MC %>% 
+    ggplot(aes(x = CoV_food_dilution, y = max.size.ingest.um, color = polydispersity)) +
+  geom_point(alpha = 0.75, size = 2.1) +
+  geom_smooth(method = "lm", se = T, aes(group = 1), alpha = 0.7, color = "darkgreen", fill = "darkgreen", linetype = "dashed") +  # A single regression line for all data
+  ggpmisc::stat_poly_eq(aes(label = paste(..eq.label..), group = 1),
+                        color = "darkgreen",
+                        formula = y ~ x, 
+                        method = "lm",
+                        label.x = 0.1,
+                        label.y = 0.7,  # Position at the top, adjust if necessary
+                        parse = TRUE) +
+   ggpmisc::stat_poly_eq(aes(label = paste(..rr.label..), group = 1),
+                        color = "darkgreen",
+                        formula = y ~ x, 
+                        method = "lm",
+                        label.x = 0.1,
+                        label.y = 0.65,  # Position at the top, adjust if necessary
+                        parse = TRUE) +
+    ggpmisc::stat_poly_eq(aes(label = ..p.value.label.., group = 1),
+                        color = "darkgreen",
+                        formula = y ~ x, 
+                        method = "lm",
+                        label.x = 0.1,
+                        label.y = 0.6,  # Position at the top, adjust if necessary
+                        parse = TRUE) +
+    xlab("Coefficient of Variation (unitless)") +
+  ylab("Organism Mouth Size Opening (um) for Toxicity Datapoint") +
+  scale_y_log10() +
+  scale_x_log10() +
+  xlim(xlims) +  # Set x limits
+  color.type +
+  theme.light +
+  theme(legend.position = "none",
+        axis.title.y = element_text(size = 16)) +
+   guides(fill = guide_legend(title = NULL), color = guide_legend(title = NULL))  # Remove legend titles
+
+mouth_cv_ox <- aoc_MC %>% 
+  ggplot(aes(x = CoV_ox_stress, y = max.size.ingest.um, color = polydispersity)) +
+   geom_point(alpha = 0.75, size = 2.1) +
+  geom_smooth(method = "lm", se = T, aes(group = 1), alpha = 0.7, color = "darkgreen", fill = "darkgreen", linetype = "dashed") +  # A single regression line for all data
+  ggpmisc::stat_poly_eq(aes(label = paste(..eq.label..), group = 1),
+                        color = "darkgreen",
+                        formula = y ~ x, 
+                        method = "lm",
+                        label.x = 0.1,
+                        label.y = 0.7,  # Position at the top, adjust if necessary
+                        parse = TRUE) +
+   ggpmisc::stat_poly_eq(aes(label = paste(..rr.label..), group = 1),
+                        color = "darkgreen",
+                        formula = y ~ x, 
+                        method = "lm",
+                        label.x = 0.1,
+                        label.y = 0.65,  # Position at the top, adjust if necessary
+                        parse = TRUE) +
+    ggpmisc::stat_poly_eq(aes(label = ..p.value.label.., group = 1),
+                        color = "darkgreen",
+                        formula = y ~ x, 
+                        method = "lm",
+                        label.x = 0.1,
+                        label.y = 0.6,  # Position at the top, adjust if necessary
+                        parse = TRUE) +
+  scale_y_log10() +
+  scale_x_log10() +
+  xlab("Coefficient of Variation (unitless)") +
+  ylab("Organism Mouth Size Opening (um) for Toxicity Datapoint") +
+ # xlim(xlims) +  # Set x limits
+  color.type +
+  theme.light +
+  theme(legend.position = "none",
+        axis.title.y = element_text(size = 16)) +
+  theme(legend.title = element_blank()) +
+   guides(fill = guide_legend(title = NULL), color = guide_legend(title = NULL))  # Remove legend titles
+
+CoV_mouth_plots <- ggarrange(mouth_cv_food, mouth_cv_ox,
+                       labels = c("A", "B"),
+                       ncol = 2,
+                       common.legend = TRUE, legend = "bottom")
+
+ggsave(filename = "CoV_mouth_plots.jpg",
+       dpi = 300,
+       path = "../output/Manuscript_Figs/", 
+       plot = CoV_mouth_plots, width = 10, height = 8, units = "in")
+
+CoV_mouth_plots
+```
+
+
+check to see if any CoV are negative (should not be!)
+```{r}
+aoc_MC %>% 
+  filter(CoV_food_dilution < 0)
+```
+#### Filtering for threshold prep
+```{r}
+#filter out risk criteria (not done above)#
+aoc_risk_paper_MC <- aoc_MC %>% 
+  drop_na(effect.metric) %>% 
+   filter(
+     tier_zero_tech_f == ("Red Criteria Passed"))
+
+####---- TISSUE TRANSLOCATION ------#####
+filtered.data.small.default_t1.2_MC <- aoc_risk_paper_MC %>% 
+          #mutate(dose_new = particles.L.ox.stress / (af.time * af.noec)) %>% #we should determine if the AFs should be applied, bc I think pSSD does this
+         mutate(dose_new = particles.L.ox.stress) %>%   
+         drop_na(dose_new) %>% 
+  filter(between(size.length.um.used.for.conversions, 1, upper.tissue.trans.size.um),
+         shape_f != "Not Reported",
+         poly_f != "Not Reported",
+         !environment %in% c("Terrestrial", "Not Reported"),
+         Group != "Bacterium",
+         Group != "Plant",
+         effect.metric != "HONEC")
+
+filtered.data.small.default_t3.4_MC <- filtered.data.small.default_t1.2_MC %>% 
+ filter(risk.13 != 1,
+         bio_f %in% c("Organism", "Population"))
+
+####---- Food Dilution ------#####
+filtered.data.large.default_t1.2_MC <- aoc_risk_paper_MC %>% 
+   # remove algae, as food dilution MOE doesn't make sense for algae
+  filter(Group != "Algae") %>% 
+         #mutate(dose_new = particles.L.food.dilution / (af.time * af.noec)) %>%  #we should determine if the AFs should be applied, bc I think pSSD does this
+         mutate(dose_new = particles.L.food.dilution) %>% 
+         drop_na(dose_new) %>% 
+  filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
+         poly_f != "Not Reported",
+         !environment %in% c("Terrestrial", "Not Reported"),
+         Group != "Bacterium",
+         Group != "Plant",
+         effect.metric != "HONEC")
+
+filtered.data.large.default_t3.4_MC <- filtered.data.large.default_t1.2_MC %>% 
+ filter(risk.13 != 1,
+         bio_f %in% c("Organism", "Population"))
+
+```
+
+
+
 # Probabilistic Species Sensitivity Distribution Plus
 
-The below code will not run with an open environment due to memory constraints.
 ```{r eval=TRUE, include=FALSE}
-#library(gdata)
-#keep(tier1_2_large, sure = TRUE)
-#write.csv(tier1_2_large, "output/tier1_2_large.csv")
-#rm(list = ls())
-#gc()
-#tier1_2_large <- read.csv("output/tier1_2_large.csv")
+#food dilution
+tier1_2_food <- filtered.data.large.default_t1.2_MC
+tier3_4_food <- filtered.data.large.default_t3.4_MC
 
-tier1_2_large <- filtered.data.small.default_t1.2
+#tissue translocation
+tier1_2_tissue <- filtered.data.small.default_t1.2_MC
+tier3_4_tissue <- filtered.data.small.default_t3.4_MC
 ```
 
 ```{r eval=TRUE, include=FALSE}
@@ -646,560 +1197,640 @@ source("PSSD/do.pssd.r")
 SIM <- 1000 #10 is minimum, 10,000 is recommended
 
 # coefficient of variation for the data point distributions
-CV.DP <- 0.3
+CV.DP <- 0.3 #this arbitray value should be changed to the matrix corresponding to the actual CV for each datapoint, which is calculated above. 
+CV.DP.food <- 0.68297352 #average valuie
+CV.DP.ox <- 0.06007163 #avearge value
 
 # coefficient of variation for the uncertainty factor distributions
-CV.UF <- 0.5
-```
-## Data preparation
-```{r eval=TRUE, include=FALSE}
-#memory.limit(size=56000) #force R to use more memory than what's phyiscally available
-library(reshape2)
-require(tidyverse)
-require(Matrix)
-library(truncdist)
-
-t2 <- tier1_2_large %>% 
-  distinct(dose_new, .keep_all = TRUE)#  %>% 
-  #filter(Species %in% c("Daphnia magna", "Oryzias latipes"))
-
-
-# prep dataframe for tox datapoints
-DP_1_large_volume <-  t2 %>% 
-  #mutate(tier = "A") %>% 
-  mutate(id = row_number()) %>% 
-  mutate(particles_L = EC_env_v.particles.mL_ingest * 1000) %>% #must *10 to eliminate sub-zero values, can't go above 10 b/c R can't handle integers above certain value
-
-#  mutate(particles_L_round = as.integer(round(particles_L,digits = 1))) %>%  #must make integer for below code to work
-
-  select(id, Species, particles_L) %>% 
-  acast(id ~ Species, value.var = "particles_L") %>% 
-  Matrix(sparse = TRUE) # makes a smaller object than using as.matrix()
-
-#prep uncertainty factors for conversion from acute to chronic values
-UFt_1_large_volume <- t2 %>% 
-  mutate(id = row_number()) %>% 
-  select(id, Species, af.time) %>% 
-  acast(id ~ Species, value.var = "af.time")
-
-# uncertainty factors for conversion of dose descriptors to NOEC
-UFdd_1_large_volume <- t2 %>% 
-  mutate(id = row_number()) %>% 
-  select(id, Species, af.noec) %>% 
-  acast(id ~ Species, value.var = "af.noec")
-#rm(tier1_2_large)
+CV.UF <- 0.5 #unclear how this value was derived... I believe it corresponds to the combined uncertainties of the effect metric uncertainty facotr (e.g., LOEC to NOEC, etc.) and the acute to chronic uncertainty factor... maybe just leave as-is for now?
 ```
 
-## Tier 1_2_Large_volume
-```{r eval=TRUE, include=FALSE}
-# read toxicity data
-# data points from the literature
-DP   <- DP_1_large_volume
-
-test <- as.matrix(DP)
-
-# uncertainty factors for conversion from acute to chronic values
-UFt  <- UFt_1_large_volume
-# uncertainty factors for conversion of dose descriptors to NOEC
-UFdd <- UFdd_1_large_volume
-
-
-###################################################################################################
-##### CALCULATION OF NOECs and PSSDs ##############################################################
-###################################################################################################
-
-# estimate the NOEC distributions for each Species
-NOEC_t1_volume <- do.pSSD(DP, UFt, UFdd, SIM, CV.DP, CV.UF)
-
-# calculate the deterministic (modal) values of the NOEC
-NOEC.det_t1_volume <- DP/(UFdd*UFt)
-
-###convert to particles/L
-NOEC2_t1_volume = NOEC_t1_volume #* 1000 #correction factor from getting into integer values (above)
-NOEC.det2_t1_volume = NOEC.det_t1_volume #* 1000
-```
-
+## Functions
+### Data Preparation
 ```{r}
-library(ggplot2)
-library(dplyr)
-
-Datapoints <- DP
-pSSD <- NOEC_t1_volume
-
-plot_microplastics_data <- function(pSSD, Datapoints, Shape, Polymer, UFd, UFt) {
-  # Preparing data for plotting
-  iv <- seq(-3, 7, 0.01)
-  ECDF.data <- replicate(length(iv), replicate(1000, ecdf(log(pSSD[, sample(ncol(pSSD))], base = 10))(iv)))
+#FUnction to process data
+prep_data <- function(data) {
+  # Base part of the names used for returned list elements
+  names <- c("DP", "UFt", "UFdd", "doseDescriptor", "polymer", "shape", "environment", "group")
   
-  # ECDF Plot
-  ecdf_plot <- ggplot() +
-    geom_ribbon(aes(x = iv, ymin = apply(ECDF.data, 1, min), ymax = apply(ECDF.data, 1, max)), fill = "coral", alpha = 0.2) +
-    geom_ribbon(aes(x = iv, ymin = apply(ECDF.data, 1, function(x) quantile(x, 0.05)), ymax = apply(ECDF.data, 1, function(x) quantile(x, 0.95))), fill = "coral", alpha = 0.5) +
-    geom_ribbon(aes(x = iv, ymin = apply(ECDF.data, 1, function(x) quantile(x, 0.25)), ymax = apply(ECDF.data, 1, function(x) quantile(x, 0.75))), fill = "coral") +
-    geom_line(aes(x = iv, y = apply(ECDF.data, 1, mean)), color = "firebrick4", size = 1) +
-    labs(title = "PSSD of microplastics in freshwater", x = "NOEC (ug/L)", y = "Cumulative probability") +
-    theme_minimal()
-
-  # Save ECDF Plot
-  ggsave("ECDF_plot.png", ecdf_plot, width = 5, height = 4, units = "in")
-
-  # Preparing data for NOEC plot
-  NOEC.det <- Datapoints / (UFd * UFt)
-  NOEC.gmean <- apply(NOEC.det, 2, geometric.mean, na.rm = TRUE)
-  prop <- seq_along(NOEC.gmean) / length(NOEC.gmean)
-  point_data <- data.frame(NOEC = log10(NOEC.det), Prop = rep(prop, each = nrow(Datapoints)), Polymer = Polymer, Shape = Shape)
-
-  # NOEC Plot
-  noec_plot <- ggplot(point_data, aes(x = NOEC, y= Prop, color = Polymer, shape = Shape)) +
-geom_point() +
-scale_shape_manual(values = c(4, 16, 15, 17)) + # Assign specific shapes to different types
-scale_color_manual(values = c("green4", "blue", "gray18", "skyblue", "darkgray", "lightgreen", "red", "yellow", "mediumpurple")) + # Assign colors to polymers
-labs(title = "NOEC Distribution of Microplastics", x = "Log10(NOEC)", y = "Proportion") +
-theme_minimal()
-
-#Save NOEC Plot
-ggsave("NOEC_plot.png", noec_plot, width = 5, height = 4, units = "in")
-
-#Return paths of saved PNG files
-return(c("ECDF_plot.png", "NOEC_plot.png"))
+  # Data processing steps
+  matrices <- list(
+    DP = data %>% mutate(id = row_number()) %>%
+        mutate(particles_L = dose_new) %>% 
+        select(id, Species, particles_L) %>%
+        acast(id ~ Species, value.var = "particles_L") %>%
+        Matrix(sparse = TRUE),
+    UFt = data %>% mutate(id = row_number()) %>%
+        select(id, Species, af.time) %>%
+        acast(id ~ Species, value.var = "af.time") %>% 
+        Matrix(sparse = T),
+    UFdd = data %>% mutate(id = row_number()) %>% 
+        select(id, Species, af.noec) %>% 
+        acast(id ~ Species, value.var = "af.noec") %>% 
+        Matrix(sparse = T),
+    doseDescriptor <- data %>% mutate(id = row_number()) %>% 
+      select(id, Species, effect.metric) %>% 
+      acast(id ~ Species, value.var = "effect.metric") %>% 
+      Matrix(sparse = T),
+    polymer_matrix <- data %>% mutate(id = row_number()) %>% 
+      select(id, Species, poly_f) %>% 
+      acast(id ~ Species, value.var = "poly_f") %>% 
+      Matrix(sparse = T),
+    shape__matrix <- data %>% 
+      mutate(id = row_number()) %>% 
+      select(id, Species, shape_f) %>% 
+      acast(id ~ Species, value.var = "shape_f") %>% 
+      Matrix(sparse = T),
+    env_matrix <- data %>% mutate(id = row_number()) %>% 
+      select(id, Species, environment) %>% 
+      acast(id ~ Species, value.var = "environment") %>% 
+      Matrix(sparse = T),
+    group_matrix <- data %>% mutate(id = row_number()) %>% 
+      select(id, Species, Group) %>% 
+      acast(id ~ Species, value.var = "Group") %>% 
+      Matrix(sparse = T)
+  )
+  
+  # Rename the list elements based on constructed names
+  names(matrices) <- names
+  
+  # Return the named list of matrices
+  matrices
 }
 
-#Additional function for geometric mean
-geometric.mean <- function(x, na.rm = FALSE) {
-if(na.rm) x <- na.omit(x)
-exp(mean(log(x)))
-}
-
-                                      
+#example usage
+#tier1_2_food_matrices <- prep_data(tier1_2_food)
 ```
 
-
-
-```{r}
-
-{ pdf(file = "PSSD_NoHONECs_mass_V.pdf",
-      height = 4,
-      width  = 5,
-      pointsize = 10)
-  #some parameters for margins
-  par(mfrow = c(1,1), mar = c(4,4.5,3,1), mgp = c(2.5,1,0), xpd = F)
+### Run PSSD
+```{r include=FALSE}
+run_pSSD_analysis <- function(data_matrices, num_iterations, sim, cv_dp, cv_uf, data_name) {
+  # Initialize an empty list to store the results
+  pSSD_list <- vector("list", num_iterations)
   
-  # empty plot with annotations
-  plot(c(-4, 8), c(0,1),
-       main="PSSD of microplastics in freshwater",
-       xlab = "NOEC (ug/L)", ylab = "Cumulative probability",
-       type = "n", axes = F)
-  axis(1, at = c( -4, -2, 0, 2, 4, 6, 8), 
-       labels = expression(10^-4, 10^-2, 1, 10^2, 10^4, 10^6, 10^8), lwd = 0.5)
-  axis(2, lwd = 0.5)
-  abline(h = seq(0, 1, 0.2), lty = 1, col = "gray90", lwd = 0.5)
-  abline(v = seq(-4, 8, 1), lty = 1, col = "gray90", lwd = 0.5)
-  box(lwd = 0.5)
-  
-  # plot some ecdfs
-  iv <- seq(-3, 7, 0.001)
-  ECDF.data <- matrix(NA, SIM, length(iv))
-  
-  for(i in 1:SIM){
-    # calculate the ecdf function
-    the.ecdf.f <- ecdf(log(NOEC2_t1_volume[,i], base = 10))
-    ECDF.data[i,] <- the.ecdf.f(iv)
+  # Loop through each iteration
+  for (i in 1:num_iterations) {
+    pSSD_list[[i]] <- do.pSSD(
+      DP = data_matrices[["DP"]],  # Correctly reference matrices with dynamic naming
+      UFt = data_matrices[["UFt"]],
+      UFdd = data_matrices[["UFdd"]],
+      SIM = sim,
+      CV.DP =  cv_dp,
+      CV.UF = cv_uf
+    )
   }
   
-  # to plot quantiles of ECDFs:
-  polygon(c(iv,rev(iv)),
-          c(apply(ECDF.data,2,function(x){ min(x) }),
-            rev(apply(ECDF.data,2,function(x){ max(x) }))),
-          border = NA, col = adjustcolor("coral", alpha.f = 0.2))
+  # Combine all the results into a single object
+  pSSD <- do.call(cbind, pSSD_list)
   
-  polygon(c(iv,rev(iv)),
-          c(apply(ECDF.data,2,function(x){ quantile(x,0.05) }),
-            rev(apply(ECDF.data,2,function(x){ quantile(x,0.95) }))),
-          border = NA, col = adjustcolor("coral", alpha.f = 0.5))
+  # Save the combined results
+  save(pSSD, file = paste0("PSSD/updated/",data_name,".RData"))
   
-  polygon(c(iv,rev(iv)),
-          c(apply(ECDF.data,2,function(x){ quantile(x,0.25) }),
-            rev(apply(ECDF.data,2,function(x){ quantile(x,0.75) }))),
-          border = NA, col = adjustcolor("coral"))
-  
-  
-  # calculate and plot the median for each x value of every ecdf pSSD
-  # lines(iv, apply(ECDF.data, 2, median), col = "firebrick4", lwd = 2)
-  # 
-  # # OR calculate and plot the mean for each x value of every ecdf pSSD
-  lines(iv, apply(ECDF.data, 2, mean), col = "firebrick4", lwd = 2)
-  # 
-  # then calculate the geometric mean of the endpoints to show on curve
-  
-  # deterministic values of NOEC (for plotting)
-  NOEC.det <- DP /( UFdd * UFt)
-  
-  # calculate the geometric mean
-  NOEC.gmean <- apply(NOEC.det, 2, function(x) geometric.mean(x, na.rm =T ))
-  
-  # calculate where to put the endpoints on the y axis
-  #prop <- 1:ncol(Datapoints)/(ncol(Datapoints)+1)
-  prop <- rep(NA, length(NOEC.gmean))
-  for (i in 1:length(NOEC.gmean)) {
-    prop[i] <- i/(length(NOEC.gmean))-(1/(length(NOEC.gmean))/2)
-  }
-  
-  ind <- rank(NOEC.gmean)
-  
-  #ind[4] <-4
-  #ind[12]<-21
-  #ind[14]<-23
-  
-  # overlap for two species
-  library(stringr)
-  
-  # whose with additives  
-  for (sp in 1:ncol(DP)){
-    for (i in 1:nrow(DP)){
-      if (str_detect(("fiber"), "fiber") && !is.na("fiber")){
-        if (str_detect("PET", "PET") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 4, cex = 1, col = "green4")
-        } else if (str_detect("PET", "PP") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 4, cex = 1, col = "blue")
-        }
-      }
-      else if (str_detect(("fiber"), "sphere") && !is.na("fiber")){
-        if (str_detect("PET", "PS") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 16, cex = 1, col = "gray18")
-        } else if (str_detect("PET", "PET") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 16, cex = 1, col = "green4") 
-        } else if (str_detect("PET", "PVC") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 16, cex = 1, col = "skyblue")
-        } else if (str_detect("PET", "PE") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 16, cex = 1, col = "darkgray")
-        } else if (str_detect("PET", "PLA") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 16, cex = 1, col = "lightgreen")  
-        } else if (str_detect("PET", "PA") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 16, cex = 1, col = "red")
-        } else if (str_detect("PET", "PUR") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 16, cex = 1, col = "yellow")
-        } else if (str_detect("PET", "PP") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 16, cex = 1, col = "blue")  
-        } else if (str_detect("PET", "AF") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 16, cex = 1, col = "mediumpurple")
-        }
-      }
-      else if (str_detect(("fiber"), "fragment") && !is.na("fiber")){
-        if (str_detect("PET", "PS") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 15, cex = 1, col = "gray18")
-        } else if (str_detect("PET", "PET") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 15, cex = 1, col = "green4") 
-        } else if (str_detect("PET", "PVC") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 15, cex = 1, col = "skyblue")
-        } else if (str_detect("PET", "PE") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 15, cex = 1, col = "darkgray")
-        } else if (str_detect("PET", "PLA") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 15, cex = 1, col = "lightgreen")  
-        } else if (str_detect("PET", "PA") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 15, cex = 1, col = "red")
-        } else if (str_detect("PET", "PUR") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 15, cex = 1, col = "yellow")  
-        } else if (str_detect("PET", "PP") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 15, cex = 1, col = "blue")  
-        } else if (str_detect("PET", "AF") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 15, cex = 1, col = "mediumpurple")
-        }
-      }
-      else if (str_detect(("fiber"), "irregular") && !is.na("fiber")){
-        if (str_detect("PET", "PS") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 17, cex = 1, col = "gray18")
-        } else if (str_detect("PET", "PET") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 17, cex = 1, col = "green4") 
-        } else if (str_detect("PET", "PVC") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 17, cex = 1, col = "skyblue")
-        } else if (str_detect("PET", "PE") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 17, cex = 1, col = "darkgray")
-        } else if (str_detect("PET", "PLA") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 17, cex = 1, col = "lightgreen")
-        } else if (str_detect("PET", "PA") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 17, cex = 1, col = "red")
-        } else if (str_detect("PET", "PUR") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 17, cex = 1, col = "yellow")
-        } else if (str_detect("PET", "PP") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 17, cex = 1, col = "blue")
-        } else if (str_detect("PET", "AF") == T){
-          points(x = log10(NOEC.det[i,sp]),
-                 y = prop[ind[sp]],
-                 pch = 17, cex = 1, col = "mediumpurple")
-        }
-      }
-      
-      xoffset <- c(0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 
-                   0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
-      
-      text(x = min(log10((NOEC.det[,sp])), na.rm = T) - xoffset[sp],
-           adj = 1,
-           y = prop[ind[sp]],
-           labels = colnames(DP)[sp],
-           cex = 0.6, font = 3)
-    } 
-  }
-  
-  
-  #legend("bottomright", c("Mean PSSD", "PMMA", "PHB", "PS", "PS-COOH", "PS-NH2","with Sodium Azide"),
-  #pch = c(NA, 16, 16, 16, 16, 16, 2), col = c("firebrick4", "yellow", "forestgreen", "black","red", "blue","black"),
-  #lty = c(1, NA, NA, NA, NA, NA, NA), cex = 0.7, bg = "white", box.lwd = 0.4)
-  
-  ### NEW PLOT FOR THE PNEC ON NEW PDF PAGE
-  
-  # calculate it
-  # activate when running for the first time
-  PNEC1 <- apply(NOEC_t1_volume, 2, function(x) quantile(x, probs = 0.05, type = 1))
-  hist(PNEC1, freq = F, breaks = 100, col = rgb(255, 127, 80, max = 255, alpha = 50), border = "coral",
-       xlab = "PNEC (ug/L)", ylab = "Probability density", main = "Probability density of the PNEC", lwd = 0.5)
-  #lines(density(log(PNEC,10)), lwd = 2, col = "red")
-  box(lwd = 0.5)
-  
-  
-  #activate when running for the first time
-    save(PNEC1, file = "PNEC_mass.RData")
-  
-  #close the graph
-  dev.off()
-}
-```
+  # Calculate corrected endpoints
+  corr_endpoints <- data_matrices[["DP"]] / (data_matrices[["UFt"]] * data_matrices[["UFdd"]])
 
-```{r}
-#convert data to easy format for plotting
-NOEC.det2_t1_volume_tbl <- NOEC.det2_t1_volume %>% 
-  as.matrix() %>% 
-  melt() %>% 
-  rename("Species" = "Var2",
-         "Particles_L" = "value") %>% 
-  dplyr::select(-Var1) %>% 
-  as.tibble()
-```
-
-```{r}
-NOEC.det2_t1_volume_tbl %>% 
-  ggplot(aes(x = Particles_L, fill = Species)) +
-  geom_histogram(aes(y = ..density..,
-                     color = Species)) +
-  geom_density(alpha = 0.4) +
-  scale_fill_manual(values = cal_palette(name = "superbloom1", type = "continuous", n = 22)) +
-  scale_color_manual(values = cal_palette(name = "superbloom1", type = "continuous", n = 22)) +
-  scale_x_log10() +
-  theme.type
-```
-
-
-```{r eval=TRUE, include=FALSE}
-###################################################################################################
-##### EXAMPLES OF RESULTS #########################################################################
-###################################################################################################
-
-### Plot the probability densities of some Species
-
-## For a Species with 1 endpoint (T. thermophila)
-# histogram
-
-hist(log10(NOEC2_t1_volume[2,]), freq = F, main = "Ceriodaphnia dupia - 14 endpoints", xlab = "NOEC log[particles/L]")
-# probability density
-lines(density(log10(NOEC2_t1_volume[2,])), col = "red", lwd = 2) 
-# Deterministic NOEC
-abline(v = median(log10(NOEC.det2_t1_volume[,2]), na.rm = TRUE), col = "green", lty = 2, lwd = 2)
-
-```
-
-```{r eval=TRUE, include=FALSE}
-## For a Species with 1 endpoints (Danio rerio)
-hist(NOEC_t1_volume[11,], freq = F, main = "Danio rero - 1 endpoints", xlab = "NOEC [ug/l]")
-lines(density(NOEC_t1_volume[11,]), col = "red", lwd = 2)
-abline(v = median(NOEC.det_t1_volume[,11], na.rm = TRUE), col = "green", lty = 2, lwd = 2)
-
-# for(i in 1:length(which(!is.na(NOEC.det[,11])))){
-#   abline(v = NOEC.det[i,11], col = "green", lty = 2, lwd = 2)
-#}
-
-```
-
-```{r eval=TRUE, include=FALSE}
-### Plot PSSDs
-
-# calculate all PSSD curves
-xvalues <- seq(-6,7,0.01)
-PSSD <- matrix(NA, SIM, length(xvalues))
-# calculate the ecdf function
-for(i in 1:SIM){
-  the.ecdf.f <- ecdf(log(NOEC_t1_volume[,i], base = 10))
-  PSSD[i,] <- the.ecdf.f(xvalues)
+  # Optionally return the corrected endpoints or any other result
+  return(list(pSSD = pSSD, corr_endpoints = corr_endpoints))
 }
 
-mean_PSSD <- apply(PSSD,2,function(x) {mean(x)})
+# #example
+# tier1_2_food_pssd <- run_pSSD_analysis(
+#   data_matrices = tier1_2_food_matrices,
+#   num_iterations = 10,
+#   sim = SIM,
+#   cv_dp = CV.DP,  # Example coefficient of variation for DP
+#   cv_uf = CV.UF,  # Example coefficient of variation for UF
+#   data_name = "tier1_2_food"
+# )
+```
 
-melted_species <- melt(NOEC_t1_volume) %>%
-  group_by(Var1) %>%
-  mutate(mean = mean(value)) %>%
-  ungroup() %>%
-  mutate(rank = as.numeric(factor(Var1, levels = distinct(., mean, Var1) %>%
-  arrange(mean) %>%
-  pull(Var1)))) %>%
-  mutate(rank = (rank - min(rank))/(max(rank)- min(rank))) 
+###Plotting
+#### Preparation Function
+```{r}
+prepare_plot_data <- function(pSSD, data_matrices, species_data_source) {
+  # Ensure that the required matrices are present and correctly formatted
+  if (is.null(data_matrices[['DP']]) || is.null(data_matrices[['UFdd']]) || is.null(data_matrices[['UFt']])) {
+    stop("Data matrices for DP, UFdd, or UFt are not available or incorrect.")
+  }
 
-raw_data <- t2 %>%
-  mutate(particles_L = EC_env_v.particles.mL_ingest * 1000) %>%
-  select(Species, particles_L) %>%
-  left_join(melted_species %>% select(Var1, rank), by = c("Species" = "Var1"))
+  # Define interpolation values
+  iv <- seq(-5, 10, 0.001)
+  ECDF.data <- matrix(NA, 10000, length(iv))
+  
+  # Compute ECDF for each column in pSSD
+  for (i in 1:10000) {
+    the.ecdf.f <- ecdf(log(pSSD[, i], base = 10))
+    ECDF.data[i, ] <- the.ecdf.f(iv)
+  }
 
-melted_ssd <- melt(PSSD)
+  # Preparing dataframe for ggplot
+  iv_vec <- seq(-5, 10, length.out = ncol(ECDF.data))
+  ecdf_df <- data.frame(iv = rep(iv_vec, times = nrow(ECDF.data)), 
+                        ecdf_value = as.vector(t(ECDF.data)))
 
+  # Calculating quantiles for shading
+  quantiles_df <- ecdf_df %>%
+    group_by(iv) %>%
+    summarise(min = min(ecdf_value, na.rm = TRUE),
+              max = max(ecdf_value, na.rm = TRUE),
+              q05 = quantile(ecdf_value, 0.05, na.rm = TRUE),
+              q95 = quantile(ecdf_value, 0.95, na.rm = TRUE),
+              q25 = quantile(ecdf_value, 0.25, na.rm = TRUE),
+              q75 = quantile(ecdf_value, 0.75, na.rm = TRUE),
+              mean = mean(ecdf_value, na.rm = TRUE)) %>%
+    ungroup()
+
+  # Calculate deterministic values of NOEC
+  NOEC.det <- data_matrices[['DP']] / (data_matrices[['UFdd']] * data_matrices[['UFt']])
+  
+  # Calculate the geometric mean of NOEC
+  if (ncol(NOEC.det) > 0 && nrow(NOEC.det) > 0) {
+    NOEC.gmean <- apply(NOEC.det, 2, function(x) exp(mean(log(x), na.rm = TRUE)))
+  } else {
+    stop("NOEC.det matrix is empty or not properly formatted.")
+  }
+  
+  # Creating a dataframe for ggplot with species data
+  species_data <- data.frame(
+    Species = colnames(NOEC.det),
+    NOEC_log10 = log10(NOEC.gmean),
+    NOEC = NOEC.gmean,
+    Prop = rank(NOEC.gmean) / (length(NOEC.gmean) + 1)
+  )
+
+  # Join metadata to species data
+  species_data <- species_data %>% 
+    left_join(species_data_source %>% distinct(Group, Species), by = "Species") %>% 
+    left_join(species_data_source %>% distinct(Species, environment), by = "Species")
+
+  list(quantiles_df = quantiles_df, species_data = species_data)
+}
+
+# Example usage
+# tier1_2_food_plot_prep <- prepare_plot_data(pSSD = tier1_2_food_pssd$pSSD, 
+#                                data_matrices = tier1_2_food_matrices, 
+#                                species_data_source = tier1_2_food)
+
+```
+
+
+#### PSSD ggplot Function
+```{r}
+
+pSSD_plot <-  function(quantiles_df = quantiles_df, species_data = species_data, data_name = data_name){
 ggplot() +
-  geom_line(aes(y = mean_PSSD, x = 10^xvalues), color = "black") +
-  geom_bin2d(aes(x = melted_species$value, y = melted_species$rank)) +
-  geom_point(aes(x = raw_data$particles_L, y = raw_data$rank), color = "black") +
-  scale_x_log10()
+  geom_ribbon(data = quantiles_df, aes(x = iv, ymin = min, ymax = max), fill = "coral", alpha = 0.1) +
+  geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q05, ymax = q95), fill = "coral", alpha = 0.3) +
+  geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q25, ymax = q75), fill = "coral", alpha = 0.8) +
+  geom_point(data = species_data, aes(x = NOEC_log10, y = Prop, color = Group)) +
+  geom_text(data = species_data, aes(x = NOEC_log10, y = Prop, label = Species, color = Group), 
+            hjust = -0.2, vjust = 0,
+            fontface = "italic",
+            family = "helvetica"
+            ) +
+  geom_line(data = quantiles_df, aes(x = iv, y = mean), color = "firebrick4", size = 1) +
+  scale_x_continuous(name = "NOEC (particles/L)", breaks = c(-1, 0, 2, 4, 6, 8,10, 12),
+                     labels = expression(10^-1, 1, 10^2, 10^4, 10^6, 10^8, 10^10, 10^12),
+                     limits = c(-1, 12)) +
+  scale_y_continuous(name = "Cumulative probability", limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
+  fill.type +
+    color.type +
+  labs(title = ("Microplastics Probabilistic Species Sensitivity Distribution"),
+       subtitle = data_name)
+ }
 
+# example usage
+# pSSD_plot(quantiles_df = tier1_2_food_plot_prep$quantiles_df,
+#           species_data = tier1_2_food_plot_prep$species_data,
+#           data_name = "Tier 2 (Food Dilution)")
 
 ```
 
-```{r eval=TRUE, include=FALSE}
-# Plot the mean PSSD
-plot(c(-2,6), c(0,1),
-     main = "Microplastics Probabilistic SSD (1-5,000 um; volumetric)",
-     xlab = "NOEC [particles/L]",
-     ylab = "Proportion of Species Affected",
-     type = "n",
-     axes = F)
-axis(1, at = c(-2,0,2,4,6), labels = expression(10^-2, 10^0, 10^2, 10^4, 10^6), lwd = 0.5)
-axis(2, lwd = 0.5, las = 1)
-abline(h = seq(0,1,0.2), lty = 1, lwd = 0.5, col = "gray90")
-abline(v = seq(-6,5,1), lty = 1, lwd = 0.5, col = "gray90")
-box(lwd = 0.5)
-lines(xvalues, apply(PSSD,2,function(x) {mean(x)}), col = "red", lwd = 1.5)
-legend("topleft", "Mean PSSD", col = "red", lwd = 1.5)
+#### PNEC ggplot Function
+```{r}
+# Calculate PNEC1 if not already calculated
+PNEC_plot <- function(pssd_results, hcx, data_name){
+  PNEC <- apply(pssd_results$pSSD, 2, function(x) quantile(x, probs = hcx, type = 1))
+  # Convert PNEC1 to a dataframe for ggplot
+  PNEC_df <- data.frame(PNEC = PNEC)
+  
+  # Plotting
+  ggplot(PNEC_df, aes(x = PNEC)) +
+    geom_histogram(aes(y = ..density..), fill = rgb(255, 127, 80, max = 255, alpha = 50), color = "coral",
+                   bins = 100)   +
+    labs(x = "PNEC (Particles/L)", y = "Probability density", title = "Probability density of the PNEC",
+         subtitle = data_name) +
+    #theme_minimal() +
+    geom_density(col = "red", lwd = 1)  # Optionally add a density line
+}
+
+#example
+# PNEC_plot(pssd_results = tier1_2_food_pssd,
+#            hcx = 0.05
+#           data_name = "Tier 2 (Food Dilution)")
+```
+#### PNEC Data Summary
+```{r}
+  # Mode calculation using density
+Mode_Y <- function(x) {
+  dens <- density(x)
+  ind <- which(dens$y == max(dens$y))
+  return(dens$x[ind])
+}
+
+#PNEC Data summary function
+PNEC_data_summary <- function(pssd_results, hcx, data_name){
+
+PNEC <- apply(pssd_results$pSSD, 2, function(x) quantile(x, probs = hcx, type = 1))
+PNEC_df <- data.frame(PNEC = PNEC)
+  
+# Calculate statistics for PNEC1
+Stat_PNEC <- data.frame(
+  Min = min(PNEC),
+  Q5 = quantile(PNEC, 0.05),
+  Q25 = quantile(PNEC, 0.25),
+  Mean = mean(PNEC),
+  Median = median(PNEC),
+  Mode = Mode_Y(PNEC),
+  Q75 = quantile(PNEC, 0.75),
+  Q95 = quantile(PNEC, 0.95),
+  Max = max(PNEC)
+)
+
+# Transposing for similar structure to your matrix
+Stat_PNEC_t <- t(Stat_PNEC)
+colnames(Stat_PNEC_t) <- paste0(data_name, " - HC", hcx*100)
+
+return(list("stats" = as.data.frame(Stat_PNEC_t),
+            "df" = PNEC_df))
+}
+
+
+## example
+# tier1_2_food_PNEC <- PNEC_data_summary(pssd_results = tier1_2_food_pssd,
+#                                        hcx = 0.05,
+#                                        data_name = "Tier 2 (Food Dilution)")
+# 
+# tier1_2_food_PNEC$df
+# tier1_2_food_PNEC$stats
 ```
 
-## Tier 1_2_Small_SurfaceArea
-```{r eval=TRUE, include=FALSE}
-t2_s <- tier1_2_small#%>% 
- # filter(Species == "magna")
+## Application
+### Tier 1_food
+```{r include=FALSE}
+#Step 1: prep data matrices
+tier1_2_food_matrices <- prep_data(tier1_2_food)
 
-# prep dataframe for tox datapoints
-DP_1_small_surfaceArea <-  t2_s %>% 
-  #mutate(tier = "A") %>% 
-  mutate(id = row_number()) %>% 
-  mutate(particles_L = EC_env_sa.particles.mL * 1000) %>% #must *10 to eliminate sub-zero values, can't go above 10 b/c R can't handle integers above certain value
-  mutate(particles_L_round = as.integer(round(particles_L,digits = 1))) %>%  #must make integer for below code to work
-  select(id, Species, particles_L_round) %>% 
-  acast(id ~ Species, value.var = "particles_L_round") %>% 
-  Matrix(sparse = TRUE) # makes a smaller object than using as.matrix()
+#Step 2: run pSSD
+tier1_2_food_pssd <- run_pSSD_analysis(
+  data_matrices = tier1_2_food_matrices,
+  num_iterations = 10,
+  sim = SIM,
+  cv_dp = CV.DP.food,  # Default coefficeint
+  cv_uf = CV.UF,  # Example coefficient of variation for UF
+  data_name = "tier1_2_food"
+)
 
-#prep uncertainty factors for conversion from acute to chronic values
-UFt_1_small_surfaceArea <- t2_s %>% 
-  mutate(id = row_number()) %>% 
-  select(id, Species, af.time) %>% 
-  acast(id ~ Species, value.var = "af.time")
+#Step 3: prep for ggplot
+tier1_2_food_plot_prep <- prepare_plot_data(pSSD = tier1_2_food_pssd$pSSD,
+                                            data_matrices = tier1_2_food_matrices,
+                                            species_data_source = tier1_2_food)
 
-# uncertainty factors for conversion of dose descriptors to NOEC
-UFdd_1_small_surfaceArea <- t2_s %>% 
-  mutate(id = row_number()) %>% 
-  select(id, Species, af.noec) %>% 
-  acast(id ~ Species, value.var = "af.noec")
+#Step 4a: generate ggplot (pSSD)
+tier1_2_food_pssdPlot <-  pSSD_plot(quantiles_df = tier1_2_food_plot_prep$quantiles_df,
+                                    species_data = tier1_2_food_plot_prep$species_data,
+                                    data_name = "Tier 2 (Food Dilution)")
 
-# read toxicity data
-# data points from the literature
-DP   <- DP_1_small_surfaceArea
-# uncertainty factors for conversion from acute to chronic values
-UFt  <- UFt_1_small_surfaceArea
-# uncertainty factors for conversion of dose descriptors to NOEC
-UFdd <- UFdd_1_small_surfaceArea
+#Step 4b: generate ggplot (PNEC)
+tier1_2_food_PNECPlot <-  PNEC_plot(pssd_results = tier1_2_food_pssd,
+                                    hcx = 0.05,
+                                    data_name = "Tier 2 (Food Dilution)")
 
-
-###################################################################################################
-##### CALCULATION OF NOECs and PSSDs ##############################################################
-###################################################################################################
-
-# estimate the NOEC distributions for each Species
-NOEC_t1_SA <- do.pSSD(DP, UFt, UFdd, SIM, CV.DP, CV.UF)
-
-# calculate the deterministic (modal) values of the NOEC
-NOEC.det_t1_SA <- DP/(UFdd*UFt)
-
-###convert to particles/L
-NOEC2_t1_SA = NOEC_t1_SA * 1000 #correction factor from getting into integer values (above)
-NOEC.det2_t1_SA = NOEC.det_t1_SA * 1000
+# Step 5: extract PNEC values for table
+tier1_2_food_PNEC_summary <- PNEC_data_summary(pssd_results = tier1_2_food_pssd,
+                                               hcx = 0.05,
+                                               data_name = "Tier 2 (Food Dilution)")
 ```
-
-## Plotting
-```{r eval=TRUE, include=FALSE}
-# calculate PNEC (HC5) for volume and surface area
-#PNEC_t1_SA <- apply(NOEC_t1_SA,2,function(x){quantile(x, probs = 0.05, na.rm = TRUE) })
-
-PNEC_t1_volume <- apply(NOEC_t1_volume,2,function(x){quantile(x, probs = 0.05, na.rm = TRUE) })
-
-summary(PNEC_t1_volume)
-```
-
-
 
 ```{r}
-#make into dataframe
-PNECs <- data.frame( = PNEC_t1_SA,
-              
+ggarrange(tier1_2_food_pssdPlot,tier1_2_food_PNECPlot,
+          ncol = 1)
 
-PNEC %>% 
-  data.frame(PNEC) %>% 
-  ggplot(aes(x = PNEC))
+
+```
+```{r}
+tier1_2_food_PNEC_summary$stats
+```
+
+### Tiers 3 and 4_food
+```{r include=FALSE}
+#Step 1: prep data matrices
+tier3_4_food_matrices <- prep_data(tier3_4_food)
+
+#Step 2: run pSSD
+tier3_4_food_pssd <- run_pSSD_analysis(
+  data_matrices = tier3_4_food_matrices,
+  num_iterations = 10,
+  sim = SIM,
+  cv_dp = CV.DP.food,  # Example coefficient of variation for DP
+  cv_uf = CV.UF,  # Example coefficient of variation for UF
+  data_name = "tier3_4_food"
+)
+
+#Step 3: prep for ggplot
+tier3_4_food_plot_prep <- prepare_plot_data(pSSD = tier3_4_food_pssd$pSSD,
+                                            data_matrices = tier3_4_food_matrices,
+                                            species_data_source = tier3_4_food)
+
+#Step 4a: generate ggplot (pSSD)
+tier3_4_food_pssdPlot <-  pSSD_plot(quantiles_df = tier3_4_food_plot_prep$quantiles_df,
+                                    species_data = tier3_4_food_plot_prep$species_data,
+                                    data_name = "Tier 3 (Food Dilution)")
+
+#Step 4b: generate ggplot (PNEC)
+tier3_food_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_food_pssd,
+                                    hcx = 0.05,
+                                    data_name = "Tier 3 (Food Dilution)")
+
+tier4_food_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_food_pssd,
+                                    hcx = 0.10,
+                                    data_name = "Tier 4 (Food Dilution)")
+
+# Step 5: extract PNEC values for table
+tier3_food_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_food_pssd,
+                                               hcx = 0.05,
+                                               data_name = "Tier 3 (Food Dilution)")
+
+tier4_food_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_food_pssd,
+                                               hcx = 0.10,
+                                               data_name = "Tier 4 (Food Dilution)")
+```
+
+```{r}
+food_plots_light <- ggarrange(tier3_4_food_pssdPlot + theme.light + theme(legend.position = c(0.1, 0.6)),  
+                        ggarrange(tier3_food_PNECPlot + theme.light,
+                                  tier4_food_PNECPlot + theme.light,
+                                  ncol = 2, nrow = 1, labels = c("B", "C")),
+                        ncol = 1, nrow = 2, labels = c("A"))
+
+ggsave(filename = "food_plots_light.jpg",
+       dpi = 300,
+       path = "../output/Manuscript_Figs/", 
+       plot = food_plots_light, width = 10, height = 8, units = "in")
+
+food_plots_light
+```
+```{r}
+food_plots_dark <- ggarrange(tier3_4_food_pssdPlot + theme.dark + theme(legend.position = c(0.1, 0.6)),  
+                        ggarrange(tier3_food_PNECPlot + theme.dark,
+                                  tier4_food_PNECPlot + theme.dark,
+                                  ncol = 2, nrow = 1, labels = c("B", "C")),
+                        ncol = 1, nrow = 2, labels = c("A"))
+
+ggsave(filename = "food_plots_dark.jpg",
+       dpi = 300,
+       path = "../output/presentation_Figs/", 
+       plot = food_plots_dark, width = 10, height = 8, units = "in")
+
+food_plots_dark
+```
+
+```{r}
+cbind(tier3_food_PNEC_summary$stats, tier4_food_PNEC_summary$stats)
+```
+
+### Tier 3 and 4_tissue
+```{r include=FALSE}
+#Step 1: prep data matrices
+tier3_4_tissue_matrices <- prep_data(tier3_4_tissue)
+
+#Step 2: run pSSD
+tier3_4_tissue_pssd <- run_pSSD_analysis(
+  data_matrices = tier3_4_tissue_matrices,
+  num_iterations = 10,
+  sim = SIM,
+  cv_dp = CV.DP.ox,  # Example coefficient of variation for DP
+  cv_uf = CV.UF,  # Example coefficient of variation for UF
+  data_name = "tier3_4_tissue"
+)
+
+#Step 3: prep for ggplot
+tier3_4_tissue_plot_prep <- prepare_plot_data(pSSD = tier3_4_tissue_pssd$pSSD,
+                                            data_matrices = tier3_4_tissue_matrices,
+                                            species_data_source = tier3_4_tissue)
+
+#Step 4a: generate ggplot (pSSD)
+tier3_4_tissue_pssdPlot <-  pSSD_plot(quantiles_df = tier3_4_tissue_plot_prep$quantiles_df,
+                                    species_data = tier3_4_tissue_plot_prep$species_data,
+                                    data_name = "Tier 3 (Tissue Translocation)") +
+    scale_x_continuous(name = "NOEC (particles/L)", breaks = c(0, 2, 4, 6, 8,10),
+                     labels = expression(1, 10^2, 10^4, 10^6, 10^8, 10^10),
+                     limits = c(0, 10))
+
+#Step 4b: generate ggplot (PNEC)
+tier3_tissue_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_tissue_pssd,
+                                      hcx = 0.05,
+                                      data_name = "Tier 3 (Tissue Translocation)")
+
+tier4_tissue_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_tissue_pssd,
+                                      hcx = 0.10,
+                                      data_name = "Tier 3 (Tissue Translocation)")
+
+# Step 5: extract PNEC values for table
+tier3_tissue_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_tissue_pssd,
+                                               hcx = 0.05,
+                                               data_name = "Tier 3 (Tissue Translocation)")
+
+tier4_tissue_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_tissue_pssd,
+                                               hcx = 0.10,
+                                               data_name = "Tier 4 (Tissue Translocation)")
+```
+
+```{r}
+tissue_plots_light <- ggarrange(tier3_4_tissue_pssdPlot + theme.light + theme(legend.position = c(0.15, 0.6)),  
+                        ggarrange(tier3_tissue_PNECPlot + theme.light,
+                                  tier4_tissue_PNECPlot + theme.light,
+                                  ncol = 2, nrow = 1, labels = c("B", "C")),
+                        ncol = 1, nrow = 2, labels = c("A"))
+
+ggsave(filename = "tissue_plots_light.jpg",
+       dpi = 300,
+       path = "../output/Manuscript_Figs/", 
+       plot = tissue_plots_light, width = 10, height = 8, units = "in")
+
+tissue_plots_light
+```
+```{r}
+tissue_plots_dark <- ggarrange(tier3_4_tissue_pssdPlot + theme.dark + theme(legend.position = c(0.15, 0.6)),  
+                        ggarrange(tier3_tissue_PNECPlot + theme.dark,
+                                  tier4_tissue_PNECPlot + theme.dark,
+                                  ncol = 2, nrow = 1, labels = c("B", "C")),
+                        ncol = 1, nrow = 2, labels = c("A"))
+
+ggsave(filename = "tissue_plots_dark.jpg",
+       dpi = 300,
+       path = "../output/Manuscript_Figs/", 
+       plot = tissue_plots_dark, width = 10, height = 8, units = "in")
+
+tissue_plots_dark
+```
+
+```{r}
+cbind(tier3_tissue_PNEC_summary$stats, tier4_tissue_PNEC_summary$stats)
+```
+
+## Summary
+### Table
+```{r}
+summary_table <- cbind(tier3_food_PNEC_summary$stats, tier4_food_PNEC_summary$stats,
+                       tier3_tissue_PNEC_summary$stats, tier4_tissue_PNEC_summary$stats) %>% 
+  mutate(across(where(is.numeric), round, digits = 3))
+
+summary_table
+```
+```{r}
+base_tissue <- data.frame(Tier = c("1", "2", "3", "4"),
+                          ERM = "Tissue Translocation", 
+                          PNEC = base_thresholds$`Tissue Translocation (Default)`,
+                          PNEClcl = base_thresholds$`Tissue Translocation (5th %)`,
+                          PNECucl = base_thresholds$`Tissue Translocation (95th %)`)
+
+base_food <- data.frame(Tier = c("1", "2", "3", "4"),
+                        ERM = "Food Dilution", 
+                        PNEC = base_thresholds$`Food Dilution (Default)`,
+                        PNEClcl = base_thresholds$`Food Dilution (5th %)`,
+                        PNECucl = base_thresholds$`Food Dilution (95th %)`)
+
+base_thesholds_df <- rbind(base_tissue, base_food) %>% 
+   mutate(y_position = (as.numeric(Tier) - 2) + (as.numeric(factor(ERM)) - 1.5) * 0.9)  # Adjust 0.1 or other value as needed
+
+base_thesholds_df
+```
+
+
+### Plot Comparisons with Deterministic Approach
+```{r}
+#data prep
+t3f <- data.frame(ERM = "Food Dilution", Tier = "3",PNEC = tier3_food_PNEC_summary$df)
+t4f <- data.frame(ERM = "Food Dilution", Tier = "4",PNEC = tier4_food_PNEC_summary$df)
+t3t <- data.frame(ERM = "Tissue Translocation", Tier = "3",PNEC = tier3_tissue_PNEC_summary$df)
+t4t <- data.frame(ERM = "Tissue Translocation", Tier = "4",PNEC = tier4_tissue_PNEC_summary$df)
+
+## join DFs
+PNEC_dfs <- rbind(t3f, t4f, t3t, t4t) %>% 
+  mutate(y_position = (as.numeric(Tier) - 2) + (as.numeric(factor(ERM)) - 1.5) * 0.4)  # Adjust 0.1 or other value as needed
+
+#plot
+PNEC_pSSDvSSD <- ggplot() +
+   geom_violin(data = PNEC_dfs, aes(x = PNEC, y = Tier, fill = ERM, color = ERM),
+               draw_quantiles = c(0.05, 0.5, 0.95), color = "white", linewidth = 1.2,
+               alpha = 0.75) +
+   geom_jitter(data = PNEC_dfs, aes(x = PNEC, y = y_position, fill = ERM, color = ERM),
+               height = 0.15, size = 1.5, alpha = 0.03) +  # Jittered points
+   geom_point(data = base_thesholds_df %>% filter(Tier>2), 
+              aes(x = PNEC, y = y_position, fill = ERM),
+              size = 5, shape = 23, 
+              color = "white",
+              alpha = 0.95,
+              stroke = 1.8 #thickness of outline
+              ) +
+   geom_errorbarh(data = base_thesholds_df %>% filter(Tier>2), 
+                  aes(xmin = PNEClcl, xmax = PNECucl, y = y_position, fill = ERM, color = ERM),
+                  height = 0.2,
+                  alpha = 0.75,
+                  linewidth = 1.2) +
+   scale_x_log10(breaks = c(0.01, 0.1, 1, 10, 100, 1000, 10000, 1000000, 10000000),
+                 #limits = c(0.001, 10000000),
+                 labels = scales::label_comma()) +
+  labs(title = "Comparison of pSSD and SSD Tier Thresholds",
+       subtitle = "(Violin Plots/Points = pSSD; Diamonds/Error-Bars = SSD)",
+       fill = "Ecologically-Relevant Metric",
+       color = "Ecologically-Relevant Metric"
+       ) +
+  xlab("PNEC (Particles/L; 1 to 5,000 um)") +
+  ylab("Threshold Tier")
+
+PNEC_pSSDvSSD_dark <- PNEC_pSSDvSSD + theme.dark
+PNEC_pSSDvSSD_light <- PNEC_pSSDvSSD + theme.light
+
+# ggsave(filename = "PNEC_pSSDvSSD.tiff",
+#        path = "../output/presentation_Figs/", 
+#        plot = PNEC_pSSDvSSD_dark, width = 12, height = 10, units = "in")
+
+ggsave(filename = "PNEC_pSSDvSSD.jpg",
+       path = "../output/presentation_Figs/", 
+       plot = PNEC_pSSDvSSD_dark, width = 12, height = 10, units = "in")
+
+ggsave(filename = "PNEC_pSSDvSSD.tiff",
+       path = "../output/Manuscript_Figs/", 
+       plot = PNEC_pSSDvSSD_light, width = 10, height = 8, units = "in")
+
+ggsave(filename = "PNEC_pSSDvSSD.jpg",
+       path = "../output/Manuscript_Figs/", 
+       plot = PNEC_pSSDvSSD_light, width = 10, height = 8, units = "in")
+
+PNEC_pSSDvSSD_dark
+```
+## Supplemental
+### Freshwater Only
+#### Data Filtering
+```{r}
+#food dilution
+tier1_2_food_freshwater <- tier1_2_food %>% filter(environment == "Freshwater")
+tier3_4_food_freshwater <- tier3_4_food %>% filter(environment == "Freshwater")
+
+#tissue translocation
+tier1_2_tissue_freshwater <- tier1_2_tissue %>% filter(environment == "Freshwater")
+tier3_4_tissue_freshwater <- tier3_4_tissue %>% filter(environment == "Freshwater")
+```
+#### Processing
+```{r}
+### Food Dilution
+#Step 1: prep data matrices
+tier3_4_food_freshwater_matrices <- prep_data(tier3_4_food_freshwater)
+
+#Step 2: run pSSD
+tier3_4_food_freshwater_pssd <- run_pSSD_analysis(data_matrices = tier3_4_food_freshwater_matrices,
+  num_iterations = 10,
+  sim = SIM,
+  cv_dp = CV.DP.food,  # Example coefficient of variation for DP
+  cv_uf = CV.UF,  # Example coefficient of variation for UF
+  data_name = "tier3_4_food_freshwater")
+
+#Step 3: prep for ggplot
+tier3_4_food_freshwater_plot_prep <- prepare_plot_data(pSSD = tier3_4_food_freshwater_pssd$pSSD,
+                                            data_matrices = tier3_4_food_freshwater_matrices,
+                                            species_data_source = tier3_4_food_freshwater)
+
+#Step 4a: generate ggplot (pSSD)
+tier3_4_food_freshwater_pssdPlot <-  pSSD_plot(quantiles_df = tier3_4_food_freshwater_plot_prep$quantiles_df,
+                                    species_data = tier3_4_food_freshwater_plot_prep$species_data,
+                                    data_name = "Tier 3 (Food Dilution - Freshwater Only)")
+
+#Step 4b: generate ggplot (PNEC)
+tier3_food_freshwater_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_food_freshwater_pssd,
+                                             hcx = 0.05,
+                                             data_name = "Tier 3 (Food Dilution - Freshwater Only)")
+
+tier4_food_freshwater_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_food_freshwater_pssd,
+                                             hcx = 0.10,
+                                             data_name = "Tier 4 (Food Dilution - Freshwater Only)")
+
+# Step 5: extract PNEC values for table
+tier3_food_freshwater_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_food_freshwater_pssd,
+                                               hcx = 0.05,
+                                               data_name = "Tier 3 (Food Dilution - Freshwater Only)")
+
+tier4_food_freshwater_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_food_freshwater_pssd,
+                                               hcx = 0.10,
+                                               data_name = "Tier 4 (Food Dilution - Freshwater Only)")
+
+freshwater_food_plots <- ggarrange(tier3_4_food_freshwater_pssdPlot,  
+                        ggarrange(tier3_food_freshwater_PNECPlot,
+                                  tier4_food_freshwater_PNECPlot,
+                                  ncol = 2, nrow = 1),
+                        ncol = 1, nrow = 2)
+
+freshwater_food_plots
 ```
 

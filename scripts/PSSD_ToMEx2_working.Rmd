@@ -1,5 +1,5 @@
 ---
-title: "PSSD_ToMEx2_updated"
+title: "PSSD_WiggerData_updated"
 output:
   html_document:
     code_folding: hide
@@ -24,8 +24,14 @@ library(xlsx)
 library(psych)
 library(mc2d)
 library(trapezoid)
+library(tidyverse)
+library(reshape2)
+library(ggdark)
 ```
 --
+This script uses ToMEx 2.0 data.
+
+
  Code based on PSSD and PNEC calculations using the tool PSSD+ developed by Wigger et al. (2019)
  -------------------------------------------------------------------------------------------------
 
@@ -60,43 +66,101 @@ source("PSSD/do.pssd.r")
 source("PSSD/rmore.r")
 ```
 
-## Demonstration with Wigger et al. data
+## Data Preparation
 ```{r}
+#prepped in ToMEx2_EcoTox.Rmd
+tier1_2_large <- readRDS("../output/tier1_2_large.rds")
+
+t2 <- tier1_2_large %>% 
+  distinct(dose_new, .keep_all = TRUE)#  %>% 
+  #filter(Species %in% c("Daphnia magna", "Oryzias latipes"))
+
+# prep dataframe for tox datapoints
+DP_1_large_volume <-  t2 %>% 
+  #mutate(tier = "A") %>% 
+  mutate(id = row_number()) %>% 
+  mutate(particles_L = EC_env_v.particles.mL_ingest * 1000) %>% 
+  select(id, Species, particles_L) %>% 
+  acast(id ~ Species, value.var = "particles_L") %>% 
+  Matrix(sparse = TRUE) # makes a smaller object than using as.matrix()
+
+#prep uncertainty factors for conversion from acute to chronic values
+UFt_1_large_volume <- t2 %>% 
+  mutate(id = row_number()) %>% 
+  select(id, Species, af.time) %>% 
+  acast(id ~ Species, value.var = "af.time")
+
+# uncertainty factors for conversion of dose descriptors to NOEC
+UFdd_1_large_volume <- t2 %>% 
+  mutate(id = row_number()) %>% 
+  select(id, Species, af.noec) %>% 
+  acast(id ~ Species, value.var = "af.noec")
+
+# dose descriptor
+doseDescriptor_1_large_volume <- t2 %>% 
+  mutate(id = row_number()) %>% 
+  select(id, Species, effect.metric) %>% 
+  acast(id ~ Species, value.var = "effect.metric")
+
+# Polymer data as matrix
+polymer_1_large_volume <- t2 %>% 
+  mutate(id = row_number()) %>% 
+  select(id, Species, poly_f) %>% 
+  acast(id ~ Species, value.var = "poly_f")
+
+#Shape data
+shape_1_large_volume <- t2 %>% 
+  mutate(id = row_number()) %>% 
+  select(id, Species, shape_f) %>% 
+  acast(id ~ Species, value.var = "shape_f")
+
+#environment
+env_1_large_volume <- t2 %>% 
+  mutate(id = row_number()) %>% 
+  select(id, Species, environment) %>% 
+  acast(id ~ Species, value.var = "environment")
+
+# group
+group_1_large_volume <- t2 %>% 
+  mutate(id = row_number()) %>% 
+  select(id, Species, Group) %>% 
+  acast(id ~ Species, value.var = "Group")
+
+# read toxicity data
+# data points from the literature
+DP <- DP_1_large_volume
+
+test <- as.matrix(DP)
+
+# uncertainty factors for conversion from acute to chronic values
+UFt  <- UFt_1_large_volume
+# uncertainty factors for conversion of dose descriptors to NOEC
+UFdd <- UFdd_1_large_volume
+```
+
+```{r include=FALSE}
 #import Wigger dataset#
 #### read input data ####
 library(readxl)
 
 # requires species values as endpoint value 
-Datapoints <- as.matrix(read_excel("PSSD/updated/MPs_NoHONECs_mass_V.xlsx", 
-                                   sheet = "pSSD_mass"))
-
-#Datapoints_number <- as.matrix(read_excel("MPs_NoHONECs_mass_V.xlsx",
- #                                       sheet = "pSSD_number"))
+Datapoints <- DP
 
 # requires assessment factors per species endpoint value - AF for time
-UFt <- as.matrix(read_excel("PSSD/updated/MPs_NoHONECs_mass_V.xlsx", 
-                            sheet = "UFt"))
+UFt <- UFt
 
 # AF for endpoint
-UFd <- as.matrix(read_excel("PSSD/updated/MPs_NoHONECs_mass_V.xlsx", 
-                            sheet = "UFd"))
+UFdd <- UFdd
 
 # Polymers used for each endpoint
-Polymer <- as.matrix(read_excel("PSSD/updated/MPs_NoHONECs_mass_V.xlsx", 
-                                sheet = "Polymer"))
+Polymer <- polymer_1_large_volume
 
 # Shape of microplastics for each endpoint
-Shape <- as.matrix(read_excel("PSSD/updated/MPs_NoHONECs_mass_V.xlsx", 
-                              sheet = "Shape"))
+Shape <- shape_1_large_volume
 
 # Dose descriptors of toxicity
-DDescriptor <- as.matrix(read_excel("PSSD/updated/MPs_NoHONECs_mass_V.xlsx", 
-                                    sheet = "Dose descriptor"))
+DDescriptor <- doseDescriptor_1_large_volume
 
-# Diameter of the nanoplastics
-Diameter <- as.matrix(read_excel("PSSD/updated/MPs_NoHONECs_mass_V.xlsx", 
-                                 sheet = "Diameter"))
-Diameterlog <- 3+log10(Diameter)
 ########################
 
 # run 10 separate pSSDs if necessary, why, this is probably a ram issue?
@@ -107,7 +171,7 @@ pSSD_list <- vector("list", 10)
 for(i in 1:10) {
   pSSD_list[[i]] <- do.pSSD(DP = Datapoints,
                             UFt = UFt,
-                            UFdd = UFd,
+                            UFdd = UFdd,
                             SIM/10, 
                             CV.DP,
                             CV.UF)
@@ -116,9 +180,9 @@ for(i in 1:10) {
 # Combine all the results into a single object
 pSSD <- do.call(cbind, pSSD_list)
 
-save(pSSD, file = "PSSD/updated/pSSD_mass.RData")
+save(pSSD, file = "PSSD/updated/pSSD_tier1_2_large.RData")
 
-corr.endpoints <- Datapoints/(UFd*UFt)
+corr.endpoints <- Datapoints/(UFdd*UFt)
 ```
 
 #Plotting
@@ -127,7 +191,7 @@ corr.endpoints <- Datapoints/(UFd*UFt)
 library(psych) # To use the geometric.mean function
 
 #open a pdf file to start plotting
-{ pdf(file = "PSSD_NoHONECs_mass_V.pdf",
+{ pdf(file = "PSSD_tier1_2_large.pdf",
       height = 4,
       width  = 5,
       pointsize = 10)
@@ -136,8 +200,8 @@ library(psych) # To use the geometric.mean function
   
   # empty plot with annotations
   plot(c(-4, 8), c(0,1),
-       main="PSSD of microplastics in freshwater",
-       xlab = "NOEC (ug/L)", ylab = "Cumulative probability",
+       main="PSSD of microplastics in aquatic environments",
+       xlab = "NOEC (particles/L)", ylab = "Cumulative probability",
        type = "n", axes = F)
   axis(1, at = c( -4, -2, 0, 2, 4, 6, 8), 
        labels = expression(10^-4, 10^-2, 1, 10^2, 10^4, 10^6, 10^8), lwd = 0.5)
@@ -389,10 +453,9 @@ Stat_PNEC[2,6] <- quantile(PNEC1, 0.75)
 Stat_PNEC[2,7] <- quantile(PNEC1, 0.95)
 Stat_PNEC[2,8] <- max(PNEC1)
 
-write.csv(Stat_PNEC, file = "PSSD/updated/Stats_PNEC_NoHONECs_V.csv")
+write.csv(Stat_PNEC, file = "PSSD/updated/Stats_tier1_2_large.csv")
 
-Stat_PNEC
-
+data.frame(t(Stat_PNEC))
 ```
 
 ## PSSD Ggplot code
@@ -421,7 +484,7 @@ quantiles_df <- ecdf_df %>%
   ungroup()
 
 # deterministic values of NOEC (for plotting)
-NOEC.det <- Datapoints /( UFd * UFt)
+NOEC.det <- Datapoints /(UFdd * UFt)
 
  # calculate the geometric mean
   NOEC.gmean <- apply(NOEC.det, 2, function(x) geometric.mean(x, na.rm =T ))
@@ -446,6 +509,23 @@ species_data <- data.frame(
   Prop = ind/(length(NOEC.gmean) + 1)
 )
 
+```
+
+###Metadata
+```{r}
+# Join metadata to species
+group <- tier1_2_large %>% 
+  distinct(Group, Species)
+
+# env
+environment <- tier1_2_large %>% 
+  distinct(Species, environment)
+
+species_data <-species_data %>% 
+  left_join(group, by = "Species") %>% 
+  left_join(environment, by = "Species")
+
+
 # Adjusting ind if necessary
 # Assuming specific adjustments to 'prop' based on 'ind' calculations or other criteria
 # Include those adjustments here if they are necessary for your plot
@@ -458,17 +538,23 @@ species_data <- data.frame(
 ## Plotting
 ```{r}
 ggplot() +
-  geom_ribbon(data = quantiles_df, aes(x = iv, ymin = min, ymax = max), fill = "coral", alpha = 0.2) +
-  geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q05, ymax = q95), fill = "coral", alpha = 0.5) +
-  geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q25, ymax = q75), fill = "coral", alpha = 1) +
-  geom_point(data = species_data, aes(x = NOEC_log10, y = Prop), color = "blue") +
-  geom_text(data = species_data, aes(x = NOEC_log10, y = Prop, label = Species, color = "blue"), hjust = -0.2, vjust = 0) +
+  geom_ribbon(data = quantiles_df, aes(x = iv, ymin = min, ymax = max), fill = "coral", alpha = 0.1) +
+  geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q05, ymax = q95), fill = "coral", alpha = 0.3) +
+  geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q25, ymax = q75), fill = "coral", alpha = 0.8) +
+  geom_point(data = species_data, aes(x = NOEC_log10, y = Prop, color = Group)) +
+  geom_text(data = species_data, aes(x = NOEC_log10, y = Prop, label = Species, color = Group), 
+            hjust = -0.2, vjust = 0,
+            fontface = "italic",
+            family = "helvetica"
+            ) +
   geom_line(data = quantiles_df, aes(x = iv, y = mean), color = "firebrick4", size = 1) +
-  scale_x_continuous(name = "NOEC (ug/L)", breaks = c(-4, -2, 0, 2, 4, 6, 8),
-                     labels = expression(10^-4, 10^-2, 1, 10^2, 10^4, 10^6, 10^8)) +
+  scale_x_continuous(name = "NOEC (particles/L)", breaks = c(-4, -2, 0, 2, 4, 6, 8,10),
+                     labels = expression(10^-4, 10^-2, 1, 10^2, 10^4, 10^6, 10^8, 10^10),
+                     limits = c(-4, 10)) +
   scale_y_continuous(name = "Cumulative probability", limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
-  theme_minimal() +
-  ggtitle("PSSD of microplastics in freshwater")
+  #theme_minimal() +
+  dark_theme_minimal(base_size = 15) +
+  ggtitle("Microplastics PSSD")
 
 # Note: Replace `mean` with `median` in `aes(y = ...)` of `geom_line` for plotting the median
 
@@ -489,9 +575,10 @@ PNEC1_df <- data.frame(PNEC1 = PNEC1)
 # Plotting
 ggplot(PNEC1_df, aes(x = PNEC1)) +
   geom_histogram(aes(y = ..density..), fill = rgb(255, 127, 80, max = 255, alpha = 50), color = "coral", bins = 100) +
-  labs(x = "PNEC (ug/L)", y = "Probability density", title = "Probability density of the PNEC") +
-  theme_minimal() +
-  geom_density(col = "red", lwd = 1)  # Optionally add a density line
+  labs(x = "PNEC (Particles/L)", y = "Probability density", title = "Probability density of the PNEC") +
+  #theme_minimal() +
+  geom_density(col = "red", lwd = 1) +  # Optionally add a density line
+  dark_theme_minimal(base_size = 18)
 
 # Save PNEC1 if needed
 # save(PNEC1, file = "PNEC_mass.RData")

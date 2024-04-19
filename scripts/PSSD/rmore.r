@@ -61,10 +61,10 @@ rmore <- function(values,
   
   # store sorted values
   sort.values <- sort(values)
-  # store unique values
-  uni.values <- unique(sort.values)
   # store frequency of unique values
   freq.uni.values <- table(sort.values)
+  # store unique values
+  uni.values <- names(freq.uni.values) |> as.numeric()
   # smallest value
   val.min <- sort.values[1]
   # largest value
