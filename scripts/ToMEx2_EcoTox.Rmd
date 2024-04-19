@@ -912,13 +912,13 @@ skimr::skim(results_df)
 # Calculate CoV
 cov_results <- results_df %>%
   group_by(rowid) %>%
-  summarise(sd_ox_stress = sd(particles_L_ox_stress, na.rm = TRUE),
-            mean_ox_stress = mean(particles_L_ox_stress, na.rm = TRUE),
-            CoV_ox_stress = sd_ox_stress / mean_ox_stress,
+  summarise(sd_particles_L_ox_stress = sd(particles_L_ox_stress, na.rm = TRUE),
+            mean_particles_L_ox_stress = mean(particles_L_ox_stress, na.rm = TRUE),
+            CoV_ox_stress = sd_particles_L_ox_stress / mean_particles_L_ox_stress,
             #food dilution
-            sd_food_dilution = sd(particles_L_food_dilution, na.rm = TRUE),
-            mean_food_dilution = mean(particles_L_food_dilution, na.rm = TRUE),
-            CoV_food_dilution = sd_food_dilution / mean_food_dilution
+            sd_particles_L_food_dilution = sd(particles_L_food_dilution, na.rm = TRUE),
+            mean_particles_L_food_dilution = mean(particles_L_food_dilution, na.rm = TRUE),
+            CoV_food_dilution = sd_particles_L_food_dilution / mean_particles_L_food_dilution
   )
 
 # View the results
@@ -1120,8 +1120,9 @@ aoc_risk_paper_MC <- aoc_MC %>%
 ####---- TISSUE TRANSLOCATION ------#####
 filtered.data.small.default_t1.2_MC <- aoc_risk_paper_MC %>% 
           #mutate(dose_new = particles.L.ox.stress / (af.time * af.noec)) %>% #we should determine if the AFs should be applied, bc I think pSSD does this
-         mutate(dose_new = particles.L.ox.stress) %>%   
-         drop_na(dose_new) %>% 
+         mutate(dose_new_particles_L = particles.L.ox.stress) %>% 
+         mutate(dose_new_particles_L_sd = sd_particles_L_ox_stress) %>% 
+         drop_na(dose_new_particles_L) %>% 
   filter(between(size.length.um.used.for.conversions, 1, upper.tissue.trans.size.um),
          shape_f != "Not Reported",
          poly_f != "Not Reported",
@@ -1139,8 +1140,9 @@ filtered.data.large.default_t1.2_MC <- aoc_risk_paper_MC %>%
    # remove algae, as food dilution MOE doesn't make sense for algae
   filter(Group != "Algae") %>% 
          #mutate(dose_new = particles.L.food.dilution / (af.time * af.noec)) %>%  #we should determine if the AFs should be applied, bc I think pSSD does this
-         mutate(dose_new = particles.L.food.dilution) %>% 
-         drop_na(dose_new) %>% 
+         mutate(dose_new_particles_L = particles.L.food.dilution) %>% 
+         mutate(dose_new_particles_L_sd = sd_particles_L_food_dilution) %>% 
+         drop_na(dose_new_particles_L) %>% 
   filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
          poly_f != "Not Reported",
          !environment %in% c("Terrestrial", "Not Reported"),
@@ -1215,14 +1217,19 @@ CV.UF <- 0.5 #unclear how this value was derived... I believe it corresponds to 
 #FUnction to process data
 prep_data <- function(data) {
   # Base part of the names used for returned list elements
-  names <- c("DP", "UFt", "UFdd", "doseDescriptor", "polymer", "shape", "environment", "group")
+  names <- c("DP", "DP.SD", "UFt", "UFdd", "doseDescriptor", "polymer", "shape", "environment", "group")
   
   # Data processing steps
   matrices <- list(
     DP = data %>% mutate(id = row_number()) %>%
-        mutate(particles_L = dose_new) %>% 
+        mutate(particles_L = dose_new_particles_L) %>% #ERM-specific - converted appropripately upstream
         select(id, Species, particles_L) %>%
         acast(id ~ Species, value.var = "particles_L") %>%
+        Matrix(sparse = TRUE),
+    DP.SD = data %>% mutate(id = row_number()) %>%
+        mutate(particles_L_sd = dose_new_particles_L_sd) %>% 
+        select(id, Species, particles_L_sd) %>% #ERM-specific - converted appropripately upstream
+        acast(id ~ Species, value.var = "particles_L_sd") %>%
         Matrix(sparse = TRUE),
     UFt = data %>% mutate(id = row_number()) %>%
         select(id, Species, af.time) %>%
@@ -1276,6 +1283,7 @@ run_pSSD_analysis <- function(data_matrices, num_iterations, sim, cv_dp, cv_uf, 
   for (i in 1:num_iterations) {
     pSSD_list[[i]] <- do.pSSD(
       DP = data_matrices[["DP"]],  # Correctly reference matrices with dynamic naming
+      DP.SD = data_matrices[["DP.SD"]],
       UFt = data_matrices[["UFt"]],
       UFdd = data_matrices[["UFdd"]],
       SIM = sim,
