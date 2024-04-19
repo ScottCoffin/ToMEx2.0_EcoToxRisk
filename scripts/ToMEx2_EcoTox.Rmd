@@ -79,7 +79,43 @@ fill.type <-  scale_fill_nejm()
 
 #Color
 color.type <- scale_color_nejm()
+
+#ggplot themes
+theme.light <- theme_minimal(base_size = 15) +
+  theme(legend.position = c(0.2, 0.85),
+        legend.title = element_text(size = 16, face = "bold"),
+        legend.text = element_text(size = 14),
+        legend.title.align = 0.5,
+        legend.text.align = 0.5,
+     #   legend.box.background = element_rect(color = "black", linetype =
+      #                                         "solid", size = 1),
+  #legend.background = element_rect(fill = "gray90", size = 0.5, linetype =
+                   #                  "solid"),  # Light gray background forlegend
+        plot.title = element_text(hjust = 0.5),     # Center the main title
+        plot.subtitle = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5),   # Center the caption
+        axis.title.x = element_text(hjust = 0.5, size = 18),  # Center the x-axis title
+        axis.text = element_text(size = 16),
+        axis.title.y = element_text(vjust = 0.5, size = 18))   # Center the y-axis title (vertically))   # Center the subtitle)
+
+theme.dark <- dark_theme_minimal(base_size = 15) +
+  theme(legend.position = c(0.2, 0.85),
+        legend.title = element_text(size = 16, face = "bold"),
+        legend.text = element_text(size = 14),
+        legend.title.align = 0.5,
+        legend.text.align = 0.5,
+     #   legend.box.background = element_rect(color = "black", linetype =
+      #                                         "solid", size = 1),
+  #legend.background = element_rect(fill = "gray90", size = 0.5, linetype =
+                   #                  "solid"),  # Light gray background forlegend
+        plot.title = element_text(hjust = 0.5),     # Center the main title
+        plot.subtitle = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5),   # Center the caption
+        axis.title.x = element_text(hjust = 0.5, size = 18),  # Center the x-axis title
+        axis.text = element_text(size = 16),
+        axis.title.y = element_text(vjust = 0.5, size = 18))   # Center the y-axis title (vertically))   # Center the subtitle)
 ```
+
 
 ### Data Import
 ```{r Data Import, include = FALSE}
@@ -604,6 +640,11 @@ base_thresholds <- tibble(
 
 base_thresholds
 ```
+```{r}
+kable(base_thresholds)
+```
+
+
 ![Agreed-upon framework](assets/treshold_framework.png)
 
 **Threshold 1:**
@@ -899,20 +940,36 @@ hist_cv_food <- aoc_MC %>%
   ggplot(aes(x = CoV_food_dilution, fill = polydispersity)) +
   geom_histogram(position = "identity", alpha = 0.5) +
   xlim(xlims) +  # Set x limits
+  scale_x_log10() +
+  xlab("Coefficient of Variation (unitless)") +
+  ylab("Toxicity Data Points") +
   fill.type +
-  theme_minimal()
+  theme.light #+
+  #theme(axis.title.x = element_blank())
 
 hist_cv_ox <- aoc_MC %>% 
   ggplot(aes(x = CoV_ox_stress, fill = polydispersity)) +
   geom_histogram(position = "identity", alpha = 0.5) +
   fill.type +
-  xlim(xlims) +  # Set x limits
-  theme_minimal()
-  theme(legend.position = "none")
+  scale_x_log10() +
+ # xlim(xlims) +  # Set x limits
+  xlab("Coefficient of Variation (unitless)") +
+  ylab("Toxicity Data Points") +
+  theme.light +
+  theme(legend.position = "none",
+        axis.title.y = element_blank())
 
-ggarrange(hist_cv_food, hist_cv_ox,
-          nrow = 2,
-          common.legend = TRUE, legend = "right")
+CoV_plots <- ggarrange(hist_cv_food, hist_cv_ox,
+                       labels = c("A", "B"),
+                       ncol = 2,
+                       common.legend = TRUE, legend = "top")
+
+ggsave(filename = "CoV_plots.jpg",
+       dpi = 300,
+       path = "../output/Manuscript_Figs/", 
+       plot = CoV_plots, width = 10, height = 8, units = "in")
+
+CoV_plots
 ```
 
 ```{r}
@@ -943,6 +1000,105 @@ ggarrange(points_cv_food, points_cv_ox,
           nrow = 2,
           common.legend = TRUE, legend = "right")
 ```
+
+
+```{r}
+mouth_lm_food <- lm(data = aoc_MC, CoV_food_dilution ~ max.size.ingest.um * polydispersity)
+summary(mouth_lm_food)
+```
+```{r}
+mouth_lm_ox_stress <- lm(data = aoc_MC, CoV_ox_stress ~ max.size.ingest.um * polydispersity)
+summary(mouth_lm_ox_stress)
+```
+
+
+```{r}
+mouth_cv_food <- aoc_MC %>% 
+    ggplot(aes(x = CoV_food_dilution, y = max.size.ingest.um, color = polydispersity)) +
+  geom_point(alpha = 0.75, size = 2.1) +
+  geom_smooth(method = "lm", se = T, aes(group = 1), alpha = 0.7, color = "darkgreen", fill = "darkgreen", linetype = "dashed") +  # A single regression line for all data
+  ggpmisc::stat_poly_eq(aes(label = paste(..eq.label..), group = 1),
+                        color = "darkgreen",
+                        formula = y ~ x, 
+                        method = "lm",
+                        label.x = 0.1,
+                        label.y = 0.7,  # Position at the top, adjust if necessary
+                        parse = TRUE) +
+   ggpmisc::stat_poly_eq(aes(label = paste(..rr.label..), group = 1),
+                        color = "darkgreen",
+                        formula = y ~ x, 
+                        method = "lm",
+                        label.x = 0.1,
+                        label.y = 0.65,  # Position at the top, adjust if necessary
+                        parse = TRUE) +
+    ggpmisc::stat_poly_eq(aes(label = ..p.value.label.., group = 1),
+                        color = "darkgreen",
+                        formula = y ~ x, 
+                        method = "lm",
+                        label.x = 0.1,
+                        label.y = 0.6,  # Position at the top, adjust if necessary
+                        parse = TRUE) +
+    xlab("Coefficient of Variation (unitless)") +
+  ylab("Organism Mouth Size Opening (um) for Toxicity Datapoint") +
+  scale_y_log10() +
+  scale_x_log10() +
+  xlim(xlims) +  # Set x limits
+  color.type +
+  theme.light +
+  theme(legend.position = "none",
+        axis.title.y = element_text(size = 16)) +
+   guides(fill = guide_legend(title = NULL), color = guide_legend(title = NULL))  # Remove legend titles
+
+mouth_cv_ox <- aoc_MC %>% 
+  ggplot(aes(x = CoV_ox_stress, y = max.size.ingest.um, color = polydispersity)) +
+   geom_point(alpha = 0.75, size = 2.1) +
+  geom_smooth(method = "lm", se = T, aes(group = 1), alpha = 0.7, color = "darkgreen", fill = "darkgreen", linetype = "dashed") +  # A single regression line for all data
+  ggpmisc::stat_poly_eq(aes(label = paste(..eq.label..), group = 1),
+                        color = "darkgreen",
+                        formula = y ~ x, 
+                        method = "lm",
+                        label.x = 0.1,
+                        label.y = 0.7,  # Position at the top, adjust if necessary
+                        parse = TRUE) +
+   ggpmisc::stat_poly_eq(aes(label = paste(..rr.label..), group = 1),
+                        color = "darkgreen",
+                        formula = y ~ x, 
+                        method = "lm",
+                        label.x = 0.1,
+                        label.y = 0.65,  # Position at the top, adjust if necessary
+                        parse = TRUE) +
+    ggpmisc::stat_poly_eq(aes(label = ..p.value.label.., group = 1),
+                        color = "darkgreen",
+                        formula = y ~ x, 
+                        method = "lm",
+                        label.x = 0.1,
+                        label.y = 0.6,  # Position at the top, adjust if necessary
+                        parse = TRUE) +
+  scale_y_log10() +
+  scale_x_log10() +
+  xlab("Coefficient of Variation (unitless)") +
+  ylab("Organism Mouth Size Opening (um) for Toxicity Datapoint") +
+ # xlim(xlims) +  # Set x limits
+  color.type +
+  theme.light +
+  theme(legend.position = "none",
+        axis.title.y = element_text(size = 16)) +
+  theme(legend.title = element_blank()) +
+   guides(fill = guide_legend(title = NULL), color = guide_legend(title = NULL))  # Remove legend titles
+
+CoV_mouth_plots <- ggarrange(mouth_cv_food, mouth_cv_ox,
+                       labels = c("A", "B"),
+                       ncol = 2,
+                       common.legend = TRUE, legend = "bottom")
+
+ggsave(filename = "CoV_mouth_plots.jpg",
+       dpi = 300,
+       path = "../output/Manuscript_Figs/", 
+       plot = CoV_mouth_plots, width = 10, height = 8, units = "in")
+
+CoV_mouth_plots
+```
+
 
 check to see if any CoV are negative (should not be!)
 ```{r}
@@ -1233,16 +1389,14 @@ ggplot() +
             family = "helvetica"
             ) +
   geom_line(data = quantiles_df, aes(x = iv, y = mean), color = "firebrick4", size = 1) +
-  scale_x_continuous(name = "NOEC (particles/L)", breaks = c(-4, -2, 0, 2, 4, 6, 8,10),
-                     labels = expression(10^-4, 10^-2, 1, 10^2, 10^4, 10^6, 10^8, 10^10),
-                     limits = c(-4, 10)) +
+  scale_x_continuous(name = "NOEC (particles/L)", breaks = c(-1, 0, 2, 4, 6, 8,10, 12),
+                     labels = expression(10^-1, 1, 10^2, 10^4, 10^6, 10^8, 10^10, 10^12),
+                     limits = c(-1, 12)) +
   scale_y_continuous(name = "Cumulative probability", limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
   fill.type +
     color.type +
   labs(title = ("Microplastics Probabilistic Species Sensitivity Distribution"),
-       subtitle = data_name) +
-    theme.type
- # dark_theme_minimal(base_size = 15) 
+       subtitle = data_name)
  }
 
 # example usage
@@ -1267,9 +1421,7 @@ PNEC_plot <- function(pssd_results, hcx, data_name){
     labs(x = "PNEC (Particles/L)", y = "Probability density", title = "Probability density of the PNEC",
          subtitle = data_name) +
     #theme_minimal() +
-    geom_density(col = "red", lwd = 1) +  # Optionally add a density line
-    theme.type
-   # dark_theme_minimal(base_size = 18)
+    geom_density(col = "red", lwd = 1)  # Optionally add a density line
 }
 
 #example
@@ -1363,6 +1515,8 @@ tier1_2_food_PNEC_summary <- PNEC_data_summary(pssd_results = tier1_2_food_pssd,
 ```{r}
 ggarrange(tier1_2_food_pssdPlot,tier1_2_food_PNECPlot,
           ncol = 1)
+
+
 ```
 ```{r}
 tier1_2_food_PNEC_summary$stats
@@ -1413,14 +1567,34 @@ tier4_food_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_food_pssd,
 ```
 
 ```{r}
-food_plots <- ggarrange(tier3_4_food_pssdPlot,  
-                        ggarrange(tier3_food_PNECPlot,
-                                  tier4_food_PNECPlot,
-                                  ncol = 2, nrow = 1),
-                        ncol = 1, nrow = 2)
+food_plots_light <- ggarrange(tier3_4_food_pssdPlot + theme.light + theme(legend.position = c(0.1, 0.6)),  
+                        ggarrange(tier3_food_PNECPlot + theme.light,
+                                  tier4_food_PNECPlot + theme.light,
+                                  ncol = 2, nrow = 1, labels = c("B", "C")),
+                        ncol = 1, nrow = 2, labels = c("A"))
 
-food_plots
+ggsave(filename = "food_plots_light.jpg",
+       dpi = 300,
+       path = "../output/Manuscript_Figs/", 
+       plot = food_plots_light, width = 10, height = 8, units = "in")
+
+food_plots_light
 ```
+```{r}
+food_plots_dark <- ggarrange(tier3_4_food_pssdPlot + theme.dark + theme(legend.position = c(0.1, 0.6)),  
+                        ggarrange(tier3_food_PNECPlot + theme.dark,
+                                  tier4_food_PNECPlot + theme.dark,
+                                  ncol = 2, nrow = 1, labels = c("B", "C")),
+                        ncol = 1, nrow = 2, labels = c("A"))
+
+ggsave(filename = "food_plots_dark.jpg",
+       dpi = 300,
+       path = "../output/presentation_Figs/", 
+       plot = food_plots_dark, width = 10, height = 8, units = "in")
+
+food_plots_dark
+```
+
 ```{r}
 cbind(tier3_food_PNEC_summary$stats, tier4_food_PNEC_summary$stats)
 ```
@@ -1448,7 +1622,10 @@ tier3_4_tissue_plot_prep <- prepare_plot_data(pSSD = tier3_4_tissue_pssd$pSSD,
 #Step 4a: generate ggplot (pSSD)
 tier3_4_tissue_pssdPlot <-  pSSD_plot(quantiles_df = tier3_4_tissue_plot_prep$quantiles_df,
                                     species_data = tier3_4_tissue_plot_prep$species_data,
-                                    data_name = "Tier 3 (Tissue Translocation)")
+                                    data_name = "Tier 3 (Tissue Translocation)") +
+    scale_x_continuous(name = "NOEC (particles/L)", breaks = c(0, 2, 4, 6, 8,10),
+                     labels = expression(1, 10^2, 10^4, 10^6, 10^8, 10^10),
+                     limits = c(0, 10))
 
 #Step 4b: generate ggplot (PNEC)
 tier3_tissue_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_tissue_pssd,
@@ -1470,13 +1647,32 @@ tier4_tissue_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_tissue_pss
 ```
 
 ```{r}
-tissue_plots <- ggarrange(tier3_4_tissue_pssdPlot,  
-                        ggarrange(tier3_tissue_PNECPlot,
-                                  tier4_tissue_PNECPlot,
-                                  ncol = 2, nrow = 1),
-                        ncol = 1, nrow = 2)
+tissue_plots_light <- ggarrange(tier3_4_tissue_pssdPlot + theme.light + theme(legend.position = c(0.15, 0.6)),  
+                        ggarrange(tier3_tissue_PNECPlot + theme.light,
+                                  tier4_tissue_PNECPlot + theme.light,
+                                  ncol = 2, nrow = 1, labels = c("B", "C")),
+                        ncol = 1, nrow = 2, labels = c("A"))
 
-tissue_plots
+ggsave(filename = "tissue_plots_light.jpg",
+       dpi = 300,
+       path = "../output/Manuscript_Figs/", 
+       plot = tissue_plots_light, width = 10, height = 8, units = "in")
+
+tissue_plots_light
+```
+```{r}
+tissue_plots_dark <- ggarrange(tier3_4_tissue_pssdPlot + theme.dark + theme(legend.position = c(0.15, 0.6)),  
+                        ggarrange(tier3_tissue_PNECPlot + theme.dark,
+                                  tier4_tissue_PNECPlot + theme.dark,
+                                  ncol = 2, nrow = 1, labels = c("B", "C")),
+                        ncol = 1, nrow = 2, labels = c("A"))
+
+ggsave(filename = "tissue_plots_dark.jpg",
+       dpi = 300,
+       path = "../output/Manuscript_Figs/", 
+       plot = tissue_plots_dark, width = 10, height = 8, units = "in")
+
+tissue_plots_dark
 ```
 
 ```{r}
@@ -1511,41 +1707,6 @@ base_thesholds_df <- rbind(base_tissue, base_food) %>%
 base_thesholds_df
 ```
 
-```{r}
-theme.light <- theme_minimal(base_size = 15) +
-  theme(legend.position = c(0.2, 0.85),
-        legend.title = element_text(size = 16, face = "bold"),
-        legend.text = element_text(size = 14),
-        legend.title.align = 0.5,
-        legend.text.align = 0.5,
-     #   legend.box.background = element_rect(color = "black", linetype =
-      #                                         "solid", size = 1),
-  #legend.background = element_rect(fill = "gray90", size = 0.5, linetype =
-                   #                  "solid"),  # Light gray background forlegend
-        plot.title = element_text(hjust = 0.5),     # Center the main title
-        plot.subtitle = element_text(hjust = 0.5),
-        plot.caption = element_text(hjust = 0.5),   # Center the caption
-        axis.title.x = element_text(hjust = 0.5, size = 18),  # Center the x-axis title
-        axis.text = element_text(size = 16),
-        axis.title.y = element_text(vjust = 0.5, size = 18))   # Center the y-axis title (vertically))   # Center the subtitle)
-
-theme.dark <- dark_theme_minimal(base_size = 15) +
-  theme(legend.position = c(0.2, 0.85),
-        legend.title = element_text(size = 16, face = "bold"),
-        legend.text = element_text(size = 14),
-        legend.title.align = 0.5,
-        legend.text.align = 0.5,
-     #   legend.box.background = element_rect(color = "black", linetype =
-      #                                         "solid", size = 1),
-  #legend.background = element_rect(fill = "gray90", size = 0.5, linetype =
-                   #                  "solid"),  # Light gray background forlegend
-        plot.title = element_text(hjust = 0.5),     # Center the main title
-        plot.subtitle = element_text(hjust = 0.5),
-        plot.caption = element_text(hjust = 0.5),   # Center the caption
-        axis.title.x = element_text(hjust = 0.5, size = 18),  # Center the x-axis title
-        axis.text = element_text(size = 16),
-        axis.title.y = element_text(vjust = 0.5, size = 18))   # Center the y-axis title (vertically))   # Center the subtitle)
-```
 
 ### Plot Comparisons with Deterministic Approach
 ```{r}
