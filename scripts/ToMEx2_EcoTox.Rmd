@@ -19,7 +19,7 @@ output:
 #knitr::opts_knit$set(root.dir = "G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk")
 ```
 
-```{r setup, include=FALSE}
+```{r, include=FALSE}
 knitr::opts_chunk$set(fig.width=10, fig.height=8, fig.path='output/figures',
                       warning=FALSE, message=FALSE,time_it = TRUE) 
 ```
@@ -912,9 +912,13 @@ skimr::skim(results_df)
 # Calculate CoV
 cov_results <- results_df %>%
   group_by(rowid) %>%
-  summarise(
-    CoV_ox_stress = sd(particles_L_ox_stress, na.rm = TRUE) / mean(particles_L_ox_stress, na.rm = TRUE),
-    CoV_food_dilution = sd(particles_L_food_dilution, na.rm = TRUE) / mean(particles_L_food_dilution, na.rm = TRUE)
+  summarise(sd_ox_stress = sd(particles_L_ox_stress, na.rm = TRUE),
+            mean_ox_stress = mean(particles_L_ox_stress, na.rm = TRUE),
+            CoV_ox_stress = sd_ox_stress / mean_ox_stress,
+            #food dilution
+            sd_food_dilution = sd(particles_L_food_dilution, na.rm = TRUE),
+            mean_food_dilution = mean(particles_L_food_dilution, na.rm = TRUE),
+            CoV_food_dilution = sd_food_dilution / mean_food_dilution
   )
 
 # View the results
@@ -928,7 +932,7 @@ skimr::skim(cov_results)
 aoc_MC <- merge(aoc_final, cov_results, by = "rowid", all.x = TRUE)
 ```
 ```{r}
-#define limites
+#define limits
 min_val <- min(aoc_MC$CoV_food_dilution, na.rm = TRUE)
 max_val <- max(aoc_MC$CoV_food_dilution, na.rm = TRUE)
 
@@ -1101,7 +1105,7 @@ CoV_mouth_plots
 
 
 check to see if any CoV are negative (should not be!)
-```{r}
+```{r include=FALSE}
 aoc_MC %>% 
   filter(CoV_food_dilution < 0)
 ```
@@ -1784,7 +1788,7 @@ tier1_2_tissue_freshwater <- tier1_2_tissue %>% filter(environment == "Freshwate
 tier3_4_tissue_freshwater <- tier3_4_tissue %>% filter(environment == "Freshwater")
 ```
 #### Processing
-```{r}
+```{r include=FALSE}
 ### Food Dilution
 #Step 1: prep data matrices
 tier3_4_food_freshwater_matrices <- prep_data(tier3_4_food_freshwater)
