@@ -6,6 +6,7 @@
 #              - UFt : matrix of uncertainty factors for the exposure time
 #              - UFdd : matrix of uncertainty factors for the dose-descriptor
 #              - SIM : number of iterations in the simulation
+#              - CV.SD: Data point level coefficients of variation based on transformations. 
 #              - CV.DP : coefficient of variation for the interlaboratory variation
 #              - CV.UF : coefficient of variation for the use of non-substance-specific
 #                uncertainty factors 
@@ -31,6 +32,7 @@ do.pSSD <- function(DP,
                     UFdd,
                     SIM,
                     CV.DP,
+                    CV.SD,
                     CV.UF){
   
   # test if there is no data available for one species
@@ -57,6 +59,7 @@ do.pSSD <- function(DP,
   
   # store the corrected endpoints
   corr.endpoints <- DP/(UFdd*UFt)
+  
   sort.endpoints <- apply(corr.endpoints, 2, sort)
   
   for (sp in colnames(DP)){
@@ -94,14 +97,21 @@ do.pSSD <- function(DP,
     } else {
       
       #Use this in place of below to bootstrap. 
-      #low <- (1-(sqrt((CV.DP/2.45)^2 + (CV.UF/2.45)^2 + (CV.UF/2.45)^2)*2.45))
-      #high <- (1+(sqrt((CV.DP/2.45)^2 + (CV.UF/2.45)^2 + (CV.UF/2.45)^2)*2.45))
-      #uncertainty_factor <- sample(c(low, high), size = SIM, replace = T)
-      #data <- sample(sort.endpoints[[sp]], size = SIM, replace = T)
-      #NOEC_comb[sp,] <- data * uncertainty_factor
+      # The low end of the CV correction factors
+      low <- (1-(sqrt(sum(c(CV.SD[[sp]], CV.DP, CV.UF)^2))))
+      # The high end of the CV correction factors
+      high <- (1+(sqrt(sum(c(CV.SD[[sp]], CV.DP, CV.UF)^2))))
+      # Create a boostrap of the correction factors
+      uncertainty_factor <- runif(min = low, max = high, n = SIM)
+      # Create a boostrap of the species data distributions
+      data <- rnorm(mean = mean(sort.endpoints[[sp]]), 
+                    sd = sd(sort.endpoints[[sp]]),  
+                    n = SIM)
+      # Create the final simulation dataset
+      NOEC_comb[sp,] <- data * uncertainty_factor
       
       # Sample from this step distribution for each species
-      NOEC_comb[sp,] <- rmore(values = sort.endpoints[[sp]], max = sp.max, min = sp.min, N = SIM, linf = 0)
+      #NOEC_comb[sp,] <- rmore(values = sort.endpoints[[sp]], max = sp.max, min = sp.min, N = SIM, linf = 0)
       
     } 
   }
