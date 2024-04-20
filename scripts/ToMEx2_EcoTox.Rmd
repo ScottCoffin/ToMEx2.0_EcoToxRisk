@@ -125,12 +125,12 @@ theme.dark <- dark_theme_minimal(base_size = 15) +
   #rename columns so they fir the OG script
 getwd()
 
-aoc_z <- readRDS("../data/input/aoc_z_tomex2.RDS") %>% 
-  rename(environment = env_f) %>% 
-  select(-rowid)# %>% #existing rowid is actually replicated (not sure how)
+aoc_z <- readRDS("../data/input/aoc_z_tomex2.RDS") %>%  #dataset is prepped in shiny repo
+  rename(environment = env_f)# %>% 
+  #select(-rowid)# %>% #existing rowid is actually replicated (not sure how)
   #mutate(rowid = row_number())
 
-aoc_z$rowid <- sapply(seq_len(nrow(aoc_z)), function(x) uuid::UUIDgenerate())
+#aoc_z$rowid <- sapply(seq_len(nrow(aoc_z)), function(x) uuid::UUIDgenerate())
 ```
 
 ### Data Cleanup
