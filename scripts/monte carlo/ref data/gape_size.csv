@@ -1,0 +1,80 @@
+species_f,body.length.cm,body.size.source
+Acartia tonsa,1.05E-01,"average calculated from mean body lengths reported in Sabatini, M. E. (1990) https://doi.org/10.1163/156854090X00282 (1250µm) and Holmes-Hackerd et al. 2023 (850µm); both for females"
+Acropora NA,5,same as Acropora muricata
+Aliivibrio fischeri,2.00E-04,Silva et al. 2021: https://doi.org/10.3390/chemosensors9100283
+Amphidinium carterae,1.27E-03,Gárate-Lizárraga et al. 2019: 10.1016/j.marpolbul.2019.06.073; Authors refer to measurements from an MSc thesis by Hernández-Castro 2017: https://repositoriodigital.ipn.mx/jspui/handle/123456789/26358
+Amphiura filiformis,0.9,"Buchanan 1964: https://doi.org/10.1017/S0025315400027776; disk size (without arms)
+"
+Anabaena NA,3.00E-04,"Deep et al. 2013: https://doi.org/10.1186/2046-9063-9-14; approximate size for single cells, different species differ in cell size"
+Anodonta anatina,10,Freer et al. 2010: https://doi.org/10.1021/cg901265x
+Aphylla williamsoni,7,"estimated based on Gloyd, L.K., 1936. Three new North American species of Gomphinae (Odonata).— Occ. Pap. Mus.
+Zool Univ. Mich. 326:1-18,3 pis"
+Apostichopus japonicus,10,length of middle sized individuals based on: Yamana&Hamano 1006: 10.1111/j.1444-2906.2006.01187.x
+Artemia salina,0.1,Riisgard et al. 2015:https://doi.org/10.1163/1937240X-00002362
+Aurelia sp.,10,adult medusa bell diameter; Marques et al. 2015: https://doi.org/10.1093/plankt/fbv059
+Brachionus calyciflorus,0.02,Xi et al. 2011:https://doi.org/10.1080/02705060.2002.9663886
+Brachionus fernandoi,0.02,same as for B. calyciflorus
+Centropristis striata,17,female length upon maturation; Kendall 1977:https://repository.library.noaa.gov/view/noaa/47725
+Chaetoceros neogracile,7.00E-04,Gonzalez-Fernandez et al. 2019: https://doi.org/10.1016/j.envpol.2019.04.093
+Charybdis japonica,5,carapace size at maturation; Yu et al. 2021: https://doi.org/10.7717/peerj.12282
+Chlamydomonas reinhardtii,0.001,"Kuchka&Jarvik1982: https://doi.org/10.1083/jcb.92.1.170 
+
+
+"
+Chlorella NA,4.00E-04,Baroni et al. 2019:https://doi.org/10.1016/j.algal.2019.101454
+Chlorella pyrenoidosa,4.00E-04,taken same as for C. vulgaris; Baroni et al. 2019:https://doi.org/10.1016/j.algal.2019.101454
+Chlorella vulgaris,4.00E-04,Baroni et al. 2019:https://doi.org/10.1016/j.algal.2019.101454
+Ctenopharyngodon idella,86.8,Elder&Murphy1997: https://doi.org/10.1080/02705060.1997.9663535
+Cyanobacteria NA,2.00E-04,Lea-Smith et al.2016: https://doi.org/10.1104/pp.16.01205
+Diaphanosoma celebensis,0.073,Korovchinsky 1989: https://doi.org/10.1007/BF00014297
+Diatoms NA,0.008,differs among species; Spaulding et al. 2012: https://doi.org/10.4319/lom.2012.10.882
+Dreissena bugensis,1.45,Marescaux et al.2012: http://dx.doi.org/10.3391/bir.2012.1.2.05
+Dunaliella salina,0.0018,Cifuentes et al. 1992: https://doi.org/10.1007/BF02442459
+Dunaliella tertiolecta,0.001,Hoshaw&Maluf1981: https://doi.org/10.2216/i0031-8884-20-2-199.1
+Gasterosteus aculeatus,5.3,Rowland1989: https://doi.org/10.1016/0003-3472(89)90117-6
+Gyrodinium sp.,0.006,Sullivan&Swift2003: https://doi.org/10.1046/j.1529-8817.2003.02094.x
+Halomonas alkaliphila,0.0002,Sun et al. 2018: https://doi.org/10.1016/j.scitotenv.2018.06.141
+Heterocapsa triquetra,0.0023,Horner 2002 via: https://phytoplankton.eoas.ubc.ca/research/phytoplankton/dinoflagellates/heterocapsa/h_triquetra.html
+Hydrilla Verticillata,20,"maximum length larger, but likely not in experiments; Cook&Lüönd1982: https://doi.org/10.1016/0304-3770(82)90074-2"
+Hydropsyche pellucidula,1.15,no literature reference found; number taken from: https://www.naturespot.org.uk/species/hydropsyche-pellucidula 
+Hypophthalmichthys molitrix,70,Lenaerts et al. 2015: 10.3391/ai.2015.10.4.08
+Karenia mikimotoi,0.0023,Zhao et al. 2020:https://doi.org/10.1016/j.marpolbul.2020.111074
+Lemna minor,0.3,"frond length; Moody&Miller (2005). LEMNA MINOR GROWTH INHIBITION TEST, in: Blaise & Férard (eds.) Small-scale freshwater toxicity investigations, Volume 1: Toxicity test methods. Springer, The Netherlands."
+Ictalurus punctatus,40,standard length; Bosworth&Wolters2005: https://doi.org/10.1111/j.1365-2109.2005.01206.x
+Litopenaeus vannamei,12,et al. 2011: https://li01.tci-thaijo.org/index.php/anres/article/view/245306.
+Macroalgae NA,20,"often much larger, but likely not more than 20cm in experiments"
+Mactra veneriformis,2.5,shell length where >50% of mussels were sexuaslly mature: Nakano et al. 2012: 10.11646/mr.32.3.6
+Meretrix meretrix,3.8,Zhang et al. 2018: https://doi.org/10.2983/035.037.0509
+Microalgae NA,0.001,dependent on species; Takahashi et al. 2018: https://doi.org/10.1038/s41598-018-23311-8; Ye et al. 2023: https://doi.org/10.1016/j.psep.2022.11.077
+Microcystis aeruginosa,5.00E-04,Olenina et al. 2006: https://helcom.fi/wp-content/uploads/2019/08/BSEP106.pdf; ISSN:0357-2994
+Microcystis flos-aquae,4.00E-04,Olenina et al. 2006: https://helcom.fi/wp-content/uploads/2019/08/BSEP106.pdf; ISSN:0357-2994
+Moina macrocopa,0.1,"Vignatti et al. 2013:https://doi.org/10.1590/S1676-06032013000300011; Petrusek 2022: ISSN: 213–220, available at: https://www.researchgate.net/publication/232709437_Moina_Crustacea_Anomopoda_Moinidae_in_the_Czech_Republic_a_review#fullTextFileContent"
+Myriophyllum verticillatum,20,"grows larger, but likely not longer than 20cm in experiments"
+Mytilus coruscus,4.5,"shell length where >50% of mussels were sexually mature; Lee tet al. 2007; Korean Journal of Malacology, Vol. 23(2): 199-208: https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=45159d93d4c1f135651e389d8071db5e2c1ef0f2"
+Neocaridina palmata,1.8,Kenny et al. 2014: https://doi.org/10.3390/md12031419
+Oryzias javanicus,5,Said & Mayasari 2021: doi:10.1088/1755-1315/744/1/012069
+Oxyrrhis marina,0.0025,Lowe et al. 2010:doi: 10.1093/plankt/fbq110
+Perca flavescens,17,average length at which 50% of individuals were matures; Gislason et al. 2017: https://doi.org/10.1139/cjfas-2016-0211
+Perca fluviatilis,15,average length at which 50% of individuals were matures; Heibo & Magnhagen 2005: https://doi.org/10.1111/j.1600-0633.2005.00108.x
+Potamogeton crispus,20,"grows larger, but likely not longer than 20cm in experiments"
+Procambarus clarkii,7.3,average size at maturation; Correia & Costa 1994: ISSN: 0870-6581; available at https://repositorio.uac.pt/handle/10400.3/2124
+Protopalythoa NA,0.5,column (scapus) diameter; Ryland & Lancaster 2003: https://doi.org/10.1071/IS02008
+Protoperidinium bipes,0.0051,Phan-Tan et al. 2018:https://doi.org/10.1007/s00300-018-2262-0
+Psammechinus miliaris,4,"Kelly & Cook: The ecology of Psammechinus miliaris, 2001. In JM Lawrence (edt) Edible Sea Urchins: Biology and Ecology. Elsevier"
+Pseudechinus huttoni,3.8,Kirby et al. 2006:https://doi.org/10.1080/00288330.2006.9517432
+Raphidocelis subcapitata,0.001,Machadeo&Soares 2024:https://link.springer.com/article/10.1007/s00253-024-13038-00
+Scaphechinus mirabilis,6.67,Matsuda et al. 2012: https://doi.org/10.1017/S0025315412001269
+Scenedesmus armatus,0.0015,"cell length; Comas & Komarek 1984: Arch.Hydrobiol.Suppl. 67,2: 135-157"
+Scenedesmus obliquus,0.0012,"cell length; Hegewald 1997: Algae (The KoreanJournal of Phycology), 12(4):235-246"
+Seriatopora hystrix,3,Mendrik et al. 2021: https://doi.org/10.1016/j.envpol.2020.116238
+Skeletonema costatum,0.001,Sarno et al. 2006: https://doi.org/10.1111/j.1529-8817.2006.00305.x
+Spirulina NA,8.00E-04,Masojidek&Torzillo 2008: https://doi.org/10.1016/B978-008045405-4.00830-2
+Strombidium sulcatum,0.004,Dolan 2018: https://doi.org/10.1016/j.ejop.2018.08.002
+Tetraselmis chuii,0.0013,Kokkali et al. 2020: 10.3390/molecules25173921
+Thalassiosira pseudonana,0.0004,Kirkham et al. 2017: https://doi.org/10.1038/ismej.2017.100
+Tisochrysis lutea,0.0005,Orlova et al. 2023: https://doi.org/10.1134/S1063074023030094
+Tubastrea aurea,13,colony size; https://animal-world.com/yellow-sun-coral/
+Vallisneria denseserrulata,20,"grows larger, but likely not longer than 20cm in experiments"
+Vallisneria natans,20,"grows larger, but likely not longer than 20cm in experiments"
+Cerastoderma edule,1.42,10.1021/acs.est.3c06829
+Chironomus tepperi,5,10.1007/BF00016865
