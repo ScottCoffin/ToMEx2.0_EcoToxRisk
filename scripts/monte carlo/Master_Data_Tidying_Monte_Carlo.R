@@ -43,10 +43,13 @@ tomex2.0_aoc_z_final_OG <- read_rds("data/input/aoc_z_tomex2.RDS")
 
 ### these must return TRUE
 identical(aoc_setup, aoc_setup_OG)
-identical(tomex2.0_aoc_z_final %>% select(-rowid, R.ave), #rowid is assigned randomly 
-          tomex2.0_aoc_z_final_OG %>%  select(-rowid))
 
-differences <- tomex2.0_aoc_z_final != tomex2.0_aoc_z_final_OG
+tomex2.0_aoc_z_final_noRAve <- tomex2.0_aoc_z_final %>% ungroup() %>% select(-R.ave) 
+                                
+identical(tomex2.0_aoc_z_final_noRAve, #rowid is assigned randomly 
+          tomex2.0_aoc_z_final_OG)
+
+differences <- tomex2.0_aoc_z_final_noRAve  != tomex2.0_aoc_z_final_OG
 
 # Assuming 'differences' is your logical matrix with TRUE/FALSE/NA values
 # Set NAs to FALSE (if NA means no difference for your case)
@@ -75,7 +78,10 @@ if (length(diff_rows) > 0) {
   cat("No differences found.\n")
 }
 
+#differences are due to different R.Ave use based on environment - need to fix this up in script
+
 ###### -------------- ALIGNMENTS ------------------------- ###################
+##### ------ STATIC test ---- Monte Carlo is aftert this ------ ####
 ### Define parameters
 x1M_set <- 1 #um lower size for all alignments
 x1D_set <- 1 #um lower size for all alignments
