@@ -3,10 +3,10 @@
 # Yields a matrix with dimensions number of species * number of iterations in the simulation
 # 
 # Arguments:   - DP : matrix of data points
+#              - DP.SD: matrix of data point-level standard deviations based on alignments. 
 #              - UFt : matrix of uncertainty factors for the exposure time
 #              - UFdd : matrix of uncertainty factors for the dose-descriptor
 #              - SIM : number of iterations in the simulation
-#              - CV.SD: Data point level coefficients of variation based on transformations. 
 #              - CV.DP : coefficient of variation for the interlaboratory variation
 #              - CV.UF : coefficient of variation for the use of non-substance-specific
 #                uncertainty factors 
@@ -28,11 +28,11 @@
 
 
 do.pSSD <- function(DP,
+                    DP.SD,
                     UFt,
                     UFdd,
                     SIM,
                     CV.DP,
-                    CV.SD,
                     CV.UF){
   
   # test if there is no data available for one species
@@ -42,6 +42,7 @@ do.pSSD <- function(DP,
     ind.sp.rem <- which(apply(DP,2,function(x) length(which(!is.na(x)))) == 0)
     # remove those columns
     DP <- DP[,-ind.sp.rem]
+    DP.SD <- DP.SD[,-ind.sp.rem]
     UFt <- UFt[,-ind.sp.rem]
     UFdd <- UFdd[,-ind.sp.rem]
   }
@@ -98,11 +99,10 @@ do.pSSD <- function(DP,
       
       #Use this in place of below to bootstrap. 
       # The low end of the CV correction factors
-      low <- (1-(sqrt(sum(c(CV.SD[[sp]], CV.DP, CV.UF)^2))))
-      
+
+      low <- (1-(sqrt(sum(c(DP.SD[[sp]], CV.DP, CV.UF)^2))))
       # The high end of the CV correction factors
-      high <- (1+(sqrt(sum(c(CV.SD[[sp]], CV.DP, CV.UF)^2))))
-      
+      high <- (1+(sqrt(sum(c(DP.SD[[sp]], CV.DP, CV.UF)^2))))
       # Create a boostrap of the correction factors
       uncertainty_factor <- runif(min = low, 
                                   max = high, 
