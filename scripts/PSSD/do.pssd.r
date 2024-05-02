@@ -99,14 +99,20 @@ do.pSSD <- function(DP,
       #Use this in place of below to bootstrap. 
       # The low end of the CV correction factors
       low <- (1-(sqrt(sum(c(CV.SD[[sp]], CV.DP, CV.UF)^2))))
+      
       # The high end of the CV correction factors
       high <- (1+(sqrt(sum(c(CV.SD[[sp]], CV.DP, CV.UF)^2))))
+      
       # Create a boostrap of the correction factors
-      uncertainty_factor <- runif(min = low, max = high, n = SIM)
+      uncertainty_factor <- runif(min = low, 
+                                  max = high, 
+                                  n = SIM)
+      
       # Create a boostrap of the species data distributions
       data <- rnorm(mean = mean(sort.endpoints[[sp]]), 
                     sd = sd(sort.endpoints[[sp]]),  
                     n = SIM)
+      
       # Create the final simulation dataset
       NOEC_comb[sp,] <- data * uncertainty_factor
       
