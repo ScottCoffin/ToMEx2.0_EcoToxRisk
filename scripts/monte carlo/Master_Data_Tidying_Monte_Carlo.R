@@ -297,6 +297,24 @@ se_body_length_intercept <- 0.3222      # SE generated from Jams et al R code (n
 sim_beta_log10_body_length_samples <- rnorm(n_sim, mean = beta_log10_body_length, sd = se_beta_log10_body_length)
 sim_body_length_intercept_samples <- rnorm(n_sim, mean = body_length_intercept, sd = se_body_length_intercept)
 
+#### Tissue translocation length ##
+# Parameters from the logistic regression# See scripts/translocation/translocation.Rmd for model
+beta_0 <- 1.308344# simple$coefficients[[1]]  # 1.24  # Intercept
+beta_1 <- -0.01468148 # simple$coefficients[[2]]   #-0.014  # Slope for particle length
+se_beta_0 <- 0.3963612 # simple_summary$coefficients[[1,2]]  # 0.40  # SE of intercept
+se_beta_1 <- 0.006657993 #simple_summary$coefficients[[2,2]]  # SE of slope
+
+# Simulate beta_0 and beta_1
+sim_beta_0 <- rnorm(n_sim * 1.2, mean = beta_0, sd = se_beta_0)
+sim_beta_1 <- rnorm(n_sim * 1.2, mean = beta_1, sd = se_beta_1)
+
+# Calculate X50 for each simulation
+sim_X50 <- -sim_beta_0 / sim_beta_1
+
+#truncate distribution to not fall below 0
+upper.tissue.trans.size.um_samples <- sim_X50 %>% data.frame() %>% filter(.>0) %>% slice(1:n_sim)
+upper.tissue.trans.size.um_samples <- as.numeric(upper.tissue.trans.size.um_samples$.)
+
 #define param values
 param_values <- data.frame(
   alpha = alpha_samples,
@@ -309,7 +327,8 @@ param_values <- data.frame(
   R.ave.sediment.marine = R.ave.sediment.marine_samples,
   R.ave.sediment.freshwater = R.ave.sediment.freshwater_samples,
   sim_beta_log10_body_length = sim_beta_log10_body_length_samples,
-  sim_body_length_intercept = sim_body_length_intercept_samples
+  sim_body_length_intercept = sim_body_length_intercept_samples,
+  upper.tissue.trans.size.um =  upper.tissue.trans.size.um_samples
 )
 
 #### Define Model Wrapper
@@ -329,6 +348,7 @@ model_wrapper <- function(params){
   R_ave_sediment_freshwater <- as.numeric(params$R.ave.sediment.freshwater[1])
   sim_beta_log10_body_length <- as.numeric(params$sim.beta.log10.body.length[1])
   sim_body_length_intercept <- as.numeric(params$sim.body.length.intercept[1])
+  upper.tissue.trans.size.um <- as.numeric(params$upper.tissue.trans.size.um[1])
   
   
   ####### ---- RUN FUNCTIONS ---- ###
@@ -720,6 +740,13 @@ CoV_plots <-  ggpubr::ggarrange(hist_cv_food, hist_cv_ox,
                                 labels = c("A", "B"),
                                 ncol = 2,
                                 common.legend = TRUE, legend = "top")
+
+getwd()
+
+ggsave(filename = "CoV_plots.jpg",
+       dpi = 300,
+       path = "output/Manuscript_Figs/", 
+       plot = CoV_plots, width = 10, height = 8, units = "in")
 
 CoV_plots
 
