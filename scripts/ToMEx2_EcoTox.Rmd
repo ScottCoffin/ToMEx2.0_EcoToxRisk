@@ -712,7 +712,7 @@ print(paste("Number of MC Simulations:", n_sim))
 ### Alignment Monte-Carlo Simulation
 #### Test code with static values
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 # Compare the datasets to find if they are identical
 identical_datasets <- identical(aoc_d_simple, aoc_final_simple)
 
@@ -772,7 +772,7 @@ left_join(aoc_d_simple, aoc_final_simple, by ="rowid")
 # Create a dataframe from the list
 results_df <- do.call(rbind, lapply(MC_results, function(x) {
   data.frame(
-    rowid = x$rowid,
+    unique_id = x$unique_id,
     particles_L_ox_stress = x$particles_mL_ox_stress *1000,
     particles_L_food_dilution = x$particles_mL_food_dilution * 1000
   )
@@ -790,7 +790,7 @@ skimr::skim(results_df)
 ## Step 2:
 # Calculate CoV
 cov_results <- results_df %>%
-  group_by(rowid) %>%
+  group_by(unique_id) %>%
   summarise(sd_particles_L_ox_stress = sd(particles_L_ox_stress, na.rm = TRUE),
             mean_particles_L_ox_stress = mean(particles_L_ox_stress, na.rm = TRUE),
             median_particles_L_ox_stress = median(particles_L_ox_stress, na.rm = TRUE),
@@ -810,13 +810,13 @@ skimr::skim(cov_results)
 
 ```{r eval=FALSE, include=FALSE}
 # Step 3: merge with full dataset and deterministic dataset
-aoc_MC <- merge(aoc_final, cov_results, by = "rowid", all.x = TRUE)
+aoc_MC <- merge(aoc_final, cov_results, by = "unique_id", all.x = TRUE)
 aoc_MC <- left_join(aoc_MC, 
                     aoc_final %>% ungroup() %>%  
-                      select(c(rowid, particles.mL.food.dilution, particles.mL.ox.stress)) %>%
+                      select(c(unique_id, particles.mL.food.dilution, particles.mL.ox.stress)) %>%
                       mutate(particles_L_food_dilution_deterministic = particles.mL.food.dilution * 1000,
                              particles_L_ox_stress_deterministic = particles.mL.ox.stress * 1000),
-                    by = "rowid"
+                    by = "unique_id"
                     ) #%>% 
    #filter(size.length.um.used.for.conversions >= x1M_set) %>% #alignments not valid below 1 um, so filter them before they become problems later
 

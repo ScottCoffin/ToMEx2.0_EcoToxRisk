@@ -600,34 +600,57 @@ summary_stats_base_thresholds <- all_thresholds_long %>%
     .groups = 'drop'
   )
 
-### Ggplot of single threshold
-MC_histograms <-  all_thresholds_long %>% 
+### Ggplot of SSD Tier Thresholds
+# Prepare the data by calculating ERM and filtering
+prepared_data <- all_thresholds_long %>%
   mutate(ERM = case_when(
     grepl("Tissue", Metric) ~ "Tissue Translocation",
-    grepl("Food", Metric) ~ "Food Dilution")) %>% 
-  filter(grepl("Default", Metric),
-         Environment == "Marine",
-        # Tier == "Tier3",
-       # ERM == "Food Dilution"
-        ) %>%
-  ggplot(aes(x = Value)) +
-  geom_density(aes(color = ERM)) +
-  geom_histogram(aes(y = ..density.., fill = ERM), bins = 100, color = "black") +
+    grepl("Food", Metric) ~ "Food Dilution"
+  )) %>%
+  filter(
+    grepl("Default", Metric),
+    Environment == "Marine"
+  )
+
+# Calculate median values for each group
+median_data <- prepared_data %>%
+  group_by(Tier, ERM) %>%
+  summarise(Median = median(Value), .groups = 'drop')
+
+# Assign specific colors based on Tier levels
+tier_colors <- setNames(c("#e2efd9", "#f9e39c", "#f0a95f", "#f0514b"), levels(prepared_data$Tier))
+
+MC_histograms <- ggplot(prepared_data, aes(x = Value)) +
+  geom_density(aes(color = Tier), size = 1) +  # Map 'Tier' for color
+  geom_histogram(aes(y = ..density.., fill = Tier), bins = 150, color = "black", alpha = 0.6, linewidth = 0.05) +  # Map 'Tier' for fill
+  geom_vline(data = median_data, aes(xintercept = Median),
+             linetype = "dotted", color = "black", size = 1.2) +
+#  geom_text(data = median_data, aes(x = Median, y = 0, label = paste0("Median:", scientific(Median, 2))),
+        #    hjust = +1.5, vjust = -1.5, color = "black", size = 6, fontface = "italic") +
   xlab("Particles/L") +
-  scale_x_log10() +
-  #facet_grid(rows = vars(Tier), cols = vars(ERM),
-   #          scales = "free") +
-  facet_wrap(facets = c("Tier", "ERM"), scale = "free",
-             ncol = 2) +
-  theme_bw(base_size = 16) +
-  theme(legend.position = "none")
+  scale_x_log10(labels = comma) +
+  facet_wrap(~ Tier + ERM, scales = "free", ncol = 2) +
+  scale_fill_manual(values = tier_colors) +  # Apply manual colors for fill
+  scale_color_manual(values = tier_colors) +  # Apply manual colors for lines
+  theme_bw(base_size = 20) +
+  theme(
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    legend.position = "none",
+    strip.text = element_blank(),  # This hides the facet wrap titles
+ #  strip.text = element_text(face = "bold", size = 16, margin = margin(t = 1, b = 1)),
+    panel.spacing = unit(0.1, "lines"),
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
 
 MC_histograms
 
 ggsave("scripts/monte carlo/output/MC_histograms.png",
        MC_histograms, 
       dpi = 300,
-      width = 5, height = 7, units = "in")
+      width = 12, height = 9, units = "in")
 
 ### Ggplot of monte carlo SSD thresholds
 all_thresholds_long %>% 
