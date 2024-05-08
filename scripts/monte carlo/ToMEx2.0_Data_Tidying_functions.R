@@ -1,6 +1,6 @@
 #ToMEx 2.0 Data Tidying Script
-#Date: 4/24/23
-#Created By: Leah Thornton Hampton
+#Date: 5/09/23
+#Created By: Leah Thornton Hampton_ MODIFIED by Scott Coffin
 #Description: Script to join validated data templates from ToMEx 2.0 exercise, re-structure to match ToMEx 1.0, bind to existing ToMEx 1.0 Database
 
 #Load Packages
@@ -13,183 +13,7 @@ source("scripts/functions.R") # necessary for surface area, volume calculations
 
 #### Extract Data from Submitted Templates ####
 #### NOTE: ALREADY DONE IN aq_mp_tox_shiny REPO! JUST IMPORT tomex2_input.rds
-
 tomex2.0 <- read_rds("scripts/monte carlo/ref data/tomex2_input.rds")
-
-# 
-# #Set working directory to location with .csv files
-# setwd("ToMEx2.0_Onboarding/Validated Templates/")
-# 
-# #Make a list of all files in folder - templates need to be saved as csv files first
-# file.list <- list.files(pattern='*.csv')
-# 
-# df.list <- lapply(file.list,function(x) {
-# 
-#   #Read data, skipping first line
-#   sheets <- read_csv(x, 
-#                        skip = 1,
-#                        #Specify column types
-#                        col_types = cols(
-#                        #General Information
-#                        DOI = col_character(),
-#                        Authors = col_character(),
-#                        Year = col_double(),
-#                        #Data Category 1: Test Organism
-#                        Species = col_character(),
-#                        `Organism Group` = col_character(),
-#                        Environment = col_character(),
-#                        `Life Stage` = col_character(),
-#                        `In vitro In vivo` = col_character(),
-#                        Sex = col_character(),
-#                        #Data Category 2: Experimental Parameters
-#                        `Experiment Type` = col_character(),
-#                        `Exposure Route` = col_character(),
-#                        `Particle Mix?` = col_character(),
-#                        `Negative Control` = col_character(),
-#                        `Reference Particle` = col_character(),
-#                        `Exposure Media` = col_character(),
-#                        Solvent = col_character(),
-#                        Detergent = col_character(),
-#                        `Media Salinity (ppt)` = col_character(),
-#                        `Media pH` = col_character(),
-#                        `Media Temp (Mean)` = col_character(),
-#                        `Media Temp Min` = col_character(),
-#                        `Media Temp Max` = col_character(),
-#                        `Exposure Duration (Days)` = col_double(),
-#                        `Recovery (Days)` = col_double(),
-#                        Treatments = col_double(),
-#                        Replicates = col_character(),
-#                        `Dosing Frequency` = col_double(),
-#                        `Sample Size` = col_character(),
-#                        `Nominal Dose - Mass` = col_double(),
-#                        `Nominal Dose - Mass Units` = col_character(),
-#                        `Nominal Dose - Particles` = col_double(),
-#                        `Nominal Dose - Particles Units` = col_character(),
-#                        `Nominal Dose Alternative Category` = col_character(),
-#                        `Nominal Dose - Alternative Type` = col_double(),
-#                        `Nominal Dose - Alternative Type Units` = col_character(),
-#                        `Nominal Chemicals Added` = col_character(),
-#                        `Nominal Added Chemical Dose` = col_double(),
-#                        `Nominal Added Chemical Dose Units` = col_character(),
-#                        `Measured Dose - Mass` = col_double(),
-#                        `Measured Dose - Mass Units` = col_character(),
-#                        `Measured Dose - Particles` = col_double(),
-#                        `Measured Dose - Particles Units` = col_character(),
-#                        `Measured Dose Alternative Category` = col_character(),
-#                        `Measured Dose Alternative` = col_double(),
-#                        `Measured Dose Alternative Units` = col_character(),
-#                        `Measured Chemicals Added` = col_character(),
-#                        `Measured Chemical Dose` = col_double(),
-#                        `Measured Chemical Dose Units` = col_character(),
-#                        #Data Category 3: Biological Effects
-#                        Effect = col_character(),
-#                        `Effect Metric` = col_character(),
-#                        Direction = col_character(),
-#                        `Broad Endpoint Category` = col_character(),
-#                        `Specific Endpoint Category` = col_character(),
-#                        Endpoint = col_character(),
-#                        `Level of Biological Organization` = col_character(),
-#                        `Target Cell or Tissue` = col_character(),
-#                        #Data Category 4: Particle Characteristics
-#                        Polymer = col_character(),
-#                        `Density (g/cm^3)` = col_double(),
-#                        `Density (Reported/Estimated)` = col_character(),
-#                        Shape = col_character(),
-#                        Charge = col_character(),
-#                        `Zeta Potential (mV)` = col_character(),
-#                        `Zeta Potential Media` = col_character(),
-#                        `Functional Group` = col_character(),
-#                        `Size Length mm Nominal` = col_double(),
-#                        `Size Length mm Nominal (minimum)` = col_double(),
-#                        `Size Length mm Nominal (maximum)` = col_double(),
-#                        `Size Length mm Measured` = col_double(),
-#                        `Size Length mm Measured (minimum)` = col_double(),
-#                        `Size Length mm Measured (Maximum)` = col_double(),
-#                        `Size Width mm Nominal` = col_double(),
-#                        `Size Width mm Nominal (minimum)` = col_double(),
-#                        `Size Width mm Nominal (maximum)` = col_double(),
-#                        `Size Width mm Measured` = col_double(),
-#                        `Size Width mm Measured (minimum)` = col_double(),
-#                        `Size Width mm Measured (maximum)` = col_double(),
-#                        `Size Height mm Nominal` = col_double(),
-#                        `Size Height mm Nominal (minimum)` = col_double(),
-#                        `Size Height mm Nominal (maximum)` = col_double(),
-#                        `Size Height mm Measured` = col_double(),
-#                        `Size Height mm Measured (minimum)` = col_double(),
-#                        `Size Height mm Measured (maximum)` = col_double(),
-#                        `Weathered or Biofouled?` = col_character(),
-#                        #Data Category 5: Quality Criteria
-#                        `Size Validated?` = col_character(),
-#                        `Shape Validated?` = col_character(),
-#                        `Polymer Validated?` = col_character(),
-#                        `Particle Source` = col_character(),
-#                        `Sodium Azide Present?` = col_character(),
-#                        `Screened for Chemical Contamination?` = col_character(),
-#                        `Particle Cleaning?` = col_character(),
-#                        `Solvent Rinse` = col_character(),
-#                        `Background Contamination Monitored?` = col_character(),
-#                        `Concentration Validated?` = col_character(),
-#                        `Particle Behavior` = col_character(),
-#                        `Uptake Validated?` = col_character(),
-#                        `Uptake Validation Method` = col_character(),
-#                        `Tissue Distribution` = col_character(),
-#                        `Organisms Fed?` = col_character(),
-#                        #Screening Criteria
-#                        `Tech A1` = col_character(),
-#                        `Tech A2` = col_character(),
-#                        `Tech A3` = col_character(),
-#                        `Tech A4` = col_character(),
-#                        `Tech A5` = col_character(),
-#                        `Tech A6` = col_character(),
-#                        `Tech 1` = col_double(),
-#                        `Tech 2` = col_double(),
-#                        `Tech 3` = col_double(),
-#                        `Tech 4` = col_double(),
-#                        `Tech 5` = col_double(),
-#                        `Tech 6` = col_double(),
-#                        `Tech 7` = col_double(),
-#                        `Tech 8` = col_double(),
-#                        `Tech 9` = col_double(),
-#                        `Tech 10` = col_double(),
-#                        `Tech 11` = col_double(),
-#                        `Tech 12` = col_double(),
-#                        `Risk B1` = col_character(),
-#                        `Risk 13` = col_double(),
-#                        `Risk 14` = col_double(),
-#                        `Risk 15` = col_double(),
-#                        `Risk 16` = col_double(),
-#                        `Risk 17` = col_double(),
-#                        `Risk 18` = col_double(),
-#                        `Risk 19` = col_double(),
-#                        `Risk 20` = col_double(),
-#                        `Tech Total` = col_double(),
-#                        `Risk Total` = col_double(),
-#                        `Overall Total` = col_double())) %>%
-#     #Drop any blank rows using empty DOI cell
-#     filter(!is.na(DOI))  
-#     
-#   })
-# 
-# ###STOP! IF THERE ARE PARSING ERRORS AND YOU DON'T FIX THEM NOW - YOU'RE GONNA HAVE A BAD TIME!
-# ###The following named parsers don't match the column names: Recovery (Days) - normal warning - just flagging missing columns from templates w/o recovery period
-# 
-# #Create one data frame from all templates
-# tomex2.0 <- bind_rows(df.list)
-# 
-# #change all column names to lowercase
-# names(tomex2.0) <- tolower(names(tomex2.0))
-# 
-# #remove unwanted character strings from DOI column
-# tomex2.0$doi <- gsub('https://dx.doi.org/','',tomex2.0$doi)
-# tomex2.0$doi <- gsub('https://doi.org/','',tomex2.0$doi)
-# tomex2.0$doi <- gsub('doi.org/','',tomex2.0$doi)
-# tomex2.0$doi <- gsub('https://','',tomex2.0$doi)
-# 
-# #### Match Data Structure to ToMEx 1.0 ####
-# 
-# #Set working directory back to root
-# setwd("..")
-# setwd("..")
 
 #Read in ToMEx 1.0 Tidy Data sets
 #aoc_setup <- readRDS("aoc_setup.RDS")
@@ -843,7 +667,8 @@ tomex2.0_aoc_setup_final = tomex2.0_aoc_setup_final %>% group_by(exposure.media)
                           "high nitrogen and phosphorus lake water", "marine sediment seawater", "natural brackish water", "natural river water",
                           "natural seawater", "seawater", "Seawater", "sediment", "sediment filtered seawater", "sediment freshwater",
                           "sediment seawater", "sterile natural seawater", "uv treated filtered seawater", "uv treated seawater") ~ "Yes",
-    chem.add.nominal %in% c("harbor effluent", "seawater", "sewage") ~ "Yes"))
+    chem.add.nominal %in% c("harbor effluent", "seawater", "sewage") ~ "Yes")) %>% 
+  ungroup()
    
 tomex2.0_aoc_setup_final$DOM_present = fct_na_value_to_level(tomex2.0_aoc_setup_final$DOM_present, "No")
 
@@ -1057,7 +882,8 @@ tomex2.0_aoc_setup_final$media.temp = as.numeric(tomex2.0_aoc_setup_final$media.
 # Calculate the median temperature for each Species
 median_temp_by_group = tomex2.0_aoc_setup_final %>%
   group_by(species_f) %>%
-  summarize(median_temp = median(media.temp, na.rm = TRUE))
+  summarize(median_temp = median(media.temp, na.rm = TRUE)) %>% 
+  ungroup()
 
 # Join the mean temperature back to the original data
 tomex2.0_aoc_setup_final = left_join(tomex2.0_aoc_setup_final, median_temp_by_group, by = "species_f")
@@ -1072,7 +898,8 @@ tomex2.0_aoc_setup_final = tomex2.0_aoc_setup_final %>% select(-median_temp)
 # Calculate the mean temperature for each organism group
 median_temp_by_group = tomex2.0_aoc_setup_final %>%
   group_by(org_f) %>%
-  summarize(median_temp = median(media.temp, na.rm = TRUE))
+  summarize(median_temp = median(media.temp, na.rm = TRUE)) %>% 
+  ungroup()
 
 # Join the mean temperature back to the original data
 tomex2.0_aoc_setup_final <- left_join(tomex2.0_aoc_setup_final, median_temp_by_group, by = "org_f")
@@ -1080,6 +907,21 @@ tomex2.0_aoc_setup_final <- left_join(tomex2.0_aoc_setup_final, median_temp_by_g
 # Fill NA values of media.temp with the calculated mean temperature
 tomex2.0_aoc_setup_final <- tomex2.0_aoc_setup_final %>%
   mutate(media.temp = ifelse(is.na(media.temp), median_temp, media.temp))
+
+# Populate NA values for quality scores where studies are not "particle only"
+tomex2.0_aoc_setup_final_test <- tomex2.0_aoc_setup_final %>% 
+  mutate(technical.quality = case_when(exp_type_f == "Particle Only" ~ technical.quality,
+                                       exp_type_f == "Leachate" ~ NA_real_,
+                                       exp_type_f == "Chemical Co-Exposure" ~ NA_real_,
+                                       exp_type_f == "Chemical Transfer" ~ NA_real_)) %>% 
+  mutate(risk.quality = case_when(exp_type_f == "Particle Only" ~ risk.quality,
+                                  exp_type_f == "Leachate" ~ NA_real_,
+                                  exp_type_f == "Chemical Co-Exposure" ~ NA_real_,
+                                  exp_type_f == "Chemical Transfer" ~ NA_real_)) %>%
+  mutate(total.quality = case_when(exp_type_f == "Particle Only" ~ total.quality,
+                                   exp_type_f == "Leachate" ~ NA_real_,
+                                   exp_type_f == "Chemical Co-Exposure" ~ NA_real_,
+                                   exp_type_f == "Chemical Transfer" ~ NA_real_))
 
 #Save RDS file
 #saveRDS(tomex2.0_aoc_setup_final, file = "aoc_setup_tomex2.RDS")
