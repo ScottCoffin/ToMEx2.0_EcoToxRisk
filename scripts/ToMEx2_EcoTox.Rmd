@@ -701,6 +701,12 @@ Note: Values may be slightly different than those presented in the shiny app as 
 
 ## Monte Carlo Alignments
  NOTE: this is done in scripts/monte carlo/Master_Data_Tidying_Monte_Carlo.R. The reason is that the data prep scripts are extremely complicated, and preserving every nuance with perfect fidelity through copying into this markdown script has proven impossible. Just import the final RDS file generated from that script.
+ 
+```{r}
+MC_results <- readRDS("monte carlo/output/MC_results.rds")
+summary_stats_base_thresholds <- readRDS("monte carlo/output/summary_stats_base_thresholds.rds")
+```
+ 
 ```{r}
 aoc_MC <- readRDS("monte carlo/output/aoc_MC.rds")
 n_sim <- aoc_MC$n_sim[[1]]
@@ -762,6 +768,124 @@ left_join(aoc_d_simple %>% select(c(rowid, particles.mL.ox.stress, particles.mL.
 
 ```{r}
 left_join(aoc_d_simple, aoc_final_simple, by ="rowid")
+```
+
+### Threshold distributions
+```{r}
+# Extract and combine base_thresholds for each environment
+all_thresholds_marine <- map(MC_results, ~ .x$base_thresholds$marine) %>% 
+  bind_rows(.id = "simulation_id")
+
+all_thresholds_freshwater <- map(MC_results, ~ .x$base_thresholds$freshwater) %>% 
+  bind_rows(.id = "simulation_id")
+
+all_thresholds_freshwater_marine <- map(MC_results, ~ .x$base_thresholds$freshwater_marine) %>% 
+  bind_rows(.id = "simulation_id")
+
+# Combine marine and freshwater data into one data frame with an additional "Environment" column
+all_thresholds_combined <- bind_rows(
+  mutate(all_thresholds_marine, Environment = "Marine"),
+  mutate(all_thresholds_freshwater, Environment = "Freshwater"),
+  mutate(all_thresholds_freshwater_marine, Environment = "freshwater_marine"),
+  .id = "simulation_id"
+)
+
+# Pivot data longer if the data structure requires it
+# Assuming that your data might already be in a wide format and needs to be made long
+all_thresholds_long <- all_thresholds_combined %>%
+  pivot_longer(
+    cols = -c(Tier, simulation_id, Environment),
+    names_to = "Metric",
+    values_to = "Value"
+  )
+
+# Calculate summary statistics
+summary_stats_base_thresholds <- all_thresholds_long %>%
+  group_by(Tier, Environment, Metric) %>%
+  summarise(
+    Mean = mean(Value, na.rm = TRUE),
+    Median = median(Value, na.rm = TRUE),
+    Std_Dev = sd(Value, na.rm = TRUE),
+    N_sim = n(),
+    .groups = 'drop'
+  )
+
+### Ggplot of SSD Tier Thresholds
+# Prepare the data by calculating ERM and filtering
+prepared_data <- all_thresholds_long %>%
+  mutate(ERM = case_when(
+    grepl("Tissue", Metric) ~ "Tissue Translocation",
+    grepl("Food", Metric) ~ "Food Dilution"
+  )) %>%
+  filter(
+    grepl("Default", Metric),
+    Environment == "Marine"
+  )
+
+# Calculate median values for each group
+median_data <- prepared_data %>%
+  group_by(Tier, ERM) %>%
+  summarise(Median = median(Value), .groups = 'drop')
+
+# Assign specific colors based on Tier levels
+tier_colors <- setNames(c("#e2efd9", "#f9e39c", "#f0a95f", "#f0514b"), levels(prepared_data$Tier))
+
+MC_histograms_base <- ggplot(prepared_data, aes(x = Value)) +
+  geom_density(aes(color = Tier), size = 1) +  # Map 'Tier' for color
+  geom_histogram(aes(y = ..density.., fill = Tier), bins = 150, color = "black", alpha = 0.6, linewidth = 0.05) +  # Map 'Tier' for fill
+  geom_vline(data = median_data, aes(xintercept = Median),
+             linetype = "dotted", color = "black", linewidth = 1.2) +
+#  geom_text(data = median_data, aes(x = Median, y = 0, label = paste0("Median:", scientific(Median, 2))),
+        #    hjust = +1.5, vjust = -1.5, color = "black", size = 6, fontface = "italic") +
+  xlab("Particles/L") +
+  scale_x_log10(labels = scales::comma) +
+  facet_wrap(~ Tier + ERM, scales = "free", ncol = 2) +
+  scale_fill_manual(values = tier_colors) +  # Apply manual colors for fill
+  scale_color_manual(values = tier_colors)  # Apply manual colors for lines
+
+library(ggdark)
+MC_histograms_dark <- MC_histograms_base +
+  dark_theme_bw(base_size = 20) +
+  theme(
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    legend.position = "none",
+    strip.text = element_blank(),  # This hides the facet wrap titles
+    #  strip.text = element_text(face = "bold", size = 16, margin = margin(t = 1, b = 1)),
+    panel.spacing = unit(0.1, "lines"),
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+MC_histograms_light <- MC_histograms_base +
+  theme_bw(base_size = 20) +
+  theme(
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    legend.position = "none",
+    strip.text = element_blank(),  # This hides the facet wrap titles
+ #  strip.text = element_text(face = "bold", size = 16, margin = margin(t = 1, b = 1)),
+    panel.spacing = unit(0.1, "lines"),
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+
+ggsave("../output/Manuscript_Figs/MC_histograms.png",
+       MC_histograms_light, 
+      dpi = 300,
+      width = 12, height = 9, units = "in")
+
+ggsave("../output/presentation_Figs/MC_histograms.png",
+       MC_histograms_dark, 
+       dpi = 300,
+       width = 10, height = 5,
+       units = "in")
+
+MC_histograms_light
+
 ```
 
 

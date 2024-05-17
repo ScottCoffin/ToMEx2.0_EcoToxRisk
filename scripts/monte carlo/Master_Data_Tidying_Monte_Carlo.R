@@ -332,7 +332,10 @@ param_values <- data.frame(
 )
 
 #### Define Model Wrapper
-model_wrapper <- function(params){
+model_wrapper <- function(params, iteration){
+  
+  # Print the current iteration
+  print(paste("Iteration:", iteration))
   
   #unpack parameters
   # Ensure all extracted parameters are correctly coerced to numeric
@@ -555,7 +558,7 @@ for (i in 1:nrow(param_values)) {
   param_set <- param_values[i, ]
   
   # Run the model function
-  MC_results[[i]] <- model_wrapper(param_set)
+  MC_results[[i]] <- model_wrapper(param_set, i)
 }
 
 
@@ -620,7 +623,7 @@ median_data <- prepared_data %>%
 # Assign specific colors based on Tier levels
 tier_colors <- setNames(c("#e2efd9", "#f9e39c", "#f0a95f", "#f0514b"), levels(prepared_data$Tier))
 
-MC_histograms <- ggplot(prepared_data, aes(x = Value)) +
+MC_histograms_base <- ggplot(prepared_data, aes(x = Value)) +
   geom_density(aes(color = Tier), size = 1) +  # Map 'Tier' for color
   geom_histogram(aes(y = ..density.., fill = Tier), bins = 150, color = "black", alpha = 0.6, linewidth = 0.05) +  # Map 'Tier' for fill
   geom_vline(data = median_data, aes(xintercept = Median),
@@ -631,7 +634,24 @@ MC_histograms <- ggplot(prepared_data, aes(x = Value)) +
   scale_x_log10(labels = comma) +
   facet_wrap(~ Tier + ERM, scales = "free", ncol = 2) +
   scale_fill_manual(values = tier_colors) +  # Apply manual colors for fill
-  scale_color_manual(values = tier_colors) +  # Apply manual colors for lines
+  scale_color_manual(values = tier_colors)  # Apply manual colors for lines
+
+library(ggdark)
+MC_histograms_dark <- MC_histograms_base +
+  dark_theme_bw(base_size = 20) +
+  theme(
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    legend.position = "none",
+    strip.text = element_blank(),  # This hides the facet wrap titles
+    #  strip.text = element_text(face = "bold", size = 16, margin = margin(t = 1, b = 1)),
+    panel.spacing = unit(0.1, "lines"),
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+MC_histograms_light <- MC_histograms_base +
   theme_bw(base_size = 20) +
   theme(
     strip.background = element_blank(),
@@ -645,12 +665,18 @@ MC_histograms <- ggplot(prepared_data, aes(x = Value)) +
     axis.ticks.y = element_blank()
   )
 
-MC_histograms
+MC_histograms_light
 
 ggsave("scripts/monte carlo/output/MC_histograms.png",
-       MC_histograms, 
+       MC_histograms_light, 
       dpi = 300,
       width = 12, height = 9, units = "in")
+
+ggsave("output/presentation_Figs/MC_histograms.png",
+       MC_histograms_dark, 
+       dpi = 300,
+       width = 10, height = 5,
+       units = "in")
 
 ### Ggplot of monte carlo SSD thresholds
 all_thresholds_long %>% 
@@ -787,6 +813,7 @@ x2D_set <- 5000 #um
 
 # Load the necessary packages
 library(sensobol)
+library(truncnorm)
 ### Application ###
 # 1. Generate Samples for the Parameters: Generate samples for your parameters using a suitable sampling technique such as Sobol' sequences.
 # Define the parameter names
@@ -797,7 +824,9 @@ params <- c("alpha", "a.sa", "a.v", "a.m", "a.ssa",
             "upper.tissue.trans.size.um")
 
 # Number of samples
-N <- 10
+N <- 1000
+matrices <- c("A", "B", "AB", "BA")
+first <- total <- "azzini"
 
 # Generate the Sobol' sequence
 mat <- sobol_matrices(N = N, 
@@ -807,7 +836,7 @@ mat <- sobol_matrices(N = N,
 
 # Convert to data.table
 # Convert to data.table
-mat <- as.data.table(mat)
+#mat <- as.data.table(mat)
 
 # Transform each column to the specified probability distribution
 mat[, "alpha" := rnorm(.N, mean = 2.07, sd = 0.07)]
@@ -815,10 +844,10 @@ mat[, "a.sa" := rnorm(.N, mean = 1.5, sd = 0.009)]
 mat[, "a.v" := rnorm(.N, mean = 1.48, sd = 0.063)]
 mat[, "a.m" := rnorm(.N, mean = 1.32, sd = 0.009)]
 mat[, "a.ssa" := rnorm(.N, mean = 1.98, sd = 0.297)]
-mat[, "R.ave.water.marine" := rnorm(.N, mean = 0.77, sd = 0.29)]
-mat[, "R.ave.water.freshwater" := rnorm(.N, mean = 0.67, sd = 0.28)]
-mat[, "R.ave.sediment.marine" := rnorm(.N, mean = 0.75, sd = 0.30)]
-mat[, "R.ave.sediment.freshwater" := rnorm(.N, mean = 0.70, sd = 0.33)]
+mat[, "R.ave.water.marine" := rtruncnorm(.N, a = 0.0001, b= 0.9999, mean = 0.77, sd = 0.29)]
+mat[, "R.ave.water.freshwater" := rtruncnorm(.N, a = 0.0001, b= 0.9999, mean = 0.67, sd = 0.28)]
+mat[, "R.ave.sediment.marine" := rtruncnorm(.N, a = 0.0001, b= 0.9999, mean = 0.75, sd = 0.30)]
+mat[, "R.ave.sediment.freshwater" := rtruncnorm(.N, a = 0.0001, b= 0.9999, mean = 0.70, sd = 0.33)]
 mat[, "sim_beta_log10_body_length" := rnorm(.N, mean = 0.9341, sd = 0.1376)]
 mat[, "sim_body_length_intercept" := rnorm(.N, mean = 1.1200, sd = 0.3222)]
 
@@ -829,8 +858,8 @@ se_beta_0 <- 0.3963612
 se_beta_1 <- 0.006657993
 
 # Simulate beta_0 and beta_1
-sim_beta_0 <- rnorm(N * 1.2, mean = beta_0, sd = se_beta_0)
-sim_beta_1 <- rnorm(N * 1.2, mean = beta_1, sd = se_beta_1)
+sim_beta_0 <- rnorm(nrow(mat) * 1.2, mean = beta_0, sd = se_beta_0)
+sim_beta_1 <- rnorm(nrow(mat) * 1.2, mean = beta_1, sd = se_beta_1)
 
 # Calculate X50 for each simulation
 sim_X50 <- -sim_beta_0 / sim_beta_1
@@ -838,8 +867,8 @@ sim_X50 <- -sim_beta_0 / sim_beta_1
 # Truncate distribution to not fall below 0
 upper.tissue.trans.size.um_samples <- sim_X50 %>% 
   data.frame() %>% 
-  filter(. > 0) %>% 
-  slice(1:N)
+  filter(. > x1M_set) %>% 
+  slice(1:nrow(mat))
 upper.tissue.trans.size.um_samples <- as.numeric(upper.tissue.trans.size.um_samples$.)
 
 # Replace Sobol' matrix column for upper.tissue.trans.size.um
@@ -850,18 +879,20 @@ mat <- as.data.frame(mat)
 
 
 ## alternatrively, just use param_values derived above
-mat <- param_values[1:N,]
+#mat <- param_values[1:N,]
 
 # 2. Run the Model for Each Sample Set: Run your model for each set of parameter samples.
 # Initialize a list to store the results
-MC_results <- vector("list", N)
+MC_results <- vector("list", nrow(mat))
 
 # Run the model for each sample
-for (i in 1:N) {
+for (i in 1:nrow(mat)) {
   param_set <- mat[i, ]
   
-  MC_results[[i]] <- model_wrapper(param_set)
+  MC_results[[i]] <- model_wrapper(param_set, i)
 }
+
+saveRDS(MC_results, "scripts/monte carlo/output/MC_results_sobol.rds")
 
 
 # Extract and combine marine and freshwater thresholds
@@ -878,76 +909,201 @@ Y_freshwater_tissue_T3 <- as.numeric(all_thresholds_freshwater_sobol %>% filter(
 
 
 #histogram of results
-plot_uncertainty(Y = Y_marine_food_T3, N= N)
+hist(Y_marine_food_T3)
+hist(Y_freshwater_food_T3)
+
+#stopped MC at iteration = 2037, so need to subset mat to that value
+mat2 <- mat[1:2037,]
+
+
 
 #scatter plot of parameter interactions
-plot_scatter(data = mat, N = N, Y = Y_marine_food_T3, params = params, method = "bin")
+scatter_marine_food_t3 <- sensobol::plot_scatter(data = mat2, N = N, Y = Y_marine_food_T3, params = params, method = "bin") + ggtitle("Scatter Plot: Marine Food")
+scatter_freshwater_food_t3 <- sensobol::plot_scatter(data = mat2, N = N, Y = Y_freshwater_food_T3, params = params, method = "bin") + ggtitle("Scatter Plot: Freshwater Food")
+scatter_marine_tissue_t3 <- sensobol::plot_scatter(data = mat2, N = N, Y = Y_marine_tissue_T3, params = params, method = "bin") + ggtitle("Scatter Plot: Marine Tissue")
+scatter_freshwater_tissue_t3 <- sensobol::plot_scatter(data = mat2, N = N, Y = Y_freshwater_tissue_T3, params = params, method = "bin") + ggtitle("Scatter Plot: Freshwater Tissue")
+ 
+# Arrange the plots into a 2x2 matrix with a common legend
+scatterplots <- combined_plot <- ggarrange(
+  scatter_marine_food_t3, scatter_freshwater_food_t3,
+  scatter_marine_tissue_t3, scatter_freshwater_tissue_t3,
+  ncol = 2, nrow = 2, common.legend = TRUE, legend = "bottom"
+)
+
+scatterplots
+
+
+ggsave(filename = "sobol_scatterplots.jpg",
+       dpi = 300,
+       path = "output/Manuscript_Figs", 
+       plot = scatterplots, width = 14, height = 10, units = "in")
+
+
 
 # multiscatter
-plot_multiscatter(data = mat, 
+plot_multiscatter(data = mat2, 
                   N = N,
                   Y = Y_marine_food_T3, 
-                  params = c("alpha", "upper.tissue.trans.size.um", "R.ave.water.marine"))
+                  params = c("alpha", "upper.tissue.trans.size.um", "R.ave.water.marine", "sim_body_length_intercept"))
 
-# rearrange data for sensitivity analysis
-full.dt <- data.table(cbind(Y_freshwater_tissue_T3, mat))
 
-#transform the resulting data.tabnle from wide to long format:
-indices.dt <- melt(full.dt, measure.vars = params)
+#### checks ##
+# Check for NAs in parameter values
+any(is.na(param_values))
 
-indices <- indices.dt[, sobol_indices(Y = Y_freshwater_tissue_T3, N = N, params = params,
-                                      order = "first", boot = F,
-                                      first = "saltelli"#, R = 100,
-                                      )$results]
+# Check for NAs in model output
+any(is.na(Y_marine_food_T3))
+any(is.na(Y_freshwater_food_T3))
+any(is.na(Y_marine_tissue_T3))
+any(is.na(Y_freshwater_tissue_T3))
 
-indices <- full.dt[, sobol_indices(Y = Y_freshwater_tissue_T3, N = N, params = params,
-                                   order = "first", boot = F,
-                                   first = "jensen")$results]
+# Check variance of parameters
+apply(param_values, 2, var)
 
-# Calculate Sobol' indices for marine thresholds
-indices_marine <- sobol_indices(Y = y, # Y_marine_food_T3,
-                                N = N, params = params, 
-                                boot = TRUE, R = 1000, conf = 0.95, type = "norm",
-                                first = "saltelli", order = "first")
+# Check variance of outputs
+var(Y_marine_food_T3)
+var(Y_freshwater_tissue_T3)
 
-# Calculate Sobol' indices for freshwater thresholds
-indices_freshwater <- sobol_indices(Y = Y_freshwater, N = N, params = names(params), boot = TRUE, R = 1000, conf = 0.95,
-                                    first = "saltelli")
+# Check for NAs in model output
+valid_indices <- complete.cases(Y_marine_food_T3, Y_marine_tissue_T3, Y_freshwater_tissue_T3, Y_freshwater_food_T3)
+Y_marine_food_T3_valid <- Y_marine_food_T3[valid_indices]
+Y_marine_tissue_T3_valid <- Y_marine_tissue_T3[valid_indices]
+Y_freshwater_food_T3_valid <- Y_freshwater_food_T3[valid_indices]
+Y_freshwater_tissue_T3_valid <- Y_freshwater_tissue_T3[valid_indices]
+param_values_valid <- param_values[valid_indices, ]
 
-# Print results
-print(indices_marine)
-print(indices_freshwater)
+
+# Update N to the number of valid samples
+N_valid <- nrow(param_values_valid)
+#N must be integer, with Y = 14 * N
+N <- N_valid / 14
+N <- as.integer(N)
+N
+length_y_rows <- N * 14
+#139
+
+R <- 2000 #bootstrap iterations
+
+ind.marine_food_T3 <- sobol_indices(Y = Y_marine_food_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R, type = type, conf = conf)
+ind.marine_tissue_T3 <- sobol_indices(Y = Y_marine_tissue_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R, type = type, conf = conf)
+ind.freshwater_food_T3 <- sobol_indices(Y = Y_freshwater_food_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R, type = type, conf = conf)
+ind.freshwater_tissue_T3 <- sobol_indices(Y = Y_freshwater_tissue_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R, type = type, conf = conf)
+
+
+#The output of sobol_indices() is an S3 object of class sensobol, with the results stored in the component results. To improve the visualization of the object, we set the number of digits in each numerical column to 3:
+cols <- colnames(ind.marine_food_T3$results)[1:5]
+ind.marine_food_T3$results[,(cols):=round(.SD,3),.SDcols=(cols)]
+
+ind.marine_food_T3
+#The output informs of the first and total-order estimators used in the calculation, thetotal numberofmodel runsandthesumof thefirst-order indices: if (Pk i=1Si)<1, themodel is non-additive.
+
+#WecanalsocomputetheSobol’ indicesofadummyparameter, i.e., aparameter thathas no influence on themodel output, to estimate thenumerical approximationerror. This will beused later onto identifyparameterswhose contributionto theoutputvariance is less than the approximationerror, and therefore cannot be considered influential. Like sobol_indices(),thefunctionsobol_dummy()allowstoobtainpointestimates(thedefault) orbootstrapestimates. Inthisexampleweusethelatteroption:
+ind.marine_food_T3_dummy <- sobol_dummy(Y = Y_marine_food_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R)
+ind.marine_tissue_T3_dummy <- sobol_dummy(Y = Y_marine_tissue_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R)
+ind.freshwater_food_T3_dummy <- sobol_dummy(Y = Y_freshwater_food_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R)
+ind.freshwater_tissue_T3_dummy <- sobol_dummy(Y = Y_freshwater_tissue_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R)
+
+
+plot(ind.marine_food_T3, dummy = ind.marine_food_T3_dummy)
+plot(ind.marine_tissue_T3, dummy = ind.marine_tissue_T3_dummy)
 
 # 4. Calculate Sobol' Indices: Calculate the Sobol' indices using the results.
 # Function to plot Sobol' indices
 plot_indices <- function(indices, title) {
-  ggplot(indices$results, aes(x = parameters, y = original, fill = sensitivity)) +
+  indices$results %>% 
+    mutate(sensitivity = case_when(sensitivity == "Si" ~ "First-Order Sobol Index",
+                                   sensitivity == "Ti" ~ "Total-Order Sobol Index")) %>% 
+  ggplot(aes(y = parameters, x = original, fill = sensitivity)) +
     geom_bar(stat = "identity", position = "dodge") +
-    labs(title = title, x = "Parameters", y = "Sobol' Index") +
-    theme_minimal()
+    geom_errorbarh(aes(xmin = low.ci, xmax = high.ci), 
+                   position = position_dodge(0.9), height = 0.25,
+                   color = "black") +
+    labs(#title = title,
+         #y = "Parameters",
+         x = "Sobol' Index") +
+    scale_y_discrete(position = "right") +  # Duplicate y-axis on the right side
+    theme_minimal(base_size = 14) +
+    theme(legend.title = element_blank())
 }
 
 # Plot Sobol' indices for marine thresholds
-plot_indices(indices_marine, "Sobol' Indices for Marine Thresholds")
+sobol_plot_marine_food <-  plot_indices(ind.marine_food_T3, "Sobol' Indices for Marine Food Thresholds")
 
 # Plot Sobol' indices for freshwater thresholds
-plot_indices(indices_freshwater, "Sobol' Indices for Freshwater Thresholds")
+sobol_plot_freshwater_tissue <-  plot_indices(ind.freshwater_tissue_T3, "Sobol' Indices for Freshwater Tissue Thresholds")
+
+# Plot Sobol' indices for freshwater thresholds
+sobol_plot_marine_tissue <-  plot_indices(ind.marine_tissue_T3, "Sobol' Indices for Marine Tissue Thresholds")
+
+# Plot Sobol' indices for freshwater thresholds
+sobol_plot_freshwater_food <-  plot_indices(ind.freshwater_food_T3, "Sobol' Indices for Freshwater Food Thresholds")
 
 
+library(ggpubr)
+indices <- ggarrange(sobol_plot_marine_food + labs(title = "Food Dilution (Marine)") +
+            theme(axis.title.x = element_blank(), axis.title.y = element_blank(), plot.title = element_text(hjust = 0.5)),
+          sobol_plot_freshwater_food + labs(title = "Food Dilution (Freshwater)") +
+            theme(axis.text.y = element_blank(), axis.title.y = element_blank(),axis.title.x = element_blank(), plot.title = element_text(hjust = 0.5)),
+          sobol_plot_marine_tissue + labs(title = "Tissue Translocation (Marine)") + theme(axis.title.y = element_blank(), plot.title = element_text(hjust = 0.5)),# + labs(y = "Tissue Translocation"),
+          sobol_plot_freshwater_tissue + labs(title = "Tissue Translocation (Freshwater)") + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.title = element_text(hjust = 0.5)),
+          common.legend = TRUE, legend = "bottom",
+          labels = c("A", "B", "C", "D"))
 
-
+ggsave(filename = "sobol_indices.jpg",
+       dpi = 300,
+       path = "output/Manuscript_Figs", 
+       plot = indices, width = 12, height = 9, units = "in")
 
 
 
 
 #### TUTORIAL ###
+
+N <- 100
+params <- c("$r$", "$K$", "$N_0$")
+matrices <- c("A", "B", "AB", "BA")
+first <- total <- "azzini"
+order <- "second"
+R <- 10 ^ 3
+type <- "percent" 
+conf <- 0.95
+
+population_growth <- function (r, K, X0) {
+  X<- X0 
+  for (i in 0:20) {
+    X <- X + r * X * (1- X / K)}
+  return(X)
+}
+
+population_growth_run <- function (dt) {return(mapply(population_growth, dt[, 1], dt[, 2], dt[, 3]))}
+mat <- sobol_matrices(matrices = matrices, N = N, params = params, order = order, type = "LHS")
+
+mat[, "$r$"] <- qnorm(mat[, "$r$"], 1.7, 0.3)
+mat[, "$K$"] <- qnorm(mat[, "$K$"], 40, 1) 
+mat[, "$N_0$"] <- qunif(mat[, "$N_0$"], 10, 50)
+
+y <- population_growth_run(mat)
+plot_uncertainty(Y = y, N = N) + labs(y = "Counts", x = "$y$")
+plot_scatter(data = mat, N = N, Y = y, params = params, method = "bin")
+plot_multiscatter(data = mat, N = N, Y = y, params = params, smpl = 2^11)
+ind <- sobol_indices(matrices = matrices, Y = y, N = N, params = params, first = first, 
+                     total = total, order = order, boot = TRUE, R = R, 
+                     parallel = "no", type = type, conf = conf)
+cols <- colnames(ind$results)[1:5]
+ind$results[, (cols):= round(.SD, 3), .SDcols = (cols)]
+ind
+ind.dummy<-sobol_dummy(Y=y,N=N,params=params,boot=TRUE,R=R)
+plot(ind,dummy=ind.dummy)
+plot(ind, order = "second")
+
 # quasi-random numbers are assumed to be the safest bet when selecting a sampling algorithm for a function of unknown behavior.
 # Generate samples
 set.seed(123)
  
 # example from chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://cran.r-project.org/web/packages/sensobol/vignettes/sensobol.pdf
-N <- 2 ^ 10 #sample size N of the base sample matrix
-k <- 8 #number of uncertaint parameters
+#N <- 2 ^ 10 #sample size N of the base sample matrix
+N = 100
+k <- 12 #number of uncertaint parameters
 params <- paste("$x_", 1:k, "$", sep = "") #vector with the parameters' name
 R <- 10^3 #bootsrap number
 type <- "norm"  #bootstrap confidence interval type
@@ -989,63 +1145,6 @@ ind
 ind.dummy <- sobol_dummy(Y = y, N = N, params = params, boot = TRUE, R = R)
 
 plot(ind, dummy = ind.dummy)
-
-
-# Run the model on the generated samples
-model_output <- ishigami_function(samples)
-
-
-# library(sensitivity)
-# 
-# #### Step 2: Generate Samples for Sensitivity Analysis ###
-# Define parameter ranges based on your existing data (assuming a normal distribution around your samples)
-param.dists <- list(
-  alpha = runif(100, min(alpha_samples), max(alpha_samples)),
-  a.sa = runif(100, min(a.sa_samples), max(a.sa_samples)),
-  a.v = runif(100, min(a.v_samples), max(a.v_samples)),
-  a.m = runif(100, min(a.m_samples), max(a.m_samples)),
-  a.ssa = runif(100, min(a.ssa_samples), max(a.ssa_samples)),
-  R.ave.water.marine = runif(100, min(R.ave.water.marine_samples), max(R.ave.water.marine_samples)),
-  R.ave.water.freshwater = runif(100, min(R.ave.water.freshwater_samples), max(R.ave.water.freshwater_samples)),
-  R.ave.sediment.marine = runif(100, min(R.ave.sediment.marine_samples), max(R.ave.sediment.marine_samples)),
-  R.ave.sediment.freshwater = runif(100, min(R.ave.sediment.freshwater_samples), max(R.ave.sediment.freshwater_samples)),
-  sim_beta_log10_body_length = runif(100, min(sim_beta_log10_body_length_samples), max(sim_beta_log10_body_length_samples)),
-  sim_body_length_intercept = runif(100, min(sim_body_length_intercept_samples), max(sim_body_length_intercept_samples))
-)
-
-param_ranges <- list(
-  alpha = seq(min(alpha_samples), max(alpha_samples), length.out = 100),
-  a_sa = seq(min(a.sa_samples), max(a.sa_samples), length.out = 100),
-  a_v = seq(min(a.v_samples), max(a.v_samples), length.out = 100),
-  a_m = seq(min(a.m_samples), max(a.m_samples), length.out = 100),
-  a_ssa = seq(min(a.ssa_samples), max(a.ssa_samples), length.out = 100),
-  R_ave_water_marine = seq(min(R.ave.water.marine_samples), max(R.ave.water.marine_samples), length.out = 100),
-  R_ave_water_freshwater = seq(min(R.ave.water.freshwater_samples), max(R.ave.water.freshwater_samples), length.out = 100),
-  R_ave_sediment_marine = seq(min(R.ave.sediment.marine_samples), max(R.ave.sediment.marine_samples), length.out = 100),
-  R_ave_sediment_freshwater = seq(min(R.ave.sediment.freshwater_samples), max(R.ave.sediment.freshwater_samples), length.out = 100),
-  sim_beta_log10_body_length = seq(min(sim_beta_log10_body_length_samples), max(sim_beta_log10_body_length_samples), length.out = 100),
-  sim_body_length_intercept = seq(min(sim_body_length_intercept_samples), max(sim_body_length_intercept_samples), length.out = 100)
-)
-
-# Generate sampling matrices
-library(randtoolbox)
-n <- 100  # number of samples
-X1 <- sobol(n, length(param.dists), scrambling = 0)
-X2 <- sobol(n, length(param.dists), scrambling = 0)
-
-# Scale X1 and X2 to the parameter ranges
-scale01 <- function(x, min, max) min + (max - min) * x
-X1 <- apply(X1, 2, scale01, min = sapply(param.dists, min), max = sapply(param.dists, max))
-X2 <- apply(X2, 2, scale01, min = sapply(param.dists, min), max = sapply(param.dists, max))
-
-#Step 3: Run the Model with Generated Samples
-# Define the names corresponding to each index in your param.dists
-param_names <- names(unlist(param.dists))
-
-# Wrap the call in another function to set names on the vector
-Y1 <- apply(X1, 1, function(x) model_wrapper(setNames(x, param_names)))
-Y2 <- apply(X2, 1, function(x) model_wrapper(setNames(x, param_names)))
-
 
 
 #############################################################################################################
