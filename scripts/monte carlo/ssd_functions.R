@@ -8,12 +8,14 @@ SSD_function_t1 <- function(filtered.data, hcxlcl){
   #data collapse
   collapsed <- filtered.data %>% 
     group_by(Species, Group) %>% 
-    summarize(Conc = quantile(dose_new, 0.25))
+    summarize(Conc = quantile(dose_new, 0.25),
+              .groups = "drop")
   # metadata
   metadata <- filtered.data %>% 
     summarize(n_species = n_distinct(Species),
               n_groups = n_distinct(Group),
-              n_datapoints = n())
+              n_datapoints = n(),
+              .groups = "drop")
   # If there are less than 6 rows, create and return a list with NA and metadata
   if (nrow(collapsed) < 6) {
     result <- list(
@@ -51,12 +53,14 @@ SSD_function_t2 <- function(filtered.data, hcx){
   #data collapse
   collapsed <- filtered.data %>% 
     group_by(Species, Group) %>% 
-    summarize(Conc = quantile(dose_new, 0.25))
+    summarize(Conc = quantile(dose_new, 0.25),
+              .groups = "drop")
   # metadata
   metadata <- filtered.data %>% 
     summarize(n_species = n_distinct(Species),
               n_groups = n_distinct(Group),
-              n_datapoints = n())
+              n_datapoints = n(),
+              .groups = "drop")
   
   # If there are less than 6 rows, create and return a list with NA and metadata
   if (nrow(collapsed) < 6) {
@@ -99,7 +103,8 @@ SSD_function_t3_4 <- function(filtered.data, hcx){
     filter(risk.13 != 1,
            bio_f %in% c("Organism", "Population")) %>% 
     group_by(Species, Group) %>% 
-    summarize(Conc = quantile(dose_new, 0.50))
+    summarize(Conc = quantile(dose_new, 0.50),
+              .groups = "drop")
   # metadata
   metadata <- filtered.data %>% 
     #filter specific things for tiers 3 and 4
@@ -107,7 +112,8 @@ SSD_function_t3_4 <- function(filtered.data, hcx){
            bio_f %in% c("Organism", "Population")) %>% 
     summarize(n_species = n_distinct(Species),
               n_groups = n_distinct(Group),
-              n_datapoints = n())
+              n_datapoints = n(),
+              .groups = "drop")
   
   # If there are less than 6 rows, create and return a list with NA and metadata
   if (nrow(collapsed) < 6) {
