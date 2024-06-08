@@ -9,7 +9,7 @@ boxplot_comp = function(tomex_values, ref_dataset, tomex_color, ref_color) {
   par(bty = "n")
   max_size = max(c(ref_dataset$average + ref_dataset$std, max(tomex_values, na.rm = T)))
   
-  for(i in 1:nrow(dat.lengths)){
+  for(i in 1:nrow(ref_dataset)){
     
     label = ref_dataset[i,1]
     quarts = unlist(ref_dataset[i,2:6], use.names = FALSE)
@@ -28,7 +28,7 @@ boxplot_comp = function(tomex_values, ref_dataset, tomex_color, ref_color) {
       layout(matrix(c(1:nplots), nrow = 1, ncol = nplots, byrow = TRUE))
       boxplot(tomex_values, whisklty=0, staplelty=0, outline = FALSE, plot = TRUE, ylim = c(0,max_size + 10), boxfill = tomex_color)
       mtext("Particle length (µm)", side = 2, line = 3, cex = 0.8)
-      mtext("ToMEx2.0", side = 1, at = 1, cex = 0.8) 
+      mtext("ToMEx 2.0", side = 1, at = 1, cex = 0.8) 
       arrows(0.9, mean_tomex, 1.1, mean_tomex, length = 0, lwd = 3, col = "grey40")
       arrows(1, sd_tomex_up,1, sd_tomex_low, length= 0, lwd = 1, col = "grey40")
       abline(h = 0)

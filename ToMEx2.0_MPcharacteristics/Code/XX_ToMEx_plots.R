@@ -1,5 +1,6 @@
 
 library(dplyr)
+library(pals)
 source("Code/Helper_boxplot_Kooi2021.R")
 
 
@@ -8,9 +9,10 @@ dat = readRDS("Data/RDS/aoc_z_tomex2.RDS")
 
 # import data from Kooi et al. 2021:
 dat.lengths = read.csv("Data/KooiEtAl2021_particle_length.csv")
+Kooi.fresh = dat.lengths[grepl("fresh", dat.lengths$compartment),]
+Kooi.marine = dat.lengths[grepl("marine", dat.lengths$compartment),]
 
-str(dat)
-summary(dat)
+
 
 # !! split between freshwater and marine! # compare to aquatic env data ??? # $ env_f 
 # The reason is that the composition of microplastics in the environment will differ between these two compartments
@@ -38,6 +40,12 @@ length(unique(dat$treatmentID))
 treatdat = dat[!duplicated(dat$treatmentID), ] # takes only the first entry per treatmentID
 dim(treatdat)
 
+# prepare freshwater and marine dataset
+levels(treatdat$env_f)
+fresh = treatdat[treatdat$env_f == "Freshwater",]
+marine = treatdat[treatdat$env_f == "Marine",]
+dim(fresh)
+dim(marine)
 
 # We need summary stats and plot:
 # - Polymer = poly_f
@@ -79,7 +87,7 @@ rownames(polymer2) = (polymer[,1])
 colnames(polymer2) = "TomEx2.0"
 
 par(mar = c(3,3,1,20))
-barplot(polymer2, legend=rownames(polymer2), col = hcl.colors(30, "RdYlGn"),
+barplot(polymer2, legend=rownames(polymer2), col = polychrome(30),#col = hcl.colors(30, "RdYlGn"),
         args.legend = list(x = 1.2, cex = 0.8, xjust = 0))
 
 #### How to deal with that many different polymer types? Can we lump some of them together?
@@ -94,9 +102,13 @@ barplot(polymer2, legend=rownames(polymer2), col = hcl.colors(30, "RdYlGn"),
 
 # Size numeric -------
 # boxplot comparing ToMEx2.0 measurements of particle length with data provided by Kooi et al. 2021 on environmental samples
+# 1. freshwater
+boxplot_comp(fresh$size.length.um.used.for.conversions, tomex_color = "darkorange2",
+             Kooi.fresh, c("cornsilk3", "skyblue3"))
 
-boxplot_comp(treatdat$size.length.um.used.for.conversions, tomex_color = "darkorange2",
-             dat.lengths, c("palegreen", "cornsilk3", "lightblue3", "skyblue","lightblue1", "skyblue3"))
+# 1. marine
+boxplot_comp(marine$size.length.um.used.for.conversions, tomex_color = "darkorange2",
+             Kooi.marine, c("cornsilk3", "skyblue3"))
 
 #### We can do similar plots for particle width, ratio of width to length
 #### + we can add more values from additional studies for which raw data are available

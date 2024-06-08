@@ -1,0 +1,14 @@
+﻿ID,source,fresh_marine_binary,PE_prop,PET_prop,PP_prop,PS_prop,PA_prop,PUR_prep,Acryl_prop,Polyester,PVC,PTFE,other,fragments_prop,spheres_prop,fibers_prop,length_mean_um,length_median_um,width_mean_um,width_median_um,denstiy_mean,area_mean_um2,comment
+1,ToMEx 2.0 freshwater,freshwater,0.204,0.04,0.031,0.592,0.017,0.005,0,0,0.036,0,0.075,0.279,0.564,0.041,147.3,5,155,45,1.072,493736,
+2,ToMEx 2.0 marine,marine,0.252,0.031,0.04,0.528,0.021,0,0,0,0.063,0,0.066,0.29,0.467,0.046,43.6,6,91,10,1.057,434947,
+3,"Kooi et al. 2021, freshwater surface",freshwater,,,,,,,,,,,,,,,,,,,,,
+4,"Kooi et al. 2021, marine surface",marine,,,,,,,,,,,,,,,,,,,,,
+5,"Kooi et al. 2021, freshwater sediment",freshwater,,,,,,,,,,,,,,,,,,,,,
+6,"Kooi et al. 2021, marine sediment",marine,,,,,,,,,,,,,,,,,,,,,
+7,"Yakushev et al. 2021, inner plume, surface",marine,0,0,0.167,0,0.167,0,0,0.667,0,0,0,0.33,0,0.67,NA,NA,NA,NA,NA,1.32,no lengths or widths reported
+8,"Yakushev et al. 2021, outer plume, surface",marine,0.333,0,0,0,0.125,0.292,0,0.042,0.208,0,0,0.875,0,0.125,NA,NA,NA,NA,NA,2.17,no lengths or widths reported
+9,"Yakushev et al. 2021, Atlantic surface",marine,0.636,0,0,0.182,0,0,0,0.091,0.091,0,0,0.91,0,0.09,NA,NA,NA,NA,NA,6.14,no lengths or widths reported
+7,"Yakushev et al. 2021, inner plume, subsurface",marine,0,0,0,0,0,0,0.429,0.571,0,0,0,0,0,1,1297,636,NA,NA,1.3,19461,"width only reported for fragments, not fibers"
+8,"Yakushev et al. 2021, outer plume, subsurface",marine,0.056,0,0.083,0.056,0.056,0,0.278,0.361,0,0.028,0.083,0.25,0,0.75,662,436,136,121,1.25,23816,"width only reported for fragments, not fibers"
+9,"Yakushev et al. 2021, Atlantic subsurface",marine,0.125,0.042,0.042,0.042,0.042,0.083,0.125,0.333,0.083,0.042,0.042,0.54,0,0.46,708,422,185,121,1.28,83125,"width only reported for fragments, not fibers"
+10,"Yakushev et al. 2021, polar subsurface",marine,0.108,0,0.054,0.081,0.027,0.027,0.081,0.324,0,0.108,0.189,0.51,0,0.49,696,481,162,142,1.33,37829,"width only reported for fragments, not fibers"
