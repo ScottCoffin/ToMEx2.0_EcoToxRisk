@@ -1291,7 +1291,7 @@ tier4_sensitivity_food_marine <- leave_one_out_tier3_4(filtered.data.large.defau
                                                    environment_input = "Marine")
 ```
 
-### Export
+### Export Data
 ```{r}
 leave_one_out_df <- rbind(tier1_sensitivity_tissue_freshwater$sensitivity_summary,
                           tier2_sensitivity_tissue_freshwater$sensitivity_summary,
@@ -1313,47 +1313,77 @@ leave_one_out_df <- rbind(tier1_sensitivity_tissue_freshwater$sensitivity_summar
 write.csv(leave_one_out_df,
           "../output/data/leave_one_out.csv")
 ```
+```{r}
+### start here if not wanting to run previous chunk (can take a long time)
+leave_one_out_df <- read.csv("../output/data/leave_one_out.csv")
+```
+
 
 ### Plot
 ```{r}
+library(ggallin)
+
 leave_one_out_ggplot <- leave_one_out_df %>% 
-  group_by(environment, ERM, tier
-           ) %>% 
-  summarize(minDiff = min(diff, na.rm = T),
-            maxDiff = max(diff, na.rm = T)) %>% 
-  pivot_longer(cols = contains("diff")) %>% 
-  rename(diffMagnitude = name,
-         diff = value) %>% 
-  left_join(leave_one_out_df %>% select(diff, hcx, doi, authoryear, species_multiple),
-            by = "diff") %>% 
-  ggplot(aes(x = diff, y = tier, text = paste0("%Difference: ", scientific(diff*100, 3), "%",
-                                              "<br>HCx: ",scientific(hcx, 3),
+  drop_na() %>% 
+  mutate(diff = diff + 0.0001) %>% 
+#  mutate(logdiff = log10(diff))
+  # group_by(environment, ERM, tier
+  #          ) %>% 
+  # summarize(minDiff = min(diff, na.rm = T),
+  #           maxDiff = max(diff, na.rm = T)) %>% 
+  # pivot_longer(cols = contains("diff")) %>% 
+  # rename(diffMagnitude = name,
+  #        diff = value) %>% 
+  # left_join(leave_one_out_df %>% select(diff, hcx, doi, authoryear, species_multiple),
+  #           by = "diff") %>% 
+  ggplot(aes(x = diff, y = tier, color = environment,
+             text = paste0("%Difference: ", scales::percent(diff, 0.1, big.mark = ","),
+                                              "<br>HCx: ",scientific(hcx, 3), " particles/L",
                                               "<br>Study: ", authoryear,
                                               "<br>Species: " ,species_multiple,
                                               "<br>doi: ", doi)
              )) +
-  geom_point(color = "black") +
-   geom_text_repel(aes(label = species_multiple),
-                  size = 3,
-                  nudge_x = 0.25,
-                  force = 4,
-                  color = "black",
-                  direction = "y",
-                  # Jitter on the y-axis
-                  max.overlaps = Inf,
-                  label.padding = 1,
-                  fontface = "italic") +
+  geom_jitter(width = 0, height = 0.3, alpha = 0.5) +
+#  geom_point(alpha = 0.7) +
+#  geom_histogram() +
+ # geom_boxplot() +
+   # geom_text_repel(aes(label = species_multiple),
+   #                size = 3,
+   #                nudge_x = 0.25,
+   #                force = 4,
+   #                color = "black",
+   #                direction = "y",
+   #                # Jitter on the y-axis
+   #                max.overlaps = Inf,
+   #                label.padding = 1,
+   #                fontface = "italic") +
  # geom_line() +
-  geom_vline(xintercept = 0, alpha = 0.5, color = "grey60") +
-  scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
+  #geom_vline(xintercept = 0.00001, alpha = 0.5, color = "grey60") +
+  scale_x_continuous(trans = pseudo_log_trans(base = 10), 
+                     breaks = c(-1, 0, 1, 10, 100), 
+                     limits = c(-1, 110), 
+                     labels = scales::percent_format(accuracy = 1, big.mark = ",")) +
+#  scale_x_log10() +
+  
   xlab("% Difference") +
-  theme.light +
-  facet_wrap(~environment + ERM)
+  theme_minimal(base_size = 13) +
+ theme( plot.title = element_text(hjust = 0.5, size = 14),     # Center the main title
+        strip.text = element_text(size = 14, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5),   # Center the caption
+        axis.title.x = element_text(hjust = 0.5, size = 14),  # Center the x-axis title
+        axis.text.x =  element_text(size = 11),
+        axis.text.y = element_text(size = 14),
+        axis.title.y = element_text(vjust = 0.5, size = 18)) +   # Center the y-axis title (vertically))   # Center the subtitle)
+  theme(legend.position = "none",
+        axis.title.y = element_blank()) +
+  facet_grid(environment ~ ERM)
+  #facet_wrap(~environment + ERM)
 
 ggsave(plot = leave_one_out_ggplot,
-       filename = "../output/Manuscript_Figs/leave_one_out.png",
+       filename = "../output/Manuscript_Figs/leave_one_out.jpg",
       dpi = 300,
-      width = 12, height = 9, units = "in")
+      width = 10, height = 7, units = "in")
 
 leave_one_out_ggplot
 ```
