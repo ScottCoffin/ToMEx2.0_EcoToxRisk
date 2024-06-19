@@ -206,14 +206,15 @@ The following script utilizes the above equations to calculate *a priori* effect
 ```{r}
 ## First filter data with global filters
 aoc_intermediate <- aoc_z %>% 
-  filter(!environment %in% c("Terrestrial", "Not Reported"),
-         Group != "Bacterium",
-         Group != "Plant",
-         effect.metric != "HONEC",
-         tier_zero_tech_f == "Red Criteria Passed",
-         tier_zero_risk_f == "Red Criteria Passed", #All thresholds must pass technical and risk red criteria
-         risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been scored) - KEEP THIS AFTER THE RED CRITERIA FILTERS  
-         ) %>% 
+   ### quality score filters applied below for thresholds ###
+  # filter(!environment %in% c("Terrestrial", "Not Reported"),
+  #        Group != "Bacterium",
+  #        Group != "Plant",
+  #        effect.metric != "HONEC",
+  #        tier_zero_tech_f == "Red Criteria Passed",
+  #        tier_zero_risk_f == "Red Criteria Passed", #All thresholds must pass technical and risk red criteria
+  #        risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been scored) - KEEP THIS AFTER THE RED CRITERIA FILTERS  
+  #        ) %>% 
   #Remove 26C temperature treatment data from Jaimukar et al. 2018
   filter(!(article == 42 & media.temp == 26)) %>% 
   mutate(max.size.ingest.um = 1000 * max.size.ingest.mm) #makes it less confusing below
@@ -227,7 +228,7 @@ aoc_intermediate <- aoc_z %>%
 Group_size <- aoc_intermediate %>% 
   ggplot(aes(x = size.length.um.used.for.conversions, fill = Group)) +
   geom_histogram(bins = 25) +
-  scale_fill_manual(values = cal_palette(name = "superbloom1", type = "continuous", n = 11)) +
+  scale_fill_manual(values = cal_palette(name = "superbloom1", type = "continuous", n = 15)) +
   labs(title = "Filtered Data by Group") +
   ylab("# of observations")+
   xlab("Length (um)") +
@@ -237,7 +238,7 @@ Group_size <- aoc_intermediate %>%
 endpoint_size <- aoc_intermediate %>% 
   ggplot(aes(x = size.length.um.used.for.conversions, fill = lvl1_f)) +
   geom_histogram(bins = 25) +
-   scale_fill_manual(name = "General Endpoint", values = cal_palette(name = "superbloom3", type = "continuous", n = 11)) +
+   scale_fill_manual(name = "General Endpoint", values = cal_palette(name = "superbloom3", type = "continuous", n = 15)) +
   xlab("Particle Length (um)") +
   ylab("# of observations")+
   labs(title = "Filtered Data by General Endpoint") +
@@ -490,6 +491,20 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
 ```{r}
 #saveRDS(aoc_final,"G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/data/output/aoc_final.RDS")
 
+# save dataset for quality score hypothesis testing below
+aoc_aligned_no_filters <- aoc_final
+
+## dataset for thresholds
+aoc_final <- aoc_final %>% 
+  filter(!environment %in% c("Terrestrial", "Not Reported"),
+         Group != "Bacterium",
+         Group != "Plant",
+         effect.metric != "HONEC",
+         tier_zero_tech_f == "Red Criteria Passed",
+         tier_zero_risk_f == "Red Criteria Passed", #All thresholds must pass technical and risk red criteria
+         risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been scored) - KEEP THIS AFTER THE RED CRITERIA FILTERS  
+         ) 
+
 saveRDS(aoc_final,
         "../data/output/aoc_final.RDS")
 ```
@@ -505,6 +520,8 @@ SSD_function_t1 <- function(filtered.data, hcxlcl){
 collapsed <- filtered.data %>% 
   group_by(Species, Group) %>% 
   summarize(Conc = quantile(dose_new, 0.25))
+
+ if(n_distinct(collapsed$Species) > 5){
 #fit distributions
 dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("weibull", "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
 #use average distribution with weighthing based on AICC
@@ -513,15 +530,13 @@ preds <- predict(dists, average = TRUE,
                  nboot = nboot, ci= TRUE) 
 #report HC metrics of interest
 hc5lcl <- c(preds$lcl[hcxlcl]) #CI05
+ } else {
+hc5lcl <- NA   
+ }
+
 #values to extract
 print(hc5lcl)
 }
-
-# Leave-one-out by study function
-sensitivity_t1 <- Vectorize(function(x, y) {
-  train <- filtered.data[!filtered.data$doi %in% x,]
-   SSD_function_t1(train, hcxlcl = y)
-})
 
 #### define function for SSD generation for tier 2 ####
 SSD_function_t2 <- function(filtered.data, hcx){
@@ -530,6 +545,8 @@ SSD_function_t2 <- function(filtered.data, hcx){
 collapsed <- filtered.data %>% 
   group_by(Species, Group) %>% 
   summarize(Conc = quantile(dose_new, 0.25))
+
+ if(n_distinct(collapsed$Species) > 5){
 #fit distributions
 dists <- ssd_fit_dists(collapsed, left = "Conc", 
                        dists = c("weibull", "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
@@ -544,6 +561,11 @@ hcx95cl <- c(preds$ucl[hcx]) #CI95
 list(hcx_est = hcx_est,
      hcx05cl = hcx05cl,
      hcx95cl = hcx95cl)
+ } else {
+list(hcx_est = NA,
+     hcx05cl = NA,
+     hcx95cl = NA)
+ }
 }
 
 #### define function for SSD generation for tiers 3 and 4 ####
@@ -557,6 +579,7 @@ collapsed <- filtered.data %>%
   group_by(Species, Group) %>% 
   summarize(Conc = quantile(dose_new, 0.50))
 #fit distributions
+ if(n_distinct(collapsed$Species) > 5){
 dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("weibull", "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
 #use average distribution with weighthing based on AICC
 preds <- predict(dists, average = TRUE, 
@@ -570,6 +593,11 @@ hcx95cl <- c(preds$ucl[hcx]) #CI95
 list(hcx_est = hcx_est,
      hcx05cl = hcx05cl,
      hcx95cl = hcx95cl)
+ } else {
+  list(hcx_est = NA,
+     hcx05cl = NA,
+     hcx95cl = NA)
+}
 }
 ```
 
@@ -676,6 +704,8 @@ The figure above displays the working threshold framework for the ambient thresh
 
 The current framework for generating SSDs includes the following parameters:
 
+
+
 Data pertaining to only aquatic organisms are included (marine and freshwater).  
 
 All taxa are included with the exception of bacterium and plants.  
@@ -697,6 +727,678 @@ Green rows are from Wigger et al. 2020. Grey rows were agreed upon by the ambien
 Reference: Wigger et al. 2020 (doi: 10.1002/ieam.4214)
 
 Note: Values may be slightly different than those presented in the shiny app as concentrations are converted from particles/mL to particles/L ahead of calculations.
+
+## Quality score testing
+Do thresholds differ significantly when only studies passing red criteria (technical, risk applicability) are used/not? 
+
+### Functionalize threshold derivation
+```{r}
+calculate_thresholds <- function(data, label) {
+  
+ #filter out risk criteria (not done above)#
+aoc_risk_paper <- data %>% 
+  drop_na(effect.metric)
+
+####---- TISSUE TRANSLOCATION ------#####
+filtered.data.small.default_t1.2 <- aoc_risk_paper %>% 
+          mutate(dose_new = particles.mL.ox.stress / (af.time * af.noec)) %>%  
+         drop_na(dose_new) %>% 
+          filter(dose_new > 0) %>% 
+         mutate(dose_new = dose_new * 1000) %>% #convert particles/mL to particles/L
+  filter(between(size.length.um.used.for.conversions, 1, upper.tissue.trans.size.um),
+         shape_f != "Not Reported",
+         poly_f != "Not Reported",
+         !environment %in% c("Terrestrial", "Not Reported"),
+         Group != "Bacterium",
+         Group != "Plant",
+         effect.metric != "HONEC")
+
+filtered.data.small.default_t3.4 <- filtered.data.small.default_t1.2 %>% 
+ filter(risk.13 != 1,
+         bio_f %in% c("Organism", "Population"))
+
+# get thresholds
+small.default.t1 <- SSD_function_t1(filtered.data = filtered.data.small.default_t1.2, hcxlcl = 5)
+small.default.t2 <- SSD_function_t2(filtered.data = filtered.data.small.default_t1.2, hcx = 5)
+small.default.t3 <- SSD_function_t3_4(filtered.data = filtered.data.small.default_t3.4, hcx = 5)
+small.default.t4 <- SSD_function_t3_4(filtered.data = filtered.data.small.default_t3.4, hcx = 10)
+
+####---- Food Dilution ------#####
+filtered.data.large.default_t1.2 <- aoc_risk_paper %>% 
+   # remove algae, as food dilution MOE doesn't make sense for algae
+  filter(Group != "Algae") %>% 
+         mutate(dose_new = particles.mL.food.dilution / (af.time * af.noec)) %>%  
+         drop_na(dose_new) %>% 
+         mutate(dose_new = dose_new * 1000) %>% #convert particles/mL to particles/L
+  filter(dose_new > 0) %>% 
+  filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
+         poly_f != "Not Reported",
+         !environment %in% c("Terrestrial", "Not Reported"),
+         Group != "Bacterium",
+         Group != "Plant",
+         effect.metric != "HONEC")
+
+filtered.data.large.default_t3.4 <- filtered.data.large.default_t1.2 %>% 
+ filter(risk.13 != 1,
+         bio_f %in% c("Organism", "Population"))
+
+# get thresholds
+large.default.t1 <- SSD_function_t1(filtered.data = filtered.data.large.default_t1.2, hcxlcl = 5)
+large.default.t2 <- SSD_function_t2(filtered.data = filtered.data.large.default_t1.2, hcx = 5)
+large.default.t3 <- SSD_function_t3_4(filtered.data = filtered.data.large.default_t3.4, hcx = 5)
+large.default.t4 <- SSD_function_t3_4(filtered.data = filtered.data.large.default_t3.4, hcx = 10)
+
+base_thresholds <- tibble(
+  "label" = as.character(label), 
+  "Tier" = c('Tier1', 'Tier2', 'Tier3', 'Tier4'),
+  "Tissue Translocation (Default)" = c(small.default.t1, small.default.t2$hcx_est, small.default.t3$hcx_est, small.default.t4$hcx_est),
+  "Food Dilution (Default)" = c(large.default.t1, large.default.t2$hcx_est, large.default.t3$hcx_est, large.default.t4$hcx_est),  "Tissue Translocation (5th %)" = c(NA, small.default.t2$hcx05cl, small.default.t3$hcx05cl, small.default.t4$hcx05cl),
+  "Tissue Translocation (95th %)" = c(NA, small.default.t2$hcx95cl, small.default.t3$hcx95cl, small.default.t4$hcx95cl),
+  "Food Dilution (5th %)" = c(NA, large.default.t2$hcx05cl, large.default.t3$hcx05cl, large.default.t4$hcx05cl),
+  "Food Dilution (95th %)" = c(NA, large.default.t2$hcx95cl, large.default.t3$hcx95cl, large.default.t4$hcx95cl))
+
+return(base_thresholds)
+}
+
+## example usage
+#base_thresholds <- calculate_thresholds(aoc_final, label = "no quality filters")
+
+
+```
+
+### Data filtering and run threshold derivation
+```{r}
+#filter out risk and tech criteria
+aoc_risk_paper <- aoc_aligned_no_filters %>% 
+  drop_na(effect.metric) %>% 
+  filter(!environment %in% c("Terrestrial", "Not Reported"),
+         Group != "Bacterium",
+         Group != "Plant",
+         effect.metric != "HONEC",
+         tier_zero_tech_f == "Red Criteria Passed",
+         tier_zero_risk_f == "Red Criteria Passed", #All thresholds must pass technical and risk red criteria
+         risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been scored) - KEEP THIS AFTER THE RED CRITERIA FILTERS  
+         ) 
+
+#filter out tech criteria
+aoc_tech_only <- aoc_aligned_no_filters %>% 
+  drop_na(effect.metric) %>% 
+  filter(!environment %in% c("Terrestrial", "Not Reported"),
+         Group != "Bacterium",
+         Group != "Plant",
+         effect.metric != "HONEC",
+         tier_zero_tech_f == "Red Criteria Passed",
+       #  tier_zero_risk_f == "Red Criteria Passed", #All thresholds must pass technical and risk red criteria
+         risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been scored) - KEEP THIS AFTER THE RED CRITERIA FILTERS  
+         ) 
+
+#filter out risk criteria
+aoc_risk_only <- aoc_aligned_no_filters %>% 
+  drop_na(effect.metric) %>% 
+  filter(!environment %in% c("Terrestrial", "Not Reported"),
+         Group != "Bacterium",
+         Group != "Plant",
+         effect.metric != "HONEC",
+       #  tier_zero_tech_f == "Red Criteria Passed",
+         tier_zero_risk_f == "Red Criteria Passed", #All thresholds must pass technical and risk red criteria
+         risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been scored) - KEEP THIS AFTER THE RED CRITERIA FILTERS  
+         ) 
+
+#no filters
+aoc_aligned_no_filters
+
+
+
+# run
+risk_tech <- calculate_thresholds(aoc_risk_paper, label = "risk and tech")
+tech <- calculate_thresholds(aoc_tech_only, label = "tech only")
+risk <- calculate_thresholds(aoc_risk_only, label = "risk only")
+no_quality <- calculate_thresholds(aoc_aligned_no_filters, label = "no quality filters")
+
+unified_thresholds <- bind_rows(risk_tech, tech, risk, no_quality)
+
+print(unified_thresholds)
+```
+#### Maximize quality filters
+We need to perform an iterative approach to filter the dataset based on quality criteria and ensure that the filtered dataset contains at least 6 unique species. We will maximize the quality of studies used to derive thresholds by trying different combinations of quality criteria.
+
+Here's how you can do it:
+
+Create a function to filter the dataset based on a given set of quality criteria.
+Create a function to check if a dataset has at least 6 unique species.
+Iterate over all possible combinations of quality criteria to find the best quality dataset that meets the minimum species requirement.
+Run the SSD functions on the best quality dataset.
+
+##### Exhaustive Approach
+
+Number of Combinations: 
+2 ^ 27 − 1 ≈ 134,217,727 combinations. Could take ~37 hrs to run.
+```{r}
+# Define quality criteria
+quality_criteria <- c("tech.a1", "tech.a2", "tech.a3", "tech.a4", "tech.a5", "tech.a6", "tech.1",
+                      "tech.2", "tech.3", "tech.4", "tech.5", "tech.6", "tech.7", "tech.8", "tech.9",
+                      "tech.10", "tech.11", "tech.12", "risk.b1", "risk.13", "risk.14",
+                      "risk.15", "risk.16", "risk.17", "risk.18", "risk.19", "risk.20")
+
+red_criteria <- c("tech.a1", "tech.a2", "tech.a3", "tech.a4", "tech.a5", "tech.a6", 
+                  "tech.1", "tech.2", "tech.3", "tech.4", "tech.5", "risk.13", "risk.b1")
+
+#only use the criteria with variabilty (i.e., minus the red)
+variable_criteria <- setdiff(quality_criteria, red_criteria)
+variable_criteria_doi <- c(variable_criteria, "doi")
+
+#calculate number of combinations
+estimated_time_seconds =  2 ^ n_distinct(variable_criteria) * 0.001 #seconds per iteration
+estimated_time_hours = (estimated_time_seconds / 60)/60
+estimated_time_hours
+```
+
+```{r}
+aoc_risk_paper_filtered <- aoc_risk_paper %>% 
+  drop_na(effect.metric) %>% 
+  filter(risk.13 != 1,
+         bio_f %in% c("Organism", "Population"),
+          Group != "Algae")
+
+### collapse dataset to unique combo of DOI and variable quality criteria to speed up combination testing below
+# Step 1. just get at experiment-level data and annotate with unique ID
+aoc_risk_collapsed <- aoc_risk_paper %>%
+ distinct(across(all_of(variable_criteria_doi)), .keep_all = TRUE)
+```
+
+```{r eval=FALSE, include=FALSE}
+# Function to filter dataset based on quality criteria
+filter_quality <- function(data, criteria) {
+  for (criterion in criteria) {
+    data <- data %>% filter(!!sym(criterion) > 0)
+  }
+  return(data)
+}
+
+# Function to check if the dataset has at least 6 unique species
+has_minimum_species <- function(data) {
+  return(length(unique(data$Species)) >= 6)
+}
+
+# Function to find the best quality dataset that meets the minimum species requirement
+find_best_quality_dataset <- function(data, quality_criteria) {
+  best_data <- data
+  best_quality <- 0
+  all_combinations <- unlist(lapply(1:length(quality_criteria), function(x) combn(quality_criteria, x, simplify = FALSE)), recursive = FALSE)
+  
+  for (combination in all_combinations) {
+    filtered_data <- filter_quality(data, combination)
+    if (has_minimum_species(filtered_data)) {
+      current_quality <- sum(sapply(combination, function(x) mean(filtered_data[[x]], na.rm = TRUE)))
+      if (current_quality > best_quality) {
+        best_quality <- current_quality
+        best_data <- filtered_data
+      }
+    }
+  }
+  
+  return(best_data)
+}
+
+#find best possible dataset
+#beta_test <- find_best_quality_dataset(aoc_risk_collapsed, c("tech.8", "tech.9", "tech.10", "risk.15"))
+best_data <- find_best_quality_dataset(aoc_risk_paper_filtered, variable_criteria)
+##examine dataset
+best_data %>% select(c(Species, total.quality, contains("tech"), contains("risk"))) %>% 
+  distinct()
+```
+
+
+```{r}
+#derive best possible thresholds
+best_data_thresholds <- calculate_thresholds(best_data, label = "best data")
+```
+##### Heuristic/GREEDY Method
+We can employ a heuristic approach to prioritize checking the combinations that are more likely to yield high-quality datasets early, such as starting with the criteria that have the highest average scores or using a greedy algorithm.
+
+
+
+```{r}
+# Function to filter dataset based on quality criteria
+filter_quality <- function(data, criteria) {
+  for (criterion in criteria) {
+    data <- data %>% filter(!!sym(criterion) > 0)
+  }
+  return(data)
+}
+
+# Function to check if the dataset has at least 6 unique species
+has_minimum_species <- function(data) {
+  return(length(unique(data$species)) >= 6)
+}
+
+# Heuristic function to find a good quality dataset
+find_best_quality_dataset <- function(data, quality_criteria) {
+  best_data <- data
+  best_quality <- 0
+  
+  for (criterion in quality_criteria) {
+    filtered_data <- filter_quality(data, criterion)
+    if (has_minimum_species(filtered_data)) {
+      current_quality <- mean(filtered_data[[criterion]], na.rm = TRUE)
+      if (current_quality > best_quality) {
+        best_quality <- current_quality
+        best_data <- filtered_data
+      }
+    }
+  }
+  
+  return(best_data)
+}
+
+# Find the best quality dataset for each case
+best_data <- find_best_quality_dataset(aoc_risk_paper, quality_criteria)
+
+best_data %>% select(c(Species, total.quality, contains("tech"), contains("risk"))) %>% 
+  distinct() %>% 
+  arrange(desc(Species))
+```
+
+```{r}
+# Example usage with best quality datasets
+best_data_thresholds <- calculate_thresholds(best_data, label = "best data")
+
+# Combine all thresholds into a single table
+
+unified_thresholds <- bind_rows(risk_tech, tech, risk, no_quality, best_data_thresholds)
+
+# Print the unified thresholds table
+print(unified_thresholds)
+
+```
+# Sensitivity Analysis
+## Leave-one-out method
+These techniques are based on the Leave-One-Out-method, in which we recalculate the results of our meta-analysis K − 1  times, each times leaving out one study. This way, we can more easily detect studies which influence the overall estimate of our meta-analysis the most, and this lets us better assess if this influence may distort our pooled effect (Viechtbauer and Cheung 2010).
+### Functions
+```{r}
+create_leave_one_out_function_t1 <- function(filtered_data) {
+  # Vectorized leave-one-out function
+  sensitivity_t1 <- Vectorize(function(x, y) {
+    # Exclude the current study (doi) from the training set
+    train <- filtered_data[!filtered_data$doi %in% x,]
+    # Apply the SSD function
+    SSD_function_t1(train, hcxlcl = y)  
+  })
+  
+  # Return the vectorized function
+  sensitivity_t1
+}
+
+create_leave_one_out_function_t2 <- function(filtered_data) {
+  # Vectorized leave-one-out function
+  sensitivity_t2 <- Vectorize(function(x, y) {
+    # Exclude the current study (doi) from the training set
+    train <- filtered_data[!filtered_data$doi %in% x,]
+    # Apply the SSD function
+    hc <- SSD_function_t2(train, hcx = y)
+    hc <- hc$hcx_est[1]
+    hc
+  })
+  
+  # Return the vectorized function
+  sensitivity_t2
+}
+
+create_leave_one_out_function_t3_4 <- function(filtered_data) {
+  # Vectorized leave-one-out function
+  sensitivity_t3_4 <- Vectorize(function(x, y) {
+    # Exclude the current study (doi) from the training set
+    train <- filtered_data[!filtered_data$doi %in% x,]
+    # Apply the SSD function
+    hc <- SSD_function_t3_4(train, hcx = y)
+    hc <- hc$hcx_est[1]
+    hc
+  })
+  
+  # Return the vectorized function
+  sensitivity_t3_4
+}
+
+#tier 1 function
+leave_one_out_tier_1 <- function(filtered_data, 
+                                 hcx, ERM_input, tier_input, environment_input) {
+  hcxlcl_list <- list(hcxlcl = hcx)
+  #base HCx
+  filtered_data_hcxlcl <- SSD_function_t1(filtered.data = filtered_data, hcx)
+  unique.dois <- unique(filtered_data$doi)
+  # Create the leave-one-out function with your filtered data
+  leave_one_out <- create_leave_one_out_function_t1(filtered_data)
+  # Apply the leave-one-out function
+  sensitivity_vector <- leave_one_out(unique.dois, hcxlcl_list)
+  sensitivity_matrix <- matrix(sensitivity_vector, nrow = length(unique.dois), byrow = TRUE)
+  rownames(sensitivity_matrix) <- unique.dois
+  #bind DOI's to other parameters of interest for analysis
+  sensitivity_tbl <- rownames_to_column(as.data.frame(sensitivity_matrix), var = c("doi")) %>%
+    rename(hcxlcl = V1)
+  # join to other parameters of interest
+   sensitivity_df <- left_join(sensitivity_tbl, filtered_data, by = "doi") %>% 
+    dplyr::select(authors, year, Species, dose_new, 
+                  hcxlcl, acute.chronic_f, bio_f, lvl2_f,
+                  size.length.um.used.for.conversions, doi) %>% 
+    distinct(doi, authors, year, hcxlcl, Species, acute.chronic_f,
+             size.length.um.used.for.conversions) %>% 
+    mutate(authoryear = paste(authors, "et. al ", year)) %>% 
+    mutate(hcxlcl = replace_na(hcxlcl, 0)) %>% #studies with n_species < 5 will get a 0
+    mutate(authoryear = fct_reorder(authoryear, hcxlcl, na.rm = FALSE)) %>% 
+    mutate(diff = (hcxlcl - filtered_data_hcxlcl)/filtered_data_hcxlcl,
+           tier = as.character(tier_input),
+           ERM = as.character(ERM_input),
+           environment = as.character(environment_input))
+  
+  sensitivity_summary <- sensitivity_df %>% 
+    rename(hcx = hcxlcl) %>% 
+    group_by(doi, authoryear, diff, hcx) %>% 
+    summarise(species_multiple = paste(unique(Species), collapse = ", "),
+              .groups = "keep") %>% 
+    ungroup() %>% 
+    arrange(desc(hcx)) %>% 
+    mutate(hcx = case_when(hcx == 0 ~ NA,
+                           TRUE ~ hcx),
+           diff = case_when(diff == -1 ~ NA,
+                            TRUE ~ diff)) %>% 
+    mutate(sufficient_species = case_when(!is.na(hcx) ~ "sufficient",
+                                          is.na(hcx) ~ "insufficient"),
+           ERM = as.character(ERM_input),
+           environment = as.character(environment_input),
+           tier = as.character(tier_input)) #annotate for full dataset))
+ 
+   return(list(sensitivity_df = sensitivity_df, 
+               sensitivity_summary = sensitivity_summary))
+}
+
+# Tier 2 function
+leave_one_out_tier2 <- function(filtered_data, hcx_num, ERM_input, tier_input, environment_input) {
+  hcx_list <- list(hcx = hcx_num)
+  #base HCx
+  filtered_data_hcx <- SSD_function_t2(filtered.data = filtered_data, hcx_num)
+  filtered_data_hcx <- filtered_data_hcx$hcx_est[1]
+  unique.dois <- unique(filtered_data$doi)
+  # Create the leave-one-out function with your filtered data
+  leave_one_out <- create_leave_one_out_function_t2(filtered_data)
+  # Apply the leave-one-out function
+  sensitivity_vector <- leave_one_out(unique.dois, hcx_list)
+  sensitivity_matrix <- matrix(sensitivity_vector, nrow = length(unique.dois), byrow = TRUE)
+  rownames(sensitivity_matrix) <- unique.dois
+  #bind DOI's to other parameters of interest for analysis
+  sensitivity_tbl <- rownames_to_column(as.data.frame(sensitivity_matrix), var = c("doi")) %>%
+    rename(hcx = V1)
+  # join to other parameters of interest
+  sensitivity_df <- left_join(sensitivity_tbl, filtered_data, by = "doi") %>% 
+    dplyr::select(authors, year, Species, dose_new, 
+                  hcx, acute.chronic_f, bio_f, lvl2_f,
+                  size.length.um.used.for.conversions, doi) %>% 
+    distinct(doi, authors, year, hcx, Species, acute.chronic_f,
+             size.length.um.used.for.conversions) %>% 
+    mutate(authoryear = paste(authors, "et. al ", year)) %>% 
+    mutate(hcx = replace_na(hcx, 0)) %>% #studies with n_species < 5 will get a 0
+    mutate(authoryear = fct_reorder(authoryear, hcx, na.rm = FALSE)) %>% 
+    mutate(diff = (hcx - filtered_data_hcx)/filtered_data_hcx,
+             tier = as.character(tier_input), #annotate for full dataset
+           ERM = as.character(ERM_input),
+           environment = as.character(environment_input)) #annotate for full dataset
+  
+  sensitivity_summary <- sensitivity_df %>% 
+    group_by(doi, authoryear, diff, hcx) %>% 
+    summarise(species_multiple = paste(unique(Species), collapse = ", "),
+              .groups = "keep") %>% 
+    ungroup() %>% 
+    arrange(desc(hcx)) %>% 
+    mutate(hcx = case_when(hcx == 0 ~ NA,
+                           TRUE ~ hcx),
+           diff = case_when(diff == -1 ~ NA,
+                            TRUE ~ diff)) %>% 
+    mutate(sufficient_species = case_when(!is.na(hcx) ~ "sufficient",
+                                          is.na(hcx) ~ "insufficient"),
+           ERM = as.character(ERM_input),
+           environment = as.character(environment_input),
+           tier = as.character(tier_input)) #annotate for full dataset))
+ 
+   return(list(sensitivity_df = sensitivity_df, 
+               sensitivity_summary = sensitivity_summary))
+}
+
+# Tier 3/4 function
+leave_one_out_tier3_4 <- function(filtered_data, hcx_num, ERM_input, tier_input, environment_input) {
+  hcx_list <- list(hcx = hcx_num)
+  #base HCx
+  filtered_data_hcx <- SSD_function_t3_4(filtered.data = filtered_data, hcx_num)
+  filtered_data_hcx <- filtered_data_hcx$hcx_est[1] 
+  unique.dois <- unique(filtered_data$doi)
+  # Create the leave-one-out function with your filtered data
+  leave_one_out <- create_leave_one_out_function_t3_4(filtered_data)
+  # Apply the leave-one-out function
+  sensitivity_vector <- leave_one_out(unique.dois, hcx_list)
+  sensitivity_matrix <- matrix(sensitivity_vector, nrow = length(unique.dois), byrow = TRUE)
+  rownames(sensitivity_matrix) <- unique.dois
+  #bind DOI's to other parameters of interest for analysis
+  sensitivity_tbl <- rownames_to_column(as.data.frame(sensitivity_matrix), var = c("doi")) %>%
+    rename(hcx = V1)
+  # join to other parameters of interest
+  sensitivity_df <- left_join(sensitivity_tbl, filtered_data, by = "doi") %>% 
+    dplyr::select(authors, year, Species, dose_new, 
+                  hcx, acute.chronic_f, bio_f, lvl2_f,
+                  size.length.um.used.for.conversions, doi) %>% 
+    distinct(doi, authors, year, hcx, Species, acute.chronic_f,
+             size.length.um.used.for.conversions) %>% 
+    mutate(authoryear = paste(authors, "et. al ", year)) %>% 
+    mutate(hcx = replace_na(hcx, 0)) %>% #studies with n_species < 5 will get a 0
+    mutate(authoryear = fct_reorder(authoryear, hcx, na.rm = FALSE)) %>% 
+    mutate(diff = (hcx - filtered_data_hcx)/filtered_data_hcx,
+           tier = as.character(tier_input), #annotate for full dataset
+           ERM = as.character(ERM_input),
+           environment = as.character(environment_input)) #annotate for full dataset)
+  
+  sensitivity_summary <- sensitivity_df %>% 
+    group_by(doi, authoryear, diff, hcx) %>% 
+    summarise(species_multiple = paste(unique(Species), collapse = ", "),
+              .groups = "keep") %>% 
+    ungroup() %>% 
+    arrange(desc(hcx)) %>% 
+    mutate(hcx = case_when(hcx == 0 ~ NA,
+                           TRUE ~ hcx),
+           diff = case_when(diff == -1 ~ NA,
+                            TRUE ~ diff)) %>% 
+    mutate(sufficient_species = case_when(!is.na(hcx) ~ "sufficient",
+                                          is.na(hcx) ~ "insufficient"),
+           ERM = as.character(ERM_input),
+           environment = as.character(environment_input),
+           tier = as.character(tier_input)) #annotate for full dataset))
+ 
+   return(list(sensitivity_df = sensitivity_df, 
+               sensitivity_summary = sensitivity_summary))
+}
+
+```
+### Perform Sensitivity Analyses
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#### Freshwater #####
+#Tissue Translocation Thresholds
+tier1_sensitivity_tissue_freshwater <- leave_one_out_tier_1(filtered.data.small.default_t1.2 %>%
+                                                   filter(environment == "Freshwater"), hcx = 5,
+                                                   ERM_input = "Tissue Translocation", tier_input = "Tier 1", 
+                                                   environment_input = "Freshwater")
+tier2_sensitivity_tissue_freshwater <- leave_one_out_tier2(filtered.data.small.default_t1.2 %>%
+                                                   filter(environment == "Freshwater"), 5,
+                                                   ERM_input = "Tissue Translocation", tier_input = "Tier 2", 
+                                                   environment_input = "Freshwater")
+tier3_sensitivity_tissue_freshwater <- leave_one_out_tier3_4(filtered.data.small.default_t3.4 %>%
+                                                   filter(environment == "Freshwater"), 5,
+                                                   ERM_input = "Tissue Translocation", tier_input = "Tier 3", 
+                                                   environment_input = "Freshwater")
+tier4_sensitivity_tissue_freshwater <- leave_one_out_tier3_4(filtered.data.small.default_t3.4 %>%
+                                                   filter(environment == "Freshwater"), 10,
+                                                   ERM_input = "Tissue Translocation", tier_input = "Tier 4", 
+                                                   environment_input = "Freshwater")
+
+#Food Dilution Thresholds
+tier1_sensitivity_food_freshwater <- leave_one_out_tier_1(filtered.data.large.default_t1.2 %>%
+                                                   filter(environment == "Freshwater"), 5,
+                                                   ERM_input = "Food Dilution", tier_input = "Tier 1", 
+                                                   environment_input = "Freshwater")
+tier2_sensitivity_food_freshwater <- leave_one_out_tier2(filtered.data.large.default_t1.2 %>%
+                                                   filter(environment == "Freshwater"), 5,
+                                                   ERM_input = "Food Dilution", tier_input = "Tier 2", 
+                                                   environment_input = "Freshwater")
+tier3_sensitivity_food_freshwater <- leave_one_out_tier3_4(filtered.data.large.default_t3.4 %>%
+                                                   filter(environment == "Freshwater"), 5,
+                                                   ERM_input = "Food Dilution", tier_input = "Tier 3", 
+                                                   environment_input = "Freshwater")
+tier4_sensitivity_food_freshwater <- leave_one_out_tier3_4(filtered.data.large.default_t3.4 %>%
+                                                   filter(environment == "Freshwater"), 10,
+                                                   ERM_input = "Food Dilution", tier_input = "Tier 4", 
+                                                   environment_input = "Freshwater")
+
+#### Marine #####
+#Tissue Translocation Thresholds
+tier1_sensitivity_tissue_marine <- leave_one_out_tier_1(filtered.data.small.default_t1.2 %>%
+                                                   filter(environment == "Marine"), hcx = 5,
+                                                   ERM_input = "Tissue Translocation", tier_input = "Tier 1", 
+                                                   environment_input = "Marine")
+tier2_sensitivity_tissue_marine <- leave_one_out_tier2(filtered.data.small.default_t1.2 %>%
+                                                   filter(environment == "Marine"), 5,
+                                                   ERM_input = "Tissue Translocation", tier_input = "Tier 2", 
+                                                   environment_input = "Marine")
+tier3_sensitivity_tissue_marine <- leave_one_out_tier3_4(filtered.data.small.default_t3.4 %>%
+                                                   filter(environment == "Marine"), 5,
+                                                   ERM_input = "Tissue Translocation", tier_input = "Tier 3", 
+                                                   environment_input = "Marine")
+tier4_sensitivity_tissue_marine <- leave_one_out_tier3_4(filtered.data.small.default_t3.4 %>%
+                                                   filter(environment == "Marine"), 10,
+                                                   ERM_input = "Tissue Translocation", tier_input = "Tier 4", 
+                                                   environment_input = "Marine")
+
+#Food Dilution Thresholds
+tier1_sensitivity_food_marine <- leave_one_out_tier_1(filtered.data.large.default_t1.2 %>%
+                                                   filter(environment == "Marine"), 5,
+                                                   ERM_input = "Food Dilution", tier_input = "Tier 1", 
+                                                   environment_input = "Marine")
+tier2_sensitivity_food_marine <- leave_one_out_tier2(filtered.data.large.default_t1.2 %>%
+                                                   filter(environment == "Marine"), 5,
+                                                   ERM_input = "Food Dilution", tier_input = "Tier 2", 
+                                                   environment_input = "Marine")
+tier3_sensitivity_food_marine <- leave_one_out_tier3_4(filtered.data.large.default_t3.4 %>%
+                                                   filter(environment == "Marine"), 5,
+                                                   ERM_input = "Food Dilution", tier_input = "Tier 3", 
+                                                   environment_input = "Marine")
+tier4_sensitivity_food_marine <- leave_one_out_tier3_4(filtered.data.large.default_t3.4 %>%
+                                                   filter(environment == "Marine"), 10,
+                                                   ERM_input = "Food Dilution", tier_input = "Tier 4", 
+                                                   environment_input = "Marine")
+```
+
+### Export Data
+```{r}
+leave_one_out_df <- rbind(tier1_sensitivity_tissue_freshwater$sensitivity_summary,
+                          tier2_sensitivity_tissue_freshwater$sensitivity_summary,
+                          tier3_sensitivity_tissue_freshwater$sensitivity_summary,
+                          tier4_sensitivity_tissue_freshwater$sensitivity_summary,
+                          tier1_sensitivity_food_freshwater$sensitivity_summary,
+                          tier2_sensitivity_food_freshwater$sensitivity_summary,
+                          tier3_sensitivity_food_freshwater$sensitivity_summary,
+                          tier4_sensitivity_food_freshwater$sensitivity_summary,
+                          tier1_sensitivity_tissue_marine$sensitivity_summary,
+                          tier2_sensitivity_tissue_marine$sensitivity_summary,
+                          tier3_sensitivity_tissue_marine$sensitivity_summary,
+                          tier4_sensitivity_tissue_marine$sensitivity_summary,
+                          tier1_sensitivity_food_marine$sensitivity_summary,
+                          tier2_sensitivity_food_marine$sensitivity_summary,
+                          tier3_sensitivity_food_marine$sensitivity_summary,
+                          tier4_sensitivity_food_marine$sensitivity_summary)
+
+write.csv(leave_one_out_df,
+          "../output/data/leave_one_out.csv")
+```
+```{r}
+### start here if not wanting to run previous chunk (can take a long time)
+leave_one_out_df <- read.csv("../output/data/leave_one_out.csv")
+```
+
+
+### Plot
+```{r}
+library(ggallin)
+
+leave_one_out_ggplot <- leave_one_out_df %>% 
+  drop_na() %>% 
+  mutate(diff = diff + 0.0001) %>% 
+#  mutate(logdiff = log10(diff))
+  # group_by(environment, ERM, tier
+  #          ) %>% 
+  # summarize(minDiff = min(diff, na.rm = T),
+  #           maxDiff = max(diff, na.rm = T)) %>% 
+  # pivot_longer(cols = contains("diff")) %>% 
+  # rename(diffMagnitude = name,
+  #        diff = value) %>% 
+  # left_join(leave_one_out_df %>% select(diff, hcx, doi, authoryear, species_multiple),
+  #           by = "diff") %>% 
+  ggplot(aes(x = diff, y = tier, color = environment,
+             text = paste0("%Difference: ", scales::percent(diff, 0.1, big.mark = ","),
+                                              "<br>HCx: ",scientific(hcx, 3), " particles/L",
+                                              "<br>Study: ", authoryear,
+                                              "<br>Species: " ,species_multiple,
+                                              "<br>doi: ", doi)
+             )) +
+  geom_jitter(width = 0, height = 0.3, alpha = 0.5) +
+#  geom_point(alpha = 0.7) +
+#  geom_histogram() +
+ # geom_boxplot() +
+   # geom_text_repel(aes(label = species_multiple),
+   #                size = 3,
+   #                nudge_x = 0.25,
+   #                force = 4,
+   #                color = "black",
+   #                direction = "y",
+   #                # Jitter on the y-axis
+   #                max.overlaps = Inf,
+   #                label.padding = 1,
+   #                fontface = "italic") +
+ # geom_line() +
+  #geom_vline(xintercept = 0.00001, alpha = 0.5, color = "grey60") +
+  scale_x_continuous(trans = pseudo_log_trans(base = 10), 
+                     breaks = c(-1, 0, 1, 10, 100), 
+                     limits = c(-1, 110), 
+                     labels = scales::percent_format(accuracy = 1, big.mark = ",")) +
+#  scale_x_log10() +
+  
+  xlab("% Difference") +
+  theme_minimal(base_size = 13) +
+ theme( plot.title = element_text(hjust = 0.5, size = 14),     # Center the main title
+        strip.text = element_text(size = 14, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5),   # Center the caption
+        axis.title.x = element_text(hjust = 0.5, size = 14),  # Center the x-axis title
+        axis.text.x =  element_text(size = 11),
+        axis.text.y = element_text(size = 14),
+        axis.title.y = element_text(vjust = 0.5, size = 18)) +   # Center the y-axis title (vertically))   # Center the subtitle)
+  theme(legend.position = "none",
+        axis.title.y = element_blank()) +
+  facet_grid(environment ~ ERM)
+  #facet_wrap(~environment + ERM)
+
+ggsave(plot = leave_one_out_ggplot,
+       filename = "../output/Manuscript_Figs/leave_one_out.jpg",
+      dpi = 300,
+      width = 10, height = 7, units = "in")
+
+leave_one_out_ggplot
+```
+#### Plotly
+```{r}
+leave_one_out_ggplotly <- ggplotly(leave_one_out_ggplot, tooltip = "text")
+
+require(htmlwidgets)
+
+# Save the plot as an HTML file
+saveWidget(leave_one_out_ggplotly , file = "../output/Manuscript_Figs/leave_one_out_ggplotly.html")
+```
+
+
+
 
 
 ## Monte Carlo Alignments

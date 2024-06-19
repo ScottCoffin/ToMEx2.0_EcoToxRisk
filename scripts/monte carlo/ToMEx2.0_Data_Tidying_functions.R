@@ -512,9 +512,10 @@ tomex2.0_aoc_setup <- tomex2.0 %>%
 #Create summary data frame from ToMEx 1.0
   bodysize_summary <- aoc_setup %>%
     group_by(species_f, body.length.cm, body.size.source, max.size.ingest.mm, max.size.ingest.um) %>%
-    summarise() 
+    summarise(.groups = "drop") 
 
-  bodysize_addons <- read_csv("scripts/monte carlo/ref data/gape_size.csv") #copied from aq_mp_tox_shiny main folder
+  bodysize_addons <- read_csv("scripts/monte carlo/ref data/gape_size.csv",
+                              show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder
     
   bodysize_addons <- bodysize_addons %>% 
     mutate(species_f = as.factor(species_f)) %>% 
@@ -528,7 +529,8 @@ tomex2.0_aoc_setup <- tomex2.0 %>%
   
 #Join summary to tidy ToMEx 2.0 data frame
 
-tomex2.0_aoc_setup <- left_join(tomex2.0_aoc_setup, bodysize_summary, by = c("species_f"))
+tomex2.0_aoc_setup <- left_join(tomex2.0_aoc_setup, bodysize_summary, by = c("species_f"),
+                                relationship = "many-to-many")
 
 #Re-structure alternative dosing columns in aoc-setup
 aoc_setup <- aoc_setup %>% 
@@ -760,7 +762,7 @@ tomex2.0_aoc_setup_final$poly_f = fct_na_value_to_level(tomex2.0_aoc_setup_final
 tomex2.0_aoc_setup_final <- tomex2.0_aoc_setup_final[tomex2.0_aoc_setup_final$poly_f != "Polyamidoamine", ]
 
 #particle source
-tomex2.0_aoc_setup_final$source = fct_collapse(tomex2.0_aoc_setup_final$source,
+tomex2.0_aoc_setup_final$particle.source = fct_collapse(tomex2.0_aoc_setup_final$particle.source,
                                    "environmental" = c("Environmental",  "Field collected"),
                                    "not_reported" = c("N",  "No"),
                                    "commercial" = "Commercial") 
@@ -931,7 +933,7 @@ tomex2.0_aoc_setup_final_test <- tomex2.0_aoc_setup_final %>%
 #Endpoint Categorization setup
 tomex2.0_aoc_endpoint_final <- tomex2.0_aoc_setup_final %>% 
   group_by(lvl1_f,lvl2_f,lvl3_f,bio_f) %>% 
-  summarise()
+  summarise(.groups = "drop")
 
 #Save RDS file
 #saveRDS(tomex2.0_aoc_endpoint_final, file = "aoc_endpoint_tomex2.RDS")
@@ -1044,7 +1046,7 @@ tomex2.0_aoc_quality_final <- tomex2.0_aoc_setup_final %>%
   group_by(Study, Study_plus, doi, treatment_range, tech.a1, tech.a2, tech.a3, tech.a4, tech.a5, tech.a6, tech.1, tech.2, tech.3, tech.4, tech.5,
            tech.6, tech.7, tech.8, tech.9, tech.10, tech.11, tech.12, risk.13, risk.14, risk.15, risk.16, risk.17, risk.18, risk.19, risk.20,
            lvl1_f, lvl2_f, bio_f, effect_f, life_f, poly_f, shape_f, size_f, species_f, env_f, org_f, acute.chronic_f, tier_zero_tech_f, tier_zero_risk_f) %>% 
-  summarise()
+  summarise(.groups = "drop")
 
 tomex2.0_aoc_quality_final <- tomex2.0_aoc_quality_final %>% 
   pivot_longer(!c(Study, Study_plus, doi, treatment_range, lvl1_f, lvl2_f, bio_f, effect_f, life_f, poly_f, shape_f, size_f, species_f, env_f, org_f, acute.chronic_f, tier_zero_tech_f, tier_zero_risk_f),
