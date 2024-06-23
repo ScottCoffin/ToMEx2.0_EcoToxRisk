@@ -1,14 +1,63 @@
-﻿ID,source,fresh_marine_binary,PE_prop,PET_prop,PP_prop,PS_prop,PA_prop,PUR_prep,Acryl_prop,Polyester,PVC,PTFE,other,fragments_prop,spheres_prop,fibers_prop,length_mean_um,length_median_um,width_mean_um,width_median_um,denstiy_mean,area_mean_um2,comment
-1,ToMEx 2.0 freshwater,freshwater,0.204,0.04,0.031,0.592,0.017,0.005,0,0,0.036,0,0.075,0.279,0.564,0.041,147.3,5,155,45,1.072,493736,
-2,ToMEx 2.0 marine,marine,0.252,0.031,0.04,0.528,0.021,0,0,0,0.063,0,0.066,0.29,0.467,0.046,43.6,6,91,10,1.057,434947,
-3,"Kooi et al. 2021, freshwater surface",freshwater,,,,,,,,,,,,,,,,,,,,,
-4,"Kooi et al. 2021, marine surface",marine,,,,,,,,,,,,,,,,,,,,,
-5,"Kooi et al. 2021, freshwater sediment",freshwater,,,,,,,,,,,,,,,,,,,,,
-6,"Kooi et al. 2021, marine sediment",marine,,,,,,,,,,,,,,,,,,,,,
-7,"Yakushev et al. 2021, inner plume, surface",marine,0,0,0.167,0,0.167,0,0,0.667,0,0,0,0.33,0,0.67,NA,NA,NA,NA,NA,1.32,no lengths or widths reported
-8,"Yakushev et al. 2021, outer plume, surface",marine,0.333,0,0,0,0.125,0.292,0,0.042,0.208,0,0,0.875,0,0.125,NA,NA,NA,NA,NA,2.17,no lengths or widths reported
-9,"Yakushev et al. 2021, Atlantic surface",marine,0.636,0,0,0.182,0,0,0,0.091,0.091,0,0,0.91,0,0.09,NA,NA,NA,NA,NA,6.14,no lengths or widths reported
-7,"Yakushev et al. 2021, inner plume, subsurface",marine,0,0,0,0,0,0,0.429,0.571,0,0,0,0,0,1,1297,636,NA,NA,1.3,19461,"width only reported for fragments, not fibers"
-8,"Yakushev et al. 2021, outer plume, subsurface",marine,0.056,0,0.083,0.056,0.056,0,0.278,0.361,0,0.028,0.083,0.25,0,0.75,662,436,136,121,1.25,23816,"width only reported for fragments, not fibers"
-9,"Yakushev et al. 2021, Atlantic subsurface",marine,0.125,0.042,0.042,0.042,0.042,0.083,0.125,0.333,0.083,0.042,0.042,0.54,0,0.46,708,422,185,121,1.28,83125,"width only reported for fragments, not fibers"
-10,"Yakushev et al. 2021, polar subsurface",marine,0.108,0,0.054,0.081,0.027,0.027,0.081,0.324,0,0.108,0.189,0.51,0,0.49,696,481,162,142,1.33,37829,"width only reported for fragments, not fibers"
+﻿ID,doi,sample.source,fresh_marine_binary,PE_prop,PET_prop_inkl_polyester,PP_prop,PS_prop,PA_prop,PUR_prop,Acrylates_prop,PVC,PTFE,other,fragments_prop,spheres_prop,fibers_prop,length_mean_um,length_median_um,width_mean_um,width_median_um,denstiy_mean,area_mean_um2,comment
+1,ToMEx2.0,ToMEx 2.0 freshwater,freshwater,0.204,0.04,0.031,0.592,0.017,0.005,0,0.036,NA,0.075,0.279,0.564,0.041,147.3,5,155,45,1.072,493736,
+2,ToMEx2.0,ToMEx 2.0 marine,marine,0.252,0.031,0.04,0.528,0.021,0,0,0.063,NA,0.066,0.29,0.467,0.046,43.6,6,91,10,1.057,434947,
+3,10.1016/j.watres.2021.117429,"Kooi et al. 2021, freshwater surface",freshwater,0.316,0.003,0.129,NA,0.087,0.003,0.003,0,NA,0.4,NA,NA,NA,91.17,42.43,44.95,20,1.04,4.53E+04,PU and acrylates not separated in dataset: divided by 2; proportions of polymer types extracted from Fig. 3 via metaDigitise
+4,10.1016/j.watres.2021.117429,"Kooi et al. 2021, marine surface",marine,0.219,0.031,0.116,NA,0.314,0.054,0.054,0.018,NA,0.198,NA,NA,NA,45.64,11.14,25.04,11.03,1.1,4.83E+04,PU and acrylates not separated in dataset: divided by 2; proportions of polymer types extracted from Fig. 3 via metaDigitise
+5,10.1016/j.watres.2021.117429,"Kooi et al. 2021, freshwater sediment",freshwater,0.095,0.005,0.054,NA,0,0.324,0.324,0.075,NA,0.129,NA,NA,NA,64.25,20,28.08,20,1.15,1.15E+04,PU and acrylates not separated in dataset: divided by 2; proportions of polymer types extracted from Fig. 3 via metaDigitise
+6,10.1016/j.watres.2021.117429,"Kooi et al. 2021, marine sediment",marine,0.131,0.07,0.1,NA,0.103,0.057,0.057,0.108,NA,0.376,NA,NA,NA,34.69,11.14,17.59,11.14,1.16,3.52E+03,PU and acrylates not separated in dataset: divided by 2; proportions of polymer types extracted from Fig. 3 via metaDigitise
+7,10.1038/s43247-021-00091-0,"Yakushev et al. 2021, inner plume, surface",marine,0,0.667,0.167,0,0.167,0,0,0,0,0,0.33,0,0.67,NA,NA,NA,NA,NA,1.32E+06,no lengths or widths reported
+8,10.1038/s43247-021-00091-0,"Yakushev et al. 2021, outer plume, surface",marine,0.333,0.042,0,0,0.125,0.292,0,0.208,0,0,0.875,0,0.125,NA,NA,NA,NA,NA,2.17E+06,no lengths or widths reported
+9,10.1038/s43247-021-00091-0,"Yakushev et al. 2021, Atlantic surface",marine,0.636,0.091,0,0.182,0,0,0,0.091,0,0,0.91,0,0.09,NA,NA,NA,NA,NA,6.14E+06,no lengths or widths reported
+7,10.1038/s43247-021-00091-0,"Yakushev et al. 2021, inner plume, subsurface",marine,0,0.571,0,0,0,0,0.429,0,0,0,0,0,1,1297,636,NA,NA,1.3,19461,"width only reported for fragments, not fibers"
+8,10.1038/s43247-021-00091-0,"Yakushev et al. 2021, outer plume, subsurface",marine,0.056,0.361,0.083,0.056,0.056,0,0.278,0,0.028,0.083,0.25,0,0.75,662,436,136,121,1.25,23816,"width only reported for fragments, not fibers"
+9,10.1038/s43247-021-00091-0,"Yakushev et al. 2021, Atlantic subsurface",marine,0.125,0.375,0.042,0.042,0.042,0.083,0.125,0.083,0.042,0.042,0.54,0,0.46,708,422,185,121,1.28,83125,"width only reported for fragments, not fibers"
+10,10.1038/s43247-021-00091-0,"Yakushev et al. 2021, polar subsurface",marine,0.108,0.324,0.054,0.081,0.027,0.027,0.081,0,0.108,0.189,0.51,0,0.49,696,481,162,142,1.33,37829,"width only reported for fragments, not fibers"
+11,10.1371/journal.pone.0080466,"Reisser et al. 2014, 1",marine,0.2,NA,0,NA,NA,NA,NA,NA,NA,0.8,NA,NA,NA,2533,2500,NA,NA,NA,NA,
+12,10.1371/journal.pone.0080466,"Reisser et al. 2014, 2",marine,0.23,NA,0.02,NA,NA,NA,NA,NA,NA,0.75,NA,NA,NA,3215,3300,NA,NA,NA,NA,
+13,10.1371/journal.pone.0080466,"Reisser et al. 2014, 3",marine,0.21,NA,0.05,NA,NA,NA,NA,NA,NA,0.74,NA,NA,NA,2338,21240,NA,NA,NA,NA,
+14,10.1371/journal.pone.0080466,"Reisser et al. 2014, 4",marine,0.25,NA,0.1,NA,NA,NA,NA,NA,NA,0.65,NA,NA,NA,2573,2500,NA,NA,NA,NA,
+15,10.1371/journal.pone.0080466,"Reisser et al. 2014, 5",marine,0.12,NA,0.08,NA,NA,NA,NA,NA,NA,0.82,NA,NA,NA,2577,2500,NA,NA,NA,NA,
+16,10.1371/journal.pone.0080466,"Reisser et al. 2014, 6",marine,0.14,NA,0.07,NA,NA,NA,NA,NA,NA,0.79,NA,NA,NA,2196,2000,NA,NA,NA,NA,
+17,10.1371/journal.pone.0080466,"Reisser et al. 2014, 7",marine,0.1,NA,0.12,NA,NA,NA,NA,NA,NA,0.78,NA,NA,NA,2280,2170,NA,NA,NA,NA,
+18,10.5281/zenodo.10629004,"Soininen et al. 2023, S01",freshwater,0.57,0.43,0,0,0,NA,NA,NA,NA,0,NA,NA,NA,98.8,83.2,47.5,30.1,NA,NA,
+19,10.5281/zenodo.10629004,"Soininen et al. 2023, S02",freshwater,0.13,0.29,0.47,0.04,0,NA,NA,NA,NA,0.07,NA,NA,NA,78.4,61.6,33.1,28,NA,NA,
+20,10.5281/zenodo.10629004,"Soininen et al. 2023, S03",freshwater,0.55,0,0.36,0.09,0,NA,NA,NA,NA,0,NA,NA,NA,132,134.5,58,60.3,NA,NA,
+21,10.5281/zenodo.10629004,"Soininen et al. 2023, S04",freshwater,0,0.33,0.33,0.07,0,NA,NA,NA,NA,0.07,NA,NA,NA,119.2,79.6,43.5,31.4,NA,NA,
+22,10.5281/zenodo.10629004,"Soininen et al. 2023, S05",freshwater,0.04,0.08,0.83,0.04,0,NA,NA,NA,NA,0,NA,NA,NA,87.2,62.6,39.1,32.6,NA,NA,
+23,10.5281/zenodo.10629004,"Soininen et al. 2023, S06",freshwater,0.13,0.08,0.67,0.04,0,NA,NA,NA,NA,0.08,NA,NA,NA,103.3,93.3,46.4,41.3,NA,NA,
+24,10.5281/zenodo.10629004,"Soininen et al. 2023, S07",freshwater,0.35,0.14,0.51,0,0,NA,NA,NA,NA,0,NA,NA,NA,116.7,95.8,50.5,44.4,NA,NA,
+25,10.5281/zenodo.10629004,"Soininen et al. 2023, S08",freshwater,0.39,0.17,0.39,0,0,NA,NA,NA,NA,0.06,NA,NA,NA,115.4,94.25,46.69,35.7,NA,NA,
+26,10.5281/zenodo.10629004,"Soininen et al. 2023, S09",freshwater,0.08,0.16,0.68,0.05,0,NA,NA,NA,NA,0.03,NA,NA,NA,89.2,55.5,39.3,34.2,NA,NA,
+27,10.5281/zenodo.10629004,"Soininen et al. 2023, S10",freshwater,0.11,0.11,0.67,0.11,0,NA,NA,NA,NA,0,NA,NA,NA,87.1,74.1,31.6,35.7,NA,NA,
+28,10.5281/zenodo.10629004,"Soininen et al. 2023, S11",freshwater,0,0.14,0.79,0.04,0.04,NA,NA,NA,NA,0,NA,NA,NA,95.9,56.1,35.3,28.8,NA,NA,
+29,10.5281/zenodo.10629004,"Soininen et al. 2023, S12",freshwater,0.05,0.14,0.62,0.14,0,NA,NA,NA,NA,0.05,NA,NA,NA,117.3,88.5,42.6,38.8,NA,NA,
+30,10.5281/zenodo.10629004,"Soininen et al. 2023, S13",freshwater,0.1,0.14,0.52,0.05,0,NA,NA,NA,NA,0.19,NA,NA,NA,89.3,66.1,39.4,34.4,NA,NA,
+31,10.5281/zenodo.10629004,"Soininen et al. 2023, S14",freshwater,0.05,0.12,0.8,0.02,0,NA,NA,NA,NA,0,NA,NA,NA,121.8,105.9,48.1,44.1,NA,NA,
+32,10.5281/zenodo.10629004,"Soininen et al. 2023, S15",freshwater,0.08,0.11,0.73,0,0.03,NA,NA,NA,NA,0.05,NA,NA,NA,118.7,103.1,48,38.5,NA,NA,
+33,10.5281/zenodo.10629004,"Soininen et al. 2023, S16",freshwater,0.11,0,0.33,0.56,0,NA,NA,NA,NA,0,NA,NA,NA,57.2,44.2,28.5,25.3,NA,NA,
+34,10.5281/zenodo.10629004,"Soininen et al. 2023, S17",marine,0.33,0,0.53,0,0,NA,NA,NA,NA,0.13,NA,NA,NA,117.8,96.8,57.1,56.7,NA,NA,
+35,10.5281/zenodo.10629004,"Soininen et al. 2023, S18",marine,0.54,0.08,0.38,0,0,NA,NA,NA,NA,0,NA,NA,NA,118.4,105.7,51.1,47.4,NA,NA,
+36,10.5281/zenodo.10629004,"Soininen et al. 2023, S19",freshwater,0.17,0.14,0.63,0,0,NA,NA,NA,NA,0.05,NA,NA,NA,137.2,89.3,49.8,36.5,NA,NA,
+37,10.5281/zenodo.10629004,"Soininen et al. 2023, S20",freshwater,0.21,0.06,0.71,0.01,0,NA,NA,NA,NA,0,NA,NA,NA,156.9,74.1,56.2,40.9,NA,NA,
+38,10.5281/zenodo.10629004,"Soininen et al. 2023, S21",freshwater,0.39,0.03,0.55,0.02,0,NA,NA,NA,NA,0.02,NA,NA,NA,178.5,123.3,70.2,51.3,NA,NA,
+39,10.5281/zenodo.10629004,"Soininen et al. 2023, S22",freshwater,0.39,0.04,0.4,0.09,0.01,NA,NA,NA,NA,0.07,NA,NA,NA,154.5,118.5,57.5,50.4,NA,NA,
+40,10.5281/zenodo.10629004,"Soininen et al. 2023, S23",freshwater,0.18,0.02,0.64,0.03,0,NA,NA,NA,NA,0.13,NA,NA,NA,141.37,116.5,60.2,46.7,NA,NA,
+41,10.5281/zenodo.10629004,"Soininen et al. 2023, S24",freshwater,0.28,0,0.69,0,0.03,NA,NA,NA,NA,0,NA,NA,NA,99,73.2,45.5,36.8,NA,NA,
+42,10.5281/zenodo.10629004,"Soininen et al. 2023, S25",freshwater,0.33,0.03,0.62,0.03,0,NA,NA,NA,NA,0,NA,NA,NA,108.5,88.5,49.14,45.3,NA,NA,
+43,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N1",marine,0.5,0.37,0.13,0,0,NA,NA,NA,NA,0,NA,NA,NA,114.1,62.5,32.2,27.7,NA,4736,
+44,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N2",marine,0.21,0.64,0.14,0,0,NA,NA,NA,NA,0,NA,NA,NA,121.2,76.8,29.8,26.9,NA,3509,
+45,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N3",marine,0.35,0.29,0.35,0,0,NA,NA,NA,NA,0,NA,NA,NA,158.3,112.8,36.9,27.2,NA,8260,
+47,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N5",marine,0.33,0.53,0.13,0,0,NA,NA,NA,NA,0,NA,NA,NA,116.3,100,34.3,30.4,NA,3615,
+48,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N6",marine,0.38,0.13,0.38,0,0.13,NA,NA,NA,NA,0,NA,NA,NA,79.5,65.6,27.2,23.8,NA,2030,
+49,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N7",marine,0.31,0.42,0.24,0,0,NA,NA,NA,NA,0.02,NA,NA,NA,98.4,68.9,31.3,27,NA,2908,
+50,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N8",marine,0.75,0.125,0,0,0.13,NA,NA,NA,NA,0,NA,NA,NA,73.4,55.9,28.8,28,NA,1891,
+51,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N9",marine,0.83,0.14,0.03,0,0,NA,NA,NA,NA,0,NA,NA,NA,68.3,43.4,26.4,22.9,NA,1674,
+52,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N10",marine,0.33,0.33,0.33,0,0,NA,NA,NA,NA,0,NA,NA,NA,103.3,119.6,31.9,29.6,NA,2954,
+53,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N11",marine,0.29,0.14,0.43,0.14,0,NA,NA,NA,NA,0,NA,NA,NA,112.4,102.3,38.6,36.9,NA,3673,
+54,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N12",marine,0.2,0.2,0.6,0,0,NA,NA,NA,NA,0,NA,NA,NA,57.2,41.6,23,20.5,NA,1222,
+55,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N13",marine,0.88,0.13,0,0,0,NA,NA,NA,NA,0,NA,NA,NA,145.6,119.4,52.1,28.4,NA,9672,
+56,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N14",marine,0.6,0,0.4,0,0,NA,NA,NA,NA,0,NA,NA,NA,68.6,53.8,27.2,23.9,NA,1838,
+57,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N15",marine,0.26,0,0.67,0,0.07,NA,NA,NA,NA,0,NA,NA,NA,717.2,155.1,61.8,45.6,NA,44878,
+58,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N16",marine,0.69,0.08,0.15,0.08,0,NA,NA,NA,NA,0,NA,NA,NA,136.1,113.5,62.2,43.3,NA,9540,
+59,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N17",marine,0.33,0.17,0.5,0,0,NA,NA,NA,NA,0,NA,NA,NA,87.7,76.6,35.1,40,NA,2737,
+60,10.5281/zenodo.4892875,"Uurasjaervi et al 2021, N18",marine,0.35,0.24,0.29,0.06,0.06,NA,NA,NA,NA,0,NA,NA,NA,123.3,67.1,31.9,26.3,NA,3944,

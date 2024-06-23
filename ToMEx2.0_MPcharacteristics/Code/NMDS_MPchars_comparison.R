@@ -6,17 +6,19 @@ library(vegan)
 dat = read.csv("Data/data_comp_to_env_compiled.csv", stringsAsFactors = TRUE)
 str(dat)
 summary(dat)
-dat = dat[!grepl("Kooi", dat$source), ]
-dat$tomex_binary = NA
-dat$tomex_binary[grepl("ToMEx", dat$source)] = "yes"
-dat$tomex_binary[!grepl("ToMEx", dat$source)] = "no"
+levels(dat$doi)
+
+#dat = dat[!grepl("Kooi", dat$source), ]
+# dat$tomex_binary = NA
+# dat$tomex_binary[grepl("ToMEx", dat$source)] = "yes"
+# dat$tomex_binary[!grepl("ToMEx", dat$source)] = "no"
 
 # scale variables
 colnames(dat)
-vars = dat[,c(4:19,22,23)]
+vars = dat[,c(5:18,20,22,23)]
 scaled = scale(vars)
 
-# raplce all NAs with 0 - set all unknown values to variable mean
+# replace all NAs with 0 - set all unknown values to variable mean
 scaled[is.na(scaled)] = 0
 
 # NMDS
@@ -30,15 +32,23 @@ envfitall <- envfit(NMDS, scaled)
 
 palette(c("lightskyblue", "royalblue3"))
 op = par(bty = "l", las = 1)
-plot(x,y, bg = dat$fresh_marine_binary, col = c(rep("darkred",2), rep("black",7)), pch = ifelse(dat$tomex_binary == "yes", 24, 21),
-     xlab = "NMDS1", ylab = "NMDS2")
+
+plot(x,y, bg = dat$fresh_marine_binary, col = c(rep("red",2), rep("grey20",(nrow(dat)-2))), pch = c(rep(24,2), rep(21,(nrow(dat)-2))), #c(rep("red",2), rep("grey80",(nrow(dat)-2)))
+     xlab = "NMDS1", ylab = "NMDS2", cex = 1.5)
 
 for(i in 1:nrow(envfitall$vectors$arrows)){
-arrows(0,0, envfitall$vectors$arrows[i,1]*2, envfitall$vectors$arrows[i,2]*2, 
+arrows(0,0, envfitall$vectors$arrows[i,1]*2.5, envfitall$vectors$arrows[i,2]*2.5, 
        length = 0.1, col = "grey50")
-text(envfitall$vectors$arrows[i,1]*2+0.5, envfitall$vectors$arrows[i,2]*2+0.5,
+text(envfitall$vectors$arrows[i,1]*2.5, envfitall$vectors$arrows[i,2]*2.5,
      rownames(envfitall$vectors$arrows)[i], cex = 0.8, col = "grey50")
 }          
-text("ToMEx 2.0", x = -4.2, y = -0.8, col = "darkred", 
-     cex = 0.8, pos = 4)
+text("ToMEx 2.0", x = -4, y = -2.8, col = "red", 
+     cex = 0.8, pos = 4, font = 2)
+
+
+### different symbols for different publication sources
+plot(x,y, bg = c(rep("red",2), rep("grey80",(nrow(dat)-2))), col = dat$fresh_marine_binary, pch = c(21,23,22,24,15,25)[dat$doi],
+     xlab = "NMDS1", ylab = "NMDS2", cex = 1.5)
+
+
 
