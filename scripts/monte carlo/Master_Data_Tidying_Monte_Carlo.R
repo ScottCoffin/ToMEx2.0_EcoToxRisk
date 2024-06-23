@@ -261,32 +261,59 @@ R.ave.sediment.freshwater <- 0.70 # average length to width ratio of microplasti
 R.ave.sediment.freshwater.sd = 0.33 #Tablse s3. freshwater surface sediment
 R.ave.sediment.freshwater_samples <- rnorm(n_sim, mean = R.ave.sediment.freshwater, sd = R.ave.sediment.freshwater.sd)
 
-
-p.ave = 1.10 #average density in marine surface water
-p.ave.sd = 0.14 #Tablse s3. Marine surfac water
-p.ave_samples <- rnorm(n_sim, mean = p.ave, sd = p.ave.sd)
+#### MARINE ####
+p.ave.marine = 1.10 #average density in marine surface water
+p.ave.sd.marine = 0.14 #Tablse s3. Marine surfac water
+p.ave.marine_samples <- rnorm(n_sim, mean = p.ave.marine, sd = p.ave.sd.marine)
 
 # Alignment properties
-alpha = 2.07 #table s4 for marine surface water. length
-alpha.sd = 0.07 #table s4 for marine surface water. lengthj
-alpha_samples <- rnorm(n_sim, mean = alpha, sd = alpha.sd)
+alpha.marine = 2.07 #table s4 for marine surface water. length
+alpha.sd.marine = 0.03 #table s4 for marine surface water. lengthj
+alpha.marine_samples <- rnorm(n_sim, mean = alpha.marine, sd = alpha.sd.marine)
 
 # define parameters for power law coefficients
-a.sa = 1.5 #marine surface area power law
-a.sa.sd = 0.009 #marine surface water surface area power law - table s4
-a.sa_samples <- rnorm(n_sim, mean = a.sa, sd = a.sa.sd)
+a.sa.marine = 1.50 #marine surface area power law
+a.sa.sd.marine = 0.009 #marine surface water surface area power law - table s4
+a.sa.marine_samples <- rnorm(n_sim, mean = a.sa.marine, sd = a.sa.sd.marine)
 
-a.v = 1.48 #a_V for marine surface water volume
-a.v.sd = 0.063
-a.v_samples <- rnorm(n_sim, mean = a.v, sd = a.v.sd)
+a.v.marine = 1.48 #a_V for marine surface water volume
+a.v.sd.marine = 0.063
+a.v.marine_samples <- rnorm(n_sim, mean = a.v.marine, sd = a.v.sd.marine)
 
-a.m = 1.32 # upper limit fora_m for mass for marine surface water in table S4 
-a.m.sd = 0.009
-a.m_samples <- rnorm(n_sim, mean = a.m, sd = a.m.sd)
+a.m.marine = 1.32 # upper limit fora_m for mass for marine surface water in table S4 
+a.m.sd.marine = 0.009
+a.m.marine_samples <- rnorm(n_sim, mean = a.m.marine, sd = a.m.sd.marine)
 
-a.ssa = 1.98 # A_SSA for marine surface water
-a.ssa.sd = 0.297
-a.ssa_samples <- rnorm(n_sim, mean = a.ssa, sd = a.ssa.sd)
+a.ssa.marine = 1.98 # A_SSA for marine surface water
+a.ssa.sd.marine = 0.297
+a.ssa.marine_samples <- rnorm(n_sim, mean = a.ssa.marine, sd = a.ssa.sd.marine)
+
+#### FRESHWATER ####
+p.ave.freshwater = 1.04 #average density in freshwater surface water
+p.ave.sd.freshwater = 0.12 #Tablse s3. freshwater surfac water
+p.ave.freshwater_samples <- rnorm(n_sim, mean = p.ave.freshwater, sd = p.ave.sd.freshwater)
+
+# Alignment properties
+alpha.freshwater = 2.64 #table s4 for freshwater surface water. length
+alpha.sd.freshwater = 0.01 #table s4 for freshwater surface water. lengthj
+alpha.freshwater_samples <- rnorm(n_sim, mean = alpha.freshwater, sd = alpha.sd.freshwater)
+
+# define parameters for power law coefficients
+a.sa.freshwater = 2.00 #freshwater surface area power law
+a.sa.sd.freshwater = 0.065 #freshwater surface water surface area power law - table s4
+a.sa.freshwater_samples <- rnorm(n_sim, mean = a.sa.freshwater, sd = a.sa.sd.freshwater)
+
+a.v.freshwater = 1.68 #a_V for freshwater surface water volume
+a.v.sd.freshwater = 0.081
+a.v.freshwater_samples <- rnorm(n_sim, mean = a.v.freshwater, sd = a.v.sd.freshwater)
+
+a.m.freshwater = 1.65 # upper limit fora_m for mass for freshwater surface water in table S4 
+a.m.sd.freshwater = 0.071
+a.m.freshwater_samples <- rnorm(n_sim, mean = a.m.freshwater, sd = a.m.sd.freshwater)
+
+a.ssa.freshwater = 2.71 # A_SSA for freshwater surface water
+a.ssa.sd.freshwater = 0.009
+a.ssa.freshwater_samples <- rnorm(n_sim, mean = a.ssa.freshwater, sd = a.ssa.sd.freshwater)
 
 # Coefficients
 beta_log10_body_length <- 0.9341
@@ -318,12 +345,18 @@ upper.tissue.trans.size.um_samples <- as.numeric(upper.tissue.trans.size.um_samp
 
 #define param values
 param_values <- data.frame(
-  alpha = alpha_samples,
-  a.sa = a.sa_samples,
-  a.v = a.v_samples,
-  a.m = a.m_samples,
-  a.ssa = a.ssa_samples,
+  alpha.marine = alpha.marine_samples,
+  a.sa.marine = a.sa.marine_samples,
+  a.v.marine = a.v.marine_samples,
+  a.m.marine = a.m.marine_samples,
+  a.ssa.marine = a.ssa.marine_samples,
   R.ave.water.marine = R.ave.water.marine_samples,
+  alpha.freshwater = alpha.freshwater_samples,
+  a.sa.freshwater = a.sa.freshwater_samples,
+  a.v.freshwater = a.v.freshwater_samples,
+  a.m.freshwater = a.m.freshwater_samples,
+  a.ssa.freshwater = a.ssa.freshwater_samples,
+  R.ave.water.freshwater = R.ave.water.freshwater_samples,
   R.ave.water.freshwater = R.ave.water.freshwater_samples,
   R.ave.sediment.marine = R.ave.sediment.marine_samples,
   R.ave.sediment.freshwater = R.ave.sediment.freshwater_samples,
@@ -341,11 +374,16 @@ model_wrapper <- function(params, iteration){
   #unpack parameters
   # Ensure all extracted parameters are correctly coerced to numeric
   # Coerce to numeric directly while accessing the first element of potential list
-  alpha <- as.numeric(params$alpha[1])
-  a_sa <- as.numeric(params$a.sa[1])
-  a_v <- as.numeric(params$a.v[1])
-  a_m <- as.numeric(params$a.m[1])
-  a_ssa <- as.numeric(params$a.ssa[1])
+  alpha.marine <- as.numeric(params$alpha.marine[1])
+  a_sa.marine <- as.numeric(params$a.sa.marine[1])
+  a_v.marine <- as.numeric(params$a.v.marine[1])
+  a_m.marine <- as.numeric(params$a.m.marine[1])
+  a_ssa.marine <- as.numeric(params$a.ssa.marine[1])
+  alpha.freshwater <- as.numeric(params$alpha.freshwater[1])
+  a_sa.freshwater <- as.numeric(params$a.sa.freshwater[1])
+  a_v.freshwater <- as.numeric(params$a.v.freshwater[1])
+  a_m.freshwater <- as.numeric(params$a.m.freshwater[1])
+  a_ssa.freshwater <- as.numeric(params$a.ssa.freshwater[1])
   R_ave_water_marine <- as.numeric(params$R.ave.water.marine[1])
   R_ave_water_freshwater <- as.numeric(params$R.ave.water.freshwater[1])
   R_ave_sediment_marine <- as.numeric(params$R.ave.sediment.marine[1])
@@ -399,7 +437,18 @@ model_wrapper <- function(params, iteration){
     is.na(max.size.ingest.um) ~ upper.tissue.trans.size.um,
     TRUE ~ pmin(max.size.ingest.um, upper.tissue.trans.size.um)
   )) %>% 
-    
+    # define environment-specific alpha parameters #
+    mutate(alpha = case_when(environment == "Marine" ~ alpha.marine,
+                             environment == "Freshwater" ~ alpha.freshwater),
+           a.sa = case_when(environment == "Marine" ~ a_sa.marine,
+                            environment == "Freshwater" ~ a_sa.freshwater),
+           a.v = case_when(environment == "Marine" ~ a_v.marine,
+                            environment == "Freshwater" ~ a_v.freshwater),
+           a.m = case_when(environment == "Marine" ~ a_m.marine,
+                           environment == "Freshwater" ~ a_m.freshwater),
+           a.ssa = case_when(environment == "Marine" ~ a_ssa.marine,
+                           environment == "Freshwater" ~ a_ssa.freshwater),
+           ) %>% 
     # calculate effect threshold for particles
     mutate(EC_mono_p.particles.mL_trans = dose.particles.mL.master) %>% 
     mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
@@ -612,8 +661,7 @@ prepared_data <- all_thresholds_long %>%
     grepl("Food", Metric) ~ "Food Dilution"
   )) %>%
   filter(
-    grepl("Default", Metric),
-    Environment == "Marine"
+    grepl("Default", Metric)
   )
 
 # Calculate median values for each group
@@ -624,7 +672,13 @@ median_data <- prepared_data %>%
 # Assign specific colors based on Tier levels
 tier_colors <- setNames(c("#e2efd9", "#f9e39c", "#f0a95f", "#f0514b"), levels(prepared_data$Tier))
 
-MC_histograms_base <- ggplot(prepared_data, aes(x = Value)) +
+# define functino for making figures for marine and freshwater
+MC_histograms_fxn <- function(environment){
+  
+  data <- prepared_data %>% 
+    filter(Environment == environment)
+  
+  MC_histograms_base <- ggplot(data, aes(x = Value)) +
   geom_density(aes(color = Tier), size = 1) +  # Map 'Tier' for color
   geom_histogram(aes(y = ..density.., fill = Tier), bins = 150, color = "black", alpha = 0.6, linewidth = 0.05) +  # Map 'Tier' for fill
   geom_vline(data = median_data, aes(xintercept = Median),
@@ -666,15 +720,29 @@ MC_histograms_light <- MC_histograms_base +
     axis.ticks.y = element_blank()
   )
 
-MC_histograms_light
+return(list(MC_histograms_light, MC_histograms_dark))
+}
 
-ggsave("scripts/monte carlo/output/MC_histograms.png",
-       MC_histograms_light, 
+# run function 
+MC_histograms_marine <- MC_histograms_fxn("Marine")
+MC_histograms_freshwater <- MC_histograms_fxn("Freshwater")
+
+MC_histograms_marine[1]
+MC_histograms_freshwater[1]
+
+ggsave("scripts/monte carlo/output/MC_histograms_freshwater.png",
+       MC_histograms_freshwater[1], 
       dpi = 300,
       width = 12, height = 9, units = "in")
 
+ggsave("scripts/monte carlo/output/MC_histograms_marine.png",
+       MC_histograms_marine[1], 
+       dpi = 300,
+       width = 12, height = 9, units = "in")
+
+
 ggsave("output/presentation_Figs/MC_histograms.png",
-       MC_histograms_dark, 
+       MC_histograms_marine[2], 
        dpi = 300,
        width = 10, height = 5,
        units = "in")

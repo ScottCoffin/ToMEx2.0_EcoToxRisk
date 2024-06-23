@@ -1402,6 +1402,192 @@ saveWidget(leave_one_out_ggplotly , file = "../output/Manuscript_Figs/leave_one_
 
 
 ## Monte Carlo Alignments
+### Parameter histograms
+```{r}
+n_sim <- 100000 #histogram data points
+# particle properties
+R.ave.water.marine <- 0.77 # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
+R.ave.water.marine.sd = 0.29 #Tablse s3. Marine surface water
+R.ave.water.marine_samples <- rnorm(n_sim, mean = R.ave.water.marine, sd = R.ave.water.marine.sd)
+
+R.ave.water.freshwater <- 0.67 # average length to width ratio of microplastics in freshwater environment (Kooi et al. 2021)
+R.ave.water.freshwater.sd = 0.28 #Tablse s3. freshwater surface water
+R.ave.water.freshwater_samples <- rnorm(n_sim, mean = R.ave.water.freshwater, sd = R.ave.water.freshwater.sd)
+
+R.ave.sediment.marine <- 0.75 # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
+R.ave.sediment.marine.sd = 0.30 #Tablse s3. Marine surface sediment
+R.ave.sediment.marine_samples <- rnorm(n_sim, mean = R.ave.sediment.marine, sd = R.ave.sediment.marine.sd)
+
+R.ave.sediment.freshwater <- 0.70 # average length to width ratio of microplastics in freshwater environment (Kooi et al. 2021)
+R.ave.sediment.freshwater.sd = 0.33 #Tablse s3. freshwater surface sediment
+R.ave.sediment.freshwater_samples <- rnorm(n_sim, mean = R.ave.sediment.freshwater, sd = R.ave.sediment.freshwater.sd)
+
+#### MARINE ####
+p.ave.marine = 1.10 #average density in marine surface water
+p.ave.sd.marine = 0.14 #Tablse s3. Marine surfac water
+p.ave.marine_samples <- rnorm(n_sim, mean = p.ave.marine, sd = p.ave.sd.marine)
+
+# Alignment properties
+alpha.marine = 2.07 #table s4 for marine surface water. length
+alpha.sd.marine = 0.03 #table s4 for marine surface water. lengthj
+alpha.marine_samples <- rnorm(n_sim, mean = alpha.marine, sd = alpha.sd.marine)
+
+# define parameters for power law coefficients
+a.sa.marine = 1.50 #marine surface area power law
+a.sa.sd.marine = 0.009 #marine surface water surface area power law - table s4
+a.sa.marine_samples <- rnorm(n_sim, mean = a.sa.marine, sd = a.sa.sd.marine)
+
+a.v.marine = 1.48 #a_V for marine surface water volume
+a.v.sd.marine = 0.063
+a.v.marine_samples <- rnorm(n_sim, mean = a.v.marine, sd = a.v.sd.marine)
+
+a.m.marine = 1.32 # upper limit fora_m for mass for marine surface water in table S4 
+a.m.sd.marine = 0.009
+a.m.marine_samples <- rnorm(n_sim, mean = a.m.marine, sd = a.m.sd.marine)
+
+a.ssa.marine = 1.98 # A_SSA for marine surface water
+a.ssa.sd.marine = 0.297
+a.ssa.marine_samples <- rnorm(n_sim, mean = a.ssa.marine, sd = a.ssa.sd.marine)
+
+#### FRESHWATER ####
+p.ave.freshwater = 1.04 #average density in freshwater surface water
+p.ave.sd.freshwater = 0.12 #Tablse s3. freshwater surfac water
+p.ave.freshwater_samples <- rnorm(n_sim, mean = p.ave.freshwater, sd = p.ave.sd.freshwater)
+
+# Alignment properties
+alpha.freshwater = 2.64 #table s4 for freshwater surface water. length
+alpha.sd.freshwater = 0.01 #table s4 for freshwater surface water. lengthj
+alpha.freshwater_samples <- rnorm(n_sim, mean = alpha.freshwater, sd = alpha.sd.freshwater)
+
+# define parameters for power law coefficients
+a.sa.freshwater = 2.00 #freshwater surface area power law
+a.sa.sd.freshwater = 0.065 #freshwater surface water surface area power law - table s4
+a.sa.freshwater_samples <- rnorm(n_sim, mean = a.sa.freshwater, sd = a.sa.sd.freshwater)
+
+a.v.freshwater = 1.68 #a_V for freshwater surface water volume
+a.v.sd.freshwater = 0.081
+a.v.freshwater_samples <- rnorm(n_sim, mean = a.v.freshwater, sd = a.v.sd.freshwater)
+
+a.m.freshwater = 1.65 # upper limit fora_m for mass for freshwater surface water in table S4 
+a.m.sd.freshwater = 0.071
+a.m.freshwater_samples <- rnorm(n_sim, mean = a.m.freshwater, sd = a.m.sd.freshwater)
+
+a.ssa.freshwater = 2.71 # A_SSA for freshwater surface water
+a.ssa.sd.freshwater = 0.009
+a.ssa.freshwater_samples <- rnorm(n_sim, mean = a.ssa.freshwater, sd = a.ssa.sd.freshwater)
+
+# Coefficients
+beta_log10_body_length <- 0.9341
+body_length_intercept <- 1.1200
+# Standard errors for these coefficients
+se_beta_log10_body_length <- 0.1376  # SE generated from Jams et al R code (not rpoerted in paper or SI!) (https://github.com/fmwindsor/plastic-allometry)
+se_body_length_intercept <- 0.3222      # SE generated from Jams et al R code (not rpoerted in paper or SI!) (https://github.com/fmwindsor/plastic-allometry)
+#data
+sim_beta_log10_body_length_samples <- rnorm(n_sim, mean = beta_log10_body_length, sd = se_beta_log10_body_length)
+sim_body_length_intercept_samples <- rnorm(n_sim, mean = body_length_intercept, sd = se_body_length_intercept)
+
+#### Tissue translocation length ##
+# Parameters from the logistic regression# See scripts/translocation/translocation.Rmd for model
+beta_0 <- 1.308344# simple$coefficients[[1]]  # 1.24  # Intercept
+beta_1 <- -0.01468148 # simple$coefficients[[2]]   #-0.014  # Slope for particle length
+se_beta_0 <- 0.3963612 # simple_summary$coefficients[[1,2]]  # 0.40  # SE of intercept
+se_beta_1 <- 0.006657993 #simple_summary$coefficients[[2,2]]  # SE of slope
+
+# Simulate beta_0 and beta_1
+sim_beta_0 <- rnorm(n_sim * 1.2, mean = beta_0, sd = se_beta_0)
+sim_beta_1 <- rnorm(n_sim * 1.2, mean = beta_1, sd = se_beta_1)
+
+# Calculate X50 for each simulation
+sim_X50 <- -sim_beta_0 / sim_beta_1
+
+#truncate distribution to not fall below 0
+upper.tissue.trans.size.um_samples <- sim_X50 %>% data.frame() %>% filter(.>0) %>% slice(1:n_sim)
+upper.tissue.trans.size.um_samples <- as.numeric(upper.tissue.trans.size.um_samples$.)
+
+#define param values
+param_values <- data.frame(
+  a.l.marine = alpha.marine_samples,
+  a.sa.marine = a.sa.marine_samples,
+  a.v.marine = a.v.marine_samples,
+  a.m.marine = a.m.marine_samples,
+  a.ssa.marine = a.ssa.marine_samples,
+  R.ave.marine = R.ave.water.marine_samples,
+  a.l.freshwater = alpha.freshwater_samples,
+  a.sa.freshwater = a.sa.freshwater_samples,
+  a.v.freshwater = a.v.freshwater_samples,
+  a.m.freshwater = a.m.freshwater_samples,
+  a.ssa.freshwater = a.ssa.freshwater_samples,
+  R.ave.freshwater = R.ave.water.freshwater_samples,
+#  R.ave.sediment.marine = R.ave.sediment.marine_samples,
+#  R.ave.sediment.freshwater = R.ave.sediment.freshwater_samples,
+  body.length.beta = sim_beta_log10_body_length_samples,
+  body.length.intercept = sim_body_length_intercept_samples,
+  upper.tissue.size.um =  upper.tissue.trans.size.um_samples
+)
+```
+Save summary stats and params in a table for the SI.
+```{r}
+summaries <- param_values %>%
+  pivot_longer(cols = everything(), names_to = "Parameter", values_to = "Value") %>%
+  group_by(Parameter) %>%
+  summarise(
+    mean = sprintf("%.3g", mean(Value, na.rm = TRUE)),
+    sd = sprintf("%.3g", sd(Value, na.rm = TRUE)),
+    median = sprintf("%.3g", median(Value, na.rm = TRUE)),
+    lower_95_ci = sprintf("%.3g", quantile(Value, 0.025, na.rm = TRUE)),
+    upper_95_ci = sprintf("%.3g", quantile(Value, 0.975, na.rm = TRUE))
+  )
+
+write.csv(summaries, "../output/data/MC_params.csv", row.names = FALSE)
+
+summaries
+```
+
+
+Draw histograms for publication
+ 
+```{r}
+MC_param_histograms <- param_values %>% 
+  pivot_longer(cols = everything()) %>% 
+  mutate(name = factor(name, levels = c("a.l.marine", "a.sa.marine", "a.v.marine",
+                                        "a.m.marine", "a.ssa.marine", "R.ave.marine",
+                                        "a.l.freshwater", "a.sa.freshwater", "a.v.freshwater",
+                                        "a.m.freshwater", "a.ssa.freshwater",
+                                        "R.ave.freshwater",
+                                        "body.length.beta",
+                                        "body.length.intercept",
+                                        "upper.tissue.size.um"))) %>% 
+  ggplot(aes(x = value, fill = name)) +
+  geom_histogram(bins = 350, linewidth = 0.10) +
+  scale_x_log10()+
+#  xlim(c(1,1000))+
+  labs(#title = "Distribution of Simulated X50 Values",
+       x = "Value",
+       y = "Relative Frequency") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none",
+        plot.title = element_blank(),
+        plot.subtitle = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5),   # Center the caption
+        axis.title.x = element_text(hjust = 0.5, size = 16, face = "bold"),  # Center the x-axis title
+        axis.text.x = element_text(size = 11),
+        axis.text.y = element_blank(),
+       # axis.text = element_text(size = 16),
+        axis.title.y = element_text(vjust = 0.5, size = 16, face = "bold"),
+       strip.text = element_text(size = 16, face = "bold", family = "serif")  # Customize facet title size
+       )  + # Center the y-axis title
+  facet_wrap(~name, scales = "free",
+             ncol = 6)
+
+MC_param_histograms
+
+ggsave(filename = "MC_param_histograms.jpg",
+       dpi = 300,
+       path = "../output/Manuscript_Figs/", 
+       plot = MC_histograms, width = 9, height = 8, units = "in")
+```
+
+
  NOTE: this is done in scripts/monte carlo/Master_Data_Tidying_Monte_Carlo.R. The reason is that the data prep scripts are extremely complicated, and preserving every nuance with perfect fidelity through copying into this markdown script has proven impossible. Just import the final RDS file generated from that script.
  
 ```{r}

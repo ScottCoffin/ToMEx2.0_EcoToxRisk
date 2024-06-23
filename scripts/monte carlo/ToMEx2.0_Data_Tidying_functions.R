@@ -39,7 +39,7 @@ tomex2.0_aoc_setup <- tomex2.0 %>%
    #Use only last name of first author
    mutate(authors = word(authors,1,sep = ",")) %>% 
    arrange(authors) %>% 
-   transform(article=as.numeric(factor(doi))+162) %>% 
+   base::transform(article=as.numeric(factor(doi))+162) %>% 
    relocate(article, .after = doi) %>%   
    #Add rowid column
    rowid_to_column() %>% 
