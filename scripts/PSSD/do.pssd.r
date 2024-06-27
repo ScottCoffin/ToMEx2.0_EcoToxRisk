@@ -69,9 +69,16 @@ do.pSSD <- function(DP,
     ind.min <- which.min(corr.endpoints[,sp])
     ind.max <- which.max(corr.endpoints[,sp])
     
+    if(is.matrix(CV.DP)){
+      CV.DP2 <- CD.DP[,sp]
+    }
+    else{
+      CV.DP2 <- CD.DP
+    }
+    
     # calculate the theoretical minimum and maximum of the distribution we are looking for
-    sp.min <- corr.endpoints[ind.min,sp]*(1-(sqrt((CV.DP/2.45)^2 + (CV.UF/2.45)^2 + (CV.UF/2.45)^2)*2.45))
-    sp.max <- corr.endpoints[ind.max,sp]*(1+(sqrt((CV.DP/2.45)^2 + (CV.UF/2.45)^2 + (CV.UF/2.45)^2)*2.45))
+    sp.min <- corr.endpoints[ind.min,sp]*(1-(sqrt(sum((CV.DP2/2.45)^2) + 2* (CV.UF/2.45)^2)*2.45))
+    sp.max <- corr.endpoints[ind.max,sp]*(1+(sqrt(sum((CV.DP2/2.45)^2) + 2*(CV.UF/2.45)^2)*2.45))
     
     #{Scott} - why is the CV.UF term included twice here?#
     #{Substitute CVs with probabilistically-determined alignments based on Alpha value, etc.}
@@ -100,9 +107,9 @@ do.pSSD <- function(DP,
       #Use this in place of below to bootstrap. 
       # The low end of the CV correction factors
 
-      low <- (1-(sqrt(sum(c(DP.SD[[sp]], CV.DP, CV.UF)^2))))
+      low <- (1-(sqrt(sum(c(DP.SD[[sp]], CV.DP2, CV.UF)^2))))
       # The high end of the CV correction factors
-      high <- (1+(sqrt(sum(c(DP.SD[[sp]], CV.DP, CV.UF)^2))))
+      high <- (1+(sqrt(sum(c(DP.SD[[sp]], CV.DP2, CV.UF)^2))))
       # Create a boostrap of the correction factors
       uncertainty_factor <- runif(min = low, 
                                   max = high, 
