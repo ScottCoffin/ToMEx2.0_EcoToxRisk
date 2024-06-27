@@ -128,7 +128,7 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
   # calculate effect threshold for particles
   mutate(EC_mono_p.particles.mL_trans = dose.particles.mL.master) %>% 
   mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
-  mutate(mu.p.poly_trans = mux.polyfnx(a.x = alpha, #alpha for particles
+  mutate(mu.p.poly_trans = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles
                                        x_UL= x2M_trans, #upper ingestible size limit (width of particle)
                                        x_LL = x1M_set)) %>% 
   # polydisperse effect threshold for particles
@@ -155,14 +155,14 @@ mutate(x_LL_sa_trans = SAfnx(a = 0.5 * x1D_set, #length
                                c = 0.5 * x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
   )) %>%  
   #calculate mu_x_poly (env) for surface area
-  mutate(mu.sa.poly_trans = mux.polyfnx(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
+  mutate(mu.sa.poly_trans = mux_polyfnx_generalizable(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
   
   ##--- laboratory calculations ---###
   ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
   #(note that if mixed particles were used, a different equation must be used)
   mutate(mu.sa.mono = case_when(
     polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported surface area in monodisperse
-    polydispersity == "polydisperse" ~  mux.polyfnx(a.x = a.sa, 
+    polydispersity == "polydisperse" ~  mux_polyfnx_generalizable(a.x = a.sa, 
                                                     x_LL = particle.surface.area.um2.min,
                                                     x_UL = particle.surface.area.um2.max))) %>% 
   
@@ -180,7 +180,7 @@ mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ x2D_set,
   # calculate effect threshold for particles
   mutate(EC_mono_p.particles.mL_ingest = dose.particles.mL.master) %>% 
   mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
-  mutate(mu.p.poly_ingest = mux.polyfnx(a.x = alpha, #alpha for particles
+  mutate(mu.p.poly_ingest = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles
                                         x_UL= x2M_ingest, #upper ingestible size limit
                                         x_LL = x1M_set)) %>% 
   # polydisperse effect threshold for particles
@@ -205,13 +205,13 @@ mutate(x_LL_v_ingest = volumefnx_poly(length = x1D_set,
                                         #x2D_set, #upper definiton (accouunts for fibers) CONSERVATIVE
                                         width = x2M_ingest)) %>% #ingestion-limited
   # calculate mu.v.poly
-  mutate(mu.v.poly_ingest = mux.polyfnx(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
+  mutate(mu.v.poly_ingest = mux_polyfnx_generalizable(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
   ##--- laboratory calculations ---###
   ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
   #(note that if mixed particles were used, a different equation must be used)
   mutate(mu.v.mono = case_when(
     polydispersity == "monodisperse" ~ particle.volume.um3, # use reported volume in monodisperse
-    polydispersity == "polydisperse" ~ mux.polyfnx(a.x = a.v, 
+    polydispersity == "polydisperse" ~ mux_polyfnx_generalizable(a.x = a.v, 
                                                    x_LL = particle.volume.um3.min,
                                                    x_UL = particle.volume.um3.max))) %>% 
   
@@ -452,7 +452,7 @@ model_wrapper <- function(params, iteration){
     # calculate effect threshold for particles
     mutate(EC_mono_p.particles.mL_trans = dose.particles.mL.master) %>% 
     mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
-    mutate(mu.p.poly_trans = mux.polyfnx(a.x = alpha, #alpha for particles
+    mutate(mu.p.poly_trans = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles
                                          x_UL= x2M_trans, #upper ingestible size limit (width of particle)
                                          x_LL = x1M_set)) %>% 
     # polydisperse effect threshold for particles
@@ -479,14 +479,14 @@ model_wrapper <- function(params, iteration){
                                  c = 0.5 * x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
     )) %>%  
     #calculate mu_x_poly (env) for surface area
-    mutate(mu.sa.poly_trans = mux.polyfnx(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
+    mutate(mu.sa.poly_trans = mux_polyfnx_generalizable(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
     
     ##--- laboratory calculations ---###
     ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
     #(note that if mixed particles were used, a different equation must be used)
     mutate(mu.sa.mono = case_when(
       polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported surface area in monodisperse
-      polydispersity == "polydisperse" ~  mux.polyfnx(a.x = a.sa, 
+      polydispersity == "polydisperse" ~  mux_polyfnx_generalizable(a.x = a.sa, 
                                                       x_LL = particle.surface.area.um2.min,
                                                       x_UL = particle.surface.area.um2.max))) %>% 
     
@@ -504,7 +504,7 @@ model_wrapper <- function(params, iteration){
     # calculate effect threshold for particles
     mutate(EC_mono_p.particles.mL_ingest = dose.particles.mL.master) %>% 
     mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
-    mutate(mu.p.poly_ingest = mux.polyfnx(a.x = alpha, #alpha for particles
+    mutate(mu.p.poly_ingest = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles
                                           x_UL= x2M_ingest, #upper ingestible size limit
                                           x_LL = x1M_set)) %>% 
     # polydisperse effect threshold for particles
@@ -529,13 +529,13 @@ model_wrapper <- function(params, iteration){
                                           #x2D_set, #upper definiton (accouunts for fibers) CONSERVATIVE
                                           width = x2M_ingest)) %>% #ingestion-limited
     # calculate mu.v.poly
-    mutate(mu.v.poly_ingest = mux.polyfnx(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
+    mutate(mu.v.poly_ingest = mux_polyfnx_generalizable(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
     ##--- laboratory calculations ---###
     ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
     #(note that if mixed particles were used, a different equation must be used)
     mutate(mu.v.mono = case_when(
       polydispersity == "monodisperse" ~ particle.volume.um3, # use reported volume in monodisperse
-      polydispersity == "polydisperse" ~ mux.polyfnx(a.x = a.v, 
+      polydispersity == "polydisperse" ~ mux_polyfnx_generalizable(a.x = a.v, 
                                                      x_LL = particle.volume.um3.min,
                                                      x_UL = particle.volume.um3.max))) %>% 
     
@@ -951,7 +951,7 @@ model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval 
     # calculate effect threshold for particles
     mutate(EC_mono_p.particles.mL_trans = dose.particles.mL.master) %>% 
     mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
-    mutate(mu.p.poly_trans = mux.polyfnx(a.x = alpha, #alpha for particles
+    mutate(mu.p.poly_trans = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles
                                          x_UL= x2M_trans, #upper ingestible size limit (width of particle)
                                          x_LL = x1M_set)) %>% 
     # polydisperse effect threshold for particles
@@ -978,14 +978,14 @@ model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval 
                                  c = 0.5 * x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
     )) %>%  
     #calculate mu_x_poly (env) for surface area
-    mutate(mu.sa.poly_trans = mux.polyfnx(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
+    mutate(mu.sa.poly_trans = mux_polyfnx_generalizable(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
     
     ##--- laboratory calculations ---###
     ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
     #(note that if mixed particles were used, a different equation must be used)
     mutate(mu.sa.mono = case_when(
       polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported surface area in monodisperse
-      polydispersity == "polydisperse" ~  mux.polyfnx(a.x = a.sa, 
+      polydispersity == "polydisperse" ~  mux_polyfnx_generalizable(a.x = a.sa, 
                                                       x_LL = particle.surface.area.um2.min,
                                                       x_UL = particle.surface.area.um2.max))) %>% 
     
@@ -1003,7 +1003,7 @@ model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval 
     # calculate effect threshold for particles
     mutate(EC_mono_p.particles.mL_ingest = dose.particles.mL.master) %>% 
     mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
-    mutate(mu.p.poly_ingest = mux.polyfnx(a.x = alpha, #alpha for particles
+    mutate(mu.p.poly_ingest = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles
                                           x_UL= x2M_ingest, #upper ingestible size limit
                                           x_LL = x1M_set)) %>% 
     # polydisperse effect threshold for particles
@@ -1028,13 +1028,13 @@ model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval 
                                           #x2D_set, #upper definiton (accouunts for fibers) CONSERVATIVE
                                           width = x2M_ingest)) %>% #ingestion-limited
     # calculate mu.v.poly
-    mutate(mu.v.poly_ingest = mux.polyfnx(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
+    mutate(mu.v.poly_ingest = mux_polyfnx_generalizable(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
     ##--- laboratory calculations ---###
     ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
     #(note that if mixed particles were used, a different equation must be used)
     mutate(mu.v.mono = case_when(
       polydispersity == "monodisperse" ~ particle.volume.um3, # use reported volume in monodisperse
-      polydispersity == "polydisperse" ~ mux.polyfnx(a.x = a.v, 
+      polydispersity == "polydisperse" ~ mux_polyfnx_generalizable(a.x = a.v, 
                                                      x_LL = particle.volume.um3.min,
                                                      x_UL = particle.volume.um3.max))) %>% 
     
