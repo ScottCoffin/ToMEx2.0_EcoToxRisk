@@ -1,0 +1,35 @@
+Kieu Le, Thuy Chung; Truong, Tran Nguyen Sang; Tran, Quoc Viet; Strady, Emilie, 2020,
+"Microplastic concentrations in river and reservoir environments of Dong Nai, Ho Chi Minh City, Long An and Tay Ninh provinces,
+Southern Vietnam. COMPOSE (2019-2021) and CounterMEASUREII (2021-2022) projects",
+https://doi.org/10.23708/2XTKRT, DataSuds.
+
+
+Data dictionary
+sample: surface water and surface sediment
+
+
+DN-HA-W; Dong Nai province - Hoa An site (N10°54'1.947; E106°50'20.446); Dong Nai River; water
+DN-TA-W; Dong Nai province - Tri An reservoir site (N11°6'10.687; E107°4'55.182); Tri An Reservoir; water
+TN-DT-W; Tay Ninh province - Dau Tien reservoir site (N11°20'14.729; E106°19'54.926); Dau Tien Reservoir; water 
+HCM-BD-W; Ho Chi Minh City - Bach Dang site (N10°46'31.96; E106°42'30.61); Saigon river; water
+LA-VC-W; Long An province - Vam Co site (N10°28'26.69; E106°34'51.05) Vam Co river - water
+
+Column A-J: sample replicate 1
+
+row 1: sample name: DN_XX_YYYYMM-W/S   (DN: code for province name; XX: code for site name; YYYYMM: year and month of sampling; W: water; S: sediment)
+row 2: sampling date
+row 3 & column AB: Total volume sampled m3
+row 4 & column AB: Total of counted microplastics in items
+row 5 & column AB: Total concentrations of microplastic items m-3
+
+row 4 & column DEF: Counted fragment in items
+row 5 & column DEF: Concentrations of fragments items m-3
+row 6 and following & column D: type of microplastic
+row 6 and following & column E: area of fragment
+row 6 and following & column F: color of fragment
+
+row 4 & column HIJ: Counted fragment in items
+row 5 & column HIJ: Concentrations of fragments items m-3
+row 6 and following & column H: type of microplastic
+row 6 and following & column I: length of line
+row 6 and following & column J: color of line
