@@ -1,0 +1,64 @@
+Dataset citation
+Trinh-Dang, Mau; Tran-Nguyen, Quynh Anh; Vo, Van Minh; Nguyen, Hoai Nhu Y; Strady, Emilie, 2023,
+"Microplastic concentrations in surface water and sediment of Thuan An and Tra Khuc estuaries in Central Vietnam, 2021",
+https://doi.org/10.23708/CHXWCH, DataSuds.
+
+
+
+Dataset description
+Microplastic concentrations (300-5000µm) in surface water and sediment were investigated in two estuaries in Central Vietnam: Thuan An Estuary (Thua Thien Hue Province) and Tra Khuc Estuary (Quang Ngai Province) in April 2021.
+Microplastics in water were sampled using a stainless steel bucket and filtered through a plankton net (mesh size: 80 µm).
+Sediment sampling was implemented using a stainless steel sediment core sampler (diameter: 5 cm).
+Microplastics in the samples were treated by bio-enzyme and H2O2 30%, density separated by NaCl, and filtered through Whatman glass fiber filters (GF/A, pore sizes of 1.6 µm).
+Microplastics were observed by a stereomicroscope and classified into groups of shape, color, and size. Microplastic concentration was expressed as the number of particles per m3 (item m-3) for water and the number of particles per kilogram of dry-weight sediment (item kg-1) for sediments.
+
+
+
+Data dictionary
+sample: surface water and surface sediment
+
+HUE_TA_S1_042021_W: Hue province - Thuan An site (16°32'13.2"N, 107°35'14.1"E)_April 2021_water
+HUE_TA_S2_042021_W: Hue province - Thuan An site (16°32'20.6"N, 107°35'07.8"E)_April 2021_water
+HUE_TA_S3_042021_W: Hue province - Thuan An site (16°33'08.3"N, 107°38'19.2"E)_April 2021_water
+HUE_TA_S4_042021_W: Hue province - Thuan An site (16°33'33.1"N, 107°37'20.5"E)_April 2021_water
+HUE_TA_S5_042021_W: Hue province - Thuan An site (16°34'07.8"N, 107°37'34.9"E)_April 2021_water
+HUE_TA_S6_042021_W: Hue province - Thuan An site (16°34'19.5"N, 107°37'00.8"E)_April 2021_water
+
+HUE_TA_S1_042021_S: Hue province - Thuan An site (16°32'13.2"N, 107°35'14.1"E)_April 2021_sediment
+HUE_TA_S2_042021_S: Hue province - Thuan An site (16°32'20.6"N, 107°35'07.8"E)_April 2021_sediment
+HUE_TA_S3_042021_S: Hue province - Thuan An site (16°33'08.3"N, 107°38'19.2"E)_April 2021_sediment
+HUE_TA_S4_042021_S: Hue province - Thuan An site (16°33'33.1"N, 107°37'20.5"E)_April 2021_sediment
+HUE_TA_S5_042021_S: Hue province - Thuan An site (16°34'07.8"N, 107°37'34.9"E)_April 2021_sediment
+HUE_TA_S6_042021_S: Hue province - Thuan An site (16°34'19.5"N, 107°37'00.8"E)_April 2021_sediment
+
+QNG_TK_S1_042021_W: Quang Ngai province - Tra Khuc site (15°08'05.8"N, 108°48'05.7"E)_April 2021_water
+QNG_TK_S2_042021_W: Quang Ngai province - Tra Khuc site (15°08'23.9"N, 108°48'03.6"E)_April 2021_water
+QNG_TK_S3_042021_W: Quang Ngai province - Tra Khuc site (15°08'16.4"N, 108°53'07.4"E)_April 2021_water
+QNG_TK_S4_042021_W: Quang Ngai province - Tra Khuc site (15°09'04.5"N, 108°53'09.9"E)_April 2021_water
+QNG_TK_S5_042021_W: Quang Ngai province - Tra Khuc site (15°08'22.3"N, 108°53'45.2"E)_April 2021_water
+QNG_TK_S6_042021_W: Quang Ngai province - Tra Khuc site (15°08'39.0"N, 108°53'44.5"E)_April 2021_water
+
+QNG_TK_S1_042021_S: Quang Ngai province - Tra Khuc site (15°08'05.8"N & 15°08'23.9"N)_April 2021_sediment
+QNG_TK_S3_042021_S: Quang Ngai province - Tra Khuc site (15°08'16.4"N & 15°09'04.5"N)_April 2021_sediment
+QNG_TK_S5_042021_S: Quang Ngai province - Tra Khuc site (15°08'22.3"N & 15°08'39.0"N)_April 2021_sediment
+
+Column A-K: sample replicate 1  
+
+row 1: sample name : XXX_XX_SX_MMYYYY-W/S   (XXX: code for province/city; XX: code for site name; SX: number of site ; MMYYYY: month and year of sampling; W: water; S: sediment)
+row 2: sampling date
+row 3 & column AB: Total volume sampled m3/kg
+row 4 & column AB: Total of counted microplastics in items
+row 5 & column AB: Total concentrations of microplastic items m-3/kg
+
+row 4 & column DEF: Counted fragment in items
+row 5 & column DEF: Concentrations of fragments items m-3/kg
+row 6 and following & column D: type of microplastic
+row 6 and following & column E: area of fragment
+row 6 and following & column F: colour of fragment
+
+row 4 & column HIJK: Counted fragment in items
+row 5 & column HIJK:  Concentrations of fragments items m-3/kg
+row 6 and following & column H: type of microplastic
+row 6 and following & column I: length of line
+row 6 and following & column J: colour of line
+row 6 and following & column K: diameter of line
