@@ -611,7 +611,12 @@ for (i in 1:nrow(param_values)) {
   MC_results[[i]] <- model_wrapper(param_set, i)
 }
 
+# save results
+saveRDS(MC_results, "scripts/monte carlo/output/MC_results.rds")
 
+
+#### START HERE IF WORKING FROM SAVED FILE ###
+MC_results <- readRDS("scripts/monte carlo/output/MC_results.rds")
 
 ##################################### ANALYSIS #########################################
 
@@ -622,14 +627,14 @@ all_thresholds_marine <- map(MC_results, ~ .x$base_thresholds$marine) %>%
 all_thresholds_freshwater <- map(MC_results, ~ .x$base_thresholds$freshwater) %>% 
   bind_rows(.id = "simulation_id")
 
-all_thresholds_freshwater_marine <- map(MC_results, ~ .x$base_thresholds$freshwater_marine) %>% 
-  bind_rows(.id = "simulation_id")
+# all_thresholds_freshwater_marine <- map(MC_results, ~ .x$base_thresholds$freshwater_marine) %>% 
+#   bind_rows(.id = "simulation_id")
 
 # Combine marine and freshwater data into one data frame with an additional "Environment" column
 all_thresholds_combined <- bind_rows(
   mutate(all_thresholds_marine, Environment = "Marine"),
   mutate(all_thresholds_freshwater, Environment = "Freshwater"),
-  mutate(all_thresholds_freshwater_marine, Environment = "freshwater_marine"),
+ # mutate(all_thresholds_freshwater_marine, Environment = "freshwater_marine"),
   .id = "simulation_id"
 )
 
@@ -686,7 +691,7 @@ MC_histograms_fxn <- function(environment){
 #  geom_text(data = median_data, aes(x = Median, y = 0, label = paste0("Median:", scientific(Median, 2))),
         #    hjust = +1.5, vjust = -1.5, color = "black", size = 6, fontface = "italic") +
   xlab("Particles/L") +
-  scale_x_log10(labels = comma) +
+  scale_x_log10(labels = scales::comma) +
   facet_wrap(~ Tier + ERM, scales = "free", ncol = 2) +
   scale_fill_manual(values = tier_colors) +  # Apply manual colors for fill
   scale_color_manual(values = tier_colors)  # Apply manual colors for lines
@@ -753,11 +758,17 @@ all_thresholds_long %>%
   mutate(ERM = case_when(
     grepl("Tissue", Metric) ~ "Tissue Translocation",
     grepl("Food", Metric) ~ "Food Dilution")) %>% 
-  ggplot(aes(x = Value, y = Tier, color = Environment)) +
-  geom_boxplot() +
- # geom_jitter() +
-  scale_x_log10() +
-  facet_grid(rows = vars(Environment), cols = vars(ERM)) +
+  ggplot(aes(x = Value, y = Tier, color = Environment, fill = Environment)) +
+  #geom_boxplot(alpha = 0.5) +
+  geom_violin(alpha = 0.9,
+              draw_quantiles = T) +
+  cols4all::scale_fill_discrete_c4a_cat("carto.bold") +
+  cols4all::scale_color_discrete_c4a_cat("carto.bold") +
+  #geom_jitter() +
+  scale_x_log10(name = "Particles/L (1 - 5000 um)",
+                labels = scales::comma) +
+  facet_grid(rows = vars(Environment), cols = vars(ERM),
+             scales = "free") +
   theme_bw(base_size = 16) +
   theme(legend.position = "none")
 
@@ -765,7 +776,6 @@ all_thresholds_long %>%
 print(summary_stats_base_thresholds)
 
 #save output
-saveRDS(MC_results, "scripts/monte carlo/output/MC_results.rds")
 saveRDS(summary_stats_base_thresholds, "scripts/monte carlo/output/summary_stats_base_thresholds.rds")
 
 
@@ -878,7 +888,7 @@ CoV_plots
 
 # For high number of iterations, need to simplify data saved to not overload the RAM
 #### Define Model Wrapper
-model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval = 500){
+model_wrapper_sobol <- function(params, iteration, N, sobol_results, save_interval = 500){
   
   #report time
   start_time <- Sys.time()
@@ -901,8 +911,8 @@ model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval 
     a_ssa.freshwater <- as.numeric(params$a.ssa.freshwater[1])
     R_ave_water_marine <- as.numeric(params$R.ave.water.marine[1])
     R_ave_water_freshwater <- as.numeric(params$R.ave.water.freshwater[1])
-    R_ave_sediment_marine <- as.numeric(params$R.ave.sediment.marine[1])
-    R_ave_sediment_freshwater <- as.numeric(params$R.ave.sediment.freshwater[1])
+    #R_ave_sediment_marine <- as.numeric(params$R.ave.sediment.marine[1])
+ #  R_ave_sediment_freshwater <- as.numeric(params$R.ave.sediment.freshwater[1])
     sim_beta_log10_body_length <- as.numeric(params$sim.beta.log10.body.length[1])
     sim_body_length_intercept <- as.numeric(params$sim.body.length.intercept[1])
     upper.tissue.trans.size.um <- as.numeric(params$upper.tissue.trans.size.um[1])
@@ -1105,7 +1115,7 @@ model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval 
   
   ##### SAVE OUTPUT OF MONTE CARLO ######
   
-  MC_results[[i]] <- list(
+  sobol_results[[i]] <- list(
     # particles_mL_ox_stress = aoc_MC_iter$particles.mL.ox.stress,
     #                       particles_mL_food_dilution = aoc_MC_iter$particles.mL.food.dilution,
     #                       unique_id = aoc_MC_iter$unique_id,
@@ -1117,8 +1127,8 @@ model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval 
   
   # Save results every save_interval iterations
   if (iteration %% save_interval == 0) {
-    filename <- paste0("scripts/monte carlo/output/MC_results_iteration_", iteration, ".rds")
-    saveRDS(MC_results, file = filename)
+    filename <- paste0("scripts/monte carlo/output/sobol_results_iteration_", iteration, ".rds")
+    saveRDS(sobol_results, file = filename)
     cat(sprintf("Saved results for iteration %d\n", iteration))
     flush.console()
   }
@@ -1135,7 +1145,7 @@ model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval 
   total_time <- Sys.time() - start_time
   cat(sprintf("Total time for %d iterations: %.2f secs\n", N, total_time))
   
-  return(MC_results)
+  return(sobol_results)
 } #close model_wrapper function
 
 
@@ -1156,12 +1166,12 @@ library(truncnorm)
 params <- c("alpha.marine", "a.sa.marine", "a.v.marine", "a.m.marine", "a.ssa.marine", 
             "alpha.freshwater", "a.sa.freshwater", "a.v.freshwater", "a.m.freshwater", "a.ssa.freshwater", 
             "R.ave.water.marine", "R.ave.water.freshwater",
-            "R.ave.sediment.marine", "R.ave.sediment.freshwater",
+          #  "R.ave.sediment.marine", "R.ave.sediment.freshwater",
             "sim_beta_log10_body_length", "sim_body_length_intercept",
             "upper.tissue.trans.size.um")
 
 # Number of samples
-N <- 100
+N <- 4
 matrices <- c("A", "B", "AB", "BA")
 first <- total <- "azzini"
 
@@ -1221,6 +1231,9 @@ mat[, "upper.tissue.trans.size.um" := upper.tissue.trans.size.um_samples]
 # Convert the data.table to a data.frame
 mat <- as.data.frame(mat)
 
+# save mat (necessary for stats later)
+saveRDS(mat, file = "scripts/monte carlo/output/mat.rds")
+
 
 ## alternatrively, just use param_values derived above
 #mat <- param_values[1:N,]
@@ -1228,7 +1241,7 @@ mat <- as.data.frame(mat)
 # 2. Run the Model for Each Sample Set: Run your model for each set of parameter samples.
 # Initialize a list to store the results
 # Initialize the results list and counter
-MC_results <- vector("list", nrow(mat))
+sobol_results <- vector("list", nrow(mat))
 N <- as.integer(nrow(mat))
 N
 
@@ -1237,12 +1250,12 @@ for (i in 1:N) {
   param_set <- mat[i, ]
   
   # Perform the model wrapping with error handling
-  MC_results <- tryCatch({
-    model_wrapper_sobol(param_set, i, N = N, MC_results, save_interval = 2)
+  sobol_results <- tryCatch({
+    model_wrapper_sobol(param_set, i, N = N, sobol_results, save_interval = 2)
   }, error = function(e) {
     cat(sprintf("Error at iteration %d: %s\n", i, e$message))
     flush.console()
-    MC_results
+    sobol_results
   })
   
   # Print progress and flush the console output
@@ -1251,27 +1264,18 @@ for (i in 1:N) {
 }
 
 # Save the final results
-saveRDS(MC_results, file = "scripts/monte carlo/output/MC_results_final.rds")
+saveRDS(sobol_results, file = "scripts/monte carlo/output/sobol_results.rds")
 
 # Print a message to indicate completion
 cat("All iterations complete and final results saved.\n")
 flush.console()
 
-
-# Save the final results
-saveRDS(MC_results, file = "MC_results_final.rds")
-
-# Print a message to indicate completion
-cat("All iterations complete and final results saved.\n")
-flush.console()
-
-
-saveRDS(MC_results, "scripts/monte carlo/output/MC_results_sobol.rds")
-
+#### start here from saved file ###
+sobol_results <- readRDS("scripts/monte carlo/output/sobol_results.rds")
 
 # Extract and combine marine and freshwater thresholds
-all_thresholds_marine_sobol <- map_dfr(MC_results, ~ .x$base_thresholds$marine, .id = "simulation_id")
-all_thresholds_freshwater_sobol <- map_dfr(MC_results, ~ .x$base_thresholds$freshwater, .id = "simulation_id")
+all_thresholds_marine_sobol <- map_dfr(sobol_results, ~ .x$base_thresholds$marine, .id = "simulation_id")
+all_thresholds_freshwater_sobol <- map_dfr(sobol_results, ~ .x$base_thresholds$freshwater, .id = "simulation_id")
 
 # 3. Extract the Output of Interest: Extract the relevant output from each model run (marine and freshwater thresholds).
 # Convert results to a numeric vector
@@ -1287,7 +1291,7 @@ hist(Y_marine_food_T3)
 hist(Y_freshwater_food_T3)
 
 #stopped MC at iteration = 2037, so need to subset mat to that value
-mat2 <- mat[1:2037,]
+#mat2 <- mat[1:2037,]
 
 
 
@@ -1298,7 +1302,7 @@ scatter_marine_tissue_t3 <- sensobol::plot_scatter(data = mat2, N = N, Y = Y_mar
 scatter_freshwater_tissue_t3 <- sensobol::plot_scatter(data = mat2, N = N, Y = Y_freshwater_tissue_T3, params = params, method = "bin") + ggtitle("Scatter Plot: Freshwater Tissue")
  
 # Arrange the plots into a 2x2 matrix with a common legend
-scatterplots <- combined_plot <- ggarrange(
+scatterplots <- combined_plot <- ggpubr::ggarrange(
   scatter_marine_food_t3, scatter_freshwater_food_t3,
   scatter_marine_tissue_t3, scatter_freshwater_tissue_t3,
   ncol = 2, nrow = 2, common.legend = TRUE, legend = "bottom"
@@ -1315,11 +1319,20 @@ ggsave(filename = "sobol_scatterplots.jpg",
 
 
 # multiscatter
-plot_multiscatter(data = mat2, 
+multi_food <- plot_multiscatter(data = mat2, 
                   N = N,
                   Y = Y_marine_food_T3, 
-                  params = c("alpha", "upper.tissue.trans.size.um", "R.ave.water.marine", "sim_body_length_intercept"))
+                  params = c("alpha.marine", "a.v.marine", "R.ave.water.marine", "sim_body_length_intercept"))
 
+multi_food
+
+# multiscatter
+multi_tissue <- plot_multiscatter(data = mat2, 
+                                N = N,
+                                Y = Y_marine_food_T3, 
+                                params = c("alpha.marine", "a.sa.marine", "upper.tissue.trans.size.um"))
+
+multi_tissue
 
 #### checks ##
 # Check for NAs in parameter values
@@ -1548,7 +1561,7 @@ plot(ind, dummy = ind.dummy)
 # param_list <- split(param_values, seq(nrow(param_values)))
 # 
 # # Execute model_wrapper function in parallel
-# MC_results <- parLapply(cl, param_list, function(params) {
+# sobol_results <- parLapply(cl, param_list, function(params) {
 #   model_wrapper(params)
 # })
 # 
