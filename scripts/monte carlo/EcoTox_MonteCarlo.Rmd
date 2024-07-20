@@ -957,7 +957,7 @@ model_wrapper_sobol <- function(params, N, save_interval = 500){
 ### Define Matrix
 ```{r}
 # Number of samples
-N <- 3
+N <- 300
 matrices <- c("A", "B", "AB", "BA")
 first <- total <- "azzini"
 
@@ -1043,13 +1043,12 @@ N
 for (i in 1:N) {
   param_set <- mat[i, ]
   
-  # Perform the model wrapping with error handling
-  sobol_results <- tryCatch({
-    model_wrapper_sobol(param_set, N = 1, save_interval = 2)
+    # Perform the model wrapping with error handling
+  tryCatch({
+    sobol_results[i] <- model_wrapper_sobol(param_set, N = 1, save_interval = 2) # N=1 because each call handles one set of params
   }, error = function(e) {
     cat(sprintf("Error at iteration %d: %s\n", i, e$message))
     flush.console()
-    sobol_results
   })
   
   # Print progress and flush the console output
@@ -1093,12 +1092,16 @@ hist(Y_freshwater_food_T3)
 ```{r}
 #stopped MC at iteration = 2037, so need to subset mat to that value
 #mat2 <- mat[1:2037,]
-
+mat2 <- mat
 
 #scatter plot of parameter interactions
 scatter_marine_food_t3 <- sensobol::plot_scatter(data = mat2, N = N, Y = Y_marine_food_T3, params = params, method = "bin") + ggtitle("Scatter Plot: Marine Food")
-scatter_freshwater_food_t3 <- sensobol::plot_scatter(data = mat2, N = N, Y = Y_freshwater_food_T3, params = params, method = "bin") + ggtitle("Scatter Plot: Freshwater Food")
+
+scatter_freshwater_food_t3 <- sensobol::plot_scatter(data = mat2, N = N, Y = Y_freshwater_food_T3,
+                                                     params = params, method = "bin") + ggtitle("Scatter Plot: Freshwater Food")
+
 scatter_marine_tissue_t3 <- sensobol::plot_scatter(data = mat2, N = N, Y = Y_marine_tissue_T3, params = params, method = "bin") + ggtitle("Scatter Plot: Marine Tissue")
+
 scatter_freshwater_tissue_t3 <- sensobol::plot_scatter(data = mat2, N = N, Y = Y_freshwater_tissue_T3, params = params, method = "bin") + ggtitle("Scatter Plot: Freshwater Tissue")
  
 # Arrange the plots into a 2x2 matrix with a common legend
@@ -1110,7 +1113,7 @@ scatterplots <- combined_plot <- ggpubr::ggarrange(
 
 ggsave(filename = "sobol_scatterplots.jpg",
        dpi = 300,
-       path = "output/Manuscript_Figs", 
+       path = "output", 
        plot = scatterplots, width = 14, height = 10, units = "in")
 
 scatterplots
