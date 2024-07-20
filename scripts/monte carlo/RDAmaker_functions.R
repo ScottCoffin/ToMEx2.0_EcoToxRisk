@@ -1,9 +1,9 @@
 ##### RDA MAKER ####
 # preps dataframe for use in RShiny app #
 
-library(tidyverse) #General everything
+#library(tidyverse) #General everything
 
-source("scripts/functions.R") # necessary for surface area, volume calculations
+#source("scripts/functions.R") # necessary for surface area, volume calculations
 
 # R.ave.water.marine <- 0.77 # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
 # R.ave.water.freshwater <- 0.67
@@ -15,7 +15,7 @@ ToMEx1.0fxn <- function(R.ave.water.marine, R.ave.water.freshwater, R.ave.sedime
                         beta_log10_body_length, body_length_intercept){
 ##### Read in Data ####
 #aoc <- read_csv("AquaticOrganisms_Clean_final.csv", guess_max = 10000) %>% rowid_to_column()
-aoc <- read_csv("scripts/monte carlo/ref data/AquaticOrganisms_Clean_final.csv", guess_max = 10000, show_col_types = FALSE) %>% rowid_to_column()
+#aoc <- read_csv("scripts/monte carlo/ref data/AquaticOrganisms_Clean_final.csv", guess_max = 10000, show_col_types = FALSE) %>% rowid_to_column()
 
 # Master dataset for scatterplots - for Heili's tab.
 aoc_v1 <- aoc %>% # start with original dataset

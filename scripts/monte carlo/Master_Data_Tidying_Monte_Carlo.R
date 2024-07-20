@@ -761,7 +761,8 @@ all_thresholds_long %>%
   ggplot(aes(x = Value, y = Tier, color = Environment, fill = Environment)) +
   #geom_boxplot(alpha = 0.5) +
   geom_violin(alpha = 0.9,
-              draw_quantiles = T) +
+              draw_quantiles = T,
+              color = "black") +
   cols4all::scale_fill_discrete_c4a_cat("carto.bold") +
   cols4all::scale_color_discrete_c4a_cat("carto.bold") +
   #geom_jitter() +
