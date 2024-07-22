@@ -26,6 +26,7 @@ library(sensobol)
 library(truncnorm)
 library(ggpubr)
 library(ggdark)
+library(gtsummary)
 ```
 
 ## Functions
@@ -596,6 +597,7 @@ summary_stats_base_thresholds <- all_thresholds_long %>%
   mutate_if(is.numeric, ~signif(., 3))
 
 summary_stats_base_thresholds
+
 ```
 ```{r}
 #save output
@@ -609,41 +611,43 @@ print(summary_stats_base_thresholds)
 ### Plots
 #### Function
 ```{r}
+# define functino for making figures for marine and freshwater
+MC_histograms_fxn <- function(long_data, environment){
+
+  # long_data should be long data (see code for generating all_thresholds_long)
+  
 ### Ggplot of SSD Tier Thresholds
 # Prepare the data by calculating ERM and filtering
-prepared_data <- all_thresholds_long %>%
+prepared_data <- long_data %>%  #all_thresholds_long %>%
   mutate(ERM = case_when(
     grepl("Tissue", Metric) ~ "Tissue Translocation",
     grepl("Food", Metric) ~ "Food Dilution"
   )) %>%
   filter(
     grepl("Default", Metric)
-  )
+  ) %>% 
+  filter(Environment == environment) %>% 
+  drop_na(Value)
 
 # Calculate median values for each group
 median_data <- prepared_data %>%
   group_by(Tier, ERM) %>%
-  summarise(Median = median(Value), .groups = 'drop')
+  summarise(Median = median(Value, na.rm = T), .groups = 'drop')
 
 # Assign specific colors based on Tier levels
 tier_colors <- setNames(c("#e2efd9", "#f9e39c", "#f0a95f", "#f0514b"), levels(prepared_data$Tier))
 
-# define functino for making figures for marine and freshwater
-MC_histograms_fxn <- function(environment){
   
-  data <- prepared_data %>% 
-    filter(Environment == environment)
-  
-  MC_histograms_base <- ggplot(data, aes(x = Value)) +
+  MC_histograms_base <- ggplot(prepared_data, aes(x = Value)) +
   geom_density(aes(color = Tier), size = 1) +  # Map 'Tier' for color
-  geom_histogram(aes(y = ..density.., fill = Tier), bins = 150, color = "black", alpha = 0.6, linewidth = 0.05) +  # Map 'Tier' for fill
+  geom_histogram(aes(y = ..density.., fill = Tier), bins = 150, color = "black", alpha = 0.9, linewidth = 0.01) +  # Map 'Tier' for fill
   geom_vline(data = median_data, aes(xintercept = Median),
              linetype = "dotted", color = "black", size = 1.2) +
 #  geom_text(data = median_data, aes(x = Median, y = 0, label = paste0("Median:", scientific(Median, 2))),
         #    hjust = +1.5, vjust = -1.5, color = "black", size = 6, fontface = "italic") +
   xlab("Particles/L") +
   scale_x_log10(labels = scales::comma) +
-  facet_wrap(~ Tier + ERM, scales = "free", ncol = 2) +
+  facet_wrap(~ Tier + ERM, scales = "free_y", ncol = 2) +
   scale_fill_manual(values = tier_colors) +  # Apply manual colors for fill
   scale_color_manual(values = tier_colors)  # Apply manual colors for lines
 
@@ -683,8 +687,8 @@ return(list(MC_histograms_light, MC_histograms_dark))
 #### Generate Histograms
 ```{r}
 ### Generate plots
-MC_histograms_marine <- MC_histograms_fxn("Marine")
-MC_histograms_freshwater <- MC_histograms_fxn("Freshwater")
+MC_histograms_marine <- MC_histograms_fxn(all_thresholds_long, "Marine")
+MC_histograms_freshwater <- MC_histograms_fxn(all_thresholds_long, "Freshwater")
 
 ### Save plots
 ggsave("output/MC_histograms_freshwater.png",
@@ -1031,7 +1035,7 @@ skimr::skim(mat)
 ```
 
 ### Run Sobol
-```{r}
+```{r message=FALSE}
 # 2. Run the Model for Each Sample Set: Run your model for each set of parameter samples.
 # Initialize a list to store the results
 # Initialize the results list and counter
@@ -1074,6 +1078,21 @@ sobol_results <- readRDS("output/sobol_results.rds")
 all_thresholds_marine_sobol <- map_dfr(sobol_results, ~ .x$base_thresholds$marine, .id = "simulation_id")
 all_thresholds_freshwater_sobol <- map_dfr(sobol_results, ~ .x$base_thresholds$freshwater, .id = "simulation_id")
 
+# Combine marine and freshwater data into one data frame with an additional "Environment" column
+all_thresholds_sobol_combined <- bind_rows(
+  mutate(all_thresholds_marine_sobol, Environment = "Marine"),
+  mutate(all_thresholds_freshwater_sobol, Environment = "Freshwater"),  .id = "simulation_id")
+
+# Pivot data longer if the data structure requires it
+# Assuming that your data might already be in a wide format and needs to be made long
+all_thresholds_sobol_long <- all_thresholds_sobol_combined %>%
+  pivot_longer(
+    cols = -c(Tier, simulation_id, Environment),
+    names_to = "Metric",
+    values_to = "Value"
+  )
+
+
 # 3. Extract the Output of Interest: Extract the relevant output from each model run (marine and freshwater thresholds).
 # Convert results to a numeric vector
 Y_marine_food_T3 <- as.numeric(all_thresholds_marine_sobol %>% filter(Tier == "Tier3") %>%  pull(`Food Dilution (Default)`))
@@ -1087,6 +1106,56 @@ Y_freshwater_tissue_T3 <- as.numeric(all_thresholds_freshwater_sobol %>% filter(
 hist(Y_marine_food_T3)
 hist(Y_freshwater_food_T3)
 ```
+#### GGplot Histograms
+```{r}
+Freshwater_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long, "Freshwater")
+Marine_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long, "Marine")
+
+### Save plots
+ggsave("output/MC_histograms_freshwater_sobol.png",
+      Freshwater_histograms_sobol[[1]], 
+      dpi = 300,
+      width = 12, height = 8, units = "in")
+
+ggsave("output/MC_histograms_marine_sobol.png",
+       Marine_histograms_sobol[[1]], 
+       dpi = 300,
+       width = 12, height = 8, units = "in")
+
+
+ggsave("output/presentation_Figs/MC_histograms_sobol.png",
+       Marine_histograms_sobol[[2]], 
+       dpi = 300,
+       width = 12, height = 4,
+       units = "in")
+
+### Display plots
+ggarrange(Marine_histograms_sobol[[1]], Freshwater_histograms_sobol[[1]],
+          labels = c("Marine", "Freshwater"))
+```
+
+#### Summary Statistics
+```{r}
+summary_stats_base_thresholds_sobol <- as.tibble(all_thresholds_sobol_long) %>% 
+  filter(grepl("5th|95th|Default", Metric)) %>% 
+  group_by(Tier, Environment, Metric) %>%
+  summarise(
+    Mean = mean(Value, na.rm = TRUE),
+    Median = median(Value, na.rm = TRUE),
+    Std_Dev = sd(Value, na.rm = TRUE),
+    Percentile_5th = quantile(Value, 0.05, na.rm = TRUE),
+    Percentile_95th = quantile(Value, 0.95, na.rm = TRUE),
+    N_sim = n(),
+    .groups = 'drop'
+  ) %>% 
+  mutate_if(is.numeric, ~signif(., 3)) %>% 
+  drop_na()
+
+write.csv(summary_stats_base_thresholds_sobol, "output/summary_stats_base_thresholds_sobol.csv")
+
+summary_stats_base_thresholds_sobol %>% mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
+```
+
 
 ### Scatterplots
 ```{r}
@@ -1134,8 +1203,8 @@ multi_food
 ```{r}
 multi_tissue <- plot_multiscatter(data = mat2, 
                                 N = N,
-                                Y = Y_marine_food_T3, 
-                                params = c("alpha.marine", "a.sa.marine", "upper.tissue.trans.size.um"))
+                                Y = Y_freshwater_tissue_T3, 
+                                params = c("R.ave.water.freshwater", "a.sa.freshwater", "upper.tissue.trans.size.um"))
 
 multi_tissue
 ```
@@ -1173,22 +1242,30 @@ mat_valid <- mat[valid_indices, ]
 ```{r}
 # Update N to the number of valid samples
 N_valid <- as.numeric(nrow(mat_valid))
-#N must be integer, with Y = 14 * N
-N <- N_valid / 14
+#N must be integer, with Y = 15 * N
+N <- N_valid / ncol(mat)
 N <- as.integer(N)
 N
-length_y_rows <- N * 14
-#139
+length_y_rows <- N * ncol(mat)
+length_y_rows
+#4860
 ```
 
 ### Calculate Sobol Indices
 ```{r}
-R <- 2000 #bootstrap iterations
+R <- 4000 #bootstrap iterations
 
-ind.marine_food_T3 <- sobol_indices(Y = Y_marine_food_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R, type = type, conf = conf)
-ind.marine_tissue_T3 <- sobol_indices(Y = Y_marine_tissue_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R, type = type, conf = conf)
-ind.freshwater_food_T3 <- sobol_indices(Y = Y_freshwater_food_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R, type = type, conf = conf)
-ind.freshwater_tissue_T3 <- sobol_indices(Y = Y_freshwater_tissue_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R, type = type, conf = conf)
+ind.marine_food_T3 <- sobol_indices(Y = Y_marine_food_T3_valid[1:length_y_rows], 
+                                    N = ncol(mat), params = params, boot = TRUE, R = R)
+
+ind.marine_tissue_T3 <- sobol_indices(Y = Y_marine_tissue_T3_valid[1:length_y_rows],
+                                      N = ncol(mat), params = params, boot = TRUE, R = R)
+
+ind.freshwater_food_T3 <- sobol_indices(Y = Y_freshwater_food_T3_valid[1:length_y_rows],
+                                        N = ncol(mat), params = params, boot = TRUE, R = R)
+
+ind.freshwater_tissue_T3 <- sobol_indices(Y = Y_freshwater_tissue_T3_valid[1:length_y_rows],
+                                          N = ncol(mat), params = params, boot = TRUE, R = R)
 ```
 
 #### Display Indices
@@ -1203,6 +1280,7 @@ ind.marine_food_T3
 ```{r}
 #WecanalsocomputetheSobol’ indicesofadummyparameter, i.e., aparameter thathas no influence on themodel output, to estimate thenumerical approximationerror. This will beused later onto identifyparameterswhose contributionto theoutputvariance is less than the approximationerror, and therefore cannot be considered influential. Like sobol_indices(),thefunctionsobol_dummy()allowstoobtainpointestimates(thedefault) orbootstrapestimates. Inthisexampleweusethelatteroption:
 ind.marine_food_T3_dummy <- sobol_dummy(Y = Y_marine_food_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R)
+
 ind.marine_tissue_T3_dummy <- sobol_dummy(Y = Y_marine_tissue_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R)
 ind.freshwater_food_T3_dummy <- sobol_dummy(Y = Y_freshwater_food_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R)
 ind.freshwater_tissue_T3_dummy <- sobol_dummy(Y = Y_freshwater_tissue_T3_valid[1:length_y_rows], N = N, params = params, boot = TRUE, R = R)
@@ -1258,8 +1336,10 @@ indices <- ggarrange(sobol_plot_marine_food + labs(title = "Food Dilution (Marin
 
 ggsave(filename = "sobol_indices.jpg",
        dpi = 300,
-       path = "output/Manuscript_Figs", 
+       path = "output/", 
        plot = indices, width = 12, height = 9, units = "in")
 
+
+indices
 ```
 
