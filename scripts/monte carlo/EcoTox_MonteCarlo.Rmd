@@ -612,7 +612,11 @@ print(summary_stats_base_thresholds)
 #### Function
 ```{r}
 # define functino for making figures for marine and freshwater
-MC_histograms_fxn <- function(long_data, environment){
+MC_histograms_fxn <- function(long_data, environment,
+                              #define custom limits for FD and tissue trans
+                              food_limits = c(0.1, 1000), tissue_limits = c(100, 50000)){
+  
+  
 
   # long_data should be long data (see code for generating all_thresholds_long)
   
@@ -629,30 +633,37 @@ prepared_data <- long_data %>%  #all_thresholds_long %>%
   filter(Environment == environment) %>% 
   drop_na(Value)
 
+
+##### FOOD DILUTION (LEFT SIDE) ####
 # Calculate median values for each group
-median_data <- prepared_data %>%
-  group_by(Tier, ERM) %>%
+
+median_data_food <- prepared_data %>%
+  filter(ERM == "Food Dilution") %>% 
+  group_by(Tier) %>%
   summarise(Median = median(Value, na.rm = T), .groups = 'drop')
 
 # Assign specific colors based on Tier levels
-tier_colors <- setNames(c("#e2efd9", "#f9e39c", "#f0a95f", "#f0514b"), levels(prepared_data$Tier))
+tier_colors <- setNames(c("#b8e897", "#f0f062", "#f0a95f", "#f0514b"), levels(prepared_data$Tier))
 
   
-  MC_histograms_base <- ggplot(prepared_data, aes(x = Value)) +
+MC_histograms_base_food <- ggplot(prepared_data %>% filter(ERM == "Food Dilution"),
+                                  aes(x = Value)) +
   geom_density(aes(color = Tier), size = 1) +  # Map 'Tier' for color
   geom_histogram(aes(y = ..density.., fill = Tier), bins = 150, color = "black", alpha = 0.9, linewidth = 0.01) +  # Map 'Tier' for fill
-  geom_vline(data = median_data, aes(xintercept = Median),
+  geom_vline(data = median_data_food, aes(xintercept = Median),
              linetype = "dotted", color = "black", size = 1.2) +
 #  geom_text(data = median_data, aes(x = Median, y = 0, label = paste0("Median:", scientific(Median, 2))),
         #    hjust = +1.5, vjust = -1.5, color = "black", size = 6, fontface = "italic") +
   xlab("Particles/L") +
-  scale_x_log10(labels = scales::comma) +
-  facet_wrap(~ Tier + ERM, scales = "free_y", ncol = 2) +
+  scale_x_log10(#labels = scales::comma,
+                labels = scales::scientific,
+                limits = c(food_limits)) +
+  facet_wrap(~ Tier, scales = "free_y", ncol = 1) +
   scale_fill_manual(values = tier_colors) +  # Apply manual colors for fill
   scale_color_manual(values = tier_colors)  # Apply manual colors for lines
 
 library(ggdark)
-MC_histograms_dark <- MC_histograms_base +
+MC_histograms_dark_food <- MC_histograms_base_food +
   dark_theme_bw(base_size = 20) +
   theme(
     strip.background = element_blank(),
@@ -666,7 +677,7 @@ MC_histograms_dark <- MC_histograms_base +
     axis.ticks.y = element_blank()
   )
 
-MC_histograms_light <- MC_histograms_base +
+MC_histograms_light_food <- MC_histograms_base_food +
   theme_bw(base_size = 20) +
   theme(
     strip.background = element_blank(),
@@ -680,6 +691,66 @@ MC_histograms_light <- MC_histograms_base +
     axis.ticks.y = element_blank()
   )
 
+
+##### Tissue Translocation (RIGHT SIDE) ####
+# Calculate median values for each group
+
+median_data_tissue <- prepared_data %>%
+  filter(ERM == "Tissue Translocation") %>% 
+  group_by(Tier) %>%
+  summarise(Median = median(Value, na.rm = T), .groups = 'drop')
+
+
+MC_histograms_base_tissue <- ggplot(prepared_data %>% filter(ERM == "Tissue Translocation"),
+                                  aes(x = Value)) +
+  geom_density(aes(color = Tier), size = 1) +  # Map 'Tier' for color
+  geom_histogram(aes(y = ..density.., fill = Tier), bins = 150, color = "black", alpha = 0.9, linewidth = 0.01) +  # Map 'Tier' for fill
+  geom_vline(data = median_data_tissue, aes(xintercept = Median),
+             linetype = "dotted", color = "black", size = 1.2) +
+#  geom_text(data = median_data, aes(x = Median, y = 0, label = paste0("Median:", scientific(Median, 2))),
+        #    hjust = +1.5, vjust = -1.5, color = "black", size = 6, fontface = "italic") +
+  xlab("Particles/L") +
+  scale_x_log10(#labels = scales::comma,
+                labels = scales::scientific,
+                limits = tissue_limits) +
+  facet_wrap(~ Tier, scales = "free_y", ncol = 1) +
+  scale_fill_manual(values = tier_colors) +  # Apply manual colors for fill
+  scale_color_manual(values = tier_colors)  # Apply manual colors for lines
+
+library(ggdark)
+MC_histograms_dark_tissue <- MC_histograms_base_tissue +
+  dark_theme_bw(base_size = 20) +
+  theme(
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    legend.position = "none",
+    strip.text = element_blank(),  # This hides the facet wrap titles
+    #  strip.text = element_text(face = "bold", size = 16, margin = margin(t = 1, b = 1)),
+    panel.spacing = unit(0.1, "lines"),
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+MC_histograms_light_tissue <- MC_histograms_base_tissue +
+  theme_bw(base_size = 20) +
+  theme(
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    legend.position = "none",
+    strip.text = element_blank(),  # This hides the facet wrap titles
+ #  strip.text = element_text(face = "bold", size = 16, margin = margin(t = 1, b = 1)),
+    panel.spacing = unit(0.1, "lines"),
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+
+#### COMBINE ####
+MC_histograms_light <- ggarrange(MC_histograms_light_food, MC_histograms_light_tissue)
+MC_histograms_dark <- ggarrange(MC_histograms_dark_food, MC_histograms_dark_tissue)
+
 return(list(MC_histograms_light, MC_histograms_dark))
 }
 ```
@@ -687,7 +758,9 @@ return(list(MC_histograms_light, MC_histograms_dark))
 #### Generate Histograms
 ```{r}
 ### Generate plots
-MC_histograms_marine <- MC_histograms_fxn(all_thresholds_long, "Marine")
+MC_histograms_marine <- MC_histograms_fxn(all_thresholds_long, "Marine",
+                                          food_limits = c(0.00001, 500), tissue_limits = c(0.1, 100000))
+
 MC_histograms_freshwater <- MC_histograms_fxn(all_thresholds_long, "Freshwater")
 
 ### Save plots
@@ -1108,8 +1181,11 @@ hist(Y_freshwater_food_T3)
 ```
 #### GGplot Histograms
 ```{r}
-Freshwater_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long, "Freshwater")
-Marine_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long, "Marine")
+Freshwater_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long, "Freshwater",
+                                                 food_limits = c(0.01, 5000), tissue_limits = c(100, 50000))
+
+Marine_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long, "Marine",
+                                             food_limits = c(0.000001, 20), tissue_limits = c(0.5, 5000))
 
 ### Save plots
 ggsave("output/MC_histograms_freshwater_sobol.png",
@@ -1153,7 +1229,7 @@ summary_stats_base_thresholds_sobol <- as.tibble(all_thresholds_sobol_long) %>%
 
 write.csv(summary_stats_base_thresholds_sobol, "output/summary_stats_base_thresholds_sobol.csv")
 
-summary_stats_base_thresholds_sobol %>% mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
+summary_stats_base_thresholds_sobol %>% mutate(across(where(is.numeric), ~scales::comma(.)))
 ```
 
 
