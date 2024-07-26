@@ -167,6 +167,67 @@ aoc_simple_check %>%
   filter(!data_available)
 ```
 
+## Summary Statistics
+```{r}
+## how many studies/data points/species exist in starting and final databases?
+aoc_z %>%
+  mutate(
+    data_available = case_when(
+      # Condition for polydisperse: particle.surface.area.um2.min and .max cannot be NA
+      polydispersity == "polydisperse" &
+        !is.na(particle.surface.area.um2.min) &
+        !is.na(particle.surface.area.um2.max) ~ TRUE,
+      # Condition for monodisperse: particle.surface.area.um2 cannot be NA
+      polydispersity == "monodisperse" &
+        !is.na(particle.surface.area.um2) ~ TRUE,
+      # Otherwise, data is not available according to the criteria
+      TRUE ~ FALSE
+    )
+  ) %>%
+  mutate(
+    thresholds1_2 = case_when(
+      data_available == TRUE &
+        !environment %in% c("Terrestrial", "Not Reported") &
+        Group != "Bacterium" &
+        Group != "Plant" &
+        effect.metric != "HONEC" &
+        !is.na(effect.metric) &
+        exp_type_f == "Particle Only" &
+        tier_zero_tech_f == "Red Criteria Passed" &
+        tier_zero_risk_f == "Red Criteria Passed" & # All thresholds must pass technical and risk red criteria
+        risk.13 != 0 ~ TRUE,
+      # Otherwise, do not meet thresholds1_2 criteria
+      TRUE ~ FALSE
+    )
+  ) %>%
+  mutate(
+    thresholds3_4 = case_when(
+      thresholds1_2 == TRUE &
+        risk.13 != 1 &
+        bio_f %in% c("Organism", "Population") 
+    ~ TRUE,
+      # Otherwise, do not meet thresholds3_4 criteria
+      TRUE ~ FALSE
+    )
+  ) %>%
+   pivot_longer(
+    cols = c(thresholds1_2, thresholds3_4),
+    names_to = "threshold",
+    values_to = "value"
+  ) %>%
+  group_by(threshold, value
+           , environment
+           ) %>%
+  #group_by(thresholds1_2, thresholds3_4) %>%
+  summarise(
+    n_species = n_distinct(Species),
+    n_studies = n_distinct(doi),
+    n_datapoint = n()
+  )
+
+
+```
+
 
 #Framework Summary
 

@@ -1231,6 +1231,52 @@ write.csv(summary_stats_base_thresholds_sobol, "output/summary_stats_base_thresh
 
 summary_stats_base_thresholds_sobol %>% mutate(across(where(is.numeric), ~scales::comma(.)))
 ```
+##### Simple Summary
+```{r}
+simple_table <- summary_stats_base_thresholds_sobol %>% 
+   mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
+  mutate(value = paste0(Mean, " (", Percentile_5th, " to ", Percentile_95th, ")")) %>% 
+  filter(grepl("Default", Metric)) %>% 
+  select(Environment, Metric, value, Tier) %>% 
+  pivot_wider(values_from = value,
+              names_from = Tier) %>% 
+  as.data.frame() %>% 
+  t() %>% 
+   as.data.frame() %>%  # Convert the transposed matrix back to a data frame
+  rownames_to_column(var = "Variable")  # Convert row names to a column for clarity
+
+# Set the first row as the column names
+colnames(simple_table) <- simple_table[1,]
+simple_table <- simple_table[-1,]
+rownames(simple_table) <- NULL
+
+write.csv(simple_table, "output/simple_table.csv")
+
+simple_table
+```
+##### Percent RSD
+```{r}
+simple_RSD <- summary_stats_base_thresholds_sobol %>% 
+  #mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
+  mutate(percentRSD = (100* Std_Dev) /  Mean) %>% 
+  filter(grepl("Default", Metric)) %>% 
+  select(Environment, Metric, percentRSD, Tier) %>% 
+  pivot_wider(values_from = percentRSD,
+              names_from = Tier) %>% 
+  as.data.frame() %>% 
+  t() %>% 
+   as.data.frame() %>%  # Convert the transposed matrix back to a data frame
+  rownames_to_column(var = "Variable")  # Convert row names to a column for clarity
+
+# Set the first row as the column names
+colnames(simple_RSD) <- simple_RSD[1,]
+simple_RSD <- simple_RSD[-1,]
+rownames(simple_RSD) <- NULL
+
+write.csv(simple_RSD, "output/simple_RSD.csv")
+
+simple_RSD
+```
 
 
 ### Scatterplots
