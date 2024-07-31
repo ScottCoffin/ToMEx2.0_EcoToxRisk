@@ -1,0 +1,27 @@
+data's dictionary
+sample: surface water and surface sediment
+
+CT-CK-W; Can Tho province - cai Khe site (N10°3'8.113; E105°47'8.408); cai Khe canal; water
+CT-CT-W; Can Tho province -  cai rang site (N10°1'37.505; E105°47'17.643); Can Tho river; water
+CT-HR-W; Can Tho province - Hau river site ; (N10°4'1.545; E105°47'1.393); Hau river; water
+
+
+Column A-J: sample replicate 1
+
+row 1: sample name : DN_XX_YYYYMM-W  (DN: code for province name; XX: code for site name; YYYYMM: year and month of sampling; W: water; S)
+row 2: sampling date
+row 3 & column AB: Total volume sampled m3
+row 4 & column AB: Total of counted microplastics in items
+row 5 & column AB: Total concentrations of microplastic items m-3
+
+row 4 & column DEF Counted fragment in items
+row 5 & column DEF Concentrations of fragments items m-3
+row 6 and following & column D: type of microplastic
+row 6 and following & column E: area of fragment
+row 6 and following & column F: colour of fragment
+
+row 4 & column HIJ Counted fragment in items
+row 5 & column HIJ  Concentrations of fragments items m-3
+row 6 and following & column H: type of microplastic
+row 6 and following & column I: length of line
+row 6 and following & column J: colour of line

@@ -1,0 +1,29 @@
+data's dictionary
+sample: surface water and surface sediment
+
+DN-HR-W; Da Nang province - Han River site (N16°4'19.495; E108°13'35.813); Han River; water
+DN-HP-W; Da Nang province -  Hoa Phu lake site (N16°3'57.851; E108°9'39.671); Hoa Phu Lake; water
+DN-CV-W; Da Nang province - Cong Vien Lake site ; (N16°3'46.511; E108°12'21.167); Cong Vien Lake; water
+QN_CDai_W; Quang Nam province - Cua Dai bridge site; (N15°51'53.182;E108°22'35.803);Thu Bon River;  water
+QN_CL_W; Quang Nam province - Cau Lau bridge site; (N15°51'42.715;E108°16'19.645);Thu Bon River;  water
+QN_CDe_W; Quang Nam province - Cu De bridge site; (N15°6'55.703;E108°6'15.83); Cu De River;  water
+
+Column A-J: sample replicate 1
+
+row 1: sample name : DN_XX_YYYYMM-W/S   (DN: code for province name; XX: code for site name; YYYYMM: year and month of sampling; W: water; S: sediment)
+row 2: sampling date
+row 3 & column AB: Total volume sampled m3
+row 4 & column AB: Total of counted microplastics in items
+row 5 & column AB: Total concentrations of microplastic items m-3
+
+row 4 & column DEF Counted fragment in items
+row 5 & column DEF Concentrations of fragments items m-3
+row 6 and following & column D: type of microplastic
+row 6 and following & column E: area of fragment
+row 6 and following & column F: colour of fragment
+
+row 4 & column HIJ Counted fragment in items
+row 5 & column HIJ  Concentrations of fragments items m-3
+row 6 and following & column H: type of microplastic
+row 6 and following & column I: length of line
+row 6 and following & column J: colour of line

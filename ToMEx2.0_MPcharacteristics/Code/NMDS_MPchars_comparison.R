@@ -15,7 +15,7 @@ levels(dat$doi)
 
 # scale variables
 colnames(dat)
-vars = dat[,c(5:18,20,22,23)]
+vars = dat[,c(5:17,19)]
 scaled = scale(vars)
 
 # replace all NAs with 0 - set all unknown values to variable mean
@@ -29,6 +29,12 @@ y <- NMDS$points[,2]
 
 # get vectors for each variable
 envfitall <- envfit(NMDS, scaled) 
+vectors = as_tibble(envfitall$vectors$arrows, rownames = "properties")
+vectors$vectornames = c("PE/PET/Polyester", "PP", "PS", "PA", "PU", "Acrylates", "PVC/PVA", "PTFE", "Other",
+                        "Fragments", "Spheres", "Fibers", "Mean length", "Mean width")
+
+adjust.x = c(0.4, 0.1, -0.1, 0, 0.1, 0.1, 0.1, 0, 0, -0.4, -0.3, 0, 0, -0.4)
+adjust.y = c(-0.15, 0, 0, 0.1, 0, 0.1, 0.1, -0.1, 0.2, 0, 0.05, 0.1, 0.1, 0)
 
 palette(c("lightskyblue", "royalblue3"))
 op = par(bty = "l", las = 1)
@@ -39,10 +45,10 @@ plot(x,y, bg = dat$fresh_marine_binary, col = c(rep("red",2), rep("grey20",(nrow
 for(i in 1:nrow(envfitall$vectors$arrows)){
 arrows(0,0, envfitall$vectors$arrows[i,1]*2.5, envfitall$vectors$arrows[i,2]*2.5, 
        length = 0.1, col = "grey50")
-text(envfitall$vectors$arrows[i,1]*2.5, envfitall$vectors$arrows[i,2]*2.5,
-     rownames(envfitall$vectors$arrows)[i], cex = 0.8, col = "grey50")
+text(envfitall$vectors$arrows[i,1]*2.5 + adjust.x[i], envfitall$vectors$arrows[i,2]*2.5 + adjust.y[i],
+     vectors$vectornames[i], cex = 0.8, col = "grey50")
 }          
-text("ToMEx 2.0", x = -4, y = -2.8, col = "red", 
+text("ToMEx 2.0", x = -2.9, y = -1.05, col = "red", 
      cex = 0.8, pos = 4, font = 2)
 
 

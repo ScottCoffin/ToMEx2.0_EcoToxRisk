@@ -1,0 +1,33 @@
+Dataset citation:
+Dang, Thi Ha; Nguyen, Vu Binh; Do, Thi Thanh Dung; Strady, Emilie, 2022,
+"Microplastic concentrations in riverine and beach environments of Ba Ria Vung Tau province, Southern Vietnam, under COMPOSE (2019-2021)
+and CounterMEASUREII (2021-2022) projects", https://doi.org/10.23708/BR843B, DataSuds.
+
+
+Data dictionary
+sample: surface water and surface sediment
+
+VT-DR-W: Ba Ria Vung Tau province - Dinh River site (N10°24'50.386"; E107°7'13.598); Dinh River Estuary; water
+VT-BS-S: Ba Ria Vung Tau province - Bai Sau beach (N10°19'48.576; E107°5'25.659); Beach; sediment
+VT-BD-S: Ba Ria Vung Tau province - Bai Dau beach (N10°22'8.947; E107°3'38.48); Beach; sediment
+VT-TV-W: Vung Tau province - Thi Vai site (N10°30'49.9; E107°0'10.95); Thi Vai River -  water
+
+Column A-J: sample replicate 1
+
+row 1: Sample name VT_XX_YYYYMM-W/S   (VT: code for province name; XX: code for site name; YYYYMM: year and month of sampling; W: water; S: sediment)
+row 2: Sampling date
+row 3 & column AB: Total volume sampled m3
+row 4 & column AB: Total of counted microplastics in items
+row 5 & column AB: Total concentrations of microplastic items m-3
+
+row 4 & column DEF: Counted fragment in items
+row 5 & column DEF: Concentrations of fragments items m-3
+row 6 and following & column D: Type of microplastic
+row 6 and following & column E: Area of fragment
+row 6 and following & column F: Colour of fragment
+
+row 4 & column HIJ: Counted fragment in items
+row 5 & column HIJ: Concentrations of fragments items m-3
+row 6 and following & column H: Type of microplastic
+row 6 and following & column I: Length of line
+row 6 and following & column J: Colour of line

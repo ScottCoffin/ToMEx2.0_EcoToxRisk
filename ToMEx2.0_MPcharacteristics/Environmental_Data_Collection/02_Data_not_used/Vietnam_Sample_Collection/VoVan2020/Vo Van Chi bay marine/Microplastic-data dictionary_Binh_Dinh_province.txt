@@ -1,0 +1,39 @@
+Vo Van Chi; Hoang Duc An; Truong Thanh Tam; Strady, Emilie, 2020,
+"Microplastic concentrations in lagoon, bay and beach environments of Binh Dinh province, Central Vietnam.
+COMPOSE (2019-2021) and CounterMEASUREII (2021-2022) projects",
+https://doi.org/10.23708/CBLBHI, DataSuds.
+
+
+Data dictionary
+sample: surface water and surface sediment
+
+BD-TN1-W; Binh Dinh province - Thi Nai lagoon 1 site (N13°50’24.3; E109°13’22.6); Thi Nai lagoon; water
+BD-TN2-W; Binh Dinh province - Thi Nai lagoon 2 site (N13°51’5.6; E109°13’41.1); Thi Nai lagoon; water
+BD-TN-W; Binh Dinh province - Thi Nai lagoon bridge site (N13°48'47; E109°14'12.5); Thi Nai lagoon; water
+BD-HT-W; Binh Dinh province - Ha Thai site (N13°47'22.9; E109°12'25.92); Ha Thai River; water
+BD-KR-W; Binh Dinh province - Kon River site (N13°47'22.9; E109°12'25.92); Kon River; water
+BD-QN-W; Binh Dinh province - Quy Nhon bay site (N13°45'36.9; E109°13’'1.8); Quy Nhon Bay; water
+BD-CT-S; Binh Dinh province - Cat Tien site (N13°56'42.16; E109°14'32.89); Cat Tien beach; sediment
+BD-EG-S; Binh Dinh province - Eo Gio site (N13°53'11.04; E109°17'5.99); Eo Gio beach; sediment
+BD-QN-S; Binh Dinh province - Quy Nhon beach site (N13°45'46.07; E109°13'29.64); Quy Nhon beach; sediment
+
+
+Column A-J: sample replicate 1
+
+row 1: sample name : BD_XX_YYYYMM-W/S   (BD: code for province name; XX: code for site name; YYYYMM: year and month of sampling; W: water; S: sediment)
+row 2: sampling date
+row 3 & column AB: Total volume sampled m3
+row 4 & column AB: Total of counted microplastics in items
+row 5 & column AB: Total concentrations of microplastic items m-3
+
+row 4 & column DEF Counted fragment in items
+row 5 & column DEF Concentrations of fragments items m-3
+row 6 and following & column D: type of microplastic
+row 6 and following & column E: area of fragment
+row 6 and following & column F: colour of fragment
+
+row 4 & column HIJ Counted fragment in items
+row 5 & column HIJ  Concentrations of fragments items m-3
+row 6 and following & column H: type of microplastic
+row 6 and following & column I: length of line
+row 6 and following & column J: colour of line

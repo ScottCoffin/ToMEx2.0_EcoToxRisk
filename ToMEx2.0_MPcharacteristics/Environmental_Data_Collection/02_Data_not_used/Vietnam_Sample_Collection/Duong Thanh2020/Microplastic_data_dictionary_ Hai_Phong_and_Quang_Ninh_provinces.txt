@@ -1,0 +1,30 @@
+data's dictionary
+sample: surface water and surface sediment
+
+HP-DS-W: Hai Phong province - Do Son bay (N20°39'46.738; E106°43'40.713) Do Son bay - 	water
+QN-CL-W: Quang Ninh province - Cua Luc Bay (N20°58'56.247; E107°3'48.628) Cua Luc Bay- 	water
+QN-HB-W: Quang Ninh province - Ha Long Bay Bay (N20°55'43.2"; E107°04'44.2") Ha Long Bay- 	water
+HP_BD_W: Hai Phong province - Bach Dang river mouth (N20°50'25.019"; E106°46'37.419") - water
+HP_CB_W: Hai Phong province - Cat Ba bay (N20°44'16.048"; E107°3'38.861") - water
+HP_LT_W: Hai Phong province - Lach Trai river N20°46'29.593"; E106°44'22.646"; water
+
+
+Column A-J: sample replicate 1
+
+row 1: sample name : QN_XX_YYYYMM-W/S   (QN: code for province name; XX: code for site name; YYYYMM: year and month of sampling; W: water; S: sediment)
+row 2: sampling date
+row 3 & column AB: Total volume sampled m3
+row 4 & column AB: Total of counted microplastics in items
+row 5 & column AB: Total concentrations of microplastic items m-3
+
+row 4 & column DEF Counted fragment in items
+row 5 & column DEF Concentrations of fragments items m-3
+row 6 and following & column D: type of microplastic
+row 6 and following & column E: area of fragment
+row 6 and following & column F: colour of fragment
+
+row 4 & column HIJ Counted fragment in items
+row 5 & column HIJ  Concentrations of fragments items m-3
+row 6 and following & column H: type of microplastic
+row 6 and following & column I: length of line
+row 6 and following & column J: colour of line
