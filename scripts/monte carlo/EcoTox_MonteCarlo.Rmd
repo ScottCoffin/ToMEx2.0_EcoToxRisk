@@ -45,7 +45,7 @@ source("../../scripts/functions.R")
 ```{r}
 ## Monte Carlo Params ##
 nboot = 10 #ssd bootstraps
-n_sim <- 10 #monte carlo simulations
+n_sim <- 10000 #monte carlo simulations
 
 ## Alingment Params ##
 x1M_set <- 1 #um lower size for all alignments
@@ -194,7 +194,7 @@ param_values <- data.frame(
 
 ### Visualize Distribution Parameters
 ```{r}
-MC_param_histograms <- param_values %>% 
+MC_param_histograms_base <- param_values %>% 
   pivot_longer(cols = everything()) %>% 
   mutate(name = factor(name, levels = c("alpha.marine", "a.sa.marine", "a.v.marine",
                                         "a.m.marine", "a.ssa.marine", "R.ave.water.marine",
@@ -208,7 +208,10 @@ MC_param_histograms <- param_values %>%
   labs(#title = "Distribution of Simulated X50 Values",
        x = "Value",
        y = "Relative Frequency") +
-  theme_minimal(base_size = 12) +
+  facet_wrap(~name, scales = "free",
+             ncol = 6)
+
+MC_param_histograms <- MC_param_histograms_base + theme_minimal(base_size = 12) +  
   theme(legend.position = "none",
         plot.title = element_blank(),
         plot.subtitle = element_text(hjust = 0.5),
@@ -219,14 +222,30 @@ MC_param_histograms <- param_values %>%
        # axis.text = element_text(size = 16),
         axis.title.y = element_text(vjust = 0.5, size = 16, face = "bold"),
        strip.text = element_text(size = 16, face = "bold", family = "serif")  # Customize facet title size
-       )  + # Center the y-axis title
-  facet_wrap(~name, scales = "free",
-             ncol = 6)
+       )  # Center the y-axis title
+  
+MC_param_histograms_dark <- MC_param_histograms_base + dark_theme_minimal(base_size = 12) +
+  theme(legend.position = "none",
+        plot.title = element_blank(),
+        plot.subtitle = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5),   # Center the caption
+        axis.title.x = element_text(hjust = 0.5, size = 16, face = "bold"),  # Center the x-axis title
+        axis.text.x = element_text(size = 11),
+        axis.text.y = element_blank(),
+       # axis.text = element_text(size = 16),
+        axis.title.y = element_text(vjust = 0.5, size = 16, face = "bold"),
+       strip.text = element_text(size = 12, face = "bold", family = "serif")  # Customize facet title size
+       )   # Center the y-axis title
 
 ggsave(filename = "MC_param_histograms.jpg",
        dpi = 300,
-       path = "../output/Manuscript_Figs/", 
+       path = "../../output/Manuscript_Figs/", 
        plot = MC_param_histograms, width = 9, height = 8, units = "in")
+
+ggsave(filename = "MC_param_histograms_dark.jpg",
+       dpi = 300,
+       path = "../../output/presentation_Figs/", 
+       plot = MC_param_histograms_dark, width = 12, height = 6.5, units = "in")
 
 MC_param_histograms
 ```
@@ -1202,7 +1221,7 @@ ggsave("output/MC_histograms_marine_sobol.png",
 ggsave("output/presentation_Figs/MC_histograms_sobol.png",
        Marine_histograms_sobol[[2]], 
        dpi = 300,
-       width = 12, height = 4,
+       width = 13, height = 6,
        units = "in")
 
 ### Display plots
