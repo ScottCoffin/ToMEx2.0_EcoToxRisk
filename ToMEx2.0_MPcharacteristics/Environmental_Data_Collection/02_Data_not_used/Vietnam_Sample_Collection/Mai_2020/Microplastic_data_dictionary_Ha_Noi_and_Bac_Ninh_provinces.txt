@@ -1,0 +1,30 @@
+data's dictionary
+sample: surface water and surface sediment
+
+HN-BM-W: Ha Noi province -	Bay Mau lake site (N21°1'40.881; E105°50'37.521); Bay Mau lake - water
+HN-HT-W: Ha Noi province -	Ho Tay Lake site (N21°3'6.537; E105°49'13.738); Ho Tay Lake - water
+HN-YS-W: Ha Noi province -	Yen So lake site (N20°58'8.280; E105°51'21.121) ; Yen So lake - water
+HN-HK-W: Ha Noi province -	Hoan Kiem lake site (N20°58'8.280; E105°51'21.121) ; Hoan Kiem lake - water
+BN_CR_W: Bac Ninh province - Cam River site (N21°0'30.784; E105°59'26.772 ; Cam River; water
+BN_TB_W: Bac Ninh province - Thai Binh River site; Thai Binh River; water
+
+
+Column A-J: sample replicate 1
+
+row 1: sample name : HN_XX_YYYYMM-W/S   (HN: code for province name; XX: code for site name; YYYYMM: year and month of sampling; W: water; S: sediment)
+row 2: sampling date
+row 3 & column AB: Total volume sampled m3
+row 4 & column AB: Total of counted microplastics in items
+row 5 & column AB: Total concentrations of microplastic items m-3
+
+row 4 & column DEF Counted fragment in items
+row 5 & column DEF Concentrations of fragments items m-3
+row 6 and following & column D: type of microplastic
+row 6 and following & column E: area of fragment
+row 6 and following & column F: colour of fragment
+
+row 4 & column HIJ Counted fragment in items
+row 5 & column HIJ  Concentrations of fragments items m-3
+row 6 and following & column H: type of microplastic
+row 6 and following & column I: length of line
+row 6 and following & column J: colour of line

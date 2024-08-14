@@ -1,5 +1,0 @@
-Microplastic/CounterMEASURE_logo.png (image/png) 22534 bytes.
-Microplastic/Microplastic_CT_CK_202201_W.xlsx (application/vnd.openxmlformats-officedocument.spreadsheetml.sheet) 35616 bytes.
-Microplastic/Microplastic_CT_CT_202201_W.xlsx (application/vnd.openxmlformats-officedocument.spreadsheetml.sheet) 28732 bytes.
-Microplastic/Microplastic_CT_HR_202201_W.xlsx (application/vnd.openxmlformats-officedocument.spreadsheetml.sheet) 33589 bytes.
-Microplastic/Microplastic_data_dictionary_Can_Tho_provinces.txt (text/plain) 1235 bytes.
