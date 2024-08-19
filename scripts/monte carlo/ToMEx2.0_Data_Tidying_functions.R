@@ -13,6 +13,7 @@ library(readr)
 
 #### Extract Data from Submitted Templates ####
 #### NOTE: ALREADY DONE IN aq_mp_tox_shiny REPO! JUST IMPORT tomex2_input.rds
+#### tomex2_input.rds generated in ToMEx2.0_AquaticOrganisms/monte carlo/Master_Data_Tidying_Monte_Carlo and stored in ref data/ folder
 #tomex2.0 <- read_rds("scripts/monte carlo/ref data/tomex2_input.rds")
 
 #Read in ToMEx 1.0 Tidy Data sets

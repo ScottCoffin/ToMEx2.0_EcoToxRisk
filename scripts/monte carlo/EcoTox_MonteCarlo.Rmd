@@ -45,7 +45,7 @@ source("../../scripts/functions.R")
 ```{r}
 ## Monte Carlo Params ##
 nboot = 10 #ssd bootstraps
-n_sim <- 10000 #monte carlo simulations
+n_sim <- 1000 #monte carlo simulations
 
 ## Alingment Params ##
 x1M_set <- 1 #um lower size for all alignments
