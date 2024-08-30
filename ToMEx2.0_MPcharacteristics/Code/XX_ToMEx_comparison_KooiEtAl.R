@@ -4,8 +4,8 @@ library(pals)
 source("Code/Helper_boxplot_Kooi2021.R")
 
 
-dat = readRDS("Data/RDS/aoc_z_tomex2.RDS")
-
+#dat = readRDS("Data/RDS/aoc_z_tomex2.RDS")
+dat = readRDS("../data/output/aoc_final.RDS")
 
 # import data from Kooi et al. 2021:
 dat.lengths = read.csv("Data/KooiEtAl2021_particle_length.csv")

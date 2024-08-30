@@ -33,14 +33,16 @@ vectors = as_tibble(envfitall$vectors$arrows, rownames = "properties")
 vectors$vectornames = c("PE/PET/Polyester", "PP", "PS", "PA", "PU", "Acrylates", "PVC/PVA", "PTFE", "Other",
                         "Fragments", "Spheres", "Fibers", "Mean length", "Mean width")
 
-adjust.x = c(0.4, 0.1, -0.1, 0, 0.1, 0.1, 0.1, 0, 0, -0.4, -0.3, 0, 0, -0.4)
-adjust.y = c(-0.15, 0, 0, 0.1, 0, 0.1, 0.1, -0.1, 0.2, 0, 0.05, 0.1, 0.1, 0)
+adjust.x = c(-0.2, 0.2, -0.2, -0.35, 0.4, 0.4, -0.1, -0.4, 0.4, -0.6, -0.5, -0.4, -0.8, 0.65)
+adjust.y = c(-0.15, 0.1, 0, -0.05, -0.1, 0.15, 0.3, 0, 0.1, -0.15, 0.1, 0, 0, -0.15)
 
 palette(c("lightskyblue", "royalblue3"))
-op = par(bty = "l", las = 1)
+op = par(bty = "l", las = 1, cex = 1.2)
 
-plot(x,y, bg = dat$fresh_marine_binary, col = c(rep("red",2), rep("grey20",(nrow(dat)-2))), pch = c(rep(24,2), rep(21,(nrow(dat)-2))), #c(rep("red",2), rep("grey80",(nrow(dat)-2)))
-     xlab = "NMDS1", ylab = "NMDS2", cex = 1.5)
+plot(x,y, bg = adjustcolor(as.numeric(dat$fresh_marine_binary), alpha.f = 0.9), col = c(rep("red",2), rep("grey50",(nrow(dat)-2))), 
+     pch = c(rep(24,2), rep(21,(nrow(dat)-2))), lwd = c(2,2, rep(1, (nrow(dat)-2))),
+     xlab = "NMDS1", ylab = "NMDS2", cex = 1.5, 
+     ylim = c(-4,3), xlim = c(-8, 4))
 
 for(i in 1:nrow(envfitall$vectors$arrows)){
 arrows(0,0, envfitall$vectors$arrows[i,1]*2.5, envfitall$vectors$arrows[i,2]*2.5, 
@@ -48,13 +50,10 @@ arrows(0,0, envfitall$vectors$arrows[i,1]*2.5, envfitall$vectors$arrows[i,2]*2.5
 text(envfitall$vectors$arrows[i,1]*2.5 + adjust.x[i], envfitall$vectors$arrows[i,2]*2.5 + adjust.y[i],
      vectors$vectornames[i], cex = 0.8, col = "grey50")
 }          
-text("ToMEx 2.0", x = -2.9, y = -1.05, col = "red", 
+text("ToMEx 2.0", x = c(-3.8, -2), y = c(-4.1, -1.6), col = "red",
      cex = 0.8, pos = 4, font = 2)
 
 
-### different symbols for different publication sources
-plot(x,y, bg = c(rep("red",2), rep("grey80",(nrow(dat)-2))), col = dat$fresh_marine_binary, pch = c(21,23,22,24,15,25)[dat$doi],
-     xlab = "NMDS1", ylab = "NMDS2", cex = 1.5)
-
+#### END ####
 
 
