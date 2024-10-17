@@ -26,7 +26,9 @@ library(readr)
 # R.ave.sediment.marine <- 0.75
 # R.ave.sediment.freshwater <- 0.70
 
-ToMEx2.0fxn <- function(aoc_setup, 
+ToMEx2.0fxn <- function(aoc_setup, #ToMEx 1.0 dataset
+                        tomex2.0, #ToMEx 2.0 dataset
+                        bodysize_addons, #datasets as input
                         R.ave.water.marine, R.ave.water.freshwater, R.ave.sediment.freshwater, R.ave.sediment.marine,
                         beta_log10_body_length, body_length_intercept){
 
@@ -46,6 +48,12 @@ tomex2.0_aoc_setup <- tomex2.0 %>%
    rowid_to_column() %>% 
    #Move screening scores up
    relocate(100:129, .after = article) %>% 
+  ### Previously, all column names were renamed using base::transform() which replaced spaces with periods,...
+  ### that package was updated to no longer do that, so we'll need to manually rename everything to be compatible
+  ### with all downstream scripts.
+  
+  rename_with(~ gsub(" |[?]|[(]|[)]|-|/|\\^", ".",.x), everything()) %>% ### replaces all special chars with '.'
+  
    #Change pass/fail descriptors to 2/0
    mutate(`tech.a1` = case_when(`tech.a1` == "Pass" ~ 2,
                                 `tech.a1` == "Fail" ~ 0)) %>%

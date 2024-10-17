@@ -11,7 +11,8 @@
 # R.ave.sediment.freshwater <- 0.70
 
 
-ToMEx1.0fxn <- function(R.ave.water.marine, R.ave.water.freshwater, R.ave.sediment.freshwater, R.ave.sediment.marine,
+ToMEx1.0fxn <- function(aoc,
+                        R.ave.water.marine, R.ave.water.freshwater, R.ave.sediment.freshwater, R.ave.sediment.marine,
                         beta_log10_body_length, body_length_intercept){
 ##### Read in Data ####
 #aoc <- read_csv("AquaticOrganisms_Clean_final.csv", guess_max = 10000) %>% rowid_to_column()
