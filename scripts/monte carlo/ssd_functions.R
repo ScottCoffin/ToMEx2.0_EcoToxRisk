@@ -213,8 +213,10 @@ process_environment_data <- function(data, env_filter, upper.tissue.trans.size.u
            Group != "Bacterium",
            Group != "Plant",
            effect.metric != "HONEC",
+          ingestible == "ingestible",
            #only consider studies in which particles are below x2M_trans (translocation only!)
-           translocatable == "translocatable"
+           translocatable == "translocatable",
+          dose_new > 0
     ) 
   
   filtered_data_small_default_t3_4 <- filtered_data_small_default_t1_2 %>%
@@ -238,7 +240,8 @@ process_environment_data <- function(data, env_filter, upper.tissue.trans.size.u
            Group != "Bacterium",
            Group != "Plant",
            effect.metric != "HONEC",
-           ingestible == "ingestible") #only consider studies in which particles are below x2M_ingest )
+           ingestible == "ingestible", #only consider studies in which particles are below x2M_ingest )
+           dose_new > 0) 
   
   filtered_data_large_default_t3_4 <- filtered_data_large_default_t1_2 %>%
     filter(risk.13 != 1, bio_f %in% c("Organism", "Population"))

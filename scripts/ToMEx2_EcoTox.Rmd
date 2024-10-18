@@ -131,6 +131,16 @@ aoc_z <- readRDS("../data/input/aoc_z_tomex2.RDS") %>%  #dataset is prepped in s
   #mutate(rowid = row_number())
 
 #aoc_z$rowid <- sapply(seq_len(nrow(aoc_z)), function(x) uuid::UUIDgenerate())
+
+# ToMEx 2.0 data file (no alignments)
+## dataset prepared in RShiny repo and imported ##
+tomex2.0 <- read_rds("monte carlo/ref data/tomex2_input.rds")
+
+# LEgacy file from May, 2024 for beta-testing
+#tomex2.0 <- read_rds("ref data/tomex2_input_May2024.rds")
+
+# auxiliary data necessary for ToMEX 2.0 data tidying
+bodysize_addons <- read_csv("monte carlo/ref data/gape_size.csv", show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder
 ```
 
 ### Data Cleanup
@@ -770,6 +780,15 @@ base_thresholds
 kable(base_thresholds)
 ```
 
+```{r}
+base_thresholds %>% 
+  mutate_if(is.numeric, ~signif(., 2)) %>% 
+  mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
+  mutate("Food (Marine/Fresh)" = paste0(`Food Dilution (Default)`, " (", `Food Dilution (5th %)`, " to ", `Food Dilution (95th %)`,")"),
+         "Tissue (Marine/Fresh)" = paste0(`Tissue Translocation (Default)`, " (", `Tissue Translocation (5th %)`, " to ", `Tissue Translocation (95th %)`,")")) %>% 
+  select(Tier, "Food (Marine/Fresh)", "Tissue (Marine/Fresh)")
+```
+
 
 ![Agreed-upon framework](assets/treshold_framework.png)
 
@@ -871,7 +890,8 @@ RUN THESE IN CONSOLE
 
 ## Some alignments are done in these data processing scripts
 ## generate ToMEx 1.0 dataset ###
-  aoc_setup <- ToMEx1.0fxn(R.ave.water.marine = R.ave.water.marine,
+  aoc_setup <- ToMEx1.0fxn(aoc = aoc,
+                           R.ave.water.marine = R.ave.water.marine,
                            R.ave.water.freshwater = R.ave.water.freshwater,
                            R.ave.sediment.marine = R.ave.sediment.marine,
                            R.ave.sediment.freshwater = R.ave.sediment.freshwater,
@@ -880,6 +900,8 @@ RUN THESE IN CONSOLE
   
 ## generate ToMEx 2.0 dataset ###
   tomex2.0_aoc_z_final <- ToMEx2.0fxn(aoc_setup = aoc_setup,
+                                      tomex2.0 = tomex2.0,
+                                      bodysize_addons = bodysize_addons,
                                       R.ave.water.marine = R.ave.water.marine,
                                       R.ave.water.freshwater = R.ave.water.freshwater,
                                       R.ave.sediment.marine = R.ave.sediment.marine,
@@ -1217,17 +1239,23 @@ no_quality <- calculate_thresholds(aoc_aligned_no_filters, label = "no quality f
 all_thresholds_marine <- bind_rows(risk_tech$base_thresholds$marine,
                                    tech$base_thresholds$marine,
                                    risk$base_thresholds$marine,
-                                   no_quality$base_thresholds$marine)
+                                   no_quality$base_thresholds$marine#,
+                                   #best_data_thresholds$base_thresholds$marine,
+                                   )
 
 all_thresholds_freshwater <- bind_rows(risk_tech$base_thresholds$freshwater,
                                        tech$base_thresholds$freshwater,
                                        risk$base_thresholds$freshwater,
-                                       no_quality$base_thresholds$freshwater)
+                                       no_quality$base_thresholds$freshwater#,
+                                       #best_data_thresholds$base_thresholds$freshwater
+                                       )
 
 all_thresholds_freshwater_marine <- bind_rows(risk_tech$base_thresholds$freshwater_marine,
                                                      tech$base_thresholds$freshwater_marine,
                                                      risk$base_thresholds$freshwater_marine,
-                                                     no_quality$base_thresholds$freshwater_marine)
+                                                     no_quality$base_thresholds$freshwater_marine#,
+                                             # best_data_thresholds$base_thresholds$freshwater_marine
+                                             )
 
 
 # Combine marine and freshwater data into one data frame with an additional "Environment" column
@@ -1240,7 +1268,8 @@ all_thresholds_combined <- bind_rows(
            "no quality filters",
            "tech only",
            "risk only",
-           "risk and tech"
+           "risk and tech"#,
+        #   "optimized"
          )))
 
 # pivot_longer
@@ -1410,7 +1439,7 @@ best_data %>% select(c(Species, total.quality, contains("tech"), contains("risk"
 ```
 
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 #derive best possible thresholds
 best_data_thresholds <- calculate_thresholds(best_data, label = "best data")
 ```
@@ -1464,14 +1493,40 @@ best_data %>% select(c(Species, total.quality, contains("tech"), contains("risk"
 # Example usage with best quality datasets
 best_data_thresholds <- calculate_thresholds(best_data, label = "best data")
 
+```
+
+```{r}
 # Combine all thresholds into a single table
 
-unified_thresholds <- bind_rows(risk_tech, tech, risk, no_quality, best_data_thresholds)
+# Combine the marine thresholds from each dataset
+marine_thresholds <- bind_rows(
+  risk_tech$base_thresholds$marine,
+  tech$base_thresholds$marine,
+  risk$base_thresholds$marine,
+  no_quality$base_thresholds$marine,
+  best_data_thresholds$base_thresholds$marine
+) %>% 
+mutate(Environment = "Marine")  
+
+# Combine the freshwater thresholds from each dataset
+freshwater_thresholds <- bind_rows(
+  risk_tech$base_thresholds$freshwater,
+  tech$base_thresholds$freshwater,
+  risk$base_thresholds$freshwater,
+  no_quality$base_thresholds$freshwater,
+  best_data_thresholds$base_thresholds$freshwater
+) %>% 
+  mutate(Environment = "Freshwater")
+
+# Combine the marine and freshwater data into a single unified data frame
+unified_thresholds <- bind_rows(marine_thresholds, freshwater_thresholds)
+
 
 # Print the unified thresholds table
 print(unified_thresholds)
-
 ```
+
+
 # Sensitivity Analysis
 ## Leave-one-out method
 These techniques are based on the Leave-One-Out-method, in which we recalculate the results of our meta-analysis K − 1  times, each times leaving out one study. This way, we can more easily detect studies which influence the overall estimate of our meta-analysis the most, and this lets us better assess if this influence may distort our pooled effect (Viechtbauer and Cheung 2010).
@@ -1524,27 +1579,37 @@ create_leave_one_out_function_t3_4 <- function(filtered_data) {
 leave_one_out_tier_1 <- function(filtered_data, 
                                  hcx, ERM_input, tier_input, environment_input) {
   hcxlcl_list <- list(hcxlcl = hcx)
-  #base HCx
+  #base HCx (wihtout leaving any studies out)
   filtered_data_hcxlcl <- SSD_function_t1(filtered.data = filtered_data, hcx)
+  filtered_data_hcxlcl <- filtered_data_hcxlcl$hc5lcl[1]
+  
   unique.dois <- unique(filtered_data$doi)
   # Create the leave-one-out function with your filtered data
   leave_one_out <- create_leave_one_out_function_t1(filtered_data)
-  # Apply the leave-one-out function
+  # Apply the leave-one-out function for each study
   sensitivity_vector <- leave_one_out(unique.dois, hcxlcl_list)
-  sensitivity_matrix <- matrix(sensitivity_vector, nrow = length(unique.dois), byrow = TRUE)
-  rownames(sensitivity_matrix) <- unique.dois
-  #bind DOI's to other parameters of interest for analysis
-  sensitivity_tbl <- rownames_to_column(as.data.frame(sensitivity_matrix), var = c("doi")) %>%
-    rename(hcxlcl = V1)
+  
+  names(sensitivity_vector) <- c("hc5lcl", "n_species", "n_groups", "n_datapoints")
+  
+  # Convert the list into a data frame and transpose it
+  sensitivity_tbl <- as_tibble(as.data.frame(t(sensitivity_vector))) %>% 
+     mutate(doi = names(hc5lcl)) %>% 
+    mutate(
+    hc5lcl = unname(unlist(hc5lcl)),      # Convert to numeric vector and remove names
+    n_species = unname(unlist(n_species)),  # Convert to integer vector and remove names
+    n_groups = unname(unlist(n_groups)),    # Convert to integer vector and remove names
+    n_datapoints = unname(unlist(n_datapoints))  # Convert to integer vector and remove names
+  )
+
   # join to other parameters of interest
    sensitivity_df <- left_join(sensitivity_tbl, filtered_data, by = "doi") %>% 
     dplyr::select(authors, year, Species, dose_new, 
-                  hcxlcl, acute.chronic_f, bio_f, lvl2_f,
+                  hc5lcl, acute.chronic_f, bio_f, lvl2_f,
                   size.length.um.used.for.conversions, doi) %>% 
-    distinct(doi, authors, year, hcxlcl, Species, acute.chronic_f,
+    distinct(doi, authors, year, hc5lcl, Species, acute.chronic_f,
              size.length.um.used.for.conversions) %>% 
     mutate(authoryear = paste(authors, "et. al ", year)) %>% 
-    mutate(hcxlcl = replace_na(hcxlcl, 0)) %>% #studies with n_species < 5 will get a 0
+    mutate(hcxlcl = replace_na(hc5lcl, 0)) %>% #studies with n_species < 5 will get a 0
     mutate(authoryear = fct_reorder(authoryear, hcxlcl, na.rm = FALSE)) %>% 
     mutate(diff = (hcxlcl - filtered_data_hcxlcl)/filtered_data_hcxlcl,
            tier = as.character(tier_input),
@@ -1679,10 +1744,13 @@ leave_one_out_tier3_4 <- function(filtered_data, hcx_num, ERM_input, tier_input,
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 #### Freshwater #####
 #Tissue Translocation Thresholds
-tier1_sensitivity_tissue_freshwater <- leave_one_out_tier_1(filtered.data.small.default_t1.2 %>%
-                                                   filter(environment == "Freshwater"), hcx = 5,
-                                                   ERM_input = "Tissue Translocation", tier_input = "Tier 1", 
-                                                   environment_input = "Freshwater")
+tier1_sensitivity_tissue_freshwater <- leave_one_out_tier_1(filtered_data = filtered.data.small.default_t1.2 %>%
+                                                              filter(environment == "Freshwater"), 
+                                                            hcx = 5,
+                                                            ERM_input = "Tissue Translocation",
+                                                            tier_input = "Tier 1", 
+                                                            environment_input = "Freshwater")
+
 tier2_sensitivity_tissue_freshwater <- leave_one_out_tier2(filtered.data.small.default_t1.2 %>%
                                                    filter(environment == "Freshwater"), 5,
                                                    ERM_input = "Tissue Translocation", tier_input = "Tier 2", 
@@ -1769,7 +1837,8 @@ leave_one_out_df <- rbind(tier1_sensitivity_tissue_freshwater$sensitivity_summar
                           tier1_sensitivity_food_marine$sensitivity_summary,
                           tier2_sensitivity_food_marine$sensitivity_summary,
                           tier3_sensitivity_food_marine$sensitivity_summary,
-                          tier4_sensitivity_food_marine$sensitivity_summary)
+                          tier4_sensitivity_food_marine$sensitivity_summary) %>% 
+  mutate(tier = as.factor(tier))
 
 write.csv(leave_one_out_df,
           "../output/data/leave_one_out.csv")
@@ -1784,27 +1853,48 @@ leave_one_out_df <- read.csv("../output/data/leave_one_out.csv")
 ```{r}
 library(ggallin)
 
-leave_one_out_ggplot <- leave_one_out_df %>% 
+# Assign specific colors based on Tier levels
+tier_colors <- setNames(c("#b8e897", "#f0f062", "#f0a95f", "#f0514b"),
+                        levels(leave_one_out_df$tier))
+
+# Calculate min and max limits for `diff` column
+min_diff <- min(leave_one_out_df$diff, na.rm = TRUE) * 0.7  # Add some padding
+max_diff <- max(leave_one_out_df$diff, na.rm = TRUE) * 1.3  # Add some padding
+
+summary_diff_df <- leave_one_out_df %>%
+  drop_na() %>%
+  group_by(environment, tier, ERM) %>%
+  summarize(
+    min_diff = min(diff, na.rm = TRUE),
+    max_diff = max(diff, na.rm = TRUE),
+    median_diff = median(diff, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+leave_one_out_df_trim <- leave_one_out_df %>% 
   drop_na() %>% 
-  mutate(diff = diff + 0.0001) %>% 
-#  mutate(logdiff = log10(diff))
-  # group_by(environment, ERM, tier
-  #          ) %>% 
-  # summarize(minDiff = min(diff, na.rm = T),
-  #           maxDiff = max(diff, na.rm = T)) %>% 
-  # pivot_longer(cols = contains("diff")) %>% 
-  # rename(diffMagnitude = name,
-  #        diff = value) %>% 
-  # left_join(leave_one_out_df %>% select(diff, hcx, doi, authoryear, species_multiple),
-  #           by = "diff") %>% 
-  ggplot(aes(x = diff, y = tier, color = environment,
+  mutate(diff = diff + 0.0001)
+
+
+leave_one_out_ggplot <- ggplot() +
+  geom_jitter(data = leave_one_out_df_trim,
+              aes(x = diff, y = tier, color = tier,
              text = paste0("%Difference: ", scales::percent(diff, 0.1, big.mark = ","),
                                               "<br>HCx: ",scientific(hcx, 3), " particles/L",
                                               "<br>Study: ", authoryear,
                                               "<br>Species: " ,species_multiple,
-                                              "<br>doi: ", doi)
-             )) +
-  geom_jitter(width = 0, height = 0.3, alpha = 0.5) +
+                                              "<br>doi: ", doi),
+              width = 0, height = 0.3, alpha = 0.7)) +
+   # Add horizontal error bars for min and max values
+  geom_errorbarh(data = summary_diff_df,
+                 aes(xmin = min_diff, xmax = max_diff, y = tier, color = tier),
+                 height = 0.2, alpha = 0.9) +
+    # Add points for median values
+  geom_point(data = summary_diff_df,
+             aes(x = median_diff, y = tier, color = tier),
+             size = 3, shape = 2, alpha = 0.9) +
+  
+    scale_color_manual(values = tier_colors) +  # Apply manual colors for lines
 #  geom_point(alpha = 0.7) +
 #  geom_histogram() +
  # geom_boxplot() +
@@ -1821,8 +1911,9 @@ leave_one_out_ggplot <- leave_one_out_df %>%
  # geom_line() +
   #geom_vline(xintercept = 0.00001, alpha = 0.5, color = "grey60") +
   scale_x_continuous(trans = pseudo_log_trans(base = 10), 
-                     breaks = c(-1, 0, 1, 10, 100), 
-                     limits = c(-1, 110), 
+                       breaks = c(-10, 0, 1, 10, 40),  # Values correspond to -10%, 0%, 100%, 1000%, and 4000%
+                    # breaks = c(-1, 0, 1, 10, 100), 
+                   #   limits = c(min_diff, max_diff), 
                      labels = scales::percent_format(accuracy = 1, big.mark = ",")) +
 #  scale_x_log10() +
   
@@ -2052,8 +2143,8 @@ ggsave(filename = "MC_param_histograms.jpg",
  NOTE: this is done in scripts/monte carlo/Master_Data_Tidying_Monte_Carlo.R. The reason is that the data prep scripts are extremely complicated, and preserving every nuance with perfect fidelity through copying into this markdown script has proven impossible. Just import the final RDS file generated from that script.
  
 ```{r}
-MC_results <- readRDS("monte carlo/output/MC_results.rds")
-summary_stats_base_thresholds <- readRDS("monte carlo/output/summary_stats_base_thresholds.rds")
+MC_results <- readRDS("monte carlo/output/MC_results_sobol.rds")
+summary_stats_base_thresholds <- readRDS("monte carlo/output/summary_stats_base_thresholds_sobol.rds")
 ```
  
 ```{r}
@@ -2302,9 +2393,16 @@ aoc_MC %>%
   
 ```
 
+### IMPORT DATA
+```{r}
+getwd()
+aoc_MC <- readRDS("monte carlo/output/aoc_MC_sobol.rds")
+
+results_df <- readRDS("monte carlo/output/results_df_sobol.rds")
+```
 
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 #define limits
 min_val <- min(aoc_MC$CoV_food_dilution, na.rm = TRUE)
 max_val <- max(aoc_MC$CoV_food_dilution, na.rm = TRUE)
@@ -2314,9 +2412,11 @@ pad <- (max_val - min_val) * 0.05
 xlims <- c(min_val - pad, max_val + pad)
 
 hist_cv_food <- aoc_MC %>% 
+  filter(Species != "Algae",
+         ingestible == "ingestible") %>% 
   ggplot(aes(x = CoV_food_dilution, fill = polydispersity)) +
   geom_histogram(position = "identity", alpha = 0.5) +
-  xlim(xlims) +  # Set x limits
+ # xlim(xlims) +  # Set x limits
   scale_x_log10() +
   xlab("Coefficient of Variation (unitless)") +
   ylab("Toxicity Data Points") +
@@ -2399,21 +2499,21 @@ mouth_cv_food <- aoc_MC %>%
                         formula = y ~ x, 
                         method = "lm",
                         label.x = 0.1,
-                        label.y = 0.7,  # Position at the top, adjust if necessary
+                        label.y = 0.4,  # Position at the top, adjust if necessary
                         parse = TRUE) +
    ggpmisc::stat_poly_eq(aes(label = paste(..rr.label..), group = 1),
                         color = "darkgreen",
                         formula = y ~ x, 
                         method = "lm",
                         label.x = 0.1,
-                        label.y = 0.65,  # Position at the top, adjust if necessary
+                        label.y = 0.25,  # Position at the top, adjust if necessary
                         parse = TRUE) +
     ggpmisc::stat_poly_eq(aes(label = ..p.value.label.., group = 1),
                         color = "darkgreen",
                         formula = y ~ x, 
                         method = "lm",
                         label.x = 0.1,
-                        label.y = 0.6,  # Position at the top, adjust if necessary
+                        label.y = 0.1,  # Position at the top, adjust if necessary
                         parse = TRUE) +
     xlab("Coefficient of Variation (unitless)") +
   ylab("Organism Mouth Size Opening (um) for Toxicity Datapoint") +
@@ -2423,7 +2523,9 @@ mouth_cv_food <- aoc_MC %>%
   color.type +
   theme.light +
   theme(legend.position = "none",
-        axis.title.y = element_text(size = 16)) +
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank()
+        ) +
    guides(fill = guide_legend(title = NULL), color = guide_legend(title = NULL))  # Remove legend titles
 
 mouth_cv_ox <- aoc_MC %>% 
@@ -2435,21 +2537,21 @@ mouth_cv_ox <- aoc_MC %>%
                         formula = y ~ x, 
                         method = "lm",
                         label.x = 0.1,
-                        label.y = 0.7,  # Position at the top, adjust if necessary
+                        label.y = 0.4,  # Position at the top, adjust if necessary
                         parse = TRUE) +
    ggpmisc::stat_poly_eq(aes(label = paste(..rr.label..), group = 1),
                         color = "darkgreen",
                         formula = y ~ x, 
                         method = "lm",
                         label.x = 0.1,
-                        label.y = 0.65,  # Position at the top, adjust if necessary
+                        label.y = 0.25,  # Position at the top, adjust if necessary
                         parse = TRUE) +
     ggpmisc::stat_poly_eq(aes(label = ..p.value.label.., group = 1),
                         color = "darkgreen",
                         formula = y ~ x, 
                         method = "lm",
                         label.x = 0.1,
-                        label.y = 0.6,  # Position at the top, adjust if necessary
+                        label.y = 0.1,  # Position at the top, adjust if necessary
                         parse = TRUE) +
   scale_y_log10() +
   scale_x_log10() +
@@ -2459,13 +2561,13 @@ mouth_cv_ox <- aoc_MC %>%
   color.type +
   theme.light +
   theme(legend.position = "none",
-        axis.title.y = element_text(size = 16)) +
+        axis.title.y = element_text(size = 12)) +
   theme(legend.title = element_blank()) +
    guides(fill = guide_legend(title = NULL), color = guide_legend(title = NULL))  # Remove legend titles
 
 CoV_mouth_plots <- ggarrange(mouth_cv_food, mouth_cv_ox,
-                       labels = c("A", "B"),
-                       ncol = 2,
+                       labels = c("Food Dilution", "Tissue Translocation"),
+                       ncol = 1,
                        common.legend = TRUE, legend = "bottom")
 
 ggsave(filename = "CoV_mouth_plots.jpg",
