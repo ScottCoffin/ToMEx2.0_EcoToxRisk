@@ -770,6 +770,15 @@ base_thresholds
 kable(base_thresholds)
 ```
 
+```{r}
+base_thresholds %>% 
+  mutate_if(is.numeric, ~signif(., 2)) %>% 
+  mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
+  mutate("Food (Marine/Fresh)" = paste0(`Food Dilution (Default)`, " (", `Food Dilution (5th %)`, " to ", `Food Dilution (95th %)`,")"),
+         "Tissue (Marine/Fresh)" = paste0(`Tissue Translocation (Default)`, " (", `Tissue Translocation (5th %)`, " to ", `Tissue Translocation (95th %)`,")")) %>% 
+  select(Tier, "Food (Marine/Fresh)", "Tissue (Marine/Fresh)")
+```
+
 
 ![Agreed-upon framework](assets/treshold_framework.png)
 
@@ -2052,8 +2061,8 @@ ggsave(filename = "MC_param_histograms.jpg",
  NOTE: this is done in scripts/monte carlo/Master_Data_Tidying_Monte_Carlo.R. The reason is that the data prep scripts are extremely complicated, and preserving every nuance with perfect fidelity through copying into this markdown script has proven impossible. Just import the final RDS file generated from that script.
  
 ```{r}
-MC_results <- readRDS("monte carlo/output/MC_results.rds")
-summary_stats_base_thresholds <- readRDS("monte carlo/output/summary_stats_base_thresholds.rds")
+MC_results <- readRDS("monte carlo/output/MC_results_sobol.rds")
+summary_stats_base_thresholds <- readRDS("monte carlo/output/summary_stats_base_thresholds_sobol.rds")
 ```
  
 ```{r}
@@ -2302,9 +2311,16 @@ aoc_MC %>%
   
 ```
 
+### IMPORT DATA
+```{r}
+getwd()
+aoc_MC <- readRDS("monte carlo/output/aoc_MC_sobol.rds")
+
+results_df <- readRDS("monte carlo/output/results_df_sobol.rds")
+```
 
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 #define limits
 min_val <- min(aoc_MC$CoV_food_dilution, na.rm = TRUE)
 max_val <- max(aoc_MC$CoV_food_dilution, na.rm = TRUE)
@@ -2314,9 +2330,11 @@ pad <- (max_val - min_val) * 0.05
 xlims <- c(min_val - pad, max_val + pad)
 
 hist_cv_food <- aoc_MC %>% 
+  filter(Species != "Algae",
+         ingestible == "ingestible") %>% 
   ggplot(aes(x = CoV_food_dilution, fill = polydispersity)) +
   geom_histogram(position = "identity", alpha = 0.5) +
-  xlim(xlims) +  # Set x limits
+ # xlim(xlims) +  # Set x limits
   scale_x_log10() +
   xlab("Coefficient of Variation (unitless)") +
   ylab("Toxicity Data Points") +
@@ -2399,21 +2417,21 @@ mouth_cv_food <- aoc_MC %>%
                         formula = y ~ x, 
                         method = "lm",
                         label.x = 0.1,
-                        label.y = 0.7,  # Position at the top, adjust if necessary
+                        label.y = 0.4,  # Position at the top, adjust if necessary
                         parse = TRUE) +
    ggpmisc::stat_poly_eq(aes(label = paste(..rr.label..), group = 1),
                         color = "darkgreen",
                         formula = y ~ x, 
                         method = "lm",
                         label.x = 0.1,
-                        label.y = 0.65,  # Position at the top, adjust if necessary
+                        label.y = 0.25,  # Position at the top, adjust if necessary
                         parse = TRUE) +
     ggpmisc::stat_poly_eq(aes(label = ..p.value.label.., group = 1),
                         color = "darkgreen",
                         formula = y ~ x, 
                         method = "lm",
                         label.x = 0.1,
-                        label.y = 0.6,  # Position at the top, adjust if necessary
+                        label.y = 0.1,  # Position at the top, adjust if necessary
                         parse = TRUE) +
     xlab("Coefficient of Variation (unitless)") +
   ylab("Organism Mouth Size Opening (um) for Toxicity Datapoint") +
@@ -2423,7 +2441,9 @@ mouth_cv_food <- aoc_MC %>%
   color.type +
   theme.light +
   theme(legend.position = "none",
-        axis.title.y = element_text(size = 16)) +
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank()
+        ) +
    guides(fill = guide_legend(title = NULL), color = guide_legend(title = NULL))  # Remove legend titles
 
 mouth_cv_ox <- aoc_MC %>% 
@@ -2435,21 +2455,21 @@ mouth_cv_ox <- aoc_MC %>%
                         formula = y ~ x, 
                         method = "lm",
                         label.x = 0.1,
-                        label.y = 0.7,  # Position at the top, adjust if necessary
+                        label.y = 0.4,  # Position at the top, adjust if necessary
                         parse = TRUE) +
    ggpmisc::stat_poly_eq(aes(label = paste(..rr.label..), group = 1),
                         color = "darkgreen",
                         formula = y ~ x, 
                         method = "lm",
                         label.x = 0.1,
-                        label.y = 0.65,  # Position at the top, adjust if necessary
+                        label.y = 0.25,  # Position at the top, adjust if necessary
                         parse = TRUE) +
     ggpmisc::stat_poly_eq(aes(label = ..p.value.label.., group = 1),
                         color = "darkgreen",
                         formula = y ~ x, 
                         method = "lm",
                         label.x = 0.1,
-                        label.y = 0.6,  # Position at the top, adjust if necessary
+                        label.y = 0.1,  # Position at the top, adjust if necessary
                         parse = TRUE) +
   scale_y_log10() +
   scale_x_log10() +
@@ -2459,13 +2479,13 @@ mouth_cv_ox <- aoc_MC %>%
   color.type +
   theme.light +
   theme(legend.position = "none",
-        axis.title.y = element_text(size = 16)) +
+        axis.title.y = element_text(size = 12)) +
   theme(legend.title = element_blank()) +
    guides(fill = guide_legend(title = NULL), color = guide_legend(title = NULL))  # Remove legend titles
 
 CoV_mouth_plots <- ggarrange(mouth_cv_food, mouth_cv_ox,
-                       labels = c("A", "B"),
-                       ncol = 2,
+                       labels = c("Food Dilution", "Tissue Translocation"),
+                       ncol = 1,
                        common.legend = TRUE, legend = "bottom")
 
 ggsave(filename = "CoV_mouth_plots.jpg",
