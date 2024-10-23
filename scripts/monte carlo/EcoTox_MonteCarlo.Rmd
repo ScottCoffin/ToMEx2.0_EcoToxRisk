@@ -56,6 +56,7 @@ source("RDAmaker_functions.R") #functionalized data tidying script for ToMEx 1.0
 source("ToMEx2.0_Data_Tidying_functions.R") #functionalized data tidying script for ToMEx 2.0 data
 ```
 
+<<<<<<< HEAD
 #### Define function for presenting thresholds in alternative units (volume, mass, etc.)
 
 Thresholds are presented in multiple exposure metrics, aligned to ERMs of interest (surface area for translocatable particles, volume for ingestible particles). Data are aligned using the methods described in Kooi et al 2021.
@@ -115,6 +116,8 @@ thresholds_df %>%
 #                   params = params)
 ```
 
+=======
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 ## Data Import
 
 ```{r}
@@ -684,7 +687,12 @@ alignmentFxn <- function(df = tomex2.0_aoc_z_final){
     
     ###### CLEANUP #####
   mutate(particles.mL.ox.stress = EC_env_sa.particles.mL_trans,
+<<<<<<< HEAD
          particles.mL.food.dilution = EC_env_v.particles.mL_ingest
+=======
+         particles.mL.food.dilution = EC_env_v.particles.mL_ingest,
+         mg.mL.ox.stress = EC_env_
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
          ) %>% 
     #### annotate studies in which particles are too big to be ingested or translocated for those ERMs (to be filtered in ssd functions)
     mutate(translocatable = ifelse(size.length.um.used.for.conversions > x2M_trans, 
@@ -826,6 +834,13 @@ aoc_MC_iter <- alignmentFxn(df = tomex2.0_aoc_z_final)
 ## Run Function
 
 ### Parallel Computing
+<<<<<<< HEAD
+=======
+
+```{r}
+n_sim <- 10000
+```
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 
 ```{r}
 n_sim <- 10
@@ -985,11 +1000,14 @@ all_thresholds_long <- all_thresholds_combined %>%
 ```
 
 ### Preparation (Parallel only)
+<<<<<<< HEAD
 #### Read in previous run
 ```{r}
 # save results
 MC_results_parallel <- readRDS("output/MC_results.rds")
 ```
+=======
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 
 ```{r}
 # just use the nested dataframes
@@ -1115,9 +1133,14 @@ min_max
 
 ```{r}
 # define functino for making figures for marine and freshwater
+<<<<<<< HEAD
 MC_histograms_fxn <- function(long_data,
                               environment = "Marine",
                               n_bins = 1000,
+=======
+MC_histograms_fxn <- function(long_data, environment,
+                              n_bins,
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
                               units_input = "Particles/L",
                               #define custom limits for FD and tissue trans
                               food_limits = c(0.0001, 500), tissue_limits = c(05, 25000),
@@ -1287,7 +1310,11 @@ return(list(MC_histograms_light, MC_histograms_dark))
 
 #### Generate Histograms
 
+<<<<<<< HEAD
 ```{r eval=FALSE, include=FALSE}
+=======
+```{r}
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 ### Generate plots
 MC_histograms_marine <- MC_histograms_fxn(all_thresholds_long, "Marine",
                                           n_bins = round(n_sim *0.8),
@@ -1389,7 +1416,8 @@ skimr::skim(results_df)
 ## Step 2:
 # Calculate CoV
 cov_results <- results_df %>%
-  group_by(unique_id) %>%
+  group_by(unique_id,
+           environment) %>%
   summarise(sd_particles_L_ox_stress = sd(particles_L_ox_stress, na.rm = TRUE),
             mean_particles_L_ox_stress = mean(particles_L_ox_stress, na.rm = TRUE),
             median_particles_L_ox_stress = median(particles_L_ox_stress, na.rm = TRUE),
@@ -1700,7 +1728,68 @@ saveRDS(sobol_results, file = "output/sobol_results.rds")
 
 ## Parallel
 
+<<<<<<< HEAD
 
+=======
+#### Define function for presenting thresholds in alternative units (volume, mass, etc.)
+
+Thresholds are presented in multiple exposure metrics, aligned to ERMs of interest (surface area for translocatable particles, volume for ingestible particles). Data are aligned using the methods described in Kooi et al 2021.
+
+The environmentally-relevant, ERM-aligned threshold in particles/L is converted to surface area (um2/L), volume (um3/L) and mass (ug/L) using equations 5 and 4 from Kooi et al 2021.
+
+$EC_{env,ERM, x} = \mu_{x,poly} * EC_{env}$
+
+Where $\mu_{x,poly}$ is derived using the following equation: $\mu_{x,poly} = \frac{1 - a_{x}}{2 - a_{x}}  \frac{X^{2-a_x}_{UL} - X^{2-a_x}_{LL}}{X^{1-a_x}_{UL} - X^{1-a_x}_{LL}}$
+
+In this case, the limits LL and UL in $\mu_{x,poly}$ relate to the values of the ERM at the 1 and 5,000 um size limits, respectively (i.e., SA, V, and M), rather than to bioavailability limits. Compartment-specific alpha values are used based on Table S4 of Kooi et al 2021.
+
+```{r}
+convert_units_fxn <- function(thresholds_df, environment, params){
+
+if(environment == "Marine"){
+  a.sa.input = params$a.sa.marine
+  a.m.input = params$a.m.marine
+  a.v.input = params$a.v.marine
+}
+  if(environment == "Freshwater"){
+  a.sa.input = params$a.sa.freshwater
+  a.m.input = params$a.m.freshwater
+  a.v.input = params$a.v.freshwater
+}
+  
+# report the units they're aligned to (um3/L and um2/L)
+thresholds_df %>% 
+  # convert tissue translocation thresholds
+  mutate(tissue_translocation_um2.L =  `Tissue Translocation (Default)` * mux_polyfnx_generalizable(
+    a.x = a.sa.input, #alpha for marine surface water for surface area
+    x_UL = x2D_set, #upper limit of default range
+    x_LL = x1D_set # lower limit of default range
+    )) %>% 
+  mutate(tissue_translocation_ug.L =  `Tissue Translocation (Default)` * mux.polyfnx(
+    a.x = a.m.input, #alpha for marine surface water for mass
+    x_UL = x2D_set, #upper limit of default range
+    x_LL = x1D_set # lower limit of default range
+                                       )) %>% 
+  ## convert food dilution thresholds
+  mutate(food_dilution_um3.L =  `Food Dilution (Default)` * mux_polyfnx_generalizable
+         (a.x = a.v.input, #alpha for marine surface water for surface area
+                                       x_UL = x2D_set, #upper limit of default range
+                                       x_LL = x1D_set # lower limit of default range
+                                       )) %>% 
+  mutate(food_dilution_ug.L =  `Food Dilution (Default)` * mux_polyfnx_generalizable(
+    a.x = a.m.input, #alpha for marine surface water for mass
+                                       x_UL = x2D_set, #upper limit of default range
+                                       x_LL = x1D_set # lower limit of default range
+                                       )) 
+  
+}
+
+# example
+# convert_units_fxn(thresholds_df = marine_thresholds,
+#                   environment = "Marine",
+#                   params = params)
+```
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 
 ### Define Wrapper (Parallel)
 
@@ -1761,7 +1850,11 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
                                                 x1D_set = x1D_set, 
                                                 x2D_set = x2D_set) %>% 
     ## convert particles/L thresholds to volume, mass, surface area (ERM-dependent)
+<<<<<<< HEAD
     convert_units_fxn(environment = "Marine", params = params[1,])
+=======
+    convert_units_fxn(environment = "Marine", params = params)
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
   
   freshwater_thresholds <- process_environment_data(aoc_risk_paper,
                                                     "Freshwater",
@@ -1769,7 +1862,11 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
                                                     x1D_set = x1D_set, 
                                                     x2D_set = x2D_set) %>% 
     ## convert particles/L thresholds to volume, mass, surface area (ERM-dependent)
+<<<<<<< HEAD
     convert_units_fxn(environment = "Freshwater", params = params[1,])
+=======
+    convert_units_fxn(environment = "Freshwater", params = params)
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
   
   # freshwater_marine_thresholds <- process_environment_data(aoc_risk_paper,
   #                                                          c("Freshwater", "Marine"),
@@ -1782,7 +1879,10 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
    # Store results in list
     sobol_result <- list(
       tox_vals = list(
+<<<<<<< HEAD
         simulation_id = simulation_id,
+=======
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
     #    iteration = as.numeric(i),
       particles_mL_ox_stress = aoc_risk_paper$particles.mL.ox.stress,
       particles_mL_food_dilution = aoc_risk_paper$particles.mL.food.dilution,
@@ -1792,7 +1892,10 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
       group = aoc_risk_paper$Group,
       unique_id = aoc_risk_paper$unique_id), #row id that allows matching back to database
       base_thresholds = list(
+<<<<<<< HEAD
         simulation_id = simulation_id,
+=======
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
         marine = marine_thresholds,
         freshwater = freshwater_thresholds#,
      #   freshwater_marine = freshwater_marine_thresholds
@@ -1807,12 +1910,19 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
 
 ### Define Matrix
 
+<<<<<<< HEAD
 ```{r echo=TRUE}
 # Number of samples
 n_sobol <- 1000
 
 #n_sobol <- 1
 
+=======
+```{r}
+# Number of samples
+n_sobol <- 1000
+#n_sobol <- 1
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 matrices <- c("A", "B", "AB", "BA")
 first <- total <- "azzini"
 
@@ -1985,6 +2095,7 @@ saveRDS(sobol_results, "output/sobol_results.rds")
 
 
 ### Read in previously run Sobol
+
 ```{r}
 #### start here from saved file ###
 sobol_results <- readRDS("output/sobol_results.rds")
@@ -1993,9 +2104,13 @@ mat <- readRDS("output/mat.rds")
 n_row_sobol <- nrow(mat)
 ```
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 ## Analysis
+
 ### Histograms
 
 ```{r}
@@ -2039,7 +2154,10 @@ hist(Y_marine_food_T3)
 hist(Y_freshwater_food_T3)
 ```
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 #### Summary Statistics
 
 ```{r}
@@ -2090,8 +2208,12 @@ min_max_sobol
 ##### Particles/L
 ```{r}
 ### Generate plots
+<<<<<<< HEAD
 Marine_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long, 
                                              "Marine",
+=======
+Marine_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long, "Marine",
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
                                           n_bins = round(n_sobol * 0.5),
                                           units_input = "Particles/L",
                                           x_axis_input = element_blank(),
@@ -2100,8 +2222,12 @@ Marine_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long,
                                           tissue_limits = c(signif((min_max_sobol$min[2] * 5), 1),
                                                             signif((min_max_sobol$max[2] * 0.5), 1)))
 
+<<<<<<< HEAD
 Freshwater_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long,
                                                  "Freshwater",
+=======
+Freshwater_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long, "Freshwater",
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
                                               n_bins = round(n_sobol *0.5),
                                               units_input = "Particles/L",
                                               x_axis_input = element_text(),
@@ -2141,6 +2267,7 @@ ggsave("output/presentation_Figs/sobol_histograms.png",
        units = "in")
 
 sobol_histograms
+<<<<<<< HEAD
 ```
 
 ##### ug/L
@@ -2244,6 +2371,98 @@ write.csv(simple_thresholds_MC_sobol,
 
 simple_thresholds_MC_sobol
 ```
+=======
+```
+
+##### ug/L
+```{r}
+### Generate plots
+Marine_histograms_sobol_mass <- MC_histograms_fxn(all_thresholds_sobol_long, "Marine",
+                                          n_bins = round(n_sobol * 0.5),
+                                          units_input = "ug/L",
+                                          x_axis_input = element_blank(),
+                                          food_limits = c(signif((min_max_sobol$min[1] * 1),1),
+                                                          signif((min_max_sobol$max[1] * 2), 1)),
+                                          tissue_limits = c(signif((min_max_sobol$min[2] * 5), 1),
+                                                            signif((min_max_sobol$max[2] * 0.5), 1)))
+
+Freshwater_histograms_sobol_mass <- MC_histograms_fxn(all_thresholds_sobol_long, "Freshwater",
+                                              n_bins = round(n_sobol *0.5),
+                                              units_input = "ug/L",
+                                              x_axis_input = element_text(),
+                                              food_limits = c(signif((min_max_sobol$min[1] * 1),1),
+                                                          signif((min_max_sobol$max[1] * 2),1)),
+                                          tissue_limits = c(signif((min_max_sobol$min[2] * 5), 1),
+                                                            signif((min_max_sobol$max[2] * 0.5), 1)))
+
+### Save plots
+ggsave("output/MC_histograms_freshwater_sobol_mass.png",
+      Freshwater_histograms_sobol_mass[[1]], 
+      dpi = 300,
+      width = 12, height = 8, units = "in")
+
+ggsave("output/MC_histograms_marine_sobol_mass.png",
+       Marine_histograms_sobol_mass[[1]], 
+       dpi = 300,
+       width = 12, height = 8, units = "in")
+
+
+# ggsave("output/presentation_Figs/MC_histograms_sobol.png",
+#        Marine_histograms_sobol[[2]], 
+#        dpi = 300,
+#        width = 13, height = 6,
+#        units = "in")
+
+### Display plots
+sobol_histograms_mass <- ggarrange(Marine_histograms_sobol_mass[[1]], 
+                              Freshwater_histograms_sobol_mass[[1]],
+                              nrow = 2,
+                              labels = c("", ""))
+
+ggsave("output/presentation_Figs/sobol_histograms_mass.png",
+       sobol_histograms_mass, 
+       dpi = 300,
+       width = 13, height = 6,
+       units = "in")
+
+sobol_histograms_mass
+```
+
+##### Simple Summary
+###### Particles/L
+```{r}
+library(scales)
+
+## Freshwater MC
+Freshwater_MC_sobol <- summary_stats_base_thresholds_sobol %>% 
+  filter(str_detect(Metric, "Default"),
+         Environment == "Freshwater") %>% 
+  select(Tier, Metric, Median, contains("Percentile")) %>% 
+  mutate(Threshold = paste0(comma(Median), " (", comma(Percentile_5th),
+                            " to ", comma(Percentile_95th), ")")) %>% 
+  select(-c(Median, Percentile_5th, Percentile_95th)) %>% 
+  pivot_wider(names_from = Metric, values_from = Threshold) %>% 
+  rename_with(~ gsub("(Default)", "Freshwater", .x), everything())
+
+# Marine MC
+Marine_MC_sobol <- summary_stats_base_thresholds_sobol %>% 
+  filter(str_detect(Metric, "Default"),
+         Environment == "Marine") %>% 
+  select(Tier, Metric, Median, contains("Percentile")) %>% 
+  mutate(Threshold = paste0(comma(Median), " (", comma(Percentile_5th),
+                            " to ", comma(Percentile_95th), ")")) %>% 
+  select(-c(Median, Percentile_5th, Percentile_95th)) %>% 
+  pivot_wider(names_from = Metric, values_from = Threshold) %>% 
+  rename_with(~ gsub("(Default)", "Marine", .x), everything())
+
+simple_thresholds_MC_sobol <- left_join(Freshwater_MC_sobol, Marine_MC_sobol)
+
+write.csv(simple_thresholds_MC_sobol,
+          "output/simple_thresholds_table_sobol.csv")
+
+simple_thresholds_MC_sobol
+```
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 ###### ug/L
 ```{r}
 library(scales)
@@ -2287,6 +2506,7 @@ simple_thresholds_MC_sobol_mass
 tier_colors <- setNames(c("#b8e897", "#f0f062", "#f0a95f", "#f0514b"),
                         levels(as.factor(all_thresholds_sobol_long$Tier)))
 
+<<<<<<< HEAD
 # Calculate the 99th percentile for each group to identify outliers
 outliers <- all_thresholds_sobol_long %>%
   filter(grepl("Default", Metric)) %>%
@@ -2298,6 +2518,8 @@ outliers <- all_thresholds_sobol_long %>%
   filter(Value > threshold_99th) %>%
   ungroup()
 
+=======
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 # Ggplot of Monte Carlo SSD thresholds
 all_thresholds_violin_sobol <- all_thresholds_sobol_long %>% 
   filter(grepl("Default", Metric)) %>%
@@ -2311,8 +2533,11 @@ all_thresholds_violin_sobol <- all_thresholds_sobol_long %>%
     draw_quantiles = c(0.05, 0.5, 0.95),
     color = "black"
   ) +
+<<<<<<< HEAD
     # Add points for outliers
   geom_point(data = outliers, aes(x = Value, y = Tier, color = Tier), alpha = 0.2, size = 1) +
+=======
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
   scale_fill_manual(values = tier_colors) +
   scale_color_manual(values = tier_colors) +
   scale_x_log10(
@@ -2335,6 +2560,7 @@ all_thresholds_violin_sobol
 
 ##### ug/L
 ```{r}
+<<<<<<< HEAD
 
 # Calculate the 99th percentile for each group to identify outliers
 outliers_mass <- all_thresholds_sobol_long %>%
@@ -2348,6 +2574,8 @@ outliers_mass <- all_thresholds_sobol_long %>%
   ungroup()
 
 
+=======
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 # Ggplot of Monte Carlo SSD thresholds
 all_thresholds_violin_sobol_mass <- all_thresholds_sobol_long %>% 
   filter(grepl("ug.L", Metric)) %>%
@@ -2361,8 +2589,11 @@ all_thresholds_violin_sobol_mass <- all_thresholds_sobol_long %>%
     draw_quantiles = c(0.05, 0.5, 0.95),
     color = "black"
   ) +
+<<<<<<< HEAD
       # Add points for outliers
   geom_point(data = outliers_mass, aes(x = Value, y = Tier, color = Tier), alpha = 0.2, size = 1) +
+=======
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
   scale_fill_manual(values = tier_colors) +
   scale_color_manual(values = tier_colors) +
   scale_x_log10(
@@ -2394,7 +2625,10 @@ MC_results_tox_sobol <- sobol_results[1:nrow(mat)]
 results_df_sobol <- do.call(rbind, lapply(MC_results_tox_sobol, function(x) {
   data.frame(
    # iteration = x$iteration,
+<<<<<<< HEAD
     simulation_id = x$simulation_id,
+=======
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
     unique_id = x$unique_id,
     particles_L_ox_stress = x$particles_mL_ox_stress *1000,
     particles_L_food_dilution = x$particles_mL_food_dilution * 1000,
@@ -2403,7 +2637,12 @@ results_df_sobol <- do.call(rbind, lapply(MC_results_tox_sobol, function(x) {
     ingestible = factor(x$ingestible),
     translocatable = factor(x$translocatable)
   )
+<<<<<<< HEAD
 })) 
+=======
+})) %>% 
+  mutate(n_iterations = nrow(mat))
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 
 
 #Save file for EcoTox Project
@@ -2485,7 +2724,11 @@ results_df_sobol %>%
             by = "unique_id") %>% 
   group_by(ingestible) %>% 
   summarize(n = n()) %>% 
+<<<<<<< HEAD
   mutate(n = n / n_distinct(results_df_sobol$simulation_id[1]))
+=======
+  mutate(n = n / results_df_sobol$n_iterations[1])
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 ```
 
 ```{r}
@@ -2494,7 +2737,11 @@ results_df_sobol %>%
             by = "unique_id") %>% 
   group_by(translocatable) %>% 
   summarize(n = n()) %>% 
+<<<<<<< HEAD
   mutate(n = n / n_distinct(results_df_sobol$simulation_id[1]))
+=======
+  mutate(n = n / results_df_sobol$n_iterations[1])
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 ```
 
 #### COV Plots
@@ -2529,9 +2776,14 @@ hist_cv_food_sobol_freshwater <- aoc_MC_sobol %>%
   xlab("Coefficient of Variation (unitless)") +
   ylab("Toxicity Data Points") +
 #fill.type +
+<<<<<<< HEAD
  # theme.light #+
   theme_minimal(base_size = 15) +
 theme(axis.title.x = element_blank())
+=======
+  theme.light #+
+#theme(axis.title.x = element_blank())
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 
 hist_cv_ox_sobol_freshwater <- aoc_MC_sobol %>% 
   filter(environment == "Freshwater") %>% 
@@ -2543,8 +2795,12 @@ hist_cv_ox_sobol_freshwater <- aoc_MC_sobol %>%
   # xlim(xlims) +  # Set x limits
   xlab("Coefficient of Variation (unitless)") +
   ylab("Toxicity Data Points") +
+<<<<<<< HEAD
  #  theme.light +
   theme_minimal(base_size = 15) +
+=======
+   theme.light +
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
   theme(legend.position = "none",
         axis.title.y = element_blank(),
         axis.title.x = element_blank())
@@ -2560,8 +2816,12 @@ hist_cv_food_sobol_marine <- aoc_MC_sobol %>%
   xlab("Coefficient of Variation (unitless)") +
   ylab("Toxicity Data Points") +
 #fill.type +
+<<<<<<< HEAD
  # theme.light +
   theme_minimal(base_size = 15) +
+=======
+  theme.light +
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 theme(axis.title.x = element_blank(),
       axis.title.y = element_blank())
 
@@ -2575,8 +2835,12 @@ hist_cv_ox_sobol_marine <- aoc_MC_sobol %>%
   # xlim(xlims) +  # Set x limits
   xlab("Coefficient of Variation (unitless)") +
   ylab("Toxicity Data Points") +
+<<<<<<< HEAD
 #   theme.light +
   theme_minimal(base_size = 15) +
+=======
+   theme.light +
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
   theme(legend.position = "none",
         axis.title.y = element_blank(),
         axis.title.x = element_blank())
@@ -2596,9 +2860,13 @@ ggsave(filename = "CoV_plots_sobol.jpg",
 CoV_plots_sobol
 ```
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 ##### Percent RSD
+
 ```{r}
 simple_RSD <- summary_stats_base_thresholds_sobol %>% 
   #mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
@@ -2643,6 +2911,7 @@ tissue_marine_params <- c("alpha.marine",
 # Subset 'mat2' to include only marine parameters
 mat2_tissue_marine <- mat[, tissue_marine_params] 
 
+<<<<<<< HEAD
 
 # # Now create the scatter plot using sensobol::plot_scatter
 # scatter_marine_tissue_t3 <- sensobol::plot_scatter(data = mat2_tissue_marine,
@@ -2654,6 +2923,19 @@ mat2_tissue_marine <- mat[, tissue_marine_params]
 #                             ggtitle("Tissue Trans.: Marine")
 # 
 # scatter_marine_tissue_t3
+=======
+
+# Now create the scatter plot using sensobol::plot_scatter
+scatter_marine_tissue_t3 <- sensobol::plot_scatter(data = mat2_tissue_marine,
+                                                   N = n_row_sobol, 
+                                                   Y = Y_marine_tissue_T3,
+                                                   params = tissue_marine_params,
+                                                   method = "bin"
+                                                   ) + 
+                            ggtitle("Tissue Trans.: Marine")
+
+scatter_marine_tissue_t3
+>>>>>>> 7b806e38f7ffc625076697c91d9130cca769d939
 ```
 
 ```{r}
