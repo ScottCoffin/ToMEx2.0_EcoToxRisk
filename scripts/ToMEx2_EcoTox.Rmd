@@ -1612,13 +1612,14 @@ leave_one_out_tier_1 <- function(filtered_data,
     mutate(hcxlcl = replace_na(hc5lcl, 0)) %>% #studies with n_species < 5 will get a 0
     mutate(authoryear = fct_reorder(authoryear, hcxlcl, na.rm = FALSE)) %>% 
     mutate(diff = (hcxlcl - filtered_data_hcxlcl)/filtered_data_hcxlcl,
+           fold_change = filtered_data_hcxlcl/hcxlcl,
            tier = as.character(tier_input),
            ERM = as.character(ERM_input),
            environment = as.character(environment_input))
   
   sensitivity_summary <- sensitivity_df %>% 
     rename(hcx = hcxlcl) %>% 
-    group_by(doi, authoryear, diff, hcx) %>% 
+    group_by(doi, authoryear, diff, hcx, fold_change) %>% 
     summarise(species_multiple = paste(unique(Species), collapse = ", "),
               .groups = "keep") %>% 
     ungroup() %>% 
@@ -1664,12 +1665,13 @@ leave_one_out_tier2 <- function(filtered_data, hcx_num, ERM_input, tier_input, e
     mutate(hcx = replace_na(hcx, 0)) %>% #studies with n_species < 5 will get a 0
     mutate(authoryear = fct_reorder(authoryear, hcx, na.rm = FALSE)) %>% 
     mutate(diff = (hcx - filtered_data_hcx)/filtered_data_hcx,
+           fold_change = filtered_data_hcx/hcx,
              tier = as.character(tier_input), #annotate for full dataset
            ERM = as.character(ERM_input),
            environment = as.character(environment_input)) #annotate for full dataset
   
   sensitivity_summary <- sensitivity_df %>% 
-    group_by(doi, authoryear, diff, hcx) %>% 
+    group_by(doi, authoryear, diff, hcx, fold_change) %>% 
     summarise(species_multiple = paste(unique(Species), collapse = ", "),
               .groups = "keep") %>% 
     ungroup() %>% 
@@ -1715,12 +1717,13 @@ leave_one_out_tier3_4 <- function(filtered_data, hcx_num, ERM_input, tier_input,
     mutate(hcx = replace_na(hcx, 0)) %>% #studies with n_species < 5 will get a 0
     mutate(authoryear = fct_reorder(authoryear, hcx, na.rm = FALSE)) %>% 
     mutate(diff = (hcx - filtered_data_hcx)/filtered_data_hcx,
+           fold_change = filtered_data_hcx/hcx,
            tier = as.character(tier_input), #annotate for full dataset
            ERM = as.character(ERM_input),
            environment = as.character(environment_input)) #annotate for full dataset)
   
   sensitivity_summary <- sensitivity_df %>% 
-    group_by(doi, authoryear, diff, hcx) %>% 
+    group_by(doi, authoryear, diff, hcx, fold_change) %>% 
     summarise(species_multiple = paste(unique(Species), collapse = ", "),
               .groups = "keep") %>% 
     ungroup() %>% 
@@ -1821,8 +1824,29 @@ tier4_sensitivity_food_marine <- leave_one_out_tier3_4(filtered.data.large.defau
 ```
 
 ### Export Data
+#### Join to base thresholds for comparison
 ```{r}
-leave_one_out_df <- rbind(tier1_sensitivity_tissue_freshwater$sensitivity_summary,
+thresholds <- all_thresholds_long %>% 
+  filter(grepl("Default", Metric)) %>% 
+  mutate(tier = case_when(Tier == "Tier1" ~ "Tier 1",
+                          Tier == "Tier2" ~ "Tier 2",
+                          Tier == "Tier3" ~ "Tier 3",
+                          Tier == "Tier4" ~ "Tier 4")) %>% 
+  mutate(ERM = case_when(grepl("Tissue", Metric) ~ "Tissue Translocation",
+                         grepl("Food", Metric) ~ "Food Dilution")) %>% 
+  rename("environment" = "Environment") %>% 
+  filter(label == "risk and tech",
+         environment != "Freshwater & Marine") %>% 
+  rename(threshold = Value) %>% 
+  select(ERM, tier, environment, threshold) %>% 
+  arrange(desc(ERM))
+
+thresholds
+```
+
+
+```{r}
+leave_one_out_df <- bind_rows(tier1_sensitivity_tissue_freshwater$sensitivity_summary,
                           tier2_sensitivity_tissue_freshwater$sensitivity_summary,
                           tier3_sensitivity_tissue_freshwater$sensitivity_summary,
                           tier4_sensitivity_tissue_freshwater$sensitivity_summary,
@@ -1838,7 +1862,10 @@ leave_one_out_df <- rbind(tier1_sensitivity_tissue_freshwater$sensitivity_summar
                           tier2_sensitivity_food_marine$sensitivity_summary,
                           tier3_sensitivity_food_marine$sensitivity_summary,
                           tier4_sensitivity_food_marine$sensitivity_summary) %>% 
-  mutate(tier = as.factor(tier))
+  mutate(tier = as.factor(tier)) %>% 
+  left_join(thresholds,
+            by = c("ERM", "tier", "environment")) %>% 
+  mutate(fold_change = (hcx / threshold) - 1)
 
 write.csv(leave_one_out_df,
           "../output/data/leave_one_out.csv")
@@ -1853,46 +1880,57 @@ leave_one_out_df <- read.csv("../output/data/leave_one_out.csv")
 ```{r}
 library(ggallin)
 
+
+
 # Assign specific colors based on Tier levels
-tier_colors <- setNames(c("#b8e897", "#f0f062", "#f0a95f", "#f0514b"),
+tier_colors <- setNames(c("#006f3c", "#d6d636", "#f9a73e", "#f0514b"),
                         levels(leave_one_out_df$tier))
 
 # Calculate min and max limits for `diff` column
-min_diff <- min(leave_one_out_df$diff, na.rm = TRUE) * 0.7  # Add some padding
-max_diff <- max(leave_one_out_df$diff, na.rm = TRUE) * 1.3  # Add some padding
+min_diff <- min(leave_one_out_df$fold_change, na.rm = TRUE) * 0.7  # Add some padding
+max_diff <- max(leave_one_out_df$fold_change, na.rm = TRUE) * 1.3  # Add some padding
 
 summary_diff_df <- leave_one_out_df %>%
   drop_na() %>%
   group_by(environment, tier, ERM) %>%
   summarize(
-    min_diff = min(diff, na.rm = TRUE),
-    max_diff = max(diff, na.rm = TRUE),
-    median_diff = median(diff, na.rm = TRUE),
+    min_fold_change = min(fold_change, na.rm = TRUE),
+    max_fold_change = max(fold_change, na.rm = TRUE),
+    median_fold_change = median(fold_change, na.rm = TRUE),
+    min_hcx = min(hcx, na.rm = TRUE),
+    max_hcx = max(hcx, na.rm = TRUE),
+    median_hcx = median(hcx, na.rm = TRUE),
     .groups = 'drop'
   )
 
 leave_one_out_df_trim <- leave_one_out_df %>% 
   drop_na() %>% 
-  mutate(diff = diff + 0.0001)
+  mutate(fold_change = fold_change)
 
 
 leave_one_out_ggplot <- ggplot() +
   geom_jitter(data = leave_one_out_df_trim,
-              aes(x = diff, y = tier, color = tier,
-             text = paste0("%Difference: ", scales::percent(diff, 0.1, big.mark = ","),
+              aes(x = fold_change, y = tier, color = tier,
+             text = paste0("fold_change: ", scales::percent(fold_change, 0.1, big.mark = ","),
                                               "<br>HCx: ",scientific(hcx, 3), " particles/L",
                                               "<br>Study: ", authoryear,
                                               "<br>Species: " ,species_multiple,
                                               "<br>doi: ", doi),
-              width = 0, height = 0.3, alpha = 0.7)) +
+              width = 0, height = 0.3, alpha = 0.8)) +
    # Add horizontal error bars for min and max values
   geom_errorbarh(data = summary_diff_df,
-                 aes(xmin = min_diff, xmax = max_diff, y = tier, color = tier),
-                 height = 0.2, alpha = 0.9) +
+                 aes(xmin = min_fold_change, xmax = max_fold_change, y = tier, color = tier),
+                 height = 0.5, alpha = 1) +
     # Add points for median values
   geom_point(data = summary_diff_df,
-             aes(x = median_diff, y = tier, color = tier),
-             size = 3, shape = 2, alpha = 0.9) +
+             aes(x = median_fold_change, y = tier, color = tier),
+             size = 5, shape = 2, alpha = 1) +
+  geom_text(data = summary_diff_df,
+                 aes(x = min_fold_change, label = signif(min_hcx,2), y = tier, color = tier),
+            vjust = -2) +
+  geom_text(data = summary_diff_df,
+                 aes(x = max_fold_change, label = signif(max_hcx,2), y = tier, color = tier),
+            vjust = -2) +
   
     scale_color_manual(values = tier_colors) +  # Apply manual colors for lines
 #  geom_point(alpha = 0.7) +
@@ -1910,14 +1948,16 @@ leave_one_out_ggplot <- ggplot() +
    #                fontface = "italic") +
  # geom_line() +
   #geom_vline(xintercept = 0.00001, alpha = 0.5, color = "grey60") +
-  scale_x_continuous(trans = pseudo_log_trans(base = 10), 
-                       breaks = c(-10, 0, 1, 10, 40),  # Values correspond to -10%, 0%, 100%, 1000%, and 4000%
+  scale_x_continuous(
+    trans = pseudo_log_trans(base = 2),
+                       breaks = c(-1, 0, 1, 2, 4, 8, 16, 40)
+  ) + 
                     # breaks = c(-1, 0, 1, 10, 100), 
-                   #   limits = c(min_diff, max_diff), 
-                     labels = scales::percent_format(accuracy = 1, big.mark = ",")) +
+                   #   limits = c(min_fold_change, max_fold_change), 
+                     #labels = scales::percent_format(accuracy = 1, big.mark = ",")) +
 #  scale_x_log10() +
   
-  xlab("% Difference") +
+  xlab("Fold Change") +
   theme_minimal(base_size = 13) +
  theme( plot.title = element_text(hjust = 0.5, size = 14),     # Center the main title
         strip.text = element_text(size = 14, face = "bold"),
@@ -1935,7 +1975,7 @@ leave_one_out_ggplot <- ggplot() +
 ggsave(plot = leave_one_out_ggplot,
        filename = "../output/Manuscript_Figs/leave_one_out.jpg",
       dpi = 300,
-      width = 10, height = 7, units = "in")
+      width = 8, height = 6, units = "in")
 
 leave_one_out_ggplot
 ```
@@ -2136,7 +2176,7 @@ MC_param_histograms
 ggsave(filename = "MC_param_histograms.jpg",
        dpi = 300,
        path = "../output/Manuscript_Figs/", 
-       plot = MC_histograms, width = 9, height = 8, units = "in")
+       plot = MC_param_histograms, width = 9, height = 8, units = "in")
 ```
 
 
