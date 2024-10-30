@@ -701,7 +701,8 @@ alignmentFxn <- function(df = tomex2.0_aoc_z_final){
 }
 
 ## derive deterministic aligned dataset
-aoc_aligned_test <- alignmentFxn(df = tomex2.0_aoc_z_final)
+aoc_aligned_test <- alignmentFxn(df = tomex2.0_aoc_z_final) %>% 
+   mutate(unique_id = as.factor(unique_id))
 ```
 
 ### Model Wrapper
@@ -2773,7 +2774,7 @@ results_df_sobol <- do.call(rbind, lapply(MC_results_tox_sobol, function(x) {
   data.frame(
    # iteration = x$iteration,
     simulation_id = x$simulation_id,
-    unique_id = x$unique_id,
+    unique_id = factor(x$unique_id), #toxicity data point (row)
     particles_L_ox_stress = x$particles_mL_ox_stress *1000,
     particles_L_food_dilution = x$particles_mL_food_dilution * 1000,
     species = x$species,
@@ -2824,7 +2825,7 @@ cov_results_sobol <- full_join(cov_results_sobol_ox_stress,
 skimr::skim(cov_results_sobol)
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 # Step 3: merge with full dataset and deterministic dataset
 aoc_MC_sobol <- merge(aoc_aligned_test,
                 cov_results_sobol, by = "unique_id", all.x = TRUE)
@@ -2842,6 +2843,11 @@ aoc_MC_sobol <- left_join(aoc_MC_sobol,
 #Save file for EcoTox Project
 saveRDS(aoc_MC_sobol, "output/aoc_MC_sobol.rds")
 ```
+##### Start here to read in
+```{r}
+aoc_MC_sobol <- readRDS("output/aoc_MC_sobol.rds")
+```
+
 
 ### Quality Checks
 
@@ -2849,7 +2855,8 @@ saveRDS(aoc_MC_sobol, "output/aoc_MC_sobol.rds")
 
 ```{r}
 results_df_sobol %>% 
-  left_join(aoc_aligned_test, by = "unique_id") %>% 
+  left_join(aoc_aligned_test %>% mutate(unique_id = as.factor(unique_id)),
+            by = "unique_id") %>% 
   filter(particles_L_ox_stress < 0) %>% 
   select(particles_L_ox_stress, particles_L_food_dilution,
          species, Group, unique_id)
@@ -2886,14 +2893,19 @@ aoc_MC_sobol %>%
          food_dilution_ratio = particles_L_food_dilution_deterministic / median_particles_L_food_dilution)
 
 #define limits
-min_val <- min(aoc_MC_sobol$CoV_food_dilution, na.rm = TRUE)
-max_val <- max(aoc_MC_sobol$CoV_food_dilution, na.rm = TRUE)
+min_val <- aoc_MC_sobol %>% 
+  select(contains("CoV_")) %>% 
+  min(na.rm = T)%>% 
+  round(0)
+
+max_val <- aoc_MC_sobol %>% 
+  select(contains("CoV_")) %>% 
+  max(na.rm = T) %>% 
+  round(0)
 
 # You may want to add some padding around the min and max
 pad <- (max_val - min_val) * 0.05
 xlims <- c(min_val - pad, max_val + pad)
-
-
 ```
 
 ```{r}
@@ -2901,47 +2913,53 @@ hist_cv_food_sobol_freshwater <- aoc_MC_sobol %>%
   filter(environment == "Freshwater") %>% 
   filter(ingestible == "ingestible") %>% 
   ggplot(aes(x = CoV_food_dilution, fill = polydispersity)) +
-  geom_histogram(position = "identity", alpha = 0.5, bins = 40) +
- # xlim(xlims) +  # Set x limits
+  geom_histogram(position = "identity", alpha = 0.5, binwidth = 0.2) +
   scale_x_log10() +
+  xlim(xlims) +  # Set x limits
   xlab("Coefficient of Variation (unitless)") +
-  ylab("Toxicity Data Points") +
+  ylab("Freshwater") +
 #fill.type +
  # theme.light #+
-  theme_minimal(base_size = 15) +
-theme(axis.title.x = element_blank()) 
+  theme_minimal(base_size = 12) +
+theme(axis.title.y = element_text(size = 12),
+      plot.title = element_text(size = 12,
+                                hjust = 0.5),
+      axis.title.x = element_text(size = 10)
+      ) 
 
 hist_cv_ox_sobol_freshwater <- aoc_MC_sobol %>% 
   filter(environment == "Freshwater") %>% 
   filter(translocatable == "translocatable") %>% 
   ggplot(aes(x = CoV_ox_stress, fill = polydispersity)) +
-  geom_histogram(position = "identity", alpha = 0.5, bins = 40) +
+  geom_histogram(position = "identity", alpha = 0.5, binwidth = 0.2) +
   #fill.type +
   scale_x_log10() +
-  # xlim(xlims) +  # Set x limits
+   xlim(xlims) +  # Set x limits
   xlab("Coefficient of Variation (unitless)") +
   ylab("Toxicity Data Points") +
  #  theme.light +
-  theme_minimal(base_size = 15) +
+  theme_minimal(base_size = 12) +
   theme(legend.position = "none",
         axis.title.y = element_blank(),
-        axis.title.x = element_blank())
+        axis.title.x = element_text(size = 10)
+        )
 
 
 hist_cv_food_sobol_marine <- aoc_MC_sobol %>% 
   filter(environment == "Marine") %>% 
   filter(ingestible == "ingestible") %>% 
   ggplot(aes(x = CoV_food_dilution, fill = polydispersity)) +
-  geom_histogram(position = "identity", alpha = 0.5, bins = 40) +
-#  xlim(xlims) +  # Set x limits
+  geom_histogram(position = "identity", alpha = 0.5, binwidth = 0.2) +
   scale_x_log10() +
+  xlim(xlims) +  # Set x limits
   xlab("Coefficient of Variation (unitless)") +
-  ylab("Toxicity Data Points") +
+  ylab("Marine") +
 #fill.type +
  # theme.light +
-  theme_minimal(base_size = 15) +
-theme(axis.title.x = element_blank()#,
-      #axis.title.y = element_blank()
+  theme_minimal(base_size = 12) +
+theme(axis.title.x = element_blank(),
+      axis.title.y = element_text(size = 12),
+      plot.title = element_text(size = 12, hjust = 0.5)
       ) +
   ggtitle("Food Dilution")
 
@@ -2949,17 +2967,19 @@ hist_cv_ox_sobol_marine <- aoc_MC_sobol %>%
   filter(environment == "Marine") %>% 
   filter(translocatable == "translocatable") %>% 
   ggplot(aes(x = CoV_ox_stress, fill = polydispersity)) +
-  geom_histogram(position = "identity", alpha = 0.5, bins = 40) +
+  geom_histogram(position = "identity", alpha = 0.5, binwidth = 0.2) +
   #fill.type +
   scale_x_log10() +
-  # xlim(xlims) +  # Set x limits
+   xlim(xlims) +  # Set x limits
   xlab("Coefficient of Variation (unitless)") +
   ylab("Toxicity Data Points") +
 #   theme.light +
-  theme_minimal(base_size = 15) +
+  theme_minimal(base_size = 12) +
   theme(legend.position = "none",
         axis.title.y = element_blank(),
-        axis.title.x = element_blank()) +
+        axis.title.x = element_blank(),
+        plot.title = element_text(size = 12, hjust = 0.5)
+        ) +
   ggtitle("Tissue Translocation")
 
 CoV_plots_sobol <-  ggpubr::ggarrange(hist_cv_food_sobol_marine, hist_cv_ox_sobol_marine,
@@ -2972,7 +2992,7 @@ CoV_plots_sobol <-  ggpubr::ggarrange(hist_cv_food_sobol_marine, hist_cv_ox_sobo
 ggsave(filename = "CoV_plots_sobol.jpg",
        dpi = 300,
        path = "../../output/Manuscript_Figs/", 
-       plot = CoV_plots, width = 10, height = 8, units = "in")
+       plot = CoV_plots_sobol, width = 5, height = 4, units = "in")
 
 CoV_plots_sobol
 ```

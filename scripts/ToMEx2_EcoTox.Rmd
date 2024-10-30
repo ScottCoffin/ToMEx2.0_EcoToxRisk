@@ -2441,7 +2441,7 @@ aoc_MC <- readRDS("monte carlo/output/aoc_MC_sobol.rds")
 results_df <- readRDS("monte carlo/output/results_df_sobol.rds")
 ```
 
-
+#### CoV Plots
 ```{r}
 #define limits
 min_val <- min(aoc_MC$CoV_food_dilution, na.rm = TRUE)
@@ -2491,26 +2491,37 @@ CoV_plots
 
 ```{r}
 #define limites
-min_val <- min(aoc_MC$CoV_food_dilution, na.rm = TRUE)
-max_val <- max(aoc_MC$CoV_food_dilution, na.rm = TRUE)
+#define limits
+min_val <- aoc_MC %>% 
+  select(contains("CoV_")) %>% 
+  min(na.rm = T)%>% 
+  round(0)
+
+max_val <- aoc_MC %>% 
+  select(contains("CoV_")) %>% 
+  max(na.rm = T) %>% 
+  round(0)
+
+# min_val <- min(aoc_MC$CoV_food_dilution, na.rm = TRUE)
+# max_val <- max(aoc_MC$CoV_food_dilution, na.rm = TRUE)
 
 # You may want to add some padding around the min and max
 pad <- (max_val - min_val) * 0.05
 xlims <- c(min_val - pad, max_val + pad)
 
 points_cv_food <- aoc_MC %>% 
-  ggplot(aes(x = CoV_food_dilution, y = size.length.um.used.for.conversions, color = polydispersity)) +
-  geom_point() +
+  ggplot(aes(y = CoV_food_dilution, x = size.length.um.used.for.conversions, color = polydispersity)) +
+  geom_point(size = 3, alpha = 0.8) +
   xlim(xlims) +  # Set x limits
   color.type +
-  theme_minimal()
+  theme_minimal(base_size = 12)
 
 points_cv_ox <- aoc_MC %>% 
-  ggplot(aes(x = CoV_ox_stress, y = size.length.um.used.for.conversions, color = polydispersity)) +
-  geom_point() +
+  ggplot(aes(y = CoV_ox_stress, x = size.length.um.used.for.conversions, color = polydispersity)) +
+  geom_point(size = 3, alpha = 0.8) +
  # xlim(xlims) +  # Set x limits
   color.type +
-  theme_minimal()
+  theme_minimal(base_size = 12)
   theme(legend.position = "none")
 
 ggarrange(points_cv_food, points_cv_ox,
@@ -2518,104 +2529,134 @@ ggarrange(points_cv_food, points_cv_ox,
           common.legend = TRUE, legend = "right")
 ```
 
-
+##### Statistical Tests
 ```{r}
-mouth_lm_food <- lm(data = aoc_MC, CoV_food_dilution ~ max.size.ingest.um * polydispersity)
+mouth_lm_food <- lm(data = aoc_MC, CoV_food_dilution ~ max.size.ingest.um)
+
+shapiro.test(residuals(mouth_lm_food))
+
 summary(mouth_lm_food)
 ```
+
 ```{r}
-mouth_lm_ox_stress <- lm(data = aoc_MC, CoV_ox_stress ~ max.size.ingest.um * polydispersity)
-summary(mouth_lm_ox_stress)
+# Spearman correlation (for monotonic relationships, non-normal data)
+mouth_spearman_food <- cor.test(aoc_MC$CoV_food_dilution, aoc_MC$max.size.ingest.um, method = "spearman")
+mouth_spearman_food
 ```
 
 
 ```{r}
+mouth_lm_ox_stress <- lm(data = aoc_MC,
+                         CoV_ox_stress ~ max.size.ingest.um)
+
+shapiro.test(residuals(mouth_lm_ox_stress))
+
+summary(mouth_lm_ox_stress)
+```
+Residuals are non-normally distributed, so the spearman correlation test is run instead:
+
+```{r}
+# Spearman correlation (for monotonic relationships, non-normal data)
+mouth_spearman_ox_stress <- cor.test(aoc_MC$CoV_ox_stress, aoc_MC$max.size.ingest.um, method = "spearman")
+mouth_spearman_ox_stress
+```
+
+##### CoV vs. Mouth Size
+```{r}
 mouth_cv_food <- aoc_MC %>% 
-    ggplot(aes(x = CoV_food_dilution, y = max.size.ingest.um, color = polydispersity)) +
+    ggplot(aes(y = CoV_food_dilution, x = max.size.ingest.um, 
+               color = polydispersity,
+               text = paste0("Species:", Species, "<br>",
+                            "Polydispersity:",  polydispersity, "<br>",
+                            "Particles/L Food Dilution:",  signif(particles_L_food_dilution_deterministic,2), "<br>",
+                            "Particle size:", signif(size.length.um.used.for.conversions,2), " um<br>",
+                            "CoV:", signif(CoV_food_dilution,2), "<br>",
+                            "Mouth size opening:", signif(max.size.ingest.um,2), "um"
+               )
+                 )) +
   geom_point(alpha = 0.75, size = 2.1) +
-  geom_smooth(method = "lm", se = T, aes(group = 1), alpha = 0.7, color = "darkgreen", fill = "darkgreen", linetype = "dashed") +  # A single regression line for all data
-  ggpmisc::stat_poly_eq(aes(label = paste(..eq.label..), group = 1),
-                        color = "darkgreen",
-                        formula = y ~ x, 
-                        method = "lm",
-                        label.x = 0.1,
-                        label.y = 0.4,  # Position at the top, adjust if necessary
-                        parse = TRUE) +
-   ggpmisc::stat_poly_eq(aes(label = paste(..rr.label..), group = 1),
-                        color = "darkgreen",
-                        formula = y ~ x, 
-                        method = "lm",
-                        label.x = 0.1,
-                        label.y = 0.25,  # Position at the top, adjust if necessary
-                        parse = TRUE) +
-    ggpmisc::stat_poly_eq(aes(label = ..p.value.label.., group = 1),
-                        color = "darkgreen",
-                        formula = y ~ x, 
-                        method = "lm",
-                        label.x = 0.1,
-                        label.y = 0.1,  # Position at the top, adjust if necessary
-                        parse = TRUE) +
-    xlab("Coefficient of Variation (unitless)") +
-  ylab("Organism Mouth Size Opening (um) for Toxicity Datapoint") +
+  geom_smooth(method = "lm", se = T, aes(group = 1), alpha = 0.7, color = "darkgreen", fill = "darkgreen", linetype = "dashed") +  
+    annotate("text", x = 0.5, y = 3.5,
+           label = paste("Spearman's r =", round(mouth_spearman_food$estimate,3),
+                         "\n p =", signif(mouth_spearman_food$p.value, 2)),
+           hjust = 0, color = "darkgreen") +
+  ylab("Coefficient of Variation (unitless)") +
+  xlab("Organism Mouth Size Opening (um)") +
   scale_y_log10() +
   scale_x_log10() +
-  xlim(xlims) +  # Set x limits
+  ylim(c(0,4)) +  # Set x limits
+ # xlim(c(0, 10000)) +
   color.type +
-  theme.light +
+  theme_minimal(base_size = 12) +
   theme(legend.position = "none",
-        axis.title.y = element_blank(),
-        axis.title.x = element_blank()
+        plot.title = element_text(hjust = 0.5,
+                                  size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.title.x = element_text(size = 10)
         ) +
+  ggtitle("Food Dilution") +
    guides(fill = guide_legend(title = NULL), color = guide_legend(title = NULL))  # Remove legend titles
 
 mouth_cv_ox <- aoc_MC %>% 
-  ggplot(aes(x = CoV_ox_stress, y = max.size.ingest.um, color = polydispersity)) +
+  ggplot(aes(y = CoV_ox_stress, x = max.size.ingest.um, color = polydispersity,
+             text = paste0("Species:", Species, "<br>",
+                            "Polydispersity:",  polydispersity, "<br>",
+                            "Particles/L Tissue Trans.:",  signif(particles_L_ox_stress_deterministic,2), "<br>",
+                            "Particle size:", signif(size.length.um.used.for.conversions,2), " um<br>",
+                            "CoV:", signif(CoV_ox_stress,2), "<br>",
+                            "Mouth size opening:", signif(max.size.ingest.um,2), "um"
+               ))) +
    geom_point(alpha = 0.75, size = 2.1) +
+  annotate("text", x = 0.5, y = 3.5,
+           label = paste("Spearman's r =", round(mouth_spearman_ox_stress$estimate,3),
+                         "\n p =", signif(mouth_spearman_ox_stress$p.value, 2)),
+           hjust = 0, color = "darkgreen") +
   geom_smooth(method = "lm", se = T, aes(group = 1), alpha = 0.7, color = "darkgreen", fill = "darkgreen", linetype = "dashed") +  # A single regression line for all data
-  ggpmisc::stat_poly_eq(aes(label = paste(..eq.label..), group = 1),
-                        color = "darkgreen",
-                        formula = y ~ x, 
-                        method = "lm",
-                        label.x = 0.1,
-                        label.y = 0.4,  # Position at the top, adjust if necessary
-                        parse = TRUE) +
-   ggpmisc::stat_poly_eq(aes(label = paste(..rr.label..), group = 1),
-                        color = "darkgreen",
-                        formula = y ~ x, 
-                        method = "lm",
-                        label.x = 0.1,
-                        label.y = 0.25,  # Position at the top, adjust if necessary
-                        parse = TRUE) +
-    ggpmisc::stat_poly_eq(aes(label = ..p.value.label.., group = 1),
-                        color = "darkgreen",
-                        formula = y ~ x, 
-                        method = "lm",
-                        label.x = 0.1,
-                        label.y = 0.1,  # Position at the top, adjust if necessary
-                        parse = TRUE) +
   scale_y_log10() +
   scale_x_log10() +
-  xlab("Coefficient of Variation (unitless)") +
-  ylab("Organism Mouth Size Opening (um) for Toxicity Datapoint") +
- # xlim(xlims) +  # Set x limits
+  ylab("Coefficient of Variation (unitless)") +
+  xlab("Organism Mouth Size Opening (um)") +
+  ylim(c(0,4)) +  # Set x limits
+ # xlim(c(0, 10000)) +
   color.type +
-  theme.light +
+  theme_minimal(base_size = 12) +
   theme(legend.position = "none",
-        axis.title.y = element_text(size = 12)) +
+        plot.title = element_text(hjust = 0.5,
+                                  size = 12),
+        axis.title.y = element_blank(),
+        axis.title.x = element_text(size = 10)) +
   theme(legend.title = element_blank()) +
+  ggtitle("Tissue Translocation") +
    guides(fill = guide_legend(title = NULL), color = guide_legend(title = NULL))  # Remove legend titles
 
 CoV_mouth_plots <- ggarrange(mouth_cv_food, mouth_cv_ox,
-                       labels = c("Food Dilution", "Tissue Translocation"),
-                       ncol = 1,
+                     #  labels = c("Food Dilution", "Tissue Translocation"),
+                       ncol = 2,
                        common.legend = TRUE, legend = "bottom")
 
 ggsave(filename = "CoV_mouth_plots.jpg",
        dpi = 300,
        path = "../output/Manuscript_Figs/", 
-       plot = CoV_mouth_plots, width = 10, height = 8, units = "in")
+       plot = CoV_mouth_plots, width = 7, height = 5, units = "in")
 
 CoV_mouth_plots
+```
+
+```{r}
+# Convert individual ggplots to plotly objects
+plot1 <- ggplotly(mouth_cv_food, tooltip = "text")
+plot2 <- ggplotly(mouth_cv_ox, tooltip = "text")
+
+# Combine with subplot, setting the legend at the bottom
+CoV_mouth_plotly <- subplot(plot1, plot2, nrows = 1, shareY = TRUE, titleX = TRUE, titleY = TRUE) %>%
+  layout(legend = list(orientation = "h", y = -0.2))
+
+require(htmlwidgets)
+
+# Save the plot as an HTML file
+saveWidget(CoV_mouth_plotly, file = "../output/Manuscript_Figs/CoV_mouth_plotly.html")
+
+CoV_mouth_plotly
 ```
 
 
@@ -2648,139 +2689,199 @@ freshwater_MC_data <-  filter_environment_data(data = aoc_MC %>%
 
 ### Example MC Results
 ```{r}
-example.df.freshwater.tissue <-  left_join(results_df,
-          freshwater_MC_data$filtered_data_small_default_t3_4 %>% select(c(unique_id,
-                                                                           particles_L_food_dilution_deterministic,
-                                                                           particles_L_ox_stress_deterministic,
-                                                                           CoV_ox_stress, CoV_food_dilution,
-                                                                           Species, Group, max.size.ingest.um,
-                                                                           size.length.um.used.for.conversions,
-                                                                           shape_f,
-                                                                           poly_f)),
+example.df <-  left_join(results_df,
+          #freshwater_MC_data$filtered_data_small_default_t3_4 %>% 
+          aoc_MC %>% 
+            select(c(unique_id,
+                     particles_L_food_dilution_deterministic,
+                     particles_L_ox_stress_deterministic,
+                     environment,
+                     CoV_ox_stress, CoV_food_dilution,
+                     Species, Group, max.size.ingest.um,
+                     size.length.um.used.for.conversions,
+                     shape_f,
+                     poly_f)),
           by = "unique_id")
 
-example.df.freshwater.food <-  left_join(results_df,
-          freshwater_MC_data$filtered_data_large_default_t3_4 %>% select(c(unique_id,
-                                                                           particles_L_food_dilution_deterministic,
-                                                                           particles_L_ox_stress_deterministic,
-                                                                           CoV_ox_stress, CoV_food_dilution,
-                                                                           Species, Group, max.size.ingest.um,
-                                                                           size.length.um.used.for.conversions,
-                                                                           shape_f,
-                                                                           poly_f)),
-          by = "unique_id")
+# example.df.food <-  left_join(results_df,
+#           #freshwater_MC_data$filtered_data_large_default_t3_4 %>% 
+#           aoc_MC %>% 
+#             select(c(unique_id,                               
+#                      particles_L_food_dilution_deterministic,
+#                      particles_L_ox_stress_deterministic,
+#                      CoV_ox_stress, CoV_food_dilution,
+#                      Species, Group, max.size.ingest.um,
+#                      size.length.um.used.for.conversions,
+#                      shape_f,
+#                      poly_f)),
+#           by = "unique_id")
 
 #get a few rowids to select for plotting
-example.unique_id.ox.stress.max <- example.df.freshwater.tissue %>% 
+#example.unique_id.ox.stress.max <- example.df.freshwater.tissue %>% 
+example.unique_id.ox.stress.max <- aoc_MC %>% 
   arrange(desc(CoV_ox_stress)) %>% 
   slice(1) %>% 
   pull(unique_id)
   
 
-example.unique_id.ox.stress.min <- example.df.freshwater.tissue %>% 
+#example.unique_id.ox.stress.min <- example.df.freshwater.tissue %>% 
+example.unique_id.ox.stress.min <- aoc_MC %>% 
   arrange(CoV_ox_stress) %>% 
    slice(1) %>% 
   pull(unique_id)
   
-example.unique_id.food.max <- example.df.freshwater.food %>% 
+#example.unique_id.food.max <- example.df.freshwater.food %>%
+example.unique_id.food.max <- aoc_MC %>%  
     filter(Group != "Algae") %>% 
   arrange(desc(CoV_food_dilution)) %>% 
   slice(1) %>% 
   pull(unique_id)
 
-example.unique_id.food.min <- example.df.freshwater.food %>% 
+#example.unique_id.food.min <- example.df.freshwater.food %>% 
+example.unique_id.food.min <- aoc_MC %>% 
     filter(Group != "Algae") %>% 
   arrange(CoV_food_dilution) %>% 
    slice(1) %>% 
   pull(unique_id)
+
+
+create_ggplot <- function(df_input, unique_id_input, plot_type, metric, metric_label,
+                          annotation_x, annotation_y,
+                           x_label, color, effect_metric, y_axis_label = TRUE) {
   
-# Function to create ggplot for given unique_id and description
-create_ggplot_ox_stress <- function(df_input, unique_id_input, plot_type) {
-
-df_example <- df_input %>% filter(unique_id == unique_id_input)
+  # Filter data for the specific plot
+  df_example <- df_input %>% 
+    filter(unique_id == unique_id_input)
+  
+  # Check if df_example is empty
+  if (nrow(df_example) == 0) {
+    message("Warning: No data found for unique_id = ", unique_id_input)
+    return(NULL)
+  }
+  
+  # Extract relevant information for subtitle text box
+  example.species <- as.character(df_example$Species[1])
+  example.group <- as.character(df_example$Group[1])
+  example.particle.length <- comma(df_example$size.length.um.used.for.conversions[1])
+  example.max.size.ingest <- round(df_example$max.size.ingest.um[1], 1)
+  example.environment <- df_example$environment[1]
+  
+  # Determine CoV based on plot_type
+  example.CoV <- if (plot_type == "Food") {
+    round(df_example$CoV_food_dilution[1], 2)
+  } else {
+    round(df_example$CoV_ox_stress[1], 2)
+  }
+  
+  # Calculate percentiles and median for the vertical lines
+  median_value <- median(df_example[[metric]], na.rm = TRUE)
+  perc_5 <- quantile(df_example[[metric]], 0.05, na.rm = TRUE)
+  perc_95 <- quantile(df_example[[metric]], 0.95, na.rm = TRUE)
+  
+  # Calculate maximum density for y-axis scaling in annotation positioning
+  max_density <- max(density(df_example[[metric]], na.rm = TRUE)$y)
+  
+  # Define adjusted x and y positions for annotation to remain within plot bounds
+  # annotation_x <- min(df_example[[metric]]) + (max(df_example[[metric]]) - min(df_example[[metric]])) * 0.05
+  # annotation_y <- max_density * 0.8  # Position annotation at 80% of max density
+  
+  # Plot with raw x-axis data, three vertical lines, and internal subtitle text box
+  p <- ggplot(df_example, aes(x = .data[[metric]])) +
+    geom_histogram(aes(y = ..density..), fill = color, color = "black", alpha = 0.5, bins = 100) +
     
-example.species = as.character(df_example$Species[1])
-example.group = as.character(df_example$Group[1])
-example.particle.length = comma(df_example$size.length.um.used.for.conversions[1])
-example.CoV = scientific(df_example$CoV_ox_stress,5)
-example.max.size.ingest = comma(df_example$max.size.ingest.um[1])
-
-  df_example %>%
-    ggplot() +
-    geom_histogram(aes(x = particles_L_ox_stress,
-                       y = ..density..), fill = "darkorange", color = "orange", alpha = 0.5,
-                   bins = 100) +
-    scale_x_log10(labels = label_scientific(accuracy = 1)) +
-    labs(x = "Tissue Translocation EC (Particles/L)",
-         y = "Probability density",
-      #   title = "Monte Carlo Distribution of Effect Concentration",
-           subtitle = paste0(example.species, " (", example.group, ") \n ",
-                           "Mouth size: ",example.max.size.ingest, " um",
-                           "\n ",
-                           "CoV:", example.CoV,
-                           "\n",
-                           "Particle length: ",
-                           example.particle.length, " um")) +
-    geom_vline(aes(xintercept = particles_L_ox_stress_deterministic),
-               linewidth = 1.7, linetype = "dotted", color = "red"
-               ) +
-    #geom_density(aes(x = particles_L_ox_stress),
-    #              col = "red", lwd = 1) # Optionally add a density line
-    theme_light()
+    # Median, 5th, and 95th percentile lines
+    geom_vline(xintercept = median_value, linetype = "dotted", color = color, linewidth = 1.1) +
+    geom_vline(xintercept = perc_5, linetype = "dotted", color = color, linewidth = 1.1) +
+    geom_vline(xintercept = perc_95, linetype = "dotted", color = color, linewidth = 1.1) +
+    
+    # Annotation positioned using adjusted x and y limits
+    annotate("text", x = annotation_x, y = annotation_y, 
+             label = paste0(example.species, " (", example.group, ")\n",
+                            "Mouth size: ", example.max.size.ingest, " µm\n",
+                            "CoV: ", example.CoV, "\n",
+                            "Particle length: ", example.particle.length, " µm\n",
+                            "Environment: ", example.environment, "\n",
+                            metric_label, ":\n  ", scientific(median_value, 2)),
+             hjust = 0, vjust = 1, color = color, size = 3) +
+    
+    scale_x_log10(name = x_label,
+                  labels = scales::label_scientific()) +
+    labs(y = if (y_axis_label) "Probability Density" else NULL) +  # Conditional y-axis label
+    theme_light() +
+    theme(
+      plot.title = element_text(size = 12, hjust = 0.5),
+      axis.title.x = element_text(size = 10),
+      axis.text.y = if (!y_axis_label) element_blank() else element_text(),  # Remove y-axis text for right plots
+      axis.title.y = if (!y_axis_label) element_blank() else element_text()
+    )
+  
+  return(p)
 }
 
-create_ggplot_food_dilution <- function(df_input, unique_id_input, plot_type) {
-
-df_example <- df_input %>%  filter(unique_id == unique_id_input)
-    
-example.species = as.character(df_example$Species[1])
-example.group = as.character(df_example$Group[1])
-example.particle.length = comma(df_example$size.length.um.used.for.conversions[1])
-example.CoV = scientific(df_example$CoV_food_dilution,5)
-example.max.size.ingest = comma(df_example$max.size.ingest.um[1])
 
 
-  df_example %>%
-    ggplot(aes(x = particles_L_food_dilution)) +
-    geom_histogram(aes(y = ..density..), fill = "#663399", color = "#E6E6FA", alpha = 0.5,
-                   bins = 100) +
-    scale_x_log10(labels = label_scientific(accuracy = 0.1)) +
-    labs(x = "Food Dilution EC (Particles/L)",
-         y = "Probability density",
-       #  title = "Monte Carlo Distribution of Effect Concentration",
-         subtitle = paste0(example.species, " (", example.group, ") \n ",
-                           "Mouth size: ",example.max.size.ingest, " um",
-                           "\n ",
-                           "CoV:", example.CoV,
-                           "\n",
-                           "Particle length: ",
-                           example.particle.length, " um")) +
-    geom_vline(aes(xintercept = particles_L_food_dilution_deterministic),
-               linewidth = 1.7, linetype = "dotted", color = "#663399"
-               ) +
-    #$geom_density(col = "#663399", lwd = 1) + # Optionally add a density line
-    theme_light()
-}
-
-plot_ox_stress_max <- create_ggplot_ox_stress(df_input = example.df.freshwater.tissue,
-                                              example.unique_id.ox.stress.max,  "High CoV (Tissue Translocation)")
-plot_ox_stress_min <- create_ggplot_ox_stress(df_input = example.df.freshwater.tissue,
-                                              example.unique_id.ox.stress.min, "Low CoV (Tissue Translocation)")
-plot_food_max <- create_ggplot_food_dilution(df_input = example.df.freshwater.food,
-                                             example.unique_id.food.max, "High CoV (Food Dilution)")
-plot_food_min <- create_ggplot_food_dilution(df_input = example.df.freshwater.food,
-                                             example.unique_id.food.min, "Low CoV (Food Dilution)")
 
 
-MC_example_plots <- ggarrange(plot_ox_stress_max, plot_ox_stress_min,
-                              plot_food_max, plot_food_min,
-                              labels = c("A", "B", "C", "D")
+
+
+# Generate individual plots, specifying y_axis_label = FALSE for right-hand plots
+plot_food_min <- create_ggplot(df_input = example.df,
+                               unique_id_input = example.unique_id.food.min,
+                               plot_type = "Food",
+                               metric = "particles_L_food_dilution",
+                               metric_label = "Particles/L (Food Dilution)",
+                               x_label = "Food Dilution (SD from Mean)", 
+                               annotation_x = 1e3,
+                               annotation_y = 1.5,
+                               color = "#663399",
+                               effect_metric = aoc_MC$particles_L_food_dilution_deterministic,
+                               y_axis_label = TRUE)
+
+plot_food_max <- create_ggplot(df_input = example.df,
+                               unique_id_input = example.unique_id.food.max,
+                               plot_type = "Food",
+                               metric = "particles_L_food_dilution",
+                               metric_label = "Particles/L (Food Dilution)",
+                               x_label = "Food Dilution (SD from Mean)", 
+                               annotation_x = 1.e-2,
+                               annotation_y = 0.5,
+                               color = "#663399",
+                               effect_metric = aoc_MC$particles_L_food_dilution_deterministic,
+                               y_axis_label = TRUE)
+
+plot_tissue_min <- create_ggplot(df_input = example.df,
+                               unique_id_input = example.unique_id.ox.stress.min,
+                               plot_type = "Tissue",
+                               metric = "particles_L_ox_stress",
+                               metric_label = "Particles/L (Tissue Translocation)",
+                               x_label = "Tissue Translocation (SD from Mean)", 
+                               annotation_x = 1.4e4,
+                               annotation_y = 20,
+                               color = "forestgreen",
+                               effect_metric = aoc_MC$particles_L_ox_stress_deterministic,
+                               y_axis_label = TRUE)
+
+plot_tissue_max <- create_ggplot(df_input = example.df,
+                               unique_id_input = example.unique_id.ox.stress.max,
+                               plot_type = "Tissue",
+                               metric = "particles_L_ox_stress",
+                               metric_label = "Particles/L (Tissue Translocation)",
+                               x_label = "Tissue Translocation (SD from Mean)", 
+                               annotation_x = 1e10,
+                               annotation_y = 2.5,
+                               color = "forestgreen",
+                               effect_metric = aoc_MC$particles_L_ox_stress_deterministic,
+                               y_axis_label = TRUE)
+
+
+MC_example_plots <- ggarrange(plot_food_min, plot_tissue_min,
+                              plot_food_max, plot_tissue_max
                               )
 
 ggsave(filename = "MC_example_plots.jpg",
        dpi = 300,
        path = "../output/Manuscript_Figs/", 
-       plot = MC_example_plots, width = 10, height = 8, units = "in")
+       plot = MC_example_plots, width = 9.5, height = 6.5, units = "in")
 
 MC_example_plots
 ```
