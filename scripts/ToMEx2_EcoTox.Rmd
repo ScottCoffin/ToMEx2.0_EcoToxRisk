@@ -186,8 +186,7 @@ aoc_simple_check %>%
   filter(!data_available)
 ```
 
-<<<<<<< HEAD
-=======
+
 ## Summary Statistics
 ```{r}
 ## how many studies/data points/species exist in starting and final databases?
@@ -250,7 +249,6 @@ aoc_z %>%
 ```
 
 
->>>>>>> 66a377f2b23569870a58d4ac0850a24de339b553
 #Framework Summary
 
 ![Agreed-upon framework](../assets/threshold_framework.png)
@@ -810,8 +808,7 @@ base_thresholds
 kable(base_thresholds)
 ```
 
-<<<<<<< HEAD
-=======
+
 ```{r}
 base_thresholds %>% 
   mutate_if(is.numeric, ~signif(., 2)) %>% 
@@ -822,7 +819,6 @@ base_thresholds %>%
 ```
 
 
->>>>>>> 96adc9a78bbca31d16595cee115a72902503553c
 ![Agreed-upon framework](assets/treshold_framework.png)
 
 **Threshold 1:** *HC*: HC5 *Data collapsing*: 1st quartile *Point
@@ -1266,8 +1262,7 @@ no_quality <- calculate_thresholds(aoc_aligned_no_filters, label = "no quality f
 #print(unified_thresholds)
 ```
 
-<<<<<<< HEAD
-=======
+
 ```{r}
 # Extract and combine base_thresholds for each environment
 all_thresholds_marine <- bind_rows(risk_tech$base_thresholds$marine,
@@ -1383,7 +1378,6 @@ getwd()
 write.csv(all_thresholds_combined, "../output/data/all_thresholds_combined_quality.csv")
 ```
 
->>>>>>> 66a377f2b23569870a58d4ac0850a24de339b553
 #### Maximize quality filters
 
 We need to perform an iterative approach to filter the dataset based on
@@ -1574,10 +1568,6 @@ unified_thresholds <- bind_rows(marine_thresholds, freshwater_thresholds)
 print(unified_thresholds)
 ```
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 96adc9a78bbca31d16595cee115a72902503553c
 # Sensitivity Analysis
 
 ## Leave-one-out method
@@ -2500,9 +2490,6 @@ aoc_MC %>%
   
 ```
 
-<<<<<<< HEAD
-```{r eval=FALSE, include=FALSE}
-=======
 ### IMPORT DATA
 ```{r}
 getwd()
@@ -2513,7 +2500,6 @@ results_df <- readRDS("monte carlo/output/results_df_sobol.rds")
 
 #### CoV Plots
 ```{r}
->>>>>>> 96adc9a78bbca31d16595cee115a72902503553c
 #define limits
 min_val <- min(aoc_MC$CoV_food_dilution, na.rm = TRUE)
 max_val <- max(aoc_MC$CoV_food_dilution, na.rm = TRUE)
@@ -2600,10 +2586,8 @@ ggarrange(points_cv_food, points_cv_ox,
           common.legend = TRUE, legend = "right")
 ```
 
-<<<<<<< HEAD
-=======
+
 ##### Statistical Tests
->>>>>>> 96adc9a78bbca31d16595cee115a72902503553c
 ```{r}
 mouth_lm_food <- lm(data = aoc_MC, CoV_food_dilution ~ max.size.ingest.um)
 
@@ -2715,8 +2699,7 @@ ggsave(filename = "CoV_mouth_plots.jpg",
 CoV_mouth_plots
 ```
 
-<<<<<<< HEAD
-=======
+
 ```{r}
 # Convert individual ggplots to plotly objects
 plot1 <- ggplotly(mouth_cv_food, tooltip = "text")
@@ -2735,7 +2718,6 @@ CoV_mouth_plotly
 ```
 
 
->>>>>>> 96adc9a78bbca31d16595cee115a72902503553c
 check to see if any CoV are negative (should not be!)
 
 ```{r include=FALSE}
