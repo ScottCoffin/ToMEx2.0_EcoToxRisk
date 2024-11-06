@@ -136,6 +136,16 @@ aoc_z <- readRDS("data/input/aoc_z_tomex2.RDS") %>%  #dataset is prepped in shin
   #mutate(rowid = row_number())
 
 #aoc_z$rowid <- sapply(seq_len(nrow(aoc_z)), function(x) uuid::UUIDgenerate())
+
+# ToMEx 2.0 data file (no alignments)
+## dataset prepared in RShiny repo and imported ##
+tomex2.0 <- read_rds("monte carlo/ref data/tomex2_input.rds")
+
+# LEgacy file from May, 2024 for beta-testing
+#tomex2.0 <- read_rds("ref data/tomex2_input_May2024.rds")
+
+# auxiliary data necessary for ToMEX 2.0 data tidying
+bodysize_addons <- read_csv("monte carlo/ref data/gape_size.csv", show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder
 ```
 
 ### Data Cleanup
@@ -800,6 +810,19 @@ base_thresholds
 kable(base_thresholds)
 ```
 
+<<<<<<< HEAD
+=======
+```{r}
+base_thresholds %>% 
+  mutate_if(is.numeric, ~signif(., 2)) %>% 
+  mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
+  mutate("Food (Marine/Fresh)" = paste0(`Food Dilution (Default)`, " (", `Food Dilution (5th %)`, " to ", `Food Dilution (95th %)`,")"),
+         "Tissue (Marine/Fresh)" = paste0(`Tissue Translocation (Default)`, " (", `Tissue Translocation (5th %)`, " to ", `Tissue Translocation (95th %)`,")")) %>% 
+  select(Tier, "Food (Marine/Fresh)", "Tissue (Marine/Fresh)")
+```
+
+
+>>>>>>> 96adc9a78bbca31d16595cee115a72902503553c
 ![Agreed-upon framework](assets/treshold_framework.png)
 
 **Threshold 1:** *HC*: HC5 *Data collapsing*: 1st quartile *Point
@@ -898,7 +921,8 @@ RUN THESE IN CONSOLE
 
 ## Some alignments are done in these data processing scripts
 ## generate ToMEx 1.0 dataset ###
-  aoc_setup <- ToMEx1.0fxn(R.ave.water.marine = R.ave.water.marine,
+  aoc_setup <- ToMEx1.0fxn(aoc = aoc,
+                           R.ave.water.marine = R.ave.water.marine,
                            R.ave.water.freshwater = R.ave.water.freshwater,
                            R.ave.sediment.marine = R.ave.sediment.marine,
                            R.ave.sediment.freshwater = R.ave.sediment.freshwater,
@@ -907,6 +931,8 @@ RUN THESE IN CONSOLE
   
 ## generate ToMEx 2.0 dataset ###
   tomex2.0_aoc_z_final <- ToMEx2.0fxn(aoc_setup = aoc_setup,
+                                      tomex2.0 = tomex2.0,
+                                      bodysize_addons = bodysize_addons,
                                       R.ave.water.marine = R.ave.water.marine,
                                       R.ave.water.freshwater = R.ave.water.freshwater,
                                       R.ave.sediment.marine = R.ave.sediment.marine,
@@ -1247,17 +1273,23 @@ no_quality <- calculate_thresholds(aoc_aligned_no_filters, label = "no quality f
 all_thresholds_marine <- bind_rows(risk_tech$base_thresholds$marine,
                                    tech$base_thresholds$marine,
                                    risk$base_thresholds$marine,
-                                   no_quality$base_thresholds$marine)
+                                   no_quality$base_thresholds$marine#,
+                                   #best_data_thresholds$base_thresholds$marine,
+                                   )
 
 all_thresholds_freshwater <- bind_rows(risk_tech$base_thresholds$freshwater,
                                        tech$base_thresholds$freshwater,
                                        risk$base_thresholds$freshwater,
-                                       no_quality$base_thresholds$freshwater)
+                                       no_quality$base_thresholds$freshwater#,
+                                       #best_data_thresholds$base_thresholds$freshwater
+                                       )
 
 all_thresholds_freshwater_marine <- bind_rows(risk_tech$base_thresholds$freshwater_marine,
                                                      tech$base_thresholds$freshwater_marine,
                                                      risk$base_thresholds$freshwater_marine,
-                                                     no_quality$base_thresholds$freshwater_marine)
+                                                     no_quality$base_thresholds$freshwater_marine#,
+                                             # best_data_thresholds$base_thresholds$freshwater_marine
+                                             )
 
 
 # Combine marine and freshwater data into one data frame with an additional "Environment" column
@@ -1270,7 +1302,8 @@ all_thresholds_combined <- bind_rows(
            "no quality filters",
            "tech only",
            "risk only",
-           "risk and tech"
+           "risk and tech"#,
+        #   "optimized"
          )))
 
 # pivot_longer
@@ -1446,7 +1479,12 @@ best_data %>% select(c(Species, total.quality, contains("tech"), contains("risk"
   distinct()
 ```
 
+<<<<<<< HEAD
 ```{r}
+=======
+
+```{r eval=FALSE, include=FALSE}
+>>>>>>> 96adc9a78bbca31d16595cee115a72902503553c
 #derive best possible thresholds
 best_data_thresholds <- calculate_thresholds(best_data, label = "best data")
 ```
@@ -1503,15 +1541,43 @@ best_data %>% select(c(Species, total.quality, contains("tech"), contains("risk"
 # Example usage with best quality datasets
 best_data_thresholds <- calculate_thresholds(best_data, label = "best data")
 
+```
+
+```{r}
 # Combine all thresholds into a single table
 
-unified_thresholds <- bind_rows(risk_tech, tech, risk, no_quality, best_data_thresholds)
+# Combine the marine thresholds from each dataset
+marine_thresholds <- bind_rows(
+  risk_tech$base_thresholds$marine,
+  tech$base_thresholds$marine,
+  risk$base_thresholds$marine,
+  no_quality$base_thresholds$marine,
+  best_data_thresholds$base_thresholds$marine
+) %>% 
+mutate(Environment = "Marine")  
+
+# Combine the freshwater thresholds from each dataset
+freshwater_thresholds <- bind_rows(
+  risk_tech$base_thresholds$freshwater,
+  tech$base_thresholds$freshwater,
+  risk$base_thresholds$freshwater,
+  no_quality$base_thresholds$freshwater,
+  best_data_thresholds$base_thresholds$freshwater
+) %>% 
+  mutate(Environment = "Freshwater")
+
+# Combine the marine and freshwater data into a single unified data frame
+unified_thresholds <- bind_rows(marine_thresholds, freshwater_thresholds)
+
 
 # Print the unified thresholds table
 print(unified_thresholds)
-
 ```
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 96adc9a78bbca31d16595cee115a72902503553c
 # Sensitivity Analysis
 
 ## Leave-one-out method
@@ -1571,36 +1637,47 @@ create_leave_one_out_function_t3_4 <- function(filtered_data) {
 leave_one_out_tier_1 <- function(filtered_data, 
                                  hcx, ERM_input, tier_input, environment_input) {
   hcxlcl_list <- list(hcxlcl = hcx)
-  #base HCx
+  #base HCx (wihtout leaving any studies out)
   filtered_data_hcxlcl <- SSD_function_t1(filtered.data = filtered_data, hcx)
+  filtered_data_hcxlcl <- filtered_data_hcxlcl$hc5lcl[1]
+  
   unique.dois <- unique(filtered_data$doi)
   # Create the leave-one-out function with your filtered data
   leave_one_out <- create_leave_one_out_function_t1(filtered_data)
-  # Apply the leave-one-out function
+  # Apply the leave-one-out function for each study
   sensitivity_vector <- leave_one_out(unique.dois, hcxlcl_list)
-  sensitivity_matrix <- matrix(sensitivity_vector, nrow = length(unique.dois), byrow = TRUE)
-  rownames(sensitivity_matrix) <- unique.dois
-  #bind DOI's to other parameters of interest for analysis
-  sensitivity_tbl <- rownames_to_column(as.data.frame(sensitivity_matrix), var = c("doi")) %>%
-    rename(hcxlcl = V1)
+  
+  names(sensitivity_vector) <- c("hc5lcl", "n_species", "n_groups", "n_datapoints")
+  
+  # Convert the list into a data frame and transpose it
+  sensitivity_tbl <- as_tibble(as.data.frame(t(sensitivity_vector))) %>% 
+     mutate(doi = names(hc5lcl)) %>% 
+    mutate(
+    hc5lcl = unname(unlist(hc5lcl)),      # Convert to numeric vector and remove names
+    n_species = unname(unlist(n_species)),  # Convert to integer vector and remove names
+    n_groups = unname(unlist(n_groups)),    # Convert to integer vector and remove names
+    n_datapoints = unname(unlist(n_datapoints))  # Convert to integer vector and remove names
+  )
+
   # join to other parameters of interest
    sensitivity_df <- left_join(sensitivity_tbl, filtered_data, by = "doi") %>% 
     dplyr::select(authors, year, Species, dose_new, 
-                  hcxlcl, acute.chronic_f, bio_f, lvl2_f,
+                  hc5lcl, acute.chronic_f, bio_f, lvl2_f,
                   size.length.um.used.for.conversions, doi) %>% 
-    distinct(doi, authors, year, hcxlcl, Species, acute.chronic_f,
+    distinct(doi, authors, year, hc5lcl, Species, acute.chronic_f,
              size.length.um.used.for.conversions) %>% 
     mutate(authoryear = paste(authors, "et. al ", year)) %>% 
-    mutate(hcxlcl = replace_na(hcxlcl, 0)) %>% #studies with n_species < 5 will get a 0
+    mutate(hcxlcl = replace_na(hc5lcl, 0)) %>% #studies with n_species < 5 will get a 0
     mutate(authoryear = fct_reorder(authoryear, hcxlcl, na.rm = FALSE)) %>% 
     mutate(diff = (hcxlcl - filtered_data_hcxlcl)/filtered_data_hcxlcl,
+           fold_change = filtered_data_hcxlcl/hcxlcl,
            tier = as.character(tier_input),
            ERM = as.character(ERM_input),
            environment = as.character(environment_input))
   
   sensitivity_summary <- sensitivity_df %>% 
     rename(hcx = hcxlcl) %>% 
-    group_by(doi, authoryear, diff, hcx) %>% 
+    group_by(doi, authoryear, diff, hcx, fold_change) %>% 
     summarise(species_multiple = paste(unique(Species), collapse = ", "),
               .groups = "keep") %>% 
     ungroup() %>% 
@@ -1646,12 +1723,13 @@ leave_one_out_tier2 <- function(filtered_data, hcx_num, ERM_input, tier_input, e
     mutate(hcx = replace_na(hcx, 0)) %>% #studies with n_species < 5 will get a 0
     mutate(authoryear = fct_reorder(authoryear, hcx, na.rm = FALSE)) %>% 
     mutate(diff = (hcx - filtered_data_hcx)/filtered_data_hcx,
+           fold_change = filtered_data_hcx/hcx,
              tier = as.character(tier_input), #annotate for full dataset
            ERM = as.character(ERM_input),
            environment = as.character(environment_input)) #annotate for full dataset
   
   sensitivity_summary <- sensitivity_df %>% 
-    group_by(doi, authoryear, diff, hcx) %>% 
+    group_by(doi, authoryear, diff, hcx, fold_change) %>% 
     summarise(species_multiple = paste(unique(Species), collapse = ", "),
               .groups = "keep") %>% 
     ungroup() %>% 
@@ -1697,12 +1775,13 @@ leave_one_out_tier3_4 <- function(filtered_data, hcx_num, ERM_input, tier_input,
     mutate(hcx = replace_na(hcx, 0)) %>% #studies with n_species < 5 will get a 0
     mutate(authoryear = fct_reorder(authoryear, hcx, na.rm = FALSE)) %>% 
     mutate(diff = (hcx - filtered_data_hcx)/filtered_data_hcx,
+           fold_change = filtered_data_hcx/hcx,
            tier = as.character(tier_input), #annotate for full dataset
            ERM = as.character(ERM_input),
            environment = as.character(environment_input)) #annotate for full dataset)
   
   sensitivity_summary <- sensitivity_df %>% 
-    group_by(doi, authoryear, diff, hcx) %>% 
+    group_by(doi, authoryear, diff, hcx, fold_change) %>% 
     summarise(species_multiple = paste(unique(Species), collapse = ", "),
               .groups = "keep") %>% 
     ungroup() %>% 
@@ -1728,10 +1807,13 @@ leave_one_out_tier3_4 <- function(filtered_data, hcx_num, ERM_input, tier_input,
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 #### Freshwater #####
 #Tissue Translocation Thresholds
-tier1_sensitivity_tissue_freshwater <- leave_one_out_tier_1(filtered.data.small.default_t1.2 %>%
-                                                   filter(environment == "Freshwater"), hcx = 5,
-                                                   ERM_input = "Tissue Translocation", tier_input = "Tier 1", 
-                                                   environment_input = "Freshwater")
+tier1_sensitivity_tissue_freshwater <- leave_one_out_tier_1(filtered_data = filtered.data.small.default_t1.2 %>%
+                                                              filter(environment == "Freshwater"), 
+                                                            hcx = 5,
+                                                            ERM_input = "Tissue Translocation",
+                                                            tier_input = "Tier 1", 
+                                                            environment_input = "Freshwater")
+
 tier2_sensitivity_tissue_freshwater <- leave_one_out_tier2(filtered.data.small.default_t1.2 %>%
                                                    filter(environment == "Freshwater"), 5,
                                                    ERM_input = "Tissue Translocation", tier_input = "Tier 2", 
@@ -1802,9 +1884,33 @@ tier4_sensitivity_food_marine <- leave_one_out_tier3_4(filtered.data.large.defau
 ```
 
 ### Export Data
+<<<<<<< HEAD
+
+=======
+#### Join to base thresholds for comparison
+>>>>>>> 96adc9a78bbca31d16595cee115a72902503553c
+```{r}
+thresholds <- all_thresholds_long %>% 
+  filter(grepl("Default", Metric)) %>% 
+  mutate(tier = case_when(Tier == "Tier1" ~ "Tier 1",
+                          Tier == "Tier2" ~ "Tier 2",
+                          Tier == "Tier3" ~ "Tier 3",
+                          Tier == "Tier4" ~ "Tier 4")) %>% 
+  mutate(ERM = case_when(grepl("Tissue", Metric) ~ "Tissue Translocation",
+                         grepl("Food", Metric) ~ "Food Dilution")) %>% 
+  rename("environment" = "Environment") %>% 
+  filter(label == "risk and tech",
+         environment != "Freshwater & Marine") %>% 
+  rename(threshold = Value) %>% 
+  select(ERM, tier, environment, threshold) %>% 
+  arrange(desc(ERM))
+
+thresholds
+```
+
 
 ```{r}
-leave_one_out_df <- rbind(tier1_sensitivity_tissue_freshwater$sensitivity_summary,
+leave_one_out_df <- bind_rows(tier1_sensitivity_tissue_freshwater$sensitivity_summary,
                           tier2_sensitivity_tissue_freshwater$sensitivity_summary,
                           tier3_sensitivity_tissue_freshwater$sensitivity_summary,
                           tier4_sensitivity_tissue_freshwater$sensitivity_summary,
@@ -1819,7 +1925,11 @@ leave_one_out_df <- rbind(tier1_sensitivity_tissue_freshwater$sensitivity_summar
                           tier1_sensitivity_food_marine$sensitivity_summary,
                           tier2_sensitivity_food_marine$sensitivity_summary,
                           tier3_sensitivity_food_marine$sensitivity_summary,
-                          tier4_sensitivity_food_marine$sensitivity_summary)
+                          tier4_sensitivity_food_marine$sensitivity_summary) %>% 
+  mutate(tier = as.factor(tier)) %>% 
+  left_join(thresholds,
+            by = c("ERM", "tier", "environment")) %>% 
+  mutate(fold_change = (hcx / threshold) - 1)
 
 write.csv(leave_one_out_df,
           "../output/data/leave_one_out.csv")
@@ -1835,27 +1945,59 @@ leave_one_out_df <- read.csv("../output/data/leave_one_out.csv")
 ```{r}
 library(ggallin)
 
-leave_one_out_ggplot <- leave_one_out_df %>% 
+
+
+# Assign specific colors based on Tier levels
+tier_colors <- setNames(c("#006f3c", "#d6d636", "#f9a73e", "#f0514b"),
+                        levels(leave_one_out_df$tier))
+
+# Calculate min and max limits for `diff` column
+min_diff <- min(leave_one_out_df$fold_change, na.rm = TRUE) * 0.7  # Add some padding
+max_diff <- max(leave_one_out_df$fold_change, na.rm = TRUE) * 1.3  # Add some padding
+
+summary_diff_df <- leave_one_out_df %>%
+  drop_na() %>%
+  group_by(environment, tier, ERM) %>%
+  summarize(
+    min_fold_change = min(fold_change, na.rm = TRUE),
+    max_fold_change = max(fold_change, na.rm = TRUE),
+    median_fold_change = median(fold_change, na.rm = TRUE),
+    min_hcx = min(hcx, na.rm = TRUE),
+    max_hcx = max(hcx, na.rm = TRUE),
+    median_hcx = median(hcx, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+leave_one_out_df_trim <- leave_one_out_df %>% 
   drop_na() %>% 
-  mutate(diff = diff + 0.0001) %>% 
-#  mutate(logdiff = log10(diff))
-  # group_by(environment, ERM, tier
-  #          ) %>% 
-  # summarize(minDiff = min(diff, na.rm = T),
-  #           maxDiff = max(diff, na.rm = T)) %>% 
-  # pivot_longer(cols = contains("diff")) %>% 
-  # rename(diffMagnitude = name,
-  #        diff = value) %>% 
-  # left_join(leave_one_out_df %>% select(diff, hcx, doi, authoryear, species_multiple),
-  #           by = "diff") %>% 
-  ggplot(aes(x = diff, y = tier, color = environment,
-             text = paste0("%Difference: ", scales::percent(diff, 0.1, big.mark = ","),
+  mutate(fold_change = fold_change)
+
+
+leave_one_out_ggplot <- ggplot() +
+  geom_jitter(data = leave_one_out_df_trim,
+              aes(x = fold_change, y = tier, color = tier,
+             text = paste0("fold_change: ", scales::percent(fold_change, 0.1, big.mark = ","),
                                               "<br>HCx: ",scientific(hcx, 3), " particles/L",
                                               "<br>Study: ", authoryear,
                                               "<br>Species: " ,species_multiple,
-                                              "<br>doi: ", doi)
-             )) +
-  geom_jitter(width = 0, height = 0.3, alpha = 0.5) +
+                                              "<br>doi: ", doi),
+              width = 0, height = 0.3, alpha = 0.8)) +
+   # Add horizontal error bars for min and max values
+  geom_errorbarh(data = summary_diff_df,
+                 aes(xmin = min_fold_change, xmax = max_fold_change, y = tier, color = tier),
+                 height = 0.5, alpha = 1) +
+    # Add points for median values
+  geom_point(data = summary_diff_df,
+             aes(x = median_fold_change, y = tier, color = tier),
+             size = 5, shape = 2, alpha = 1) +
+  geom_text(data = summary_diff_df,
+                 aes(x = min_fold_change, label = signif(min_hcx,2), y = tier, color = tier),
+            vjust = -2) +
+  geom_text(data = summary_diff_df,
+                 aes(x = max_fold_change, label = signif(max_hcx,2), y = tier, color = tier),
+            vjust = -2) +
+  
+    scale_color_manual(values = tier_colors) +  # Apply manual colors for lines
 #  geom_point(alpha = 0.7) +
 #  geom_histogram() +
  # geom_boxplot() +
@@ -1871,13 +2013,16 @@ leave_one_out_ggplot <- leave_one_out_df %>%
    #                fontface = "italic") +
  # geom_line() +
   #geom_vline(xintercept = 0.00001, alpha = 0.5, color = "grey60") +
-  scale_x_continuous(trans = pseudo_log_trans(base = 10), 
-                     breaks = c(-1, 0, 1, 10, 100), 
-                     limits = c(-1, 110), 
-                     labels = scales::percent_format(accuracy = 1, big.mark = ",")) +
+  scale_x_continuous(
+    trans = pseudo_log_trans(base = 2),
+                       breaks = c(-1, 0, 1, 2, 4, 8, 16, 40)
+  ) + 
+                    # breaks = c(-1, 0, 1, 10, 100), 
+                   #   limits = c(min_fold_change, max_fold_change), 
+                     #labels = scales::percent_format(accuracy = 1, big.mark = ",")) +
 #  scale_x_log10() +
   
-  xlab("% Difference") +
+  xlab("Fold Change") +
   theme_minimal(base_size = 13) +
  theme( plot.title = element_text(hjust = 0.5, size = 14),     # Center the main title
         strip.text = element_text(size = 14, face = "bold"),
@@ -1895,7 +2040,7 @@ leave_one_out_ggplot <- leave_one_out_df %>%
 ggsave(plot = leave_one_out_ggplot,
        filename = "../output/Manuscript_Figs/leave_one_out.jpg",
       dpi = 300,
-      width = 10, height = 7, units = "in")
+      width = 8, height = 6, units = "in")
 
 leave_one_out_ggplot
 ```
@@ -2097,7 +2242,7 @@ MC_param_histograms
 ggsave(filename = "MC_param_histograms.jpg",
        dpi = 300,
        path = "../output/Manuscript_Figs/", 
-       plot = MC_histograms, width = 9, height = 8, units = "in")
+       plot = MC_param_histograms, width = 9, height = 8, units = "in")
 ```
 
 NOTE: this is done in scripts/monte
@@ -2107,8 +2252,8 @@ perfect fidelity through copying into this markdown script has proven
 impossible. Just import the final RDS file generated from that script.
 
 ```{r}
-MC_results <- readRDS("monte carlo/output/MC_results.rds")
-summary_stats_base_thresholds <- readRDS("monte carlo/output/summary_stats_base_thresholds.rds")
+MC_results <- readRDS("monte carlo/output/MC_results_sobol.rds")
+summary_stats_base_thresholds <- readRDS("monte carlo/output/summary_stats_base_thresholds_sobol.rds")
 ```
 
 ```{r}
@@ -2355,7 +2500,20 @@ aoc_MC %>%
   
 ```
 
+<<<<<<< HEAD
 ```{r eval=FALSE, include=FALSE}
+=======
+### IMPORT DATA
+```{r}
+getwd()
+aoc_MC <- readRDS("monte carlo/output/aoc_MC_sobol.rds")
+
+results_df <- readRDS("monte carlo/output/results_df_sobol.rds")
+```
+
+#### CoV Plots
+```{r}
+>>>>>>> 96adc9a78bbca31d16595cee115a72902503553c
 #define limits
 min_val <- min(aoc_MC$CoV_food_dilution, na.rm = TRUE)
 max_val <- max(aoc_MC$CoV_food_dilution, na.rm = TRUE)
@@ -2365,9 +2523,11 @@ pad <- (max_val - min_val) * 0.05
 xlims <- c(min_val - pad, max_val + pad)
 
 hist_cv_food <- aoc_MC %>% 
+  filter(Species != "Algae",
+         ingestible == "ingestible") %>% 
   ggplot(aes(x = CoV_food_dilution, fill = polydispersity)) +
   geom_histogram(position = "identity", alpha = 0.5) +
-  xlim(xlims) +  # Set x limits
+ # xlim(xlims) +  # Set x limits
   scale_x_log10() +
   xlab("Coefficient of Variation (unitless)") +
   ylab("Toxicity Data Points") +
@@ -2402,26 +2562,37 @@ CoV_plots
 
 ```{r}
 #define limites
-min_val <- min(aoc_MC$CoV_food_dilution, na.rm = TRUE)
-max_val <- max(aoc_MC$CoV_food_dilution, na.rm = TRUE)
+#define limits
+min_val <- aoc_MC %>% 
+  select(contains("CoV_")) %>% 
+  min(na.rm = T)%>% 
+  round(0)
+
+max_val <- aoc_MC %>% 
+  select(contains("CoV_")) %>% 
+  max(na.rm = T) %>% 
+  round(0)
+
+# min_val <- min(aoc_MC$CoV_food_dilution, na.rm = TRUE)
+# max_val <- max(aoc_MC$CoV_food_dilution, na.rm = TRUE)
 
 # You may want to add some padding around the min and max
 pad <- (max_val - min_val) * 0.05
 xlims <- c(min_val - pad, max_val + pad)
 
 points_cv_food <- aoc_MC %>% 
-  ggplot(aes(x = CoV_food_dilution, y = size.length.um.used.for.conversions, color = polydispersity)) +
-  geom_point() +
+  ggplot(aes(y = CoV_food_dilution, x = size.length.um.used.for.conversions, color = polydispersity)) +
+  geom_point(size = 3, alpha = 0.8) +
   xlim(xlims) +  # Set x limits
   color.type +
-  theme_minimal()
+  theme_minimal(base_size = 12)
 
 points_cv_ox <- aoc_MC %>% 
-  ggplot(aes(x = CoV_ox_stress, y = size.length.um.used.for.conversions, color = polydispersity)) +
-  geom_point() +
+  ggplot(aes(y = CoV_ox_stress, x = size.length.um.used.for.conversions, color = polydispersity)) +
+  geom_point(size = 3, alpha = 0.8) +
  # xlim(xlims) +  # Set x limits
   color.type +
-  theme_minimal()
+  theme_minimal(base_size = 12)
   theme(legend.position = "none")
 
 ggarrange(points_cv_food, points_cv_ox,
@@ -2429,103 +2600,142 @@ ggarrange(points_cv_food, points_cv_ox,
           common.legend = TRUE, legend = "right")
 ```
 
+<<<<<<< HEAD
+=======
+##### Statistical Tests
+>>>>>>> 96adc9a78bbca31d16595cee115a72902503553c
 ```{r}
-mouth_lm_food <- lm(data = aoc_MC, CoV_food_dilution ~ max.size.ingest.um * polydispersity)
+mouth_lm_food <- lm(data = aoc_MC, CoV_food_dilution ~ max.size.ingest.um)
+
+shapiro.test(residuals(mouth_lm_food))
+
 summary(mouth_lm_food)
 ```
 
 ```{r}
-mouth_lm_ox_stress <- lm(data = aoc_MC, CoV_ox_stress ~ max.size.ingest.um * polydispersity)
-summary(mouth_lm_ox_stress)
+# Spearman correlation (for monotonic relationships, non-normal data)
+mouth_spearman_food <- cor.test(aoc_MC$CoV_food_dilution, aoc_MC$max.size.ingest.um, method = "spearman")
+mouth_spearman_food
 ```
 
 ```{r}
+mouth_lm_ox_stress <- lm(data = aoc_MC,
+                         CoV_ox_stress ~ max.size.ingest.um)
+
+shapiro.test(residuals(mouth_lm_ox_stress))
+
+summary(mouth_lm_ox_stress)
+```
+Residuals are non-normally distributed, so the spearman correlation test is run instead:
+
+```{r}
+# Spearman correlation (for monotonic relationships, non-normal data)
+mouth_spearman_ox_stress <- cor.test(aoc_MC$CoV_ox_stress, aoc_MC$max.size.ingest.um, method = "spearman")
+mouth_spearman_ox_stress
+```
+
+##### CoV vs. Mouth Size
+```{r}
 mouth_cv_food <- aoc_MC %>% 
-    ggplot(aes(x = CoV_food_dilution, y = max.size.ingest.um, color = polydispersity)) +
+    ggplot(aes(y = CoV_food_dilution, x = max.size.ingest.um, 
+               color = polydispersity,
+               text = paste0("Species:", Species, "<br>",
+                            "Polydispersity:",  polydispersity, "<br>",
+                            "Particles/L Food Dilution:",  signif(particles_L_food_dilution_deterministic,2), "<br>",
+                            "Particle size:", signif(size.length.um.used.for.conversions,2), " um<br>",
+                            "CoV:", signif(CoV_food_dilution,2), "<br>",
+                            "Mouth size opening:", signif(max.size.ingest.um,2), "um"
+               )
+                 )) +
   geom_point(alpha = 0.75, size = 2.1) +
-  geom_smooth(method = "lm", se = T, aes(group = 1), alpha = 0.7, color = "darkgreen", fill = "darkgreen", linetype = "dashed") +  # A single regression line for all data
-  ggpmisc::stat_poly_eq(aes(label = paste(..eq.label..), group = 1),
-                        color = "darkgreen",
-                        formula = y ~ x, 
-                        method = "lm",
-                        label.x = 0.1,
-                        label.y = 0.7,  # Position at the top, adjust if necessary
-                        parse = TRUE) +
-   ggpmisc::stat_poly_eq(aes(label = paste(..rr.label..), group = 1),
-                        color = "darkgreen",
-                        formula = y ~ x, 
-                        method = "lm",
-                        label.x = 0.1,
-                        label.y = 0.65,  # Position at the top, adjust if necessary
-                        parse = TRUE) +
-    ggpmisc::stat_poly_eq(aes(label = ..p.value.label.., group = 1),
-                        color = "darkgreen",
-                        formula = y ~ x, 
-                        method = "lm",
-                        label.x = 0.1,
-                        label.y = 0.6,  # Position at the top, adjust if necessary
-                        parse = TRUE) +
-    xlab("Coefficient of Variation (unitless)") +
-  ylab("Organism Mouth Size Opening (um) for Toxicity Datapoint") +
+  geom_smooth(method = "lm", se = T, aes(group = 1), alpha = 0.7, color = "darkgreen", fill = "darkgreen", linetype = "dashed") +  
+    annotate("text", x = 0.5, y = 3.5,
+           label = paste("Spearman's r =", round(mouth_spearman_food$estimate,3),
+                         "\n p =", signif(mouth_spearman_food$p.value, 2)),
+           hjust = 0, color = "darkgreen") +
+  ylab("Coefficient of Variation (unitless)") +
+  xlab("Organism Mouth Size Opening (um)") +
   scale_y_log10() +
   scale_x_log10() +
-  xlim(xlims) +  # Set x limits
+  ylim(c(0,4)) +  # Set x limits
+ # xlim(c(0, 10000)) +
   color.type +
-  theme.light +
+  theme_minimal(base_size = 12) +
   theme(legend.position = "none",
-        axis.title.y = element_text(size = 16)) +
+        plot.title = element_text(hjust = 0.5,
+                                  size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.title.x = element_text(size = 10)
+        ) +
+  ggtitle("Food Dilution") +
    guides(fill = guide_legend(title = NULL), color = guide_legend(title = NULL))  # Remove legend titles
 
 mouth_cv_ox <- aoc_MC %>% 
-  ggplot(aes(x = CoV_ox_stress, y = max.size.ingest.um, color = polydispersity)) +
+  ggplot(aes(y = CoV_ox_stress, x = max.size.ingest.um, color = polydispersity,
+             text = paste0("Species:", Species, "<br>",
+                            "Polydispersity:",  polydispersity, "<br>",
+                            "Particles/L Tissue Trans.:",  signif(particles_L_ox_stress_deterministic,2), "<br>",
+                            "Particle size:", signif(size.length.um.used.for.conversions,2), " um<br>",
+                            "CoV:", signif(CoV_ox_stress,2), "<br>",
+                            "Mouth size opening:", signif(max.size.ingest.um,2), "um"
+               ))) +
    geom_point(alpha = 0.75, size = 2.1) +
+  annotate("text", x = 0.5, y = 3.5,
+           label = paste("Spearman's r =", round(mouth_spearman_ox_stress$estimate,3),
+                         "\n p =", signif(mouth_spearman_ox_stress$p.value, 2)),
+           hjust = 0, color = "darkgreen") +
   geom_smooth(method = "lm", se = T, aes(group = 1), alpha = 0.7, color = "darkgreen", fill = "darkgreen", linetype = "dashed") +  # A single regression line for all data
-  ggpmisc::stat_poly_eq(aes(label = paste(..eq.label..), group = 1),
-                        color = "darkgreen",
-                        formula = y ~ x, 
-                        method = "lm",
-                        label.x = 0.1,
-                        label.y = 0.7,  # Position at the top, adjust if necessary
-                        parse = TRUE) +
-   ggpmisc::stat_poly_eq(aes(label = paste(..rr.label..), group = 1),
-                        color = "darkgreen",
-                        formula = y ~ x, 
-                        method = "lm",
-                        label.x = 0.1,
-                        label.y = 0.65,  # Position at the top, adjust if necessary
-                        parse = TRUE) +
-    ggpmisc::stat_poly_eq(aes(label = ..p.value.label.., group = 1),
-                        color = "darkgreen",
-                        formula = y ~ x, 
-                        method = "lm",
-                        label.x = 0.1,
-                        label.y = 0.6,  # Position at the top, adjust if necessary
-                        parse = TRUE) +
   scale_y_log10() +
   scale_x_log10() +
-  xlab("Coefficient of Variation (unitless)") +
-  ylab("Organism Mouth Size Opening (um) for Toxicity Datapoint") +
- # xlim(xlims) +  # Set x limits
+  ylab("Coefficient of Variation (unitless)") +
+  xlab("Organism Mouth Size Opening (um)") +
+  ylim(c(0,4)) +  # Set x limits
+ # xlim(c(0, 10000)) +
   color.type +
-  theme.light +
+  theme_minimal(base_size = 12) +
   theme(legend.position = "none",
-        axis.title.y = element_text(size = 16)) +
+        plot.title = element_text(hjust = 0.5,
+                                  size = 12),
+        axis.title.y = element_blank(),
+        axis.title.x = element_text(size = 10)) +
   theme(legend.title = element_blank()) +
+  ggtitle("Tissue Translocation") +
    guides(fill = guide_legend(title = NULL), color = guide_legend(title = NULL))  # Remove legend titles
 
 CoV_mouth_plots <- ggarrange(mouth_cv_food, mouth_cv_ox,
-                       labels = c("A", "B"),
+                     #  labels = c("Food Dilution", "Tissue Translocation"),
                        ncol = 2,
                        common.legend = TRUE, legend = "bottom")
 
 ggsave(filename = "CoV_mouth_plots.jpg",
        dpi = 300,
        path = "../output/Manuscript_Figs/", 
-       plot = CoV_mouth_plots, width = 10, height = 8, units = "in")
+       plot = CoV_mouth_plots, width = 7, height = 5, units = "in")
 
 CoV_mouth_plots
 ```
 
+<<<<<<< HEAD
+=======
+```{r}
+# Convert individual ggplots to plotly objects
+plot1 <- ggplotly(mouth_cv_food, tooltip = "text")
+plot2 <- ggplotly(mouth_cv_ox, tooltip = "text")
+
+# Combine with subplot, setting the legend at the bottom
+CoV_mouth_plotly <- subplot(plot1, plot2, nrows = 1, shareY = TRUE, titleX = TRUE, titleY = TRUE) %>%
+  layout(legend = list(orientation = "h", y = -0.2))
+
+require(htmlwidgets)
+
+# Save the plot as an HTML file
+saveWidget(CoV_mouth_plotly, file = "../output/Manuscript_Figs/CoV_mouth_plotly.html")
+
+CoV_mouth_plotly
+```
+
+
+>>>>>>> 96adc9a78bbca31d16595cee115a72902503553c
 check to see if any CoV are negative (should not be!)
 
 ```{r include=FALSE}
@@ -2559,139 +2769,199 @@ freshwater_MC_data <-  filter_environment_data(data = aoc_MC %>%
 ### Example MC Results
 
 ```{r}
-example.df.freshwater.tissue <-  left_join(results_df,
-          freshwater_MC_data$filtered_data_small_default_t3_4 %>% select(c(unique_id,
-                                                                           particles_L_food_dilution_deterministic,
-                                                                           particles_L_ox_stress_deterministic,
-                                                                           CoV_ox_stress, CoV_food_dilution,
-                                                                           Species, Group, max.size.ingest.um,
-                                                                           size.length.um.used.for.conversions,
-                                                                           shape_f,
-                                                                           poly_f)),
+example.df <-  left_join(results_df,
+          #freshwater_MC_data$filtered_data_small_default_t3_4 %>% 
+          aoc_MC %>% 
+            select(c(unique_id,
+                     particles_L_food_dilution_deterministic,
+                     particles_L_ox_stress_deterministic,
+                     environment,
+                     CoV_ox_stress, CoV_food_dilution,
+                     Species, Group, max.size.ingest.um,
+                     size.length.um.used.for.conversions,
+                     shape_f,
+                     poly_f)),
           by = "unique_id")
 
-example.df.freshwater.food <-  left_join(results_df,
-          freshwater_MC_data$filtered_data_large_default_t3_4 %>% select(c(unique_id,
-                                                                           particles_L_food_dilution_deterministic,
-                                                                           particles_L_ox_stress_deterministic,
-                                                                           CoV_ox_stress, CoV_food_dilution,
-                                                                           Species, Group, max.size.ingest.um,
-                                                                           size.length.um.used.for.conversions,
-                                                                           shape_f,
-                                                                           poly_f)),
-          by = "unique_id")
+# example.df.food <-  left_join(results_df,
+#           #freshwater_MC_data$filtered_data_large_default_t3_4 %>% 
+#           aoc_MC %>% 
+#             select(c(unique_id,                               
+#                      particles_L_food_dilution_deterministic,
+#                      particles_L_ox_stress_deterministic,
+#                      CoV_ox_stress, CoV_food_dilution,
+#                      Species, Group, max.size.ingest.um,
+#                      size.length.um.used.for.conversions,
+#                      shape_f,
+#                      poly_f)),
+#           by = "unique_id")
 
 #get a few rowids to select for plotting
-example.unique_id.ox.stress.max <- example.df.freshwater.tissue %>% 
+#example.unique_id.ox.stress.max <- example.df.freshwater.tissue %>% 
+example.unique_id.ox.stress.max <- aoc_MC %>% 
   arrange(desc(CoV_ox_stress)) %>% 
   slice(1) %>% 
   pull(unique_id)
   
 
-example.unique_id.ox.stress.min <- example.df.freshwater.tissue %>% 
+#example.unique_id.ox.stress.min <- example.df.freshwater.tissue %>% 
+example.unique_id.ox.stress.min <- aoc_MC %>% 
   arrange(CoV_ox_stress) %>% 
    slice(1) %>% 
   pull(unique_id)
   
-example.unique_id.food.max <- example.df.freshwater.food %>% 
+#example.unique_id.food.max <- example.df.freshwater.food %>%
+example.unique_id.food.max <- aoc_MC %>%  
     filter(Group != "Algae") %>% 
   arrange(desc(CoV_food_dilution)) %>% 
   slice(1) %>% 
   pull(unique_id)
 
-example.unique_id.food.min <- example.df.freshwater.food %>% 
+#example.unique_id.food.min <- example.df.freshwater.food %>% 
+example.unique_id.food.min <- aoc_MC %>% 
     filter(Group != "Algae") %>% 
   arrange(CoV_food_dilution) %>% 
    slice(1) %>% 
   pull(unique_id)
+
+
+create_ggplot <- function(df_input, unique_id_input, plot_type, metric, metric_label,
+                          annotation_x, annotation_y,
+                           x_label, color, effect_metric, y_axis_label = TRUE) {
   
-# Function to create ggplot for given unique_id and description
-create_ggplot_ox_stress <- function(df_input, unique_id_input, plot_type) {
-
-df_example <- df_input %>% filter(unique_id == unique_id_input)
+  # Filter data for the specific plot
+  df_example <- df_input %>% 
+    filter(unique_id == unique_id_input)
+  
+  # Check if df_example is empty
+  if (nrow(df_example) == 0) {
+    message("Warning: No data found for unique_id = ", unique_id_input)
+    return(NULL)
+  }
+  
+  # Extract relevant information for subtitle text box
+  example.species <- as.character(df_example$Species[1])
+  example.group <- as.character(df_example$Group[1])
+  example.particle.length <- comma(df_example$size.length.um.used.for.conversions[1])
+  example.max.size.ingest <- round(df_example$max.size.ingest.um[1], 1)
+  example.environment <- df_example$environment[1]
+  
+  # Determine CoV based on plot_type
+  example.CoV <- if (plot_type == "Food") {
+    round(df_example$CoV_food_dilution[1], 2)
+  } else {
+    round(df_example$CoV_ox_stress[1], 2)
+  }
+  
+  # Calculate percentiles and median for the vertical lines
+  median_value <- median(df_example[[metric]], na.rm = TRUE)
+  perc_5 <- quantile(df_example[[metric]], 0.05, na.rm = TRUE)
+  perc_95 <- quantile(df_example[[metric]], 0.95, na.rm = TRUE)
+  
+  # Calculate maximum density for y-axis scaling in annotation positioning
+  max_density <- max(density(df_example[[metric]], na.rm = TRUE)$y)
+  
+  # Define adjusted x and y positions for annotation to remain within plot bounds
+  # annotation_x <- min(df_example[[metric]]) + (max(df_example[[metric]]) - min(df_example[[metric]])) * 0.05
+  # annotation_y <- max_density * 0.8  # Position annotation at 80% of max density
+  
+  # Plot with raw x-axis data, three vertical lines, and internal subtitle text box
+  p <- ggplot(df_example, aes(x = .data[[metric]])) +
+    geom_histogram(aes(y = ..density..), fill = color, color = "black", alpha = 0.5, bins = 100) +
     
-example.species = as.character(df_example$Species[1])
-example.group = as.character(df_example$Group[1])
-example.particle.length = comma(df_example$size.length.um.used.for.conversions[1])
-example.CoV = scientific(df_example$CoV_ox_stress,5)
-example.max.size.ingest = comma(df_example$max.size.ingest.um[1])
-
-  df_example %>%
-    ggplot() +
-    geom_histogram(aes(x = particles_L_ox_stress,
-                       y = ..density..), fill = "darkorange", color = "orange", alpha = 0.5,
-                   bins = 100) +
-    scale_x_log10(labels = label_scientific(accuracy = 1)) +
-    labs(x = "Tissue Translocation EC (Particles/L)",
-         y = "Probability density",
-      #   title = "Monte Carlo Distribution of Effect Concentration",
-           subtitle = paste0(example.species, " (", example.group, ") \n ",
-                           "Mouth size: ",example.max.size.ingest, " um",
-                           "\n ",
-                           "CoV:", example.CoV,
-                           "\n",
-                           "Particle length: ",
-                           example.particle.length, " um")) +
-    geom_vline(aes(xintercept = particles_L_ox_stress_deterministic),
-               linewidth = 1.7, linetype = "dotted", color = "red"
-               ) +
-    #geom_density(aes(x = particles_L_ox_stress),
-    #              col = "red", lwd = 1) # Optionally add a density line
-    theme_light()
+    # Median, 5th, and 95th percentile lines
+    geom_vline(xintercept = median_value, linetype = "dotted", color = color, linewidth = 1.1) +
+    geom_vline(xintercept = perc_5, linetype = "dotted", color = color, linewidth = 1.1) +
+    geom_vline(xintercept = perc_95, linetype = "dotted", color = color, linewidth = 1.1) +
+    
+    # Annotation positioned using adjusted x and y limits
+    annotate("text", x = annotation_x, y = annotation_y, 
+             label = paste0(example.species, " (", example.group, ")\n",
+                            "Mouth size: ", example.max.size.ingest, " µm\n",
+                            "CoV: ", example.CoV, "\n",
+                            "Particle length: ", example.particle.length, " µm\n",
+                            "Environment: ", example.environment, "\n",
+                            metric_label, ":\n  ", scientific(median_value, 2)),
+             hjust = 0, vjust = 1, color = color, size = 3) +
+    
+    scale_x_log10(name = x_label,
+                  labels = scales::label_scientific()) +
+    labs(y = if (y_axis_label) "Probability Density" else NULL) +  # Conditional y-axis label
+    theme_light() +
+    theme(
+      plot.title = element_text(size = 12, hjust = 0.5),
+      axis.title.x = element_text(size = 10),
+      axis.text.y = if (!y_axis_label) element_blank() else element_text(),  # Remove y-axis text for right plots
+      axis.title.y = if (!y_axis_label) element_blank() else element_text()
+    )
+  
+  return(p)
 }
 
-create_ggplot_food_dilution <- function(df_input, unique_id_input, plot_type) {
-
-df_example <- df_input %>%  filter(unique_id == unique_id_input)
-    
-example.species = as.character(df_example$Species[1])
-example.group = as.character(df_example$Group[1])
-example.particle.length = comma(df_example$size.length.um.used.for.conversions[1])
-example.CoV = scientific(df_example$CoV_food_dilution,5)
-example.max.size.ingest = comma(df_example$max.size.ingest.um[1])
 
 
-  df_example %>%
-    ggplot(aes(x = particles_L_food_dilution)) +
-    geom_histogram(aes(y = ..density..), fill = "#663399", color = "#E6E6FA", alpha = 0.5,
-                   bins = 100) +
-    scale_x_log10(labels = label_scientific(accuracy = 0.1)) +
-    labs(x = "Food Dilution EC (Particles/L)",
-         y = "Probability density",
-       #  title = "Monte Carlo Distribution of Effect Concentration",
-         subtitle = paste0(example.species, " (", example.group, ") \n ",
-                           "Mouth size: ",example.max.size.ingest, " um",
-                           "\n ",
-                           "CoV:", example.CoV,
-                           "\n",
-                           "Particle length: ",
-                           example.particle.length, " um")) +
-    geom_vline(aes(xintercept = particles_L_food_dilution_deterministic),
-               linewidth = 1.7, linetype = "dotted", color = "#663399"
-               ) +
-    #$geom_density(col = "#663399", lwd = 1) + # Optionally add a density line
-    theme_light()
-}
-
-plot_ox_stress_max <- create_ggplot_ox_stress(df_input = example.df.freshwater.tissue,
-                                              example.unique_id.ox.stress.max,  "High CoV (Tissue Translocation)")
-plot_ox_stress_min <- create_ggplot_ox_stress(df_input = example.df.freshwater.tissue,
-                                              example.unique_id.ox.stress.min, "Low CoV (Tissue Translocation)")
-plot_food_max <- create_ggplot_food_dilution(df_input = example.df.freshwater.food,
-                                             example.unique_id.food.max, "High CoV (Food Dilution)")
-plot_food_min <- create_ggplot_food_dilution(df_input = example.df.freshwater.food,
-                                             example.unique_id.food.min, "Low CoV (Food Dilution)")
 
 
-MC_example_plots <- ggarrange(plot_ox_stress_max, plot_ox_stress_min,
-                              plot_food_max, plot_food_min,
-                              labels = c("A", "B", "C", "D")
+
+
+# Generate individual plots, specifying y_axis_label = FALSE for right-hand plots
+plot_food_min <- create_ggplot(df_input = example.df,
+                               unique_id_input = example.unique_id.food.min,
+                               plot_type = "Food",
+                               metric = "particles_L_food_dilution",
+                               metric_label = "Particles/L (Food Dilution)",
+                               x_label = "Food Dilution (SD from Mean)", 
+                               annotation_x = 1e3,
+                               annotation_y = 1.5,
+                               color = "#663399",
+                               effect_metric = aoc_MC$particles_L_food_dilution_deterministic,
+                               y_axis_label = TRUE)
+
+plot_food_max <- create_ggplot(df_input = example.df,
+                               unique_id_input = example.unique_id.food.max,
+                               plot_type = "Food",
+                               metric = "particles_L_food_dilution",
+                               metric_label = "Particles/L (Food Dilution)",
+                               x_label = "Food Dilution (SD from Mean)", 
+                               annotation_x = 1.e-2,
+                               annotation_y = 0.5,
+                               color = "#663399",
+                               effect_metric = aoc_MC$particles_L_food_dilution_deterministic,
+                               y_axis_label = TRUE)
+
+plot_tissue_min <- create_ggplot(df_input = example.df,
+                               unique_id_input = example.unique_id.ox.stress.min,
+                               plot_type = "Tissue",
+                               metric = "particles_L_ox_stress",
+                               metric_label = "Particles/L (Tissue Translocation)",
+                               x_label = "Tissue Translocation (SD from Mean)", 
+                               annotation_x = 1.4e4,
+                               annotation_y = 20,
+                               color = "forestgreen",
+                               effect_metric = aoc_MC$particles_L_ox_stress_deterministic,
+                               y_axis_label = TRUE)
+
+plot_tissue_max <- create_ggplot(df_input = example.df,
+                               unique_id_input = example.unique_id.ox.stress.max,
+                               plot_type = "Tissue",
+                               metric = "particles_L_ox_stress",
+                               metric_label = "Particles/L (Tissue Translocation)",
+                               x_label = "Tissue Translocation (SD from Mean)", 
+                               annotation_x = 1e10,
+                               annotation_y = 2.5,
+                               color = "forestgreen",
+                               effect_metric = aoc_MC$particles_L_ox_stress_deterministic,
+                               y_axis_label = TRUE)
+
+
+MC_example_plots <- ggarrange(plot_food_min, plot_tissue_min,
+                              plot_food_max, plot_tissue_max
                               )
 
 ggsave(filename = "MC_example_plots.jpg",
        dpi = 300,
        path = "../output/Manuscript_Figs/", 
-       plot = MC_example_plots, width = 10, height = 8, units = "in")
+       plot = MC_example_plots, width = 9.5, height = 6.5, units = "in")
 
 MC_example_plots
 ```

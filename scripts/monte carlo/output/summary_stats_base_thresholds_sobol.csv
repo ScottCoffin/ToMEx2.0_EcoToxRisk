@@ -1,41 +1,73 @@
-"","Tier","Environment","Metric","Mean","Median","Std_Dev","Percentile_5th","Percentile_95th","N_sim"
-"1","Tier1","Freshwater","Food Dilution (Default)","0.59200","0.55300","0.22700","0.307000","0.95700","5,100"
-"2","Tier1","Freshwater","Tissue Translocation (Default)","341.00000","350.00000","47.90000","220.000000","389.00000","5,100"
-"3","Tier1","Marine","Food Dilution (Default)","0.00001","0.00001","0.00005","0.000003","0.00004","5,100"
-"4","Tier1","Marine","Tissue Translocation (Default)","1.15000","1.07000","8.78000","0.762000","1.16000","5,100"
-"5","Tier2","Freshwater","Food Dilution (5th %)","0.59200","0.55300","0.22700","0.307000","0.95700","5,100"
-"6","Tier2","Freshwater","Food Dilution (95th %)","686.00000","368.00000","710.00000","79.000000","2,060.00000","5,100"
-"7","Tier2","Freshwater","Food Dilution (Default)","3.27000","3.14000","1.26000","1.610000","5.36000","5,100"
-"8","Tier2","Freshwater","Tissue Translocation (5th %)","341.00000","350.00000","47.90000","220.000000","389.00000","5,100"
-"9","Tier2","Freshwater","Tissue Translocation (95th %)","33,100.00000","33,700.00000","4,750.00000","27,000.000000","38,400.00000","5,100"
-"10","Tier2","Freshwater","Tissue Translocation (Default)","1,240.00000","1,240.00000","139.00000","887.000000","1,380.00000","5,100"
-"11","Tier2","Marine","Food Dilution (5th %)","0.00001","0.00001","0.00005","0.000003","0.00004","5,100"
-"12","Tier2","Marine","Food Dilution (95th %)","0.83200","0.12900","7.23000","0.021500","1.54000","5,100"
-"13","Tier2","Marine","Food Dilution (Default)","0.00031","0.00013","0.00099","0.000071","0.00102","5,100"
-"14","Tier2","Marine","Tissue Translocation (5th %)","1.15000","1.07000","8.78000","0.762000","1.16000","5,100"
-"15","Tier2","Marine","Tissue Translocation (95th %)","11,100.00000","10,100.00000","12,200.00000","6,060.000000","17,500.00000","5,100"
-"16","Tier2","Marine","Tissue Translocation (Default)","13.10000","13.60000","8.88000","7.830000","15.00000","5,100"
-"17","Tier3","Freshwater","Food Dilution (5th %)","23.70000","15.40000","23.20000","3.110000","73.70000","5,100"
-"18","Tier3","Freshwater","Food Dilution (95th %)","14,700.00000","14,600.00000","9,680.00000","632.000000","30,800.00000","5,100"
-"19","Tier3","Freshwater","Food Dilution (Default)","95.90000","70.60000","80.00000","19.200000","260.00000","5,100"
-"20","Tier3","Freshwater","Tissue Translocation (5th %)","1,200.00000","1,170.00000","336.00000","764.000000","1,740.00000","5,100"
-"21","Tier3","Freshwater","Tissue Translocation (95th %)","314,000.00000","324,000.00000","102,000.00000","131,000.000000","468,000.00000","5,100"
-"22","Tier3","Freshwater","Tissue Translocation (Default)","5,560.00000","5,500.00000","1,440.00000","3,760.000000","7,840.00000","5,100"
-"23","Tier3","Marine","Food Dilution (5th %)","0.01950","0.00602","0.05610","0.002030","0.07040","5,100"
-"24","Tier3","Marine","Food Dilution (95th %)","25.10000","6.26000","54.00000","1.520000","101.00000","5,100"
-"25","Tier3","Marine","Food Dilution (Default)","0.06820","0.02470","0.19600","0.011300","0.25100","5,100"
-"26","Tier3","Marine","Tissue Translocation (5th %)","106.00000","101.00000","158.00000","64.200000","145.00000","5,100"
-"27","Tier3","Marine","Tissue Translocation (95th %)","45,000.00000","38,600.00000","62,900.00000","23,700.000000","69,200.00000","5,100"
-"28","Tier3","Marine","Tissue Translocation (Default)","644.00000","661.00000","277.00000","442.000000","753.00000","5,100"
-"29","Tier4","Freshwater","Food Dilution (5th %)","46.50000","32.20000","41.50000","8.160000","134.00000","5,100"
-"30","Tier4","Freshwater","Food Dilution (95th %)","28,600.00000","28,300.00000","19,100.00000","1,040.000000","60,900.00000","5,100"
-"31","Tier4","Freshwater","Food Dilution (Default)","230.00000","179.00000","172.00000","60.200000","579.00000","5,100"
-"32","Tier4","Freshwater","Tissue Translocation (5th %)","2,340.00000","2,330.00000","688.00000","1,460.000000","3,470.00000","5,100"
-"33","Tier4","Freshwater","Tissue Translocation (95th %)","540,000.00000","559,000.00000","182,000.00000","213,000.000000","812,000.00000","5,100"
-"34","Tier4","Freshwater","Tissue Translocation (Default)","12,700.00000","12,600.00000","3,070.00000","8,670.000000","17,400.00000","5,100"
-"35","Tier4","Marine","Food Dilution (5th %)","0.07920","0.02470","0.22100","0.008100","0.29400","5,100"
-"36","Tier4","Marine","Food Dilution (95th %)","114.00000","29.50000","238.00000","5.560000","474.00000","5,100"
-"37","Tier4","Marine","Food Dilution (Default)","0.38200","0.14300","1.07000","0.072900","1.39000","5,100"
-"38","Tier4","Marine","Tissue Translocation (5th %)","425.00000","409.00000","624.00000","339.000000","480.00000","5,100"
-"39","Tier4","Marine","Tissue Translocation (95th %)","139,000.00000","119,000.00000","107,000.00000","78,000.000000","239,000.00000","5,100"
-"40","Tier4","Marine","Tissue Translocation (Default)","3,010.00000","3,030.00000","1,160.00000","2,410.000000","3,310.00000","5,100"
+"","Tier","Environment","Metric","Mean","Median","Std_Dev","Min","Max","Percentile_5th","Percentile_95th","N_sim"
+"1","Tier1","Freshwater","Food Dilution (Default)",15.3,8.23,19.2,0.00615,212,0.642,54.5,17000
+"2","Tier1","Freshwater","Tissue Translocation (Default)",450,453,101,10.6,863,274,610,17000
+"3","Tier1","Freshwater","food_dilution_ug.L",567,288,778,0.261,10600,20.7,2050,17000
+"4","Tier1","Freshwater","food_dilution_um3.L",338,249,292,0.211,1970,36.2,940,17000
+"5","Tier1","Freshwater","tissue_translocation_ug.L",16600,15500,6890,415,61800,7670,29500,17000
+"6","Tier1","Freshwater","tissue_translocation_um2.L",3810,3910,530,88.5,5040,2440,4310,17000
+"7","Tier1","Marine","Food Dilution (Default)",0.000417,0.00014,0.00112,1.51e-07,0.0526,1.35e-05,0.00162,17000
+"8","Tier1","Marine","Tissue Translocation (Default)",1.3,1.32,2.29,0.115,298,0.947,1.5,17000
+"9","Tier1","Marine","food_dilution_ug.L",0.0686,0.023,0.186,2.49e-05,9.52,0.00221,0.268,17000
+"10","Tier1","Marine","food_dilution_um3.L",0.0236,0.0107,0.0479,4.19e-05,1.5,0.00163,0.0845,17000
+"11","Tier1","Marine","tissue_translocation_ug.L",214,216,402,18.6,52300,155,251,17000
+"12","Tier1","Marine","tissue_translocation_um2.L",92,93.9,164,8.19,21300,67.4,101,17000
+"13","Tier2","Freshwater","Food Dilution (5th %)",15.3,8.23,19.2,0.00615,212,0.642,54.5,17000
+"14","Tier2","Freshwater","Food Dilution (95th %)",2680,1460,3480,0.875,49100,200,9510,17000
+"15","Tier2","Freshwater","Food Dilution (Default)",58.8,33.8,70.5,0.0284,849,3.5,200,17000
+"16","Tier2","Freshwater","Tissue Translocation (5th %)",450,453,101,10.6,863,274,610,17000
+"17","Tier2","Freshwater","Tissue Translocation (95th %)",42300,42000,10200,2180,339000,27600,58000,17000
+"18","Tier2","Freshwater","Tissue Translocation (Default)",1620,1630,337,92.5,3010,1070,2170,17000
+"19","Tier2","Freshwater","food_dilution_ug.L",2180,1180,2880,1.27,42400,111,7530,17000
+"20","Tier2","Freshwater","food_dilution_um3.L",1320,1030,1050,1.16,7890,192,3450,17000
+"21","Tier2","Freshwater","tissue_translocation_ug.L",60000,55900,24200,2360,230000,28900,105000,17000
+"22","Tier2","Freshwater","tissue_translocation_um2.L",13800,14000,1520,724,18200,9820,15200,17000
+"23","Tier2","Marine","Food Dilution (5th %)",0.000417,0.00014,0.00112,1.51e-07,0.0526,1.35e-05,0.00162,17000
+"24","Tier2","Marine","Food Dilution (95th %)",7.13,1.71,31.5,0.00168,1390,0.162,24.6,17000
+"25","Tier2","Marine","Food Dilution (Default)",0.0143,0.00416,0.0393,6.87e-06,1.31,0.000307,0.0563,17000
+"26","Tier2","Marine","Tissue Translocation (5th %)",1.3,1.32,2.29,0.115,298,0.947,1.5,17000
+"27","Tier2","Marine","Tissue Translocation (95th %)",12700,11500,15300,682,1060000,7250,20100,17000
+"28","Tier2","Marine","Tissue Translocation (Default)",16.1,16.9,3.85,1.84,361,9.75,19.2,17000
+"29","Tier2","Marine","food_dilution_ug.L",2.35,0.684,6.49,0.00113,237,0.0507,9.31,17000
+"30","Tier2","Marine","food_dilution_um3.L",0.785,0.319,1.66,0.0019,45.7,0.038,2.89,17000
+"31","Tier2","Marine","tissue_translocation_ug.L",2660,2770,664,291,63500,1600,3220,17000
+"32","Tier2","Marine","tissue_translocation_um2.L",1140,1210,268,129,25900,688,1310,17000
+"33","Tier3","Freshwater","Food Dilution (5th %)",125,104,91.8,0.0142,721,15.8,306,17000
+"34","Tier3","Freshwater","Food Dilution (95th %)",76300,51100,89100,8.25,1080000,1870,246000,17000
+"35","Tier3","Freshwater","Food Dilution (Default)",534,432,410,0.072,3670,74.6,1340,17000
+"36","Tier3","Freshwater","Tissue Translocation (5th %)",1400,1360,442,60.7,3090,783,2150,17000
+"37","Tier3","Freshwater","Tissue Translocation (95th %)",429000,428000,157000,16800,1040000,178000,688000,17000
+"38","Tier3","Freshwater","Tissue Translocation (Default)",7040,6890,2060,297,15300,4110,10600,17000
+"39","Tier3","Freshwater","food_dilution_ug.L",19800,15000,17400,3.21,198000,2420,52400,17000
+"40","Tier3","Freshwater","food_dilution_um3.L",13800,13300,6990,2.94,44500,3650,26000,17000
+"41","Tier3","Freshwater","tissue_translocation_ug.L",260000,237000,120000,7760,1150000,114000,484000,17000
+"42","Tier3","Freshwater","tissue_translocation_um2.L",60600,58900,18300,2440,146000,37700,93300,17000
+"43","Tier3","Marine","Food Dilution (5th %)",0.443,0.136,1.16,0.000222,47.2,0.0109,1.77,17000
+"44","Tier3","Marine","Food Dilution (95th %)",179,73,396,0.181,19500,7.53,671,17000
+"45","Tier3","Marine","Food Dilution (Default)",2.26,0.692,5.95,0.0012,234,0.0544,8.98,17000
+"46","Tier3","Marine","Tissue Translocation (5th %)",125,119,258,38.5,25600,77.1,166,17000
+"47","Tier3","Marine","Tissue Translocation (95th %)",58700,51000,51500,5450,2110000,31300,90800,17000
+"48","Tier3","Marine","Tissue Translocation (Default)",860,883,408,311,33600,589,1010,17000
+"49","Tier3","Marine","food_dilution_ug.L",373,114,987,0.198,42400,8.95,1480,17000
+"50","Tier3","Marine","food_dilution_um3.L",129,53.1,264,0.332,8280,6.53,494,17000
+"51","Tier3","Marine","tissue_translocation_ug.L",141000,145000,65300,51100,5060000,96700,169000,17000
+"52","Tier3","Marine","tissue_translocation_um2.L",60700,63000,28300,21700,2310000,41700,68600,17000
+"53","Tier4","Freshwater","Food Dilution (5th %)",251,207,187,0.0634,1590,33.8,615,17000
+"54","Tier4","Freshwater","Food Dilution (95th %)",144000,95600,172000,14.3,2130000,3110,468000,17000
+"55","Tier4","Freshwater","Food Dilution (Default)",1300,1020,1030,0.26,9840,188,3310,17000
+"56","Tier4","Freshwater","Tissue Translocation (5th %)",2940,2790,1090,145,7970,1550,5030,17000
+"57","Tier4","Freshwater","Tissue Translocation (95th %)",738000,739000,281000,29500,1850000,290000,1200000,17000
+"58","Tier4","Freshwater","Tissue Translocation (Default)",16900,16600,4720,748,37000,9920,24900,17000
+"59","Tier4","Freshwater","food_dilution_ug.L",47900,35500,43500,9.83,511000,6060,130000,17000
+"60","Tier4","Freshwater","food_dilution_um3.L",33300,31700,17000,10.6,118000,9260,63900,17000
+"61","Tier4","Freshwater","tissue_translocation_ug.L",623000,571000,281000,18600,2690000,275000,1150000,17000
+"62","Tier4","Freshwater","tissue_translocation_um2.L",145000,143000,40000,6090,319000,92400,215000,17000
+"63","Tier4","Marine","Food Dilution (5th %)",1.45,0.476,3.61,0.000846,147,0.0411,5.76,17000
+"64","Tier4","Marine","Food Dilution (95th %)",671,290,1320,0.61,58500,30.6,2470,17000
+"65","Tier4","Marine","Food Dilution (Default)",11,3.66,26.9,0.00692,974,0.317,43.4,17000
+"66","Tier4","Marine","Tissue Translocation (5th %)",535,520,831,196,78200,437,593,17000
+"67","Tier4","Marine","Tissue Translocation (95th %)",180000,157000,98500,12000,3390000,104000,309000,17000
+"68","Tier4","Marine","Tissue Translocation (Default)",4100,4110,1500,1640,124000,3260,4630,17000
+"69","Tier4","Marine","food_dilution_ug.L",1810,602,4450,1.14,176000,52.6,7050,17000
+"70","Tier4","Marine","food_dilution_um3.L",634,281,1210,1.91,34100,38.5,2370,17000
+"71","Tier4","Marine","tissue_translocation_ug.L",675000,675000,241000,262000,18700000,534000,776000,17000
+"72","Tier4","Marine","tissue_translocation_um2.L",290000,293000,104000,116000,8550000,231000,319000,17000
