@@ -55,10 +55,11 @@ skim(df)
 #Source("Tox Data/RDA_Maker.R")
 aoc_z <- readRDS(file = "../../data/input/aoc_z_tomex2.RDS")
 ```
+
 ```{r}
 quality <- aoc_z %>% 
  select(c(
-    doi:risk.tier.zero.criteria.failure
+    doi:tier_zero_risk_f
   ))
 
 joined <- left_join(Tissue_Translocation, quality, by = "doi") %>% 
@@ -128,6 +129,12 @@ write.csv(joined, "translocation_scored_2.csv")
 #                                     "risk.19" = "Microplastic Diversity",
 #                                     "risk.20" = "Exposure Time")
 ```
+```{r}
+getwd()
+joined <- read_excel("../../data/input/translocation_scored_2.xlsx")
+```
+
+
 
 ```{r}
 #histogram
@@ -329,6 +336,118 @@ simple <- glm(translocated_10 ~ size.um, data = df, family = "binomial")
 simple_summary <- summary(simple)
 simple_summary
 ```
+
+
+# Final approach for MC modelling
+Estimation of the 50% Probability Threshold
+The 50% probability threshold for the predictor variable size.um was calculated using the logistic regression coefficients. The threshold corresponds to the value of size.um at which the predicted probability of translocated_10 equals 0.5. Mathematically, this threshold is determined by solving the equation:
+
+logit(0.5) =𝛽0 +𝛽1 × size.um
+
+where 𝛽0  is the intercept and 𝛽1 is the slope coefficient from the fitted model.
+
+## Bootstrap Simulation
+To account for model variability and provide a more robust estimate of the size.um distribution at the 50% probability threshold, a bootstrap approach was employed. The following steps were undertaken:
+
+Bootstrap Resampling: The dataset was resampled with replacement 1000 times.
+Model Refitting: For each bootstrap sample, the logistic regression model was refitted, and the 50% probability threshold for size.um was recalculated.
+Distribution Analysis: The distribution of the recalculated size.um thresholds across all bootstrap samples was analyzed to assess the variability and confidence intervals.
+The bootstrap procedure was implemented using the boot package in R. The specific steps and R code are detailed below:
+
+Define the function to calculate the size.um threshold for a bootstrap sample:
+
+
+Perform the bootstrap resampling and threshold calculation:
+```{r}
+tissue_threshold_fun <- function(data, indices) {
+  d <- data[indices, ]
+  fit <- glm(translocated_10 ~ size.um, family = "binomial", data = d)
+  intercept <- coef(fit)[1]
+  slope <- coef(fit)[2]
+  threshold <- -intercept / slope
+  # Ensure the threshold is non-negative
+  if (threshold < 0) threshold <- NA
+  return(threshold)
+}
+```
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(boot)
+set.seed(123)  # For reproducibility
+bootstrap_results <- boot(data = df, statistic = tissue_threshold_fun, R = 1000)
+```
+
+Extract and analyze the bootstrap estimates:
+
+```{r}
+bootstrap_thresholds <- bootstrap_results$t
+```
+
+```{r}
+summary(bootstrap_thresholds)
+```
+
+Visualize the distribution of bootstrap estimates:
+
+```{r}
+library(ggplot2)
+df_bootstrap <- data.frame(size_um = bootstrap_thresholds)
+ggplot(df_bootstrap, aes(x = size_um)) +
+  geom_histogram(bins = 100, color = "black", fill = "skyblue", alpha = 0.7) +
+  geom_vline(xintercept = mean(bootstrap_thresholds), linetype = "dashed", color = "red") +
+  scale_x_log10() +
+  labs(title = "Bootstrap Distribution of size.um around 50% Probability",
+       x = "size.um at 50% Probability", y = "Frequency") +
+  theme_minimal()
+```
+
+
+Results Interpretation
+The bootstrap simulation provides a distribution of size.um values at the 50% probability threshold, accounting for model variability. The histogram of the bootstrap estimates, along with a vertical dashed line indicating the mean of these estimates, offers insights into the central tendency and spread of the size.um values associated with a 50% predicted probability of the outcome.
+
+By employing this robust bootstrap method, we capture the inherent variability in the model estimation process, leading to more reliable and interpretable results regarding the predictor's effect at the specified probability threshold.
+
+
+Fit the GLM model: (already done)
+Bootstrap the data: Resample the data multiple times.
+Refit the GLM model for each bootstrap sample: Calculate the 50% probability threshold for each.
+Simulate the distribution of size.um values: Use the results from the bootstrap samples.
+
+```{r}
+library(boot)
+library(ggplot2)
+
+# Define the function to calculate the size.um at 50% probability for a bootstrap sample
+threshold_fun <- function(data, indices) {
+  d <- data[indices, ]
+  fit <- glm(translocated_10 ~ size.um, family = "binomial", data = d)
+  intercept <- coef(fit)[1]
+  slope <- coef(fit)[2]
+  -intercept / slope
+}
+
+# Bootstrap the data
+set.seed(123) # For reproducibility
+bootstrap_results <- boot(data = df, statistic = threshold_fun, R = 1000)
+
+# Extract bootstrap estimates of the threshold size.um
+bootstrap_thresholds <- bootstrap_results$t
+
+# Plot the distribution of the bootstrap estimates
+df_bootstrap <- data.frame(size_um = bootstrap_thresholds)
+
+ggplot(df_bootstrap, aes(x = size_um)) +
+  geom_histogram(bins = 40, color = "black", fill = "skyblue", alpha = 0.7) +
+  geom_vline(xintercept = mean(bootstrap_thresholds), linetype = "dashed", color = "red") +
+  scale_x_log10() +
+  labs(title = "Bootstrap Distribution of size.um around 50% Probability",
+       x = "size.um at 50% Probability", y = "Frequency") +
+  theme_minimal()
+
+
+```
+
 
 
 Obtain standard error around 50th percentile probhabilty prediction for particle length

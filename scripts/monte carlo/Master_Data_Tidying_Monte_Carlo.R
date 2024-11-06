@@ -128,7 +128,7 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
   # calculate effect threshold for particles
   mutate(EC_mono_p.particles.mL_trans = dose.particles.mL.master) %>% 
   mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
-  mutate(mu.p.poly_trans = mux.polyfnx(a.x = alpha, #alpha for particles
+  mutate(mu.p.poly_trans = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles
                                        x_UL= x2M_trans, #upper ingestible size limit (width of particle)
                                        x_LL = x1M_set)) %>% 
   # polydisperse effect threshold for particles
@@ -155,14 +155,14 @@ mutate(x_LL_sa_trans = SAfnx(a = 0.5 * x1D_set, #length
                                c = 0.5 * x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
   )) %>%  
   #calculate mu_x_poly (env) for surface area
-  mutate(mu.sa.poly_trans = mux.polyfnx(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
+  mutate(mu.sa.poly_trans = mux_polyfnx_generalizable(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
   
   ##--- laboratory calculations ---###
   ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
   #(note that if mixed particles were used, a different equation must be used)
   mutate(mu.sa.mono = case_when(
     polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported surface area in monodisperse
-    polydispersity == "polydisperse" ~  mux.polyfnx(a.x = a.sa, 
+    polydispersity == "polydisperse" ~  mux_polyfnx_generalizable(a.x = a.sa, 
                                                     x_LL = particle.surface.area.um2.min,
                                                     x_UL = particle.surface.area.um2.max))) %>% 
   
@@ -180,7 +180,7 @@ mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ x2D_set,
   # calculate effect threshold for particles
   mutate(EC_mono_p.particles.mL_ingest = dose.particles.mL.master) %>% 
   mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
-  mutate(mu.p.poly_ingest = mux.polyfnx(a.x = alpha, #alpha for particles
+  mutate(mu.p.poly_ingest = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles
                                         x_UL= x2M_ingest, #upper ingestible size limit
                                         x_LL = x1M_set)) %>% 
   # polydisperse effect threshold for particles
@@ -205,13 +205,13 @@ mutate(x_LL_v_ingest = volumefnx_poly(length = x1D_set,
                                         #x2D_set, #upper definiton (accouunts for fibers) CONSERVATIVE
                                         width = x2M_ingest)) %>% #ingestion-limited
   # calculate mu.v.poly
-  mutate(mu.v.poly_ingest = mux.polyfnx(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
+  mutate(mu.v.poly_ingest = mux_polyfnx_generalizable(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
   ##--- laboratory calculations ---###
   ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
   #(note that if mixed particles were used, a different equation must be used)
   mutate(mu.v.mono = case_when(
     polydispersity == "monodisperse" ~ particle.volume.um3, # use reported volume in monodisperse
-    polydispersity == "polydisperse" ~ mux.polyfnx(a.x = a.v, 
+    polydispersity == "polydisperse" ~ mux_polyfnx_generalizable(a.x = a.v, 
                                                    x_LL = particle.volume.um3.min,
                                                    x_UL = particle.volume.um3.max))) %>% 
   
@@ -242,7 +242,7 @@ identical(aoc_aligned_test,
 ##### STEP 1: DERIVE VALUES TO RUN PROBABILISTICALLY #####
 source("scripts/monte carlo/ssd_functions.R")
 nboot = 10 #ssd bootstraps
-n_sim <- 500 #monte carlo simulations
+n_sim <- 100 #monte carlo simulations
 
 # particle properties
 R.ave.water.marine <- 0.77 # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
@@ -452,7 +452,7 @@ model_wrapper <- function(params, iteration){
     # calculate effect threshold for particles
     mutate(EC_mono_p.particles.mL_trans = dose.particles.mL.master) %>% 
     mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
-    mutate(mu.p.poly_trans = mux.polyfnx(a.x = alpha, #alpha for particles
+    mutate(mu.p.poly_trans = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles
                                          x_UL= x2M_trans, #upper ingestible size limit (width of particle)
                                          x_LL = x1M_set)) %>% 
     # polydisperse effect threshold for particles
@@ -479,14 +479,14 @@ model_wrapper <- function(params, iteration){
                                  c = 0.5 * x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
     )) %>%  
     #calculate mu_x_poly (env) for surface area
-    mutate(mu.sa.poly_trans = mux.polyfnx(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
+    mutate(mu.sa.poly_trans = mux_polyfnx_generalizable(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
     
     ##--- laboratory calculations ---###
     ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
     #(note that if mixed particles were used, a different equation must be used)
     mutate(mu.sa.mono = case_when(
       polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported surface area in monodisperse
-      polydispersity == "polydisperse" ~  mux.polyfnx(a.x = a.sa, 
+      polydispersity == "polydisperse" ~  mux_polyfnx_generalizable(a.x = a.sa, 
                                                       x_LL = particle.surface.area.um2.min,
                                                       x_UL = particle.surface.area.um2.max))) %>% 
     
@@ -504,7 +504,7 @@ model_wrapper <- function(params, iteration){
     # calculate effect threshold for particles
     mutate(EC_mono_p.particles.mL_ingest = dose.particles.mL.master) %>% 
     mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
-    mutate(mu.p.poly_ingest = mux.polyfnx(a.x = alpha, #alpha for particles
+    mutate(mu.p.poly_ingest = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles
                                           x_UL= x2M_ingest, #upper ingestible size limit
                                           x_LL = x1M_set)) %>% 
     # polydisperse effect threshold for particles
@@ -529,13 +529,13 @@ model_wrapper <- function(params, iteration){
                                           #x2D_set, #upper definiton (accouunts for fibers) CONSERVATIVE
                                           width = x2M_ingest)) %>% #ingestion-limited
     # calculate mu.v.poly
-    mutate(mu.v.poly_ingest = mux.polyfnx(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
+    mutate(mu.v.poly_ingest = mux_polyfnx_generalizable(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
     ##--- laboratory calculations ---###
     ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
     #(note that if mixed particles were used, a different equation must be used)
     mutate(mu.v.mono = case_when(
       polydispersity == "monodisperse" ~ particle.volume.um3, # use reported volume in monodisperse
-      polydispersity == "polydisperse" ~ mux.polyfnx(a.x = a.v, 
+      polydispersity == "polydisperse" ~ mux_polyfnx_generalizable(a.x = a.v, 
                                                      x_LL = particle.volume.um3.min,
                                                      x_UL = particle.volume.um3.max))) %>% 
     
@@ -611,7 +611,12 @@ for (i in 1:nrow(param_values)) {
   MC_results[[i]] <- model_wrapper(param_set, i)
 }
 
+# save results
+saveRDS(MC_results, "scripts/monte carlo/output/MC_results.rds")
 
+
+#### START HERE IF WORKING FROM SAVED FILE ###
+MC_results <- readRDS("scripts/monte carlo/output/MC_results.rds")
 
 ##################################### ANALYSIS #########################################
 
@@ -622,14 +627,14 @@ all_thresholds_marine <- map(MC_results, ~ .x$base_thresholds$marine) %>%
 all_thresholds_freshwater <- map(MC_results, ~ .x$base_thresholds$freshwater) %>% 
   bind_rows(.id = "simulation_id")
 
-all_thresholds_freshwater_marine <- map(MC_results, ~ .x$base_thresholds$freshwater_marine) %>% 
-  bind_rows(.id = "simulation_id")
+# all_thresholds_freshwater_marine <- map(MC_results, ~ .x$base_thresholds$freshwater_marine) %>% 
+#   bind_rows(.id = "simulation_id")
 
 # Combine marine and freshwater data into one data frame with an additional "Environment" column
 all_thresholds_combined <- bind_rows(
   mutate(all_thresholds_marine, Environment = "Marine"),
   mutate(all_thresholds_freshwater, Environment = "Freshwater"),
-  mutate(all_thresholds_freshwater_marine, Environment = "freshwater_marine"),
+ # mutate(all_thresholds_freshwater_marine, Environment = "freshwater_marine"),
   .id = "simulation_id"
 )
 
@@ -686,7 +691,7 @@ MC_histograms_fxn <- function(environment){
 #  geom_text(data = median_data, aes(x = Median, y = 0, label = paste0("Median:", scientific(Median, 2))),
         #    hjust = +1.5, vjust = -1.5, color = "black", size = 6, fontface = "italic") +
   xlab("Particles/L") +
-  scale_x_log10(labels = comma) +
+  scale_x_log10(labels = scales::comma) +
   facet_wrap(~ Tier + ERM, scales = "free", ncol = 2) +
   scale_fill_manual(values = tier_colors) +  # Apply manual colors for fill
   scale_color_manual(values = tier_colors)  # Apply manual colors for lines
@@ -753,11 +758,18 @@ all_thresholds_long %>%
   mutate(ERM = case_when(
     grepl("Tissue", Metric) ~ "Tissue Translocation",
     grepl("Food", Metric) ~ "Food Dilution")) %>% 
-  ggplot(aes(x = Value, y = Tier, color = Environment)) +
-  geom_boxplot() +
- # geom_jitter() +
-  scale_x_log10() +
-  facet_grid(rows = vars(Environment), cols = vars(ERM)) +
+  ggplot(aes(x = Value, y = Tier, color = Environment, fill = Environment)) +
+  #geom_boxplot(alpha = 0.5) +
+  geom_violin(alpha = 0.9,
+              draw_quantiles = T,
+              color = "black") +
+  cols4all::scale_fill_discrete_c4a_cat("carto.bold") +
+  cols4all::scale_color_discrete_c4a_cat("carto.bold") +
+  #geom_jitter() +
+  scale_x_log10(name = "Particles/L (1 - 5000 um)",
+                labels = scales::comma) +
+  facet_grid(rows = vars(Environment), cols = vars(ERM),
+             scales = "free") +
   theme_bw(base_size = 16) +
   theme(legend.position = "none")
 
@@ -765,7 +777,6 @@ all_thresholds_long %>%
 print(summary_stats_base_thresholds)
 
 #save output
-saveRDS(MC_results, "scripts/monte carlo/output/MC_results.rds")
 saveRDS(summary_stats_base_thresholds, "scripts/monte carlo/output/summary_stats_base_thresholds.rds")
 
 
@@ -878,7 +889,7 @@ CoV_plots
 
 # For high number of iterations, need to simplify data saved to not overload the RAM
 #### Define Model Wrapper
-model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval = 500){
+model_wrapper_sobol <- function(params, iteration, N, sobol_results, save_interval = 500){
   
   #report time
   start_time <- Sys.time()
@@ -889,18 +900,24 @@ model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval 
   #unpack parameters
   # Ensure all extracted parameters are correctly coerced to numeric
   # Coerce to numeric directly while accessing the first element of potential list
-  alpha <- as.numeric(params$alpha[1])
-  a_sa <- as.numeric(params$a.sa[1])
-  a_v <- as.numeric(params$a.v[1])
-  a_m <- as.numeric(params$a.m[1])
-  a_ssa <- as.numeric(params$a.ssa[1])
-  R_ave_water_marine <- as.numeric(params$R.ave.water.marine[1])
-  R_ave_water_freshwater <- as.numeric(params$R.ave.water.freshwater[1])
-  R_ave_sediment_marine <- as.numeric(params$R.ave.sediment.marine[1])
-  R_ave_sediment_freshwater <- as.numeric(params$R.ave.sediment.freshwater[1])
-  sim_beta_log10_body_length <- as.numeric(params$sim.beta.log10.body.length[1])
-  sim_body_length_intercept <- as.numeric(params$sim.body.length.intercept[1])
-  upper.tissue.trans.size.um <- as.numeric(params$upper.tissue.trans.size.um[1])
+    alpha.marine <- as.numeric(params$alpha.marine[1])
+    a_sa.marine <- as.numeric(params$a.sa.marine[1])
+    a_v.marine <- as.numeric(params$a.v.marine[1])
+    a_m.marine <- as.numeric(params$a.m.marine[1])
+    a_ssa.marine <- as.numeric(params$a.ssa.marine[1])
+    alpha.freshwater <- as.numeric(params$alpha.freshwater[1])
+    a_sa.freshwater <- as.numeric(params$a.sa.freshwater[1])
+    a_v.freshwater <- as.numeric(params$a.v.freshwater[1])
+    a_m.freshwater <- as.numeric(params$a.m.freshwater[1])
+    a_ssa.freshwater <- as.numeric(params$a.ssa.freshwater[1])
+    R_ave_water_marine <- as.numeric(params$R.ave.water.marine[1])
+    R_ave_water_freshwater <- as.numeric(params$R.ave.water.freshwater[1])
+    #R_ave_sediment_marine <- as.numeric(params$R.ave.sediment.marine[1])
+ #  R_ave_sediment_freshwater <- as.numeric(params$R.ave.sediment.freshwater[1])
+    sim_beta_log10_body_length <- as.numeric(params$sim.beta.log10.body.length[1])
+    sim_body_length_intercept <- as.numeric(params$sim.body.length.intercept[1])
+    upper.tissue.trans.size.um <- as.numeric(params$upper.tissue.trans.size.um[1])
+    
   
   
   ####### ---- RUN FUNCTIONS ---- ###
@@ -947,11 +964,23 @@ model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval 
     is.na(max.size.ingest.um) ~ upper.tissue.trans.size.um,
     TRUE ~ pmin(max.size.ingest.um, upper.tissue.trans.size.um)
   )) %>% 
+    # define environment-specific alpha parameters #
+    mutate(alpha = case_when(environment == "Marine" ~ alpha.marine,
+                             environment == "Freshwater" ~ alpha.freshwater),
+           a.sa = case_when(environment == "Marine" ~ a_sa.marine,
+                            environment == "Freshwater" ~ a_sa.freshwater),
+           a.v = case_when(environment == "Marine" ~ a_v.marine,
+                           environment == "Freshwater" ~ a_v.freshwater),
+           a.m = case_when(environment == "Marine" ~ a_m.marine,
+                           environment == "Freshwater" ~ a_m.freshwater),
+           a.ssa = case_when(environment == "Marine" ~ a_ssa.marine,
+                             environment == "Freshwater" ~ a_ssa.freshwater),
+    ) %>% 
     
     # calculate effect threshold for particles
     mutate(EC_mono_p.particles.mL_trans = dose.particles.mL.master) %>% 
     mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
-    mutate(mu.p.poly_trans = mux.polyfnx(a.x = alpha, #alpha for particles
+    mutate(mu.p.poly_trans = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles
                                          x_UL= x2M_trans, #upper ingestible size limit (width of particle)
                                          x_LL = x1M_set)) %>% 
     # polydisperse effect threshold for particles
@@ -978,14 +1007,14 @@ model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval 
                                  c = 0.5 * x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
     )) %>%  
     #calculate mu_x_poly (env) for surface area
-    mutate(mu.sa.poly_trans = mux.polyfnx(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
+    mutate(mu.sa.poly_trans = mux_polyfnx_generalizable(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
     
     ##--- laboratory calculations ---###
     ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
     #(note that if mixed particles were used, a different equation must be used)
     mutate(mu.sa.mono = case_when(
       polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported surface area in monodisperse
-      polydispersity == "polydisperse" ~  mux.polyfnx(a.x = a.sa, 
+      polydispersity == "polydisperse" ~  mux_polyfnx_generalizable(a.x = a.sa, 
                                                       x_LL = particle.surface.area.um2.min,
                                                       x_UL = particle.surface.area.um2.max))) %>% 
     
@@ -1003,7 +1032,7 @@ model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval 
     # calculate effect threshold for particles
     mutate(EC_mono_p.particles.mL_ingest = dose.particles.mL.master) %>% 
     mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
-    mutate(mu.p.poly_ingest = mux.polyfnx(a.x = alpha, #alpha for particles
+    mutate(mu.p.poly_ingest = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles
                                           x_UL= x2M_ingest, #upper ingestible size limit
                                           x_LL = x1M_set)) %>% 
     # polydisperse effect threshold for particles
@@ -1028,13 +1057,13 @@ model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval 
                                           #x2D_set, #upper definiton (accouunts for fibers) CONSERVATIVE
                                           width = x2M_ingest)) %>% #ingestion-limited
     # calculate mu.v.poly
-    mutate(mu.v.poly_ingest = mux.polyfnx(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
+    mutate(mu.v.poly_ingest = mux_polyfnx_generalizable(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
     ##--- laboratory calculations ---###
     ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
     #(note that if mixed particles were used, a different equation must be used)
     mutate(mu.v.mono = case_when(
       polydispersity == "monodisperse" ~ particle.volume.um3, # use reported volume in monodisperse
-      polydispersity == "polydisperse" ~ mux.polyfnx(a.x = a.v, 
+      polydispersity == "polydisperse" ~ mux_polyfnx_generalizable(a.x = a.v, 
                                                      x_LL = particle.volume.um3.min,
                                                      x_UL = particle.volume.um3.max))) %>% 
     
@@ -1078,29 +1107,29 @@ model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval 
                                                     x1D_set = x1D_set, 
                                                     x2D_set = x2D_set)
   
-  freshwater_marine_thresholds <- process_environment_data(aoc_risk_paper, 
-                                                           c("Freshwater", "Marine"),
-                                                           upper.tissue.trans.size.um = upper.tissue.trans.size.um,
-                                                           x1D_set = x1D_set, 
-                                                           x2D_set = x2D_set)
+  # freshwater_marine_thresholds <- process_environment_data(aoc_risk_paper, 
+  #                                                          c("Freshwater", "Marine"),
+  #                                                          upper.tissue.trans.size.um = upper.tissue.trans.size.um,
+  #                                                          x1D_set = x1D_set, 
+  #                                                          x2D_set = x2D_set)
   
   
   ##### SAVE OUTPUT OF MONTE CARLO ######
   
-  MC_results[[i]] <- list(
+  sobol_results[[i]] <- list(
     # particles_mL_ox_stress = aoc_MC_iter$particles.mL.ox.stress,
     #                       particles_mL_food_dilution = aoc_MC_iter$particles.mL.food.dilution,
     #                       unique_id = aoc_MC_iter$unique_id,
                           base_thresholds = list(
                             marine = marine_thresholds,
-                            freshwater = freshwater_thresholds,
-                            freshwater_marine = freshwater_marine_thresholds
+                            freshwater = freshwater_thresholds#,
+                           # freshwater_marine = freshwater_marine_thresholds
                           ))
   
   # Save results every save_interval iterations
   if (iteration %% save_interval == 0) {
-    filename <- paste0("scripts/monte carlo/output/MC_results_iteration_", iteration, ".rds")
-    saveRDS(MC_results, file = filename)
+    filename <- paste0("scripts/monte carlo/output/sobol_results_iteration_", iteration, ".rds")
+    saveRDS(sobol_results, file = filename)
     cat(sprintf("Saved results for iteration %d\n", iteration))
     flush.console()
   }
@@ -1117,7 +1146,7 @@ model_wrapper_sobol <- function(params, iteration, N, MC_results, save_interval 
   total_time <- Sys.time() - start_time
   cat(sprintf("Total time for %d iterations: %.2f secs\n", N, total_time))
   
-  return(MC_results)
+  return(sobol_results)
 } #close model_wrapper function
 
 
@@ -1135,14 +1164,15 @@ library(truncnorm)
 ### Application ###
 # 1. Generate Samples for the Parameters: Generate samples for your parameters using a suitable sampling technique such as Sobol' sequences.
 # Define the parameter names
-params <- c("alpha", "a.sa", "a.v", "a.m", "a.ssa", 
+params <- c("alpha.marine", "a.sa.marine", "a.v.marine", "a.m.marine", "a.ssa.marine", 
+            "alpha.freshwater", "a.sa.freshwater", "a.v.freshwater", "a.m.freshwater", "a.ssa.freshwater", 
             "R.ave.water.marine", "R.ave.water.freshwater",
-            "R.ave.sediment.marine", "R.ave.sediment.freshwater",
+          #  "R.ave.sediment.marine", "R.ave.sediment.freshwater",
             "sim_beta_log10_body_length", "sim_body_length_intercept",
             "upper.tissue.trans.size.um")
 
 # Number of samples
-N <- 500
+N <- 4
 matrices <- c("A", "B", "AB", "BA")
 first <- total <- "azzini"
 
@@ -1156,16 +1186,23 @@ mat <- sobol_matrices(N = N,
 # Convert to data.table
 mat <- data.table::as.data.table(mat)
 
+
+
 # Transform each column to the specified probability distribution
-mat[, "alpha" := rnorm(.N, mean = 2.07, sd = 0.07)]
-mat[, "a.sa" := rnorm(.N, mean = 1.5, sd = 0.009)]
-mat[, "a.v" := rnorm(.N, mean = 1.48, sd = 0.063)]
-mat[, "a.m" := rnorm(.N, mean = 1.32, sd = 0.009)]
-mat[, "a.ssa" := rnorm(.N, mean = 1.98, sd = 0.297)]
+mat[, "alpha.marine" := rnorm(.N, mean = 2.07, sd = 0.07)]
+mat[, "a.sa.marine" := rnorm(.N, mean = 1.5, sd = 0.009)]
+mat[, "a.v.marine" := rnorm(.N, mean = 1.48, sd = 0.063)]
+mat[, "a.m.marine" := rnorm(.N, mean = 1.32, sd = 0.009)]
+mat[, "a.ssa.marine" := rnorm(.N, mean = 1.98, sd = 0.297)]
+mat[, "alpha.freshwater" := rnorm(.N, mean = alpha.freshwater, sd = alpha.sd.freshwater)]
+mat[, "a.sa.freshwater" := rnorm(.N, mean = a.sa.freshwater, sd = a.sa.sd.freshwater)]
+mat[, "a.v.freshwater" := rnorm(.N, mean = a.v.freshwater, sd = a.v.sd.freshwater)]
+mat[, "a.m.freshwater" := rnorm(.N, mean = a.m.freshwater, sd = a.m.sd.freshwater)]
+mat[, "a.ssa.freshwater" := rnorm(.N, mean = a.ssa.freshwater, sd = a.ssa.sd.freshwater)]
 mat[, "R.ave.water.marine" := rtruncnorm(.N, a = 0.0001, b= 0.9999, mean = 0.77, sd = 0.29)]
 mat[, "R.ave.water.freshwater" := rtruncnorm(.N, a = 0.0001, b= 0.9999, mean = 0.67, sd = 0.28)]
-mat[, "R.ave.sediment.marine" := rtruncnorm(.N, a = 0.0001, b= 0.9999, mean = 0.75, sd = 0.30)]
-mat[, "R.ave.sediment.freshwater" := rtruncnorm(.N, a = 0.0001, b= 0.9999, mean = 0.70, sd = 0.33)]
+#mat[, "R.ave.sediment.marine" := rtruncnorm(.N, a = 0.0001, b= 0.9999, mean = 0.75, sd = 0.30)]
+#mat[, "R.ave.sediment.freshwater" := rtruncnorm(.N, a = 0.0001, b= 0.9999, mean = 0.70, sd = 0.33)]
 mat[, "sim_beta_log10_body_length" := rnorm(.N, mean = 0.9341, sd = 0.1376)]
 mat[, "sim_body_length_intercept" := rnorm(.N, mean = 1.1200, sd = 0.3222)]
 
@@ -1195,6 +1232,9 @@ mat[, "upper.tissue.trans.size.um" := upper.tissue.trans.size.um_samples]
 # Convert the data.table to a data.frame
 mat <- as.data.frame(mat)
 
+# save mat (necessary for stats later)
+saveRDS(mat, file = "scripts/monte carlo/output/mat.rds")
+
 
 ## alternatrively, just use param_values derived above
 #mat <- param_values[1:N,]
@@ -1202,7 +1242,7 @@ mat <- as.data.frame(mat)
 # 2. Run the Model for Each Sample Set: Run your model for each set of parameter samples.
 # Initialize a list to store the results
 # Initialize the results list and counter
-MC_results <- vector("list", nrow(mat))
+sobol_results <- vector("list", nrow(mat))
 N <- as.integer(nrow(mat))
 N
 
@@ -1211,12 +1251,12 @@ for (i in 1:N) {
   param_set <- mat[i, ]
   
   # Perform the model wrapping with error handling
-  MC_results <- tryCatch({
-    model_wrapper_sobol(param_set, i, N = N, MC_results, save_interval = 2)
+  sobol_results <- tryCatch({
+    model_wrapper_sobol(param_set, i, N = N, sobol_results, save_interval = 2)
   }, error = function(e) {
     cat(sprintf("Error at iteration %d: %s\n", i, e$message))
     flush.console()
-    MC_results
+    sobol_results
   })
   
   # Print progress and flush the console output
@@ -1225,27 +1265,18 @@ for (i in 1:N) {
 }
 
 # Save the final results
-saveRDS(MC_results, file = "scripts/monte carlo/output/MC_results_final.rds")
+saveRDS(sobol_results, file = "scripts/monte carlo/output/sobol_results.rds")
 
 # Print a message to indicate completion
 cat("All iterations complete and final results saved.\n")
 flush.console()
 
-
-# Save the final results
-saveRDS(MC_results, file = "MC_results_final.rds")
-
-# Print a message to indicate completion
-cat("All iterations complete and final results saved.\n")
-flush.console()
-
-
-saveRDS(MC_results, "scripts/monte carlo/output/MC_results_sobol.rds")
-
+#### start here from saved file ###
+sobol_results <- readRDS("scripts/monte carlo/output/sobol_results.rds")
 
 # Extract and combine marine and freshwater thresholds
-all_thresholds_marine_sobol <- map_dfr(MC_results, ~ .x$base_thresholds$marine, .id = "simulation_id")
-all_thresholds_freshwater_sobol <- map_dfr(MC_results, ~ .x$base_thresholds$freshwater, .id = "simulation_id")
+all_thresholds_marine_sobol <- map_dfr(sobol_results, ~ .x$base_thresholds$marine, .id = "simulation_id")
+all_thresholds_freshwater_sobol <- map_dfr(sobol_results, ~ .x$base_thresholds$freshwater, .id = "simulation_id")
 
 # 3. Extract the Output of Interest: Extract the relevant output from each model run (marine and freshwater thresholds).
 # Convert results to a numeric vector
@@ -1261,7 +1292,7 @@ hist(Y_marine_food_T3)
 hist(Y_freshwater_food_T3)
 
 #stopped MC at iteration = 2037, so need to subset mat to that value
-mat2 <- mat[1:2037,]
+#mat2 <- mat[1:2037,]
 
 
 
@@ -1272,7 +1303,7 @@ scatter_marine_tissue_t3 <- sensobol::plot_scatter(data = mat2, N = N, Y = Y_mar
 scatter_freshwater_tissue_t3 <- sensobol::plot_scatter(data = mat2, N = N, Y = Y_freshwater_tissue_T3, params = params, method = "bin") + ggtitle("Scatter Plot: Freshwater Tissue")
  
 # Arrange the plots into a 2x2 matrix with a common legend
-scatterplots <- combined_plot <- ggarrange(
+scatterplots <- combined_plot <- ggpubr::ggarrange(
   scatter_marine_food_t3, scatter_freshwater_food_t3,
   scatter_marine_tissue_t3, scatter_freshwater_tissue_t3,
   ncol = 2, nrow = 2, common.legend = TRUE, legend = "bottom"
@@ -1289,11 +1320,20 @@ ggsave(filename = "sobol_scatterplots.jpg",
 
 
 # multiscatter
-plot_multiscatter(data = mat2, 
+multi_food <- plot_multiscatter(data = mat2, 
                   N = N,
                   Y = Y_marine_food_T3, 
-                  params = c("alpha", "upper.tissue.trans.size.um", "R.ave.water.marine", "sim_body_length_intercept"))
+                  params = c("alpha.marine", "a.v.marine", "R.ave.water.marine", "sim_body_length_intercept"))
 
+multi_food
+
+# multiscatter
+multi_tissue <- plot_multiscatter(data = mat2, 
+                                N = N,
+                                Y = Y_marine_food_T3, 
+                                params = c("alpha.marine", "a.sa.marine", "upper.tissue.trans.size.um"))
+
+multi_tissue
 
 #### checks ##
 # Check for NAs in parameter values
@@ -1522,7 +1562,7 @@ plot(ind, dummy = ind.dummy)
 # param_list <- split(param_values, seq(nrow(param_values)))
 # 
 # # Execute model_wrapper function in parallel
-# MC_results <- parLapply(cl, param_list, function(params) {
+# sobol_results <- parLapply(cl, param_list, function(params) {
 #   model_wrapper(params)
 # })
 # 

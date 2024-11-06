@@ -9,11 +9,12 @@ library(readr)
 
 #Set working directory
 #setwd("~aq_mp_tox_shiny/")
-source("scripts/functions.R") # necessary for surface area, volume calculations
+#source("scripts/functions.R") # necessary for surface area, volume calculations
 
 #### Extract Data from Submitted Templates ####
 #### NOTE: ALREADY DONE IN aq_mp_tox_shiny REPO! JUST IMPORT tomex2_input.rds
-tomex2.0 <- read_rds("scripts/monte carlo/ref data/tomex2_input.rds")
+#### tomex2_input.rds generated in ToMEx2.0_AquaticOrganisms/monte carlo/Master_Data_Tidying_Monte_Carlo and stored in ref data/ folder
+#tomex2.0 <- read_rds("scripts/monte carlo/ref data/tomex2_input.rds")
 
 #Read in ToMEx 1.0 Tidy Data sets
 #aoc_setup <- readRDS("aoc_setup.RDS")
@@ -514,8 +515,8 @@ tomex2.0_aoc_setup <- tomex2.0 %>%
     group_by(species_f, body.length.cm, body.size.source, max.size.ingest.mm, max.size.ingest.um) %>%
     summarise(.groups = "drop") 
 
-  bodysize_addons <- read_csv("scripts/monte carlo/ref data/gape_size.csv",
-                              show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder
+ # bodysize_addons <- read_csv("scripts/monte carlo/ref data/gape_size.csv",
+  #                            show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder
     
   bodysize_addons <- bodysize_addons %>% 
     mutate(species_f = as.factor(species_f)) %>% 
@@ -604,7 +605,7 @@ aoc_setup <- aoc_setup %>%
   mutate(media.temp.min = as.character(media.temp.min)) %>% 
   mutate(media.temp.max = as.character(media.temp.max)) %>% 
   mutate(zetapotential.mV = as.character(zetapotential.mV)) %>% 
-  mutate(chem.add.dose.mg.L.measured = as.numeric(aoc_setup$chem.add.dose.mg.L.measured)) %>% #warning message expected
+  mutate(chem.add.dose.mg.L.measured = suppressWarnings(as.numeric(aoc_setup$chem.add.dose.mg.L.measured))) %>% #warning message expected
   add_column(chem.add.measured = NA_character_,
              `Nominal Dose Alternative Category` = NA_character_,
              `Measured Dose Alternative Category` = NA_character_,

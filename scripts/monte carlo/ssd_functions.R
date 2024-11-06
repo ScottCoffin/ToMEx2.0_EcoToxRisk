@@ -205,7 +205,8 @@ process_environment_data <- function(data, env_filter, upper.tissue.trans.size.u
     mutate(dose_new = particles.mL.ox.stress / (af.time * af.noec)) %>%
     drop_na(dose_new) %>%
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
-    filter(between(size.length.um.used.for.conversions, x1D_set, upper.tissue.trans.size.um),
+    filter(
+          between(size.length.um.used.for.conversions, x1D_set, upper.tissue.trans.size.um),
            shape_f != "Not Reported",
            poly_f != "Not Reported",
            environment %in% env_filter,
