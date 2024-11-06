@@ -19,8 +19,8 @@ editor_options:
 
 #Setup
 
-```{r, setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk")
+```{r, setup, include=TRUE}
+knitr::opts_knit$set(root.dir = "H:/My Drive/Work/Current/Tomex/ToMEx2.0_EcoToxRisk")
 ```
 
 ```{r, include=FALSE}
@@ -139,13 +139,13 @@ aoc_z <- readRDS("data/input/aoc_z_tomex2.RDS") %>%  #dataset is prepped in shin
 
 # ToMEx 2.0 data file (no alignments)
 ## dataset prepared in RShiny repo and imported ##
-tomex2.0 <- read_rds("monte carlo/ref data/tomex2_input.rds")
+tomex2.0 <- read_rds("scripts/monte carlo/ref data/tomex2_input.rds")
 
 # LEgacy file from May, 2024 for beta-testing
 #tomex2.0 <- read_rds("ref data/tomex2_input_May2024.rds")
 
 # auxiliary data necessary for ToMEX 2.0 data tidying
-bodysize_addons <- read_csv("monte carlo/ref data/gape_size.csv", show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder
+bodysize_addons <- read_csv("scripts/monte carlo/ref data/gape_size.csv", show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder
 ```
 
 ### Data Cleanup
@@ -903,14 +903,14 @@ RUN THESE IN CONSOLE
 ```{r}
 getwd()
 ##### STEP 1: DERIVE VALUES TO RUN PROBABILISTICALLY #####
-source("monte carlo/ssd_functions.R")
+source("scripts/monte carlo/ssd_functions.R")
 ## these locations are correct, but for some reason R won't locate them. Run in console
 #source("scripts/monte carlo/RDAmaker_functions.R") #get ToMEx1.0 fxn
 #source("scripts/monte carlo/ToMEx2.0_Data_Tidying_functions.R")
 library(here)
 here()
 source(here("scripts/monte carlo/RDAmaker_functions.R")) #get ToMEx1.0 fxn
-source("monte carlo/ToMEx2.0_Data_Tidying_functions.R") 
+source("scripts/monte carlo/ToMEx2.0_Data_Tidying_functions.R") 
 ```
 RUN THESE IN CONSOLE
 ```{r}
@@ -1473,12 +1473,8 @@ best_data %>% select(c(Species, total.quality, contains("tech"), contains("risk"
   distinct()
 ```
 
-<<<<<<< HEAD
-```{r}
-=======
 
 ```{r eval=FALSE, include=FALSE}
->>>>>>> 96adc9a78bbca31d16595cee115a72902503553c
 #derive best possible thresholds
 best_data_thresholds <- calculate_thresholds(best_data, label = "best data")
 ```
@@ -1874,11 +1870,8 @@ tier4_sensitivity_food_marine <- leave_one_out_tier3_4(filtered.data.large.defau
 ```
 
 ### Export Data
-<<<<<<< HEAD
 
-=======
 #### Join to base thresholds for comparison
->>>>>>> 96adc9a78bbca31d16595cee115a72902503553c
 ```{r}
 thresholds <- all_thresholds_long %>% 
   filter(grepl("Default", Metric)) %>% 
@@ -2242,7 +2235,7 @@ perfect fidelity through copying into this markdown script has proven
 impossible. Just import the final RDS file generated from that script.
 
 ```{r}
-MC_results <- readRDS("monte carlo/output/MC_results_sobol.rds")
+MC_results <- readRDS("scripts/monte carlo/output/MC_results_sobol.rds")
 summary_stats_base_thresholds <- readRDS("monte carlo/output/summary_stats_base_thresholds_sobol.rds")
 ```
 
