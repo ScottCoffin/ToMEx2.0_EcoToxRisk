@@ -12,15 +12,11 @@ output:
     number_sections: true
   word_document:
     toc: yes
-editor_options: 
-  markdown: 
-    wrap: 72
 ---
-
 #Setup
 
-```{r, setup, include=TRUE}
-knitr::opts_knit$set(root.dir = "H:/My Drive/Work/Current/Tomex/ToMEx2.0_EcoToxRisk")
+```{r, setup, include=FALSE}
+#knitr::opts_knit$set(root.dir = "G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk")
 ```
 
 ```{r, include=FALSE}
@@ -29,7 +25,6 @@ knitr::opts_chunk$set(fig.width=10, fig.height=8, fig.path='output/figures',
 ```
 
 ## Libraries
-
 ```{r Libraries, include = FALSE}
 library(tidyverse)
 library(calecopal)
@@ -121,8 +116,8 @@ theme.dark <- dark_theme_minimal(base_size = 15) +
         axis.title.y = element_text(vjust = 0.5, size = 18))   # Center the y-axis title (vertically))   # Center the subtitle)
 ```
 
-### Data Import
 
+### Data Import
 ```{r Data Import, include = FALSE}
 #Load aoc_z into dataframe. This file is generated from aq_mp_tox_shiny repo / ToMEx2.0_Onboarding / ToMEx2.0_Data_Tidying.R
 
@@ -130,7 +125,7 @@ theme.dark <- dark_theme_minimal(base_size = 15) +
   #rename columns so they fir the OG script
 getwd()
 
-aoc_z <- readRDS("data/input/aoc_z_tomex2.RDS") %>%  #dataset is prepped in shiny repo
+aoc_z <- readRDS("../data/input/aoc_z_tomex2.RDS") %>%  #dataset is prepped in shiny repo
   rename(environment = env_f)# %>% 
   #select(-rowid)# %>% #existing rowid is actually replicated (not sure how)
   #mutate(rowid = row_number())
@@ -139,21 +134,17 @@ aoc_z <- readRDS("data/input/aoc_z_tomex2.RDS") %>%  #dataset is prepped in shin
 
 # ToMEx 2.0 data file (no alignments)
 ## dataset prepared in RShiny repo and imported ##
-tomex2.0 <- read_rds("scripts/monte carlo/ref data/tomex2_input.rds")
+tomex2.0 <- read_rds("monte carlo/ref data/tomex2_input.rds")
 
 # LEgacy file from May, 2024 for beta-testing
 #tomex2.0 <- read_rds("ref data/tomex2_input_May2024.rds")
 
 # auxiliary data necessary for ToMEX 2.0 data tidying
-bodysize_addons <- read_csv("scripts/monte carlo/ref data/gape_size.csv", show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder
+bodysize_addons <- read_csv("monte carlo/ref data/gape_size.csv", show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder
 ```
 
 ### Data Cleanup
-
-A large number of values is getting filtered out during alignments. This
-should not be the case. We can debug by looking at missing values for
-the parameters that are relevant to alignments.
-
+A large number of values is getting filtered out during alignments. This should not be the case. We can debug by looking at missing values for the parameters that are relevant to alignments.
 ```{r}
 aoc_simple <- aoc_z %>%
    filter(!environment %in% c("Terrestrial", "Not Reported"),
@@ -185,7 +176,6 @@ aoc_simple_check <- aoc_simple %>%
 aoc_simple_check %>% 
   filter(!data_available)
 ```
-
 
 ## Summary Statistics
 ```{r}
@@ -253,48 +243,37 @@ aoc_z %>%
 
 ![Agreed-upon framework](../assets/threshold_framework.png)
 
-The figure above displays the working threshold framework for the
-ambient threshold group for the Microplastics Health Effects Workshop.
+The figure above displays the working threshold framework for the ambient threshold group for the Microplastics Health Effects Workshop. 
 
-The current framework for generating SSDs includes the following
-parameters:
+The current framework for generating SSDs includes the following parameters:
 
-Data pertaining to only aquatic organisms are included (marine and
-freshwater).
+Data pertaining to only aquatic organisms are included (marine and freshwater).  
 
-All taxa are included with the exception of bacterium and plants.
+All taxa are included with the exception of bacterium and plants.  
 
-HONEC (Highest Observed No Effect Concentration) are excluded.
+HONEC (Highest Observed No Effect Concentration) are excluded.  
 
-Assessment factors are applied to convert all other effect metrics into
-NOECs:
+Assessment factors are applied to convert all other effect metrics into NOECs:
 
 ![](../assets/AF_EM.png)
 
-Reference: Wigger et al. 2020 (doi: 10.1002/ieam.4214)
+Reference: Wigger et al. 2020 (doi: 10.1002/ieam.4214)  
 
-Assessment factors are applied to convert acute data into chronic:
+Assessment factors are applied to convert acute data into chronic:  
 
 ![](../assets/AF_chronic.png)
 
-Green rows are from Wigger et al. 2020. Grey rows were agreed upon by
-the ambient threshold working group.
+Green rows are from Wigger et al. 2020. Grey rows were agreed upon by the ambient threshold working group.
 
 Reference: Wigger et al. 2020 (doi: 10.1002/ieam.4214)
 
-Note: Values may be slightly different than those presented in the shiny
-app as concentrations are converted from particles/mL to particles/L
-ahead of calculations.
+Note: Values may be slightly different than those presented in the shiny app as concentrations are converted from particles/mL to particles/L ahead of calculations.
+
 
 # ERM/SSD Calculations
-
-The following script utilizes the above equations to calculate *a
-priori* effect thresholds for each of the ERM of interest for each
-species in the database, then calculates species sensitivity
-distributions using each ERM.
+The following script utilizes the above equations to calculate *a priori* effect thresholds for each of the ERM of interest for each species in the database, then calculates species sensitivity distributions using each ERM.
 
 *Data Filtering by Quality*
-
 ```{r}
 ## First filter data with global filters
 aoc_intermediate <- aoc_z %>% 
@@ -344,7 +323,6 @@ grid.arrange(Group_size, endpoint_size)
 ### Alignment
 
 #### Parameters
-
 ```{r}
 R.ave.water.marine <- 0.77 # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
 R.ave.water.freshwater <- 0.67 # average length to width ratio of microplastics in freshwater environment (Kooi et al. 2021)
@@ -384,7 +362,6 @@ aoc_intermediate_alphas <- aoc_intermediate %>%
 ```
 
 #### Functions
-
 ```{r}
 ###function to derive correction factor (CF) from Koelmans et al (equation 2)
 CFfnx = function(a, #default alpha from Koelmans et al (2020)
@@ -498,10 +475,7 @@ SSA.inversefnx = function(sa, #surface area, calcaulted elsewhere
 
 #### Calculate
 
-Here we will calculate two aligned exposure concentrations: surface area
-(1 - 83 um), and volume (1 - 5,000 um). For both, the upper aligned
-value is the smaller of either the nominal size listed or the mouth size
-of the species.
+Here we will calculate two aligned exposure concentrations: surface area (1 - 83 um), and volume (1 - 5,000 um). For both, the upper aligned value is the smaller of either the nominal size listed or the mouth size of the species.
 
 ```{r}
 ###define sizes for alignment##
@@ -621,7 +595,6 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
 ```
 
 ###### Save Aligned dataset
-
 ```{r}
 #saveRDS(aoc_final,"G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/data/output/aoc_final.RDS")
 
@@ -640,12 +613,12 @@ aoc_final <- aoc_final %>%
          ) 
 
 saveRDS(aoc_final,
-        "data/output/aoc_final.RDS")
+        "../data/output/aoc_final.RDS")
 ```
 
-####Test to see if same thresholds attained in main risk calculation
-\##### SSD Functions
 
+####Test to see if same thresholds attained in main risk calculation
+##### SSD Functions
 ```{r}
 #### define function for SSD generation for tier 1 ####
 SSD_function_t1 <- function(filtered.data, hcxlcl){
@@ -735,8 +708,8 @@ list(hcx_est = hcx_est,
 }
 ```
 
-##### Base Thresholds
 
+##### Base Thresholds
 ```{r}
 #filter out risk criteria (not done above)#
 aoc_risk_paper <- aoc_final %>% 
@@ -803,11 +776,9 @@ base_thresholds <- tibble(
 
 base_thresholds
 ```
-
 ```{r}
 kable(base_thresholds)
 ```
-
 
 ```{r}
 base_thresholds %>% 
@@ -821,60 +792,62 @@ base_thresholds %>%
 
 ![Agreed-upon framework](assets/treshold_framework.png)
 
-**Threshold 1:** *HC*: HC5 *Data collapsing*: 1st quartile *Point
-estimate*: lower 95% (of distribution) *Biological scale of endpoints*:
-molecular to population
+**Threshold 1:**
+*HC*: HC5
+*Data collapsing*: 1st quartile
+*Point estimate*: lower 95% (of distribution)
+*Biological scale of endpoints*: molecular to population
 
-**Threshold 2:** *HC*: HC5 *Data collapsing*: 1st quartile *Point
-estimate*: median (of distribution) *Biological scale of endpoints*:
-molecular to population
+**Threshold 2:**
+*HC*: HC5
+*Data collapsing*: 1st quartile
+*Point estimate*: median (of distribution)
+*Biological scale of endpoints*: molecular to population
 
-**Threshold 3:** *HC*: HC5 *Data collapsing*: median *Point estimate*:
-median *Biological scale of endpoints*: organismal and population
+**Threshold 3:**
+*HC*: HC5
+*Data collapsing*: median
+*Point estimate*: median
+*Biological scale of endpoints*: organismal and population
 
-**Threshold 4:** *HC*: HC10 *Data collapsing*: median *Point estimate*:
-median *Biological scale of endpoints*: organismal and population
+**Threshold 4:**
+*HC*: HC10
+*Data collapsing*: median
+*Point estimate*: median
+*Biological scale of endpoints*: organismal and population
 
-The figure above displays the working threshold framework for the
-ambient threshold group for the Microplastics Health Effects Workshop.
+The figure above displays the working threshold framework for the ambient threshold group for the Microplastics Health Effects Workshop. 
 
-The current framework for generating SSDs includes the following
-parameters:
+The current framework for generating SSDs includes the following parameters:
 
-Data pertaining to only aquatic organisms are included (marine and
-freshwater).
 
-All taxa are included with the exception of bacterium and plants.
 
-HONEC (Highest Observed No Effect Concentration) are excluded.
+Data pertaining to only aquatic organisms are included (marine and freshwater).  
 
-Assessment factors are applied to convert all other effect metrics into
-NOECs:
+All taxa are included with the exception of bacterium and plants.  
+
+HONEC (Highest Observed No Effect Concentration) are excluded.  
+
+Assessment factors are applied to convert all other effect metrics into NOECs:
 
 ![](../assets/AF_EM.png)
 
-Reference: Wigger et al. 2020 (doi: 10.1002/ieam.4214)
+Reference: Wigger et al. 2020 (doi: 10.1002/ieam.4214)  
 
-Assessment factors are applied to convert acute data into chronic:
+Assessment factors are applied to convert acute data into chronic:  
 
 ![](../assets/AF_chronic.png)
 
-Green rows are from Wigger et al. 2020. Grey rows were agreed upon by
-the ambient threshold working group.
+Green rows are from Wigger et al. 2020. Grey rows were agreed upon by the ambient threshold working group.
 
 Reference: Wigger et al. 2020 (doi: 10.1002/ieam.4214)
 
-Note: Values may be slightly different than those presented in the shiny
-app as concentrations are converted from particles/mL to particles/L
-ahead of calculations.
+Note: Values may be slightly different than those presented in the shiny app as concentrations are converted from particles/mL to particles/L ahead of calculations.
 
 ## Quality score testing
-
-Do thresholds differ significantly when only studies passing red
-criteria (technical, risk applicability) are used/not?
+Do thresholds differ significantly when only studies passing red criteria (technical, risk applicability) are used/not? 
 
 ### Functionalize threshold derivation
-
 ```{r}
 nboot = 10 #ssd bootstraps
 n_sim <- 1 #deterministic analysis
@@ -903,17 +876,22 @@ RUN THESE IN CONSOLE
 ```{r}
 getwd()
 ##### STEP 1: DERIVE VALUES TO RUN PROBABILISTICALLY #####
-source("scripts/monte carlo/ssd_functions.R")
+source("monte carlo/ssd_functions.R")
 ## these locations are correct, but for some reason R won't locate them. Run in console
 #source("scripts/monte carlo/RDAmaker_functions.R") #get ToMEx1.0 fxn
 #source("scripts/monte carlo/ToMEx2.0_Data_Tidying_functions.R")
 library(here)
 here()
 source(here("scripts/monte carlo/RDAmaker_functions.R")) #get ToMEx1.0 fxn
-source("scripts/monte carlo/ToMEx2.0_Data_Tidying_functions.R") 
+source("monte carlo/ToMEx2.0_Data_Tidying_functions.R") 
 ```
 RUN THESE IN CONSOLE
 ```{r}
+getwd()
+#### read in input data necessary for functionalized data tidying 
+# ToMEx 1.0 data file (no alignments)
+aoc <- read_csv("monte carlo/ref data/AquaticOrganisms_Clean_final.csv", 
+                guess_max = 10000, show_col_types = FALSE) %>% rowid_to_column()
 
 ## Some alignments are done in these data processing scripts
 ## generate ToMEx 1.0 dataset ###
@@ -1204,7 +1182,6 @@ calculate_thresholds <- function(data, label) {
 ```
 
 ### Data filtering and run threshold derivation
-
 ```{r}
 #filter out risk and tech criteria
 aoc_risk_paper <- tomex2.0_aoc_z_final %>% 
@@ -1261,7 +1238,6 @@ no_quality <- calculate_thresholds(aoc_aligned_no_filters, label = "no quality f
 
 #print(unified_thresholds)
 ```
-
 
 ```{r}
 # Extract and combine base_thresholds for each environment
@@ -1379,25 +1355,19 @@ write.csv(all_thresholds_combined, "../output/data/all_thresholds_combined_quali
 ```
 
 #### Maximize quality filters
-
-We need to perform an iterative approach to filter the dataset based on
-quality criteria and ensure that the filtered dataset contains at least
-6 unique species. We will maximize the quality of studies used to derive
-thresholds by trying different combinations of quality criteria.
+We need to perform an iterative approach to filter the dataset based on quality criteria and ensure that the filtered dataset contains at least 6 unique species. We will maximize the quality of studies used to derive thresholds by trying different combinations of quality criteria.
 
 Here's how you can do it:
 
-Create a function to filter the dataset based on a given set of quality
-criteria. Create a function to check if a dataset has at least 6 unique
-species. Iterate over all possible combinations of quality criteria to
-find the best quality dataset that meets the minimum species
-requirement. Run the SSD functions on the best quality dataset.
+Create a function to filter the dataset based on a given set of quality criteria.
+Create a function to check if a dataset has at least 6 unique species.
+Iterate over all possible combinations of quality criteria to find the best quality dataset that meets the minimum species requirement.
+Run the SSD functions on the best quality dataset.
 
 ##### Exhaustive Approach
 
-Number of Combinations: 2 \^ 27 − 1 ≈ 134,217,727 combinations. Could
-take \~37 hrs to run.
-
+Number of Combinations: 
+2 ^ 27 − 1 ≈ 134,217,727 combinations. Could take ~37 hrs to run.
 ```{r}
 # Define quality criteria
 quality_criteria <- c("tech.a1", "tech.a2", "tech.a3", "tech.a4", "tech.a5", "tech.a6", "tech.1",
@@ -1478,13 +1448,10 @@ best_data %>% select(c(Species, total.quality, contains("tech"), contains("risk"
 #derive best possible thresholds
 best_data_thresholds <- calculate_thresholds(best_data, label = "best data")
 ```
-
 ##### Heuristic/GREEDY Method
+We can employ a heuristic approach to prioritize checking the combinations that are more likely to yield high-quality datasets early, such as starting with the criteria that have the highest average scores or using a greedy algorithm.
 
-We can employ a heuristic approach to prioritize checking the
-combinations that are more likely to yield high-quality datasets early,
-such as starting with the criteria that have the highest average scores
-or using a greedy algorithm.
+
 
 ```{r}
 # Function to filter dataset based on quality criteria
@@ -1564,17 +1531,11 @@ unified_thresholds <- bind_rows(marine_thresholds, freshwater_thresholds)
 print(unified_thresholds)
 ```
 
+
 # Sensitivity Analysis
-
 ## Leave-one-out method
-
-These techniques are based on the Leave-One-Out-method, in which we
-recalculate the results of our meta-analysis K − 1 times, each times
-leaving out one study. This way, we can more easily detect studies which
-influence the overall estimate of our meta-analysis the most, and this
-lets us better assess if this influence may distort our pooled effect
-(Viechtbauer and Cheung 2010). \### Functions
-
+These techniques are based on the Leave-One-Out-method, in which we recalculate the results of our meta-analysis K − 1  times, each times leaving out one study. This way, we can more easily detect studies which influence the overall estimate of our meta-analysis the most, and this lets us better assess if this influence may distort our pooled effect (Viechtbauer and Cheung 2010).
+### Functions
 ```{r}
 create_leave_one_out_function_t1 <- function(filtered_data) {
   # Vectorized leave-one-out function
@@ -1787,9 +1748,7 @@ leave_one_out_tier3_4 <- function(filtered_data, hcx_num, ERM_input, tier_input,
 }
 
 ```
-
 ### Perform Sensitivity Analyses
-
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 #### Freshwater #####
 #Tissue Translocation Thresholds
@@ -1870,7 +1829,6 @@ tier4_sensitivity_food_marine <- leave_one_out_tier3_4(filtered.data.large.defau
 ```
 
 ### Export Data
-
 #### Join to base thresholds for comparison
 ```{r}
 thresholds <- all_thresholds_long %>% 
@@ -1917,14 +1875,13 @@ leave_one_out_df <- bind_rows(tier1_sensitivity_tissue_freshwater$sensitivity_su
 write.csv(leave_one_out_df,
           "../output/data/leave_one_out.csv")
 ```
-
 ```{r}
 ### start here if not wanting to run previous chunk (can take a long time)
 leave_one_out_df <- read.csv("../output/data/leave_one_out.csv")
 ```
 
-### Plot
 
+### Plot
 ```{r}
 library(ggallin)
 
@@ -2027,9 +1984,7 @@ ggsave(plot = leave_one_out_ggplot,
 
 leave_one_out_ggplot
 ```
-
 #### Plotly
-
 ```{r}
 leave_one_out_ggplotly <- ggplotly(leave_one_out_ggplot, tooltip = "text")
 
@@ -2039,10 +1994,12 @@ require(htmlwidgets)
 saveWidget(leave_one_out_ggplotly , file = "../output/Manuscript_Figs/leave_one_out_ggplotly.html")
 ```
 
+
+
+
+
 ## Monte Carlo Alignments
-
 ### Parameter histograms
-
 ```{r}
 n_sim <- 100000 #histogram data points
 # particle properties
@@ -2165,9 +2122,7 @@ param_values <- data.frame(
   upper.tissue.size.um =  upper.tissue.trans.size.um_samples
 )
 ```
-
 Save summary stats and params in a table for the SI.
-
 ```{r}
 summaries <- param_values %>%
   pivot_longer(cols = everything(), names_to = "Parameter", values_to = "Value") %>%
@@ -2185,8 +2140,9 @@ write.csv(summaries, "../output/data/MC_params.csv", row.names = FALSE)
 summaries
 ```
 
-Draw histograms for publication
 
+Draw histograms for publication
+ 
 ```{r}
 MC_param_histograms <- param_values %>% 
   pivot_longer(cols = everything()) %>% 
@@ -2228,25 +2184,23 @@ ggsave(filename = "MC_param_histograms.jpg",
        plot = MC_param_histograms, width = 9, height = 8, units = "in")
 ```
 
-NOTE: this is done in scripts/monte
-carlo/Master_Data_Tidying_Monte_Carlo.R. The reason is that the data
-prep scripts are extremely complicated, and preserving every nuance with
-perfect fidelity through copying into this markdown script has proven
-impossible. Just import the final RDS file generated from that script.
 
+ NOTE: this is done in scripts/monte carlo/Master_Data_Tidying_Monte_Carlo.R. The reason is that the data prep scripts are extremely complicated, and preserving every nuance with perfect fidelity through copying into this markdown script has proven impossible. Just import the final RDS file generated from that script.
+ 
 ```{r}
-MC_results <- readRDS("scripts/monte carlo/output/MC_results_sobol.rds")
+MC_results <- readRDS("monte carlo/output/MC_results_sobol.rds")
 summary_stats_base_thresholds <- readRDS("monte carlo/output/summary_stats_base_thresholds_sobol.rds")
 ```
-
+ 
 ```{r}
 aoc_MC <- readRDS("monte carlo/output/aoc_MC.rds")
 n_sim <- aoc_MC$n_sim[[1]]
 print(paste("Number of MC Simulations:", n_sim))
 ```
 
-### Alignment Monte-Carlo Simulation
 
+
+### Alignment Monte-Carlo Simulation
 #### Test code with static values
 
 ```{r eval=FALSE, include=FALSE}
@@ -2288,7 +2242,7 @@ if (length(diff_rows) > 0) {
  aoc_d_simple[diff_rows,]
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 left_join(aoc_d_simple %>% select(c(rowid, particles.mL.ox.stress, particles.mL.food.dilution)),
           aoc_final %>% select(c(rowid, particles.mL.ox.stress, particles.mL.food.dilution)),
           by = "rowid", suffix = c(".x", ".y")) %>% 
@@ -2297,12 +2251,11 @@ left_join(aoc_d_simple %>% select(c(rowid, particles.mL.ox.stress, particles.mL.
   filter(ox.stress.ratio != 1)
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 left_join(aoc_d_simple, aoc_final_simple, by ="rowid")
 ```
 
 ### Threshold distributions
-
 ```{r}
 # Extract and combine base_thresholds for each environment
 all_thresholds_marine <- map(MC_results, ~ .x$base_thresholds$marine) %>% 
@@ -2420,8 +2373,9 @@ MC_histograms_light
 
 ```
 
-### CoV Determination
 
+
+### CoV Determination
 ```{r eval=FALSE, include=FALSE}
 ## STEP 1: 
 # Create a dataframe from the list
@@ -2439,6 +2393,7 @@ results_df$particles_L_food_dilution <- as.numeric(as.character(results_df$parti
 
 skimr::skim(results_df)
 ```
+
 
 ```{r eval=FALSE, include=FALSE}
 ## Step 2:
@@ -2579,7 +2534,6 @@ ggarrange(points_cv_food, points_cv_ox,
           common.legend = TRUE, legend = "right")
 ```
 
-
 ##### Statistical Tests
 ```{r}
 mouth_lm_food <- lm(data = aoc_MC, CoV_food_dilution ~ max.size.ingest.um)
@@ -2594,6 +2548,7 @@ summary(mouth_lm_food)
 mouth_spearman_food <- cor.test(aoc_MC$CoV_food_dilution, aoc_MC$max.size.ingest.um, method = "spearman")
 mouth_spearman_food
 ```
+
 
 ```{r}
 mouth_lm_ox_stress <- lm(data = aoc_MC,
@@ -2692,7 +2647,6 @@ ggsave(filename = "CoV_mouth_plots.jpg",
 CoV_mouth_plots
 ```
 
-
 ```{r}
 # Convert individual ggplots to plotly objects
 plot1 <- ggplotly(mouth_cv_food, tooltip = "text")
@@ -2712,14 +2666,11 @@ CoV_mouth_plotly
 
 
 check to see if any CoV are negative (should not be!)
-
 ```{r include=FALSE}
 aoc_MC %>% 
   filter(CoV_food_dilution < 0)
 ```
-
 ### Fiter data
-
 ```{r}
 getwd()
 source("monte carlo/ssd_functions.R")
@@ -2742,7 +2693,6 @@ freshwater_MC_data <-  filter_environment_data(data = aoc_MC %>%
 ```
 
 ### Example MC Results
-
 ```{r}
 example.df <-  left_join(results_df,
           #freshwater_MC_data$filtered_data_small_default_t3_4 %>% 
@@ -2941,8 +2891,8 @@ ggsave(filename = "MC_example_plots.jpg",
 MC_example_plots
 ```
 
-#### Filtering for threshold prep
 
+#### Filtering for threshold prep
 ```{r}
 #filter out risk criteria (not done above)#
 aoc_risk_paper_MC <- aoc_MC %>% 
@@ -2990,6 +2940,8 @@ filtered.data.large.default_t3.4_MC <- filtered.data.large.default_t1.2_MC %>%
 
 ```
 
+
+
 # Probabilistic Species Sensitivity Distribution Plus
 
 ```{r eval=TRUE, include=FALSE}
@@ -3009,7 +2961,6 @@ saveRDS(tier3_4_tissue, "../data/output/tier3_4_tissue.RDS")
 ```
 
 ## Summarize datasets
-
 ```{r}
 ### count unique studies, datapoints, and species
 #function
@@ -3045,6 +2996,7 @@ final_summary <- bind_rows(tier1_2_food_summary, tier3_4_food_summary,
 #display
 print(final_summary)
 ```
+
 
 ```{r eval=TRUE, include=FALSE}
 # -------------------------------------------------------------------------------------------------
@@ -3088,9 +3040,7 @@ CV.UF <- 0.5 #unclear how this value was derived... I believe it corresponds to 
 ```
 
 ## Functions
-
 ### Data Preparation
-
 ```{r}
 #FUnction to process data
 prep_data <- function(data) {
@@ -3152,7 +3102,6 @@ prep_data <- function(data) {
 ```
 
 ### Run PSSD
-
 ```{r include=FALSE}
 run_pSSD_analysis <- function(data_matrices, num_iterations, sim, cv_dp, cv_uf, data_name) {
   # Initialize an empty list to store the results
@@ -3195,8 +3144,8 @@ run_pSSD_analysis <- function(data_matrices, num_iterations, sim, cv_dp, cv_uf, 
 # )
 ```
 
-###Plotting \#### Preparation Function
-
+###Plotting
+#### Preparation Function
 ```{r}
 prepare_plot_data <- function(pSSD, data_matrices, species_data_source) {
   # Ensure that the required matrices are present and correctly formatted
@@ -3264,8 +3213,8 @@ prepare_plot_data <- function(pSSD, data_matrices, species_data_source) {
 
 ```
 
-#### PSSD ggplot Function
 
+#### PSSD ggplot Function
 ```{r}
 
 pSSD_plot <-  function(quantiles_df = quantiles_df, species_data = species_data, data_name = data_name){
@@ -3298,7 +3247,6 @@ ggplot() +
 ```
 
 #### PNEC ggplot Function
-
 ```{r}
 # Calculate PNEC1 if not already calculated
 PNEC_plot <- function(pssd_results, hcx, data_name){
@@ -3321,9 +3269,7 @@ PNEC_plot <- function(pssd_results, hcx, data_name){
 #            hcx = 0.05
 #           data_name = "Tier 2 (Food Dilution)")
 ```
-
 #### PNEC Data Summary
-
 ```{r}
   # Mode calculation using density
 Mode_Y <- function(x) {
@@ -3370,9 +3316,7 @@ return(list("stats" = as.data.frame(Stat_PNEC_t),
 ```
 
 ## Application
-
 ### Tier 1_food
-
 ```{r include=FALSE}
 #Step 1: prep data matrices
 tier1_2_food_matrices <- prep_data(tier1_2_food)
@@ -3414,13 +3358,11 @@ ggarrange(tier1_2_food_pssdPlot,tier1_2_food_PNECPlot,
 
 
 ```
-
 ```{r}
 tier1_2_food_PNEC_summary$stats
 ```
 
 ### Tiers 3 and 4_food
-
 ```{r include=FALSE}
 #Step 1: prep data matrices
 tier3_4_food_matrices <- prep_data(tier3_4_food)
@@ -3478,7 +3420,6 @@ ggsave(filename = "food_plots_light.jpg",
 
 food_plots_light
 ```
-
 ```{r}
 food_plots_dark <- ggarrange(tier3_4_food_pssdPlot + theme.dark + theme(legend.position = c(0.1, 0.6)),  
                         ggarrange(tier3_food_PNECPlot + theme.dark,
@@ -3499,7 +3440,6 @@ cbind(tier3_food_PNEC_summary$stats, tier4_food_PNEC_summary$stats)
 ```
 
 ### Tier 3 and 4_tissue
-
 ```{r include=FALSE}
 #Step 1: prep data matrices
 tier3_4_tissue_matrices <- prep_data(tier3_4_tissue)
@@ -3560,7 +3500,6 @@ ggsave(filename = "tissue_plots_light.jpg",
 
 tissue_plots_light
 ```
-
 ```{r}
 tissue_plots_dark <- ggarrange(tier3_4_tissue_pssdPlot + theme.dark + theme(legend.position = c(0.15, 0.6)),  
                         ggarrange(tier3_tissue_PNECPlot + theme.dark,
@@ -3581,9 +3520,7 @@ cbind(tier3_tissue_PNEC_summary$stats, tier4_tissue_PNEC_summary$stats)
 ```
 
 ## Summary
-
 ### Table
-
 ```{r}
 summary_table <- cbind(tier3_food_PNEC_summary$stats, tier4_food_PNEC_summary$stats,
                        tier3_tissue_PNEC_summary$stats, tier4_tissue_PNEC_summary$stats) %>% 
@@ -3591,7 +3528,6 @@ summary_table <- cbind(tier3_food_PNEC_summary$stats, tier4_food_PNEC_summary$st
 
 summary_table
 ```
-
 ```{r}
 base_tissue <- data.frame(Tier = c("1", "2", "3", "4"),
                           ERM = "Tissue Translocation", 
@@ -3611,8 +3547,8 @@ base_thesholds_df <- rbind(base_tissue, base_food) %>%
 base_thesholds_df
 ```
 
-### Plot Comparisons with Deterministic Approach
 
+### Plot Comparisons with Deterministic Approach
 ```{r}
 #data prep
 t3f <- data.frame(ERM = "Food Dilution", Tier = "3",PNEC = tier3_food_PNEC_summary$df)
@@ -3675,13 +3611,9 @@ ggsave(filename = "PNEC_pSSDvSSD.jpg",
 
 PNEC_pSSDvSSD_dark
 ```
-
 ## Supplemental
-
 ### Freshwater Only
-
 #### Data Filtering
-
 ```{r}
 #food dilution
 tier1_2_food_freshwater <- tier1_2_food %>% filter(environment == "Freshwater")
@@ -3691,9 +3623,7 @@ tier3_4_food_freshwater <- tier3_4_food %>% filter(environment == "Freshwater")
 tier1_2_tissue_freshwater <- tier1_2_tissue %>% filter(environment == "Freshwater")
 tier3_4_tissue_freshwater <- tier3_4_tissue %>% filter(environment == "Freshwater")
 ```
-
 #### Processing
-
 ```{r include=FALSE}
 ### Food Dilution
 #Step 1: prep data matrices
@@ -3743,3 +3673,4 @@ freshwater_food_plots <- ggarrange(tier3_4_food_freshwater_pssdPlot,
 
 freshwater_food_plots
 ```
+
