@@ -70,10 +70,10 @@ do.pSSD <- function(DP,
     ind.max <- which.max(corr.endpoints[,sp])
     
     if(is.matrix(CV.DP)){
-      CV.DP2 <- CD.DP[,sp]
+      CV.DP2 <- CV.DP[,sp]
     }
     else{
-      CV.DP2 <- CD.DP
+      CV.DP2 <- CV.DP
     }
     
     # calculate the theoretical minimum and maximum of the distribution we are looking for
@@ -107,9 +107,9 @@ do.pSSD <- function(DP,
       #Use this in place of below to bootstrap. 
       # The low end of the CV correction factors
 
-      low <- (1-(sqrt(sum(c(DP.SD[[sp]], CV.DP2, CV.UF)^2))))
+      low <- (1-(sqrt(sum(c(DP.SD[,sp], CV.DP2, CV.UF)^2, na.rm = T))))
       # The high end of the CV correction factors
-      high <- (1+(sqrt(sum(c(DP.SD[[sp]], CV.DP2, CV.UF)^2))))
+      high <- (1+(sqrt(sum(c(DP.SD[,sp], CV.DP2, CV.UF)^2, na.rm = T))))
       # Create a boostrap of the correction factors
       uncertainty_factor <- runif(min = low, 
                                   max = high, 
