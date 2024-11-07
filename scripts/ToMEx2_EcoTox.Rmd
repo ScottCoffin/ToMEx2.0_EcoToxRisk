@@ -2486,9 +2486,9 @@ aoc_MC %>%
 ### IMPORT DATA
 ```{r}
 getwd()
-aoc_MC <- readRDS("monte carlo/output/aoc_MC_sobol.rds")
+aoc_MC <- readRDS("scripts/monte carlo/output/aoc_MC_sobol.rds")
 
-results_df <- readRDS("monte carlo/output/results_df_sobol.rds")
+results_df <- readRDS("scripts/monte carlo/output/results_df_sobol.rds")
 ```
 
 #### CoV Plots
@@ -2722,7 +2722,7 @@ aoc_MC %>%
 
 ```{r}
 getwd()
-source("monte carlo/ssd_functions.R")
+source("scripts/monte carlo/ssd_functions.R")
 
 freshwater_MC_data <-  filter_environment_data(data = aoc_MC %>% 
                                                  rename(particles.mL.ox.stress = particles.mL.ox.stress.x,
@@ -3002,10 +3002,10 @@ tier1_2_tissue <- filtered.data.small.default_t1.2_MC
 tier3_4_tissue <- filtered.data.small.default_t3.4_MC
 
 ##  save datasets for other scripts and the paper
-saveRDS(tier1_2_food, "../data/output/tier1_2_food.RDS")
-saveRDS(tier3_4_food, "../data/output/tier3_4_food.RDS")
-saveRDS(tier1_2_tissue, "../data/output/tier1_2_tissue.RDS")
-saveRDS(tier3_4_tissue, "../data/output/tier3_4_tissue.RDS")
+saveRDS(tier1_2_food, "data/output/tier1_2_food.RDS")
+saveRDS(tier3_4_food, "data/output/tier3_4_food.RDS")
+saveRDS(tier1_2_tissue, "data/output/tier1_2_tissue.RDS")
+saveRDS(tier3_4_tissue, "data/output/tier3_4_tissue.RDS")
 ```
 
 ## Summarize datasets
@@ -3065,8 +3065,8 @@ print(final_summary)
 
 ##### Build fun4ctions ####
 getwd()
-source("PSSD/rmore.r")
-source("PSSD/do.pssd.r")
+source("scripts/PSSD/rmore.r")
+source("scripts/PSSD/do.pssd.r")
 #source("PSSD/do.pssd.troph.r")
 #source("PSSD/do.pssd.ag.r")
 
@@ -3175,7 +3175,7 @@ run_pSSD_analysis <- function(data_matrices, num_iterations, sim, cv_dp, cv_uf, 
   pSSD <- do.call(cbind, pSSD_list)
   
   # Save the combined results
-  save(pSSD, file = paste0("PSSD/updated/",data_name,".RData"))
+  save(pSSD, file = paste0("scripts/PSSD/updated/",data_name,".RData"))
   
   # Calculate corrected endpoints
   corr_endpoints <- data_matrices[["DP"]] / (data_matrices[["UFt"]] * data_matrices[["UFdd"]])
