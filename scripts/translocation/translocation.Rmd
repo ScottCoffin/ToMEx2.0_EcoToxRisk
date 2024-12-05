@@ -49,116 +49,179 @@ df <- Tissue_Translocation %>%
   drop_na()
 skim(df)
 ```
-## Join
+## Dataset  Exploration
 ```{r}
 #Load aoc_z into dataframe. This file is generated from RDA_Maker.R
 #Source("Tox Data/RDA_Maker.R")
 aoc_z <- readRDS(file = "../../data/input/aoc_z_tomex2.RDS")
 ```
 
-```{r}
-quality <- aoc_z %>% 
- select(c(
-    doi:tier_zero_risk_f
-  ))
+<!-- ```{r} -->
+<!-- quality <- aoc_z %>%  -->
+<!--  select(c( -->
+<!--     doi:tier_zero_risk_f -->
+<!--   )) -->
 
-joined <- left_join(Tissue_Translocation, quality, by = "doi") %>% 
-  distinct() %>% 
-     #Assign descriptions to each criteria
-      rename("Test Medium Reported*" = "tech.a1",
-    "Administration Route Reported*" = "tech.a2",
-     "Test Species Reported*" = "tech.a3",
-     "Sample Size Reported*" = "tech.a4",
-    "Control Group Reported*" = "tech.a5",
-    "Exposure Duration Reported*" = "tech.a6" ,
-    "Particle Size*" = "tech.1",
-    "Particle Shape*" = "tech.2",
-    "Polymer Type*" = "tech.3",
-                                  "Source of Microplastics*" = "tech.4",
-                                     "Data Reporting*" = "tech.5",
-                                    "Chemical Purity" = "tech.6",
-                                     "Laboratory Preparation" = "tech.7",
-                                    "Background Contamination" = "tech.8",
-                                    "Exposure Verification" = "tech.9",
-                                     "Exposure Homogeneity" = "tech.10",
-                                    "Exposure Assessment" = "tech.11",
-                                    "Replication" = "tech.12",
-                                    "Endpoints" = "risk.13",
-                                    "Food Availability" = "risk.14",
-                                    "Effect Thresholds" = "risk.15",
-                                    "Dose Response" = "risk.16",
-                                    "Concentration Range" = "risk.17",
-                                    "Aging and Biofouling" = "risk.18",
-                                    "Risk Assessment" = "risk.18",
-                                    "Microplastic Diversity" = "risk.19",
-                                    "Exposure Time" = "risk.20")
- 
-# what studies are missing quality criteria?
-joined %>% filter(is.na('Test Medium Reported*')) %>% 
-  distinct(doi, .keep_all = TRUE) %>% 
-  view()
+<!-- # joined <- left_join(Tissue_Translocation, quality, by = "doi") %>%  -->
+<!-- #   distinct() %>%  -->
+<!-- #      #Assign descriptions to each criteria -->
+<!-- #       rename("Test Medium Reported*" = "tech.a1", -->
+<!-- #     "Administration Route Reported*" = "tech.a2", -->
+<!-- #      "Test Species Reported*" = "tech.a3", -->
+<!-- #      "Sample Size Reported*" = "tech.a4", -->
+<!-- #     "Control Group Reported*" = "tech.a5", -->
+<!-- #     "Exposure Duration Reported*" = "tech.a6" , -->
+<!-- #     "Particle Size*" = "tech.1", -->
+<!-- #     "Particle Shape*" = "tech.2", -->
+<!-- #     "Polymer Type*" = "tech.3", -->
+<!-- #                                   "Source of Microplastics*" = "tech.4", -->
+<!-- #                                      "Data Reporting*" = "tech.5", -->
+<!-- #                                     "Chemical Purity" = "tech.6", -->
+<!-- #                                      "Laboratory Preparation" = "tech.7", -->
+<!-- #                                     "Background Contamination" = "tech.8", -->
+<!-- #                                     "Exposure Verification" = "tech.9", -->
+<!-- #                                      "Exposure Homogeneity" = "tech.10", -->
+<!-- #                                     "Exposure Assessment" = "tech.11", -->
+<!-- #                                     "Replication" = "tech.12", -->
+<!-- #                                     "Endpoints" = "risk.13", -->
+<!-- #                                     "Food Availability" = "risk.14", -->
+<!-- #                                     "Effect Thresholds" = "risk.15", -->
+<!-- #                                     "Dose Response" = "risk.16", -->
+<!-- #                                     "Concentration Range" = "risk.17", -->
+<!-- #                                     "Aging and Biofouling" = "risk.18", -->
+<!-- #                                     "Risk Assessment" = "risk.18", -->
+<!-- #                                     "Microplastic Diversity" = "risk.19", -->
+<!-- #                                     "Exposure Time" = "risk.20") -->
+<!-- #   -->
+<!-- # what studies are missing quality criteria? -->
+<!-- Tissue_Translocation %>%  -->
+<!-- #joined %>%  -->
+<!--   filter(is.na('Test Medium Reported*')) %>%  -->
+<!--   distinct(doi, .keep_all = TRUE) %>%  -->
+<!--   view() -->
 
-write.csv(joined, "translocation_scored_2.csv")
+<!-- write.csv(joined, "translocation_scored_2.csv") -->
 
-# #re-assign descriptions to each criteria in normal format
-#       rename("tech.a1" = "Test Medium Reported*",
-#     "tech.a2" = "Administration Route Reported*",
-#      "tech.a3" = "Test Species Reported*",
-#      "tech.a4" = "Sample Size Reported*",
-#     "tech.a5" = "Control Group Reported*",
-#     "tech.a6" = "Exposure Duration Reported*",
-#     "tech.1" = "Particle Size*",
-#     "tech.2" = "Particle Shape*",
-#     "tech.3" = "Polymer Type*",
-#                                   "tech.4" = "Source of Microplastics*",
-#                                     "tech.5" = "Data Reporting*",
-#                                     "tech.6" = "Chemical Purity",
-#                                     "tech.7" = "Laboratory Preparation",
-#                                     "tech.8" = "Background Contamination",
-#                                     "tech.9" = "Exposure Verification",
-#                                     "tech.10" = "Exposure Homogeneity",
-#                                     "tech.11" = "Exposure Assessment",
-#                                     "tech.12" = "Replication",
-#                                     "risk.13" = "Endpoints",
-#                                     "risk.14" = "Food Availability",
-#                                     "risk.15" = "Effect Thresholds",
-#                                     "risk.16" = "Dose Response",
-#                                     "risk.17" = "Concentration Range",
-#                                     "risk.18" = "Aging and Biofouling",
-#                                     "risk.18" = "Risk Assessment",
-#                                     "risk.19" = "Microplastic Diversity",
-#                                     "risk.20" = "Exposure Time")
-```
-```{r}
-getwd()
-joined <- read_excel("../../data/input/translocation_scored_2.xlsx")
-```
+<!-- # #re-assign descriptions to each criteria in normal format -->
+<!-- #       rename("tech.a1" = "Test Medium Reported*", -->
+<!-- #     "tech.a2" = "Administration Route Reported*", -->
+<!-- #      "tech.a3" = "Test Species Reported*", -->
+<!-- #      "tech.a4" = "Sample Size Reported*", -->
+<!-- #     "tech.a5" = "Control Group Reported*", -->
+<!-- #     "tech.a6" = "Exposure Duration Reported*", -->
+<!-- #     "tech.1" = "Particle Size*", -->
+<!-- #     "tech.2" = "Particle Shape*", -->
+<!-- #     "tech.3" = "Polymer Type*", -->
+<!-- #                                   "tech.4" = "Source of Microplastics*", -->
+<!-- #                                     "tech.5" = "Data Reporting*", -->
+<!-- #                                     "tech.6" = "Chemical Purity", -->
+<!-- #                                     "tech.7" = "Laboratory Preparation", -->
+<!-- #                                     "tech.8" = "Background Contamination", -->
+<!-- #                                     "tech.9" = "Exposure Verification", -->
+<!-- #                                     "tech.10" = "Exposure Homogeneity", -->
+<!-- #                                     "tech.11" = "Exposure Assessment", -->
+<!-- #                                     "tech.12" = "Replication", -->
+<!-- #                                     "risk.13" = "Endpoints", -->
+<!-- #                                     "risk.14" = "Food Availability", -->
+<!-- #                                     "risk.15" = "Effect Thresholds", -->
+<!-- #                                     "risk.16" = "Dose Response", -->
+<!-- #                                     "risk.17" = "Concentration Range", -->
+<!-- #                                     "risk.18" = "Aging and Biofouling", -->
+<!-- #                                     "risk.18" = "Risk Assessment", -->
+<!-- #                                     "risk.19" = "Microplastic Diversity", -->
+<!-- #                                     "risk.20" = "Exposure Time") -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- getwd() -->
+<!-- joined <- read_excel("../../data/input/translocation_scored_2.xlsx") -->
+<!-- ``` -->
 
 
-
+### Size
 ```{r}
 #histogram
 histogram <- Tissue_Translocation %>%  
   ggplot(aes(x = size.um)) + 
-  geom_histogram(bins = 25) + 
+  geom_histogram(bins =19) + 
   scale_x_log10(name = expression(paste("Particle Length (", mu, "m)")),                                                                                               labels = scales::label_comma()) +
   theme_bw()
 histogram
 ```
 ```{r}
-
 ggsave(filename = "translocation_histogram.jpeg",
-       path = "./Concentration data/Threshold_Manuscript_Figs/", 
+       path = "../../output/Manuscript_Figs/translocation", 
        plot =histogram, width = 5, height = 3, units = "in",
        bg = "white")
 ```
 
+
+### Categorical Characteristics
+#### Total studies
 ```{r}
-skim(joined)
+Tissue_Translocation %>% 
+  #group_by(Polymer) %>% 
+  summarise(n_studies = n_distinct(doi)) %>% 
+  arrange(desc(n_studies))
 ```
 
-## Quality Screening
+#### Binary translocation
+```{r}
+Tissue_Translocation %>% 
+  group_by(`Tissue translocation observed (Y/N)`) %>% 
+  summarise(n_studies = n_distinct(doi),
+            n_datapoints = n()) %>% 
+  arrange(desc(n_studies))
+```
 
+#### Polymer
+```{r}
+Tissue_Translocation %>% 
+  mutate(Polymer = case_when(
+    grepl("PVC", Polymer) ~ "PVC",
+    grepl("PS", Polymer) ~ "PS",
+    Polymer == "unreported" ~ "uncharacterized",
+    Polymer == "HDPE" ~ "PE",
+    Polymer == "MDPE" ~ "PE",
+    Polymer == "Nylon" ~ "PA",
+    T ~ Polymer
+  )) %>% 
+  group_by(Polymer) %>% 
+  summarise(n_studies = n_distinct(doi),
+            n_obs = n()) %>% 
+  arrange(desc(n_studies))
+```
+#### Shape
+```{r}
+Tissue_Translocation %>% 
+  group_by(Shape) %>% 
+  summarise(n_studies = n_distinct(doi),
+            n_observations = n()) %>% 
+  arrange(desc(n_studies))
+```
+#### Species
+```{r}
+Tissue_Translocation %>% 
+  group_by(Species) %>% 
+  summarise(n_studies = n_distinct(doi)) %>% 
+  arrange(desc(n_studies))
+```
+#### ORganism Group
+```{r}
+Tissue_Translocation %>% 
+  group_by(Organisms) %>% 
+  summarise(n_studies = n_distinct(doi),
+            n_obs = n()) %>% 
+  arrange(desc(n_studies))
+```
+
+#### Tissue
+```{r}
+Tissue_Translocation %>% 
+  group_by(Tissue) %>% 
+  summarise(n_studies = n_distinct(doi),
+            n_obs = n()) %>% 
+  arrange(desc(n_studies))
+```
 
 # Modelling
 ```{r}
@@ -179,7 +242,7 @@ translocation_glm
 #### Manuscript Figure
 ```{r}
 ggsave(filename = "translocation_glm.jpeg",
-       path = "./Concentration data/Threshold_Manuscript_Figs/", 
+       path = "../../output/Manuscript_Figs/translocation",
        plot = translocation_glm, width = 5, height = 5, units = "in",
        bg = "white")
 ```
@@ -545,11 +608,18 @@ sim_X50 <- -sim_beta_0 / sim_beta_1
 #truncate distribution to not fall below 0
 sim_X50_trim <- sim_X50 %>% as.data.frame() %>% filter(.>0)
 
-summary(sim_X50)
+8
+```
 
+```{r}
+quantile(sim_X50_trim$., c(0.05,0.95))
+```
+
+
+```{r}
 # Plotting the distribution of X50
 
-x50_MC_hist <- ggplot(data = data.frame(X50 = sim_X50), aes(x = X50)) +
+x50_MC_hist <- ggplot(data = sim_X50_trim, aes(.)) +
   geom_histogram(bins = 200, fill = "steelblue", color = "black", linewidth = 0.10) +
   scale_x_log10()+
   xlim(c(1,1000))+
@@ -577,7 +647,7 @@ x50_MC_hist <- ggplot(data = data.frame(X50 = sim_X50), aes(x = X50)) +
 
 ggsave(filename = "x50_MC_hist.jpg",
        dpi = 300,
-       path = "../../output/Manuscript_Figs/", 
+       path = "../../output/Manuscript_Figs/translocation",
        plot = x50_MC_hist, width = 5, height = 4, units = "in")
 
 x50_MC_hist
