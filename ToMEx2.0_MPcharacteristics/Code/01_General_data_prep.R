@@ -1,3 +1,6 @@
+# load packages
+library(plyr)
+
 # import data
 dat = readRDS("../data/output/aoc_final.RDS")
 dat = droplevels(dat)
@@ -11,6 +14,27 @@ dat$treatmentID = paste0(dat$particleID, dat$Species, dat$life_f, dat$vivo_f, da
 # To avoid over-representation of particles for which many endpoints have been measured within the same experimental treatment
 # prepare dataset with only one entry per unique treatment-----
 dat = dat[!duplicated(dat$treatmentID), ] 
+
+# Check factor level names
+levels(dat$poly_f)
+levels(dat$shape_f)
+levels(dat$sodium.azide)
+dat$sodium.azide <- revalue(dat$sodium.azide, c("unknown" = "Unknown"))
+levels(dat$DOM_present)
+levels(as.factor(dat$charge))
+dat$charge = revalue(dat$charge, c("negative" = "Negative", "positive" = "Positive"))
+levels(as.factor(dat$functional.group))
+
+# Create polymer groups: all polymers that were tested only once are group "Others"
+others.list = as.data.frame(table(dat$poly_f))$Var1[as.data.frame(table(dat$poly_f))$Freq == 1]
+dat$poly_group = as.character(dat$poly_f)
+dat$poly_group[dat$poly_f %in% others.list] = "Other"
+dat$poly_group[dat$poly_group == "Mix - See Original Study"] = "Polymer mix"
+dat$poly_group = as.factor(dat$poly_group)
+
+# Replace NAs in charge and functional.group with "Unknown" and "None", respectively
+dat$charge[is.na(dat$charge)] = "Unknown"
+dat$functional.group[is.na(dat$functional.group)] = "None"
 
 # save data
 saveRDS(dat, "Data/prepared_data.RDS")
