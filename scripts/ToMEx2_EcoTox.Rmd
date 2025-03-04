@@ -630,7 +630,7 @@ collapsed <- filtered.data %>%
 
  if(n_distinct(collapsed$Species) > 5){
 #fit distributions
-dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("weibull", "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
+dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c( "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
 #use average distribution with weighthing based on AICC
 preds <- predict(dists, average = TRUE, 
                  #ic = "aicc",
@@ -656,7 +656,7 @@ collapsed <- filtered.data %>%
  if(n_distinct(collapsed$Species) > 5){
 #fit distributions
 dists <- ssd_fit_dists(collapsed, left = "Conc", 
-                       dists = c("weibull", "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
+                       dists = c( "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
 #use average distribution with weighthing based on AICC
 preds <- predict(dists, average = TRUE,# ic = "aicc",
                  nboot = nboot, ci= TRUE) 
@@ -687,7 +687,7 @@ collapsed <- filtered.data %>%
   summarize(Conc = quantile(dose_new, 0.50))
 #fit distributions
  if(n_distinct(collapsed$Species) > 5){
-dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("weibull", "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
+dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c( "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
 #use average distribution with weighthing based on AICC
 preds <- predict(dists, average = TRUE, 
                  #ic = "aicc", 
@@ -875,6 +875,7 @@ body_length_intercept <- 1.1200
 RUN THESE IN CONSOLE
 ```{r}
 getwd()
+source("functions.R")
 ##### STEP 1: DERIVE VALUES TO RUN PROBABILISTICALLY #####
 source("monte carlo/ssd_functions.R")
 ## these locations are correct, but for some reason R won't locate them. Run in console
@@ -1227,7 +1228,7 @@ aoc_aligned_no_filters %>%
          effect.metric != "HONEC") 
 ```
 
-```{r}
+```{r warning=FALSE}
 # run
 risk_tech <- calculate_thresholds(aoc_risk_paper, label = "risk and tech")
 tech <- calculate_thresholds(aoc_tech_only, label = "tech only")
@@ -1291,14 +1292,14 @@ all_thresholds_long
 library(ggtext)
 
 quality_colors <- c("risk and tech" = "#006f3c", "risk only" = "#264b96",
-                    "tech only" = "#f9a73e", "no quality filters" = "#bf212f")
+                    "tech only" = "#EB8907", "no quality filters" = "#bf212f")
 
 food_quality <- all_thresholds_combined %>% 
   mutate(y_label = paste0("<span style='color:", quality_colors[label], "'>", label, "</span>")) %>% 
   filter(Tier == "Tier2",
          Environment != "Freshwater & Marine") %>% 
   ggplot(aes(x = `Food Dilution (Default)`, y = label, color = label)) +
-  geom_point(size = 4) +
+  geom_point(size = 2.5) +
   geom_errorbarh(aes(xmin = `Food Dilution (5th %)`,
                      xmax = `Food Dilution (95th %)`),
                   height = 0.2,
@@ -1306,15 +1307,21 @@ food_quality <- all_thresholds_combined %>%
                  # linehe = 1.2
                  ) +
   scale_color_manual(values = quality_colors) +
-  geom_text(aes(label = signif(`Food Dilution (Default)`, 3)), vjust = -0.5) +
+  geom_text(aes(label = signif(`Food Dilution (Default)`, 3), x = `Food Dilution (Default)`), vjust = -0.5) +
+  geom_text(aes(label = signif(`Food Dilution (5th %)`, 2), x = `Food Dilution (5th %)` * 0.02), vjust = +0.5) +
+  geom_text(aes(label = signif(`Food Dilution (95th %)`, 2), x = `Food Dilution (95th %)` * 8), vjust = +0.5) +
   xlab("Particles/L (Food Dilution)") +
   ylab("Quality Filters") +
-  scale_x_log10(labels = scales::comma) +
+  scale_x_log10(#labels = scales::comma,
+                limits = c(0.0000001, 100000)) +
   theme_minimal(base_size = 14) +
   theme(legend.position = "none") +
+  coord_cartesian(clip = "off")+ 
        # axis.text.y = element_markdown()) + # Use element_markdown for y-axis labels
  #scale_y_discrete(labels = setNames(y_label, label)) +
-  facet_wrap(~Environment)
+  facet_wrap(~Environment) +
+  theme(  panel.spacing = unit(2, "lines")) + # Increase spacing between facets)
+  theme(strip.text = element_text(face = "bold", size = 15))
 
 tissue_quality <- all_thresholds_combined %>% 
   filter(Tier == "Tier2",
@@ -1328,13 +1335,19 @@ tissue_quality <- all_thresholds_combined %>%
                  # linehe = 1.2
                  ) +
   scale_color_manual(values = quality_colors) +
-  geom_text(aes(label = signif(`Tissue Translocation (Default)`,3)), vjust = -0.5) +
-  scale_x_log10(labels = scales::comma) +
+  geom_text(aes(label = signif(`Tissue Translocation (Default)`, 3), x = `Tissue Translocation (Default)`), vjust = -0.5) +
+  geom_text(aes(label = signif(`Tissue Translocation (5th %)`, 2), x = `Tissue Translocation (5th %)` * 0.08), vjust = +0.5) +
+  geom_text(aes(label = signif(`Tissue Translocation (95th %)`, 2), x = `Tissue Translocation (95th %)` * 8), vjust = +0.5) +
+  scale_x_log10(#labels = scales::comma,
+                limits = c(0.0000001, 100000)) +
   xlab("Particles/L (Tissue Translocation)") +
   ylab("Quality Filters") +
+  coord_cartesian(clip = "off") +
   theme_minimal(base_size = 14) +
   theme(legend.position = "none") +
-  facet_wrap(~Environment)
+  facet_wrap(~Environment) +
+  theme(  panel.spacing = unit(2, "lines")) +  # Increase spacing between facets)
+  theme(strip.text = element_blank())
 
 quality_tier2 <-  ggarrange(food_quality, tissue_quality,
                             labels = c("A", "B"),
@@ -1342,7 +1355,7 @@ quality_tier2 <-  ggarrange(food_quality, tissue_quality,
 
 ggsave(plot = quality_tier2,
        filename = "../output/Manuscript_Figs/quality_tier2.jpg",
-      dpi = 300,
+      dpi = 600,
       width = 7, height = 5, units = "in")
 
 quality_tier2
@@ -1494,7 +1507,7 @@ best_data %>% select(c(Species, total.quality, contains("tech"), contains("risk"
   arrange(desc(Species))
 ```
 
-```{r}
+```{r warning=FALSE}
 # Example usage with best quality datasets
 best_data_thresholds <- calculate_thresholds(best_data, label = "best data")
 
@@ -1888,7 +1901,7 @@ library(ggallin)
 
 
 # Assign specific colors based on Tier levels
-tier_colors <- setNames(c("#006f3c", "#d6d636", "#f9a73e", "#f0514b"),
+tier_colors <- setNames(c("#006f3c", "#EEB500", "#EB8907", "#f0514b"),
                         levels(leave_one_out_df$tier))
 
 # Calculate min and max limits for `diff` column
@@ -1920,22 +1933,29 @@ leave_one_out_ggplot <- ggplot() +
                                               "<br>HCx: ",scientific(hcx, 3), " particles/L",
                                               "<br>Study: ", authoryear,
                                               "<br>Species: " ,species_multiple,
-                                              "<br>doi: ", doi),
-              width = 0, height = 0.3, alpha = 0.8)) +
+                                              "<br>doi: ", doi)),
+             height = 0.2, alpha = 0.4) +
    # Add horizontal error bars for min and max values
   geom_errorbarh(data = summary_diff_df,
                  aes(xmin = min_fold_change, xmax = max_fold_change, y = tier, color = tier),
                  height = 0.5, alpha = 1) +
     # Add points for median values
   geom_point(data = summary_diff_df,
-             aes(x = median_fold_change, y = tier, color = tier),
+             aes(x = median_fold_change, y = tier),
+             color = "black",
              size = 5, shape = 2, alpha = 1) +
+  # add label for min and max HCx
   geom_text(data = summary_diff_df,
                  aes(x = min_fold_change, label = signif(min_hcx,2), y = tier, color = tier),
             vjust = -2) +
   geom_text(data = summary_diff_df,
                  aes(x = max_fold_change, label = signif(max_hcx,2), y = tier, color = tier),
             vjust = -2) +
+  #add label for median hcx
+  geom_text(data = summary_diff_df,
+                 aes(x = median_fold_change, label = signif(median_hcx,2), y = tier), # color = tier), 
+            color = "black",
+            vjust = +2.5) +
   
     scale_color_manual(values = tier_colors) +  # Apply manual colors for lines
 #  geom_point(alpha = 0.7) +
@@ -1961,9 +1981,12 @@ leave_one_out_ggplot <- ggplot() +
                    #   limits = c(min_fold_change, max_fold_change), 
                      #labels = scales::percent_format(accuracy = 1, big.mark = ",")) +
 #  scale_x_log10() +
-  
+   # Add dotted lines to bisect the grid
+
   xlab("Fold Change") +
+  coord_cartesian(clip = "off") +
   theme_minimal(base_size = 13) +
+  
  theme( plot.title = element_text(hjust = 0.5, size = 14),     # Center the main title
         strip.text = element_text(size = 14, face = "bold"),
         plot.subtitle = element_text(hjust = 0.5),
@@ -1974,13 +1997,14 @@ leave_one_out_ggplot <- ggplot() +
         axis.title.y = element_text(vjust = 0.5, size = 18)) +   # Center the y-axis title (vertically))   # Center the subtitle)
   theme(legend.position = "none",
         axis.title.y = element_blank()) +
+
   facet_grid(environment ~ ERM)
   #facet_wrap(~environment + ERM)
 
 ggsave(plot = leave_one_out_ggplot,
        filename = "../output/Manuscript_Figs/leave_one_out.jpg",
       dpi = 300,
-      width = 8, height = 6, units = "in")
+      width = 9, height = 6.5, units = "in")
 
 leave_one_out_ggplot
 ```
@@ -2441,9 +2465,9 @@ aoc_MC %>%
 ### IMPORT DATA
 ```{r}
 getwd()
-aoc_MC <- readRDS("scripts/monte carlo/output/aoc_MC_sobol.rds")
+aoc_MC <- readRDS("monte carlo/output/aoc_MC_sobol.rds")
 
-results_df <- readRDS("scripts/monte carlo/output/results_df_sobol.rds")
+results_df <- readRDS("monte carlo/output/results_df_sobol.rds")
 ```
 
 #### CoV Plots
@@ -2673,7 +2697,7 @@ aoc_MC %>%
 ### Fiter data
 ```{r}
 getwd()
-source("scripts/monte carlo/ssd_functions.R")
+source("monte carlo/ssd_functions.R")
 
 freshwater_MC_data <-  filter_environment_data(data = aoc_MC %>% 
                                                  rename(particles.mL.ox.stress = particles.mL.ox.stress.x,
@@ -2954,10 +2978,10 @@ tier1_2_tissue <- filtered.data.small.default_t1.2_MC
 tier3_4_tissue <- filtered.data.small.default_t3.4_MC
 
 ##  save datasets for other scripts and the paper
-saveRDS(tier1_2_food, "data/output/tier1_2_food.RDS")
-saveRDS(tier3_4_food, "data/output/tier3_4_food.RDS")
-saveRDS(tier1_2_tissue, "data/output/tier1_2_tissue.RDS")
-saveRDS(tier3_4_tissue, "data/output/tier3_4_tissue.RDS")
+saveRDS(tier1_2_food, "../data/output/tier1_2_food.RDS")
+saveRDS(tier3_4_food, "../data/output/tier3_4_food.RDS")
+saveRDS(tier1_2_tissue, "../data/output/tier1_2_tissue.RDS")
+saveRDS(tier3_4_tissue, "../data/output/tier3_4_tissue.RDS")
 ```
 
 ## Summarize datasets
@@ -3017,8 +3041,8 @@ print(final_summary)
 
 ##### Build fun4ctions ####
 getwd()
-source("scripts/PSSD/rmore.r")
-source("scripts/PSSD/do.pssd.r")
+source("PSSD/rmore.r")
+source("PSSD/do.pssd.r")
 #source("PSSD/do.pssd.troph.r")
 #source("PSSD/do.pssd.ag.r")
 
@@ -3124,7 +3148,7 @@ run_pSSD_analysis <- function(data_matrices, num_iterations, sim, cv_dp, cv_uf, 
   pSSD <- do.call(cbind, pSSD_list)
   
   # Save the combined results
-  save(pSSD, file = paste0("scripts/PSSD/updated/",data_name,".RData"))
+  save(pSSD, file = paste0("PSSD/updated/",data_name,".RData"))
   
   # Calculate corrected endpoints
   corr_endpoints <- data_matrices[["DP"]] / (data_matrices[["UFt"]] * data_matrices[["UFdd"]])
@@ -3260,8 +3284,10 @@ PNEC_plot <- function(pssd_results, hcx, data_name){
                    bins = 100)   +
     labs(x = "PNEC (Particles/L)", y = "Probability density", title = "Probability density of the PNEC",
          subtitle = data_name) +
-    #theme_minimal() +
-    geom_density(col = "red", lwd = 1)  # Optionally add a density line
+    scale_x_log10() +
+    geom_density(col = "red", lwd = 1)+  # Optionally add a density line+
+    theme_minimal() +
+  theme(axis.text.y = element_blank())
 }
 
 #example
@@ -3317,7 +3343,7 @@ return(list("stats" = as.data.frame(Stat_PNEC_t),
 
 ## Application
 ### Tier 1_food
-```{r include=FALSE}
+```{r warning=FALSE, include=FALSE}
 #Step 1: prep data matrices
 tier1_2_food_matrices <- prep_data(tier1_2_food)
 
@@ -3363,7 +3389,7 @@ tier1_2_food_PNEC_summary$stats
 ```
 
 ### Tiers 3 and 4_food
-```{r include=FALSE}
+```{r warning=FALSE, include=FALSE}
 #Step 1: prep data matrices
 tier3_4_food_matrices <- prep_data(tier3_4_food)
 
@@ -3411,7 +3437,7 @@ food_plots_light <- ggarrange(tier3_4_food_pssdPlot + theme.light + theme(legend
                         ggarrange(tier3_food_PNECPlot + theme.light,
                                   tier4_food_PNECPlot + theme.light,
                                   ncol = 2, nrow = 1, labels = c("B", "C")),
-                        ncol = 1, nrow = 2, labels = c("A"))
+                        ncol = 1, nrow = 2, labels = c("A"), heights = c(0.7,0.3))
 
 ggsave(filename = "food_plots_light.jpg",
        dpi = 300,
@@ -3440,7 +3466,7 @@ cbind(tier3_food_PNEC_summary$stats, tier4_food_PNEC_summary$stats)
 ```
 
 ### Tier 3 and 4_tissue
-```{r include=FALSE}
+```{r warning=FALSE, include=FALSE}
 #Step 1: prep data matrices
 tier3_4_tissue_matrices <- prep_data(tier3_4_tissue)
 

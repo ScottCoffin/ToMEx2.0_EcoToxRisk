@@ -26,7 +26,7 @@ SSD_function_t1 <- function(filtered.data, hcxlcl){
     )
   } else {
   #fit distributions
-  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("weibull", "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
+  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
   #use average distribution with weighthing based on AICC
   preds <- predict(dists, average = TRUE, 
                    #ic = "aicc",
@@ -76,7 +76,7 @@ SSD_function_t2 <- function(filtered.data, hcx){
     
   #fit distributions
   dists <- ssd_fit_dists(collapsed, left = "Conc", 
-                         dists = c("weibull", "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
+                         dists = c( "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
   #use average distribution with weighthing based on AICC
   preds <- predict(dists, average = TRUE,# ic = "aicc",
                    nboot = nboot, ci= TRUE) 
@@ -128,7 +128,7 @@ SSD_function_t3_4 <- function(filtered.data, hcx){
   } else {
     
   #fit distributions
-  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("weibull", "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
+  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c( "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
   #use average distribution with weighthing based on AICC
   preds <- predict(dists, average = TRUE, 
                    #ic = "aicc", 

@@ -139,6 +139,10 @@ aoc_z <- readRDS(file = "../../data/input/aoc_z_tomex2.RDS")
 
 ### Size
 ```{r}
+summary(Tissue_Translocation$`Size (µm)`)
+```
+
+```{r}
 #histogram
 histogram <- Tissue_Translocation %>%  
   ggplot(aes(x = size.um)) + 
@@ -294,7 +298,9 @@ explainer_glm_model <- DALEX::explain(glm_model, label = "glm", data = predictor
 ```{r}
 explainer_glm_model$model$metric
 ```
-
+```{r}
+explainer_glm_model$model
+```
 
 ```{r}
 library(jtools)
@@ -606,10 +612,13 @@ sim_beta_1 <- rnorm(n_sim, mean = beta_1, sd = se_beta_1)
 sim_X50 <- -sim_beta_0 / sim_beta_1
 
 #truncate distribution to not fall below 0
-sim_X50_trim <- sim_X50 %>% as.data.frame() %>% filter(.>0)
-
-8
+sim_X50_trim <- sim_X50 %>% as.data.frame() %>% filter(.>0 & .<5000)
 ```
+
+```{r}
+summary(sim_X50_trim)
+```
+
 
 ```{r}
 quantile(sim_X50_trim$., c(0.05,0.95))
