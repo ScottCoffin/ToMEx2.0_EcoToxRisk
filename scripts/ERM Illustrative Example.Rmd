@@ -1,0 +1,607 @@
+---
+title: "Aligning Microplastics Toxicity Data using Ecologically Relevant Metrics - An Illustrative Example"
+author: "Scott Coffin, Ph.D."
+date: "03/5/2025"
+output:
+  html_document:
+    code_folding: hide
+    theme: sandstone
+    toc: yes
+    toc_float: yes
+    toc_depth: 4
+    number_sections: true
+  word_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+```{r, include= FALSE}
+library(tidyverse)
+library(gt)
+```
+
+#Introduction
+ToMEx can perform alignments of microplastics toxicity data based on ecologically relevant metrics - a concept first introduced in [Koelmans et al. (2020)](https://pubs.acs.org/doi/10.1021/acs.est.0c02982). These alignments are critical to effectively comparing hazard studies that use different distributions of sizes, shapes, and densities of particles than those occurring in the environment (which is effectively always the case). For more on this topic, please refer to [Mehinto et al. (2022)](https://microplastics.springeropen.com/articles/10.1186/s43591-022-00033-3) and [Koelmans et al. (2022)](https://www.nature.com/articles/s41578-021-00411-y).
+
+
+# Illustrative Example
+## Re-scaling effect concentrations according to Ecologically Relevent Metrics (ERMs)
+### Particles
+A monodisperse effect concentration (e.g. 10 micron polyethylene fragments) may be re-scaled to a default size range (e.g. 1 - 5,000 microns) using methods described in Kooi et al (2021). Re-scaling to a default size range allows direct comparison to exposure concentrations for a default size range (which may also be re-scaled). 
+
+The effect concentration must first be corrected for bioavailability. If the suspected effect mechanism depends on ingestion of the particle, particles that are too large to be ingested by the organism of interest should be considered to not be bioavailable. Further, if toxicity depends on tissue translocation, particles too large to be translocated will be considered to be unavailable.
+
+For an example, the tox database is queried to determine a real-world example. Studies in the database are filtered for all 'red' criteria, and only organismal and population-level biological organizations are considered, then default assessment metrics are applied.
+```{r}
+# aoc_z <- readRDS("../data/input/aoc_z_tomex2.RDS")
+# 
+# POD <- aoc_z %>% 
+#   filter(Species == "Ceriodaphnia dubia",
+#          effect.metric == "NOEC",
+#          tier_zero_tech_f == "Red Criteria Passed",
+#          tier_zero_risk_f == "Red Criteria Passed",
+#          lvl1_f == "Fitness",
+#          bio_f %in% c("Organism", "Population"),
+#          polydispersity == "monodisperse"
+#          ) %>% 
+#   mutate(body.length.mm = body.length.cm * 10,
+#          max.size.ingest.mm = 10^(0.9341 * log10(body.length.mm) - 1.1200)) %>% #(Jâms, et al 2020 Nature paper)correction for cm to mm
+#     mutate(max.size.ingest.um = 1000 * max.size.ingest.mm) %>% 
+#   filter(max.size.ingest.um > size.length.um.used.for.conversions) %>% 
+#   mutate(dose_new = dose.particles.mL.master / (af.time * af.noec)) %>%  
+#   drop_na(dose_new) %>% 
+#   mutate(dose_new = dose_new * 1000) %>% 
+#  filter(dose_new == min(dose_new, na.rm = TRUE)) %>% 
+#   distinct(dose_new, .keep_all = T)
+# 
+# write.csv(POD, "../data/output/illustrative_example.csv")
+
+POD <-  read.csv("../data/output/illustrative_example.csv")
+```
+
+The resulting real-life example of a *monodisperse* effect concentration is for a of a 2 um PE sphere for *C. Daphnia*. The minimum NOEC for fitness-related endpoints from these studies is:
+
+```{r}
+particle.size = POD$size.length.um.used.for.conversions
+particle.shape = as.character(POD$shape_f)
+polymer = as.character(POD$poly_f)
+dispersity = POD$polydispersity
+effect.type = as.character(POD$lvl3_f)
+effect.metric = as.character(POD$effect.metric)
+species = as.character(POD$Species)
+exposure.conc.particles.L = as.numeric(POD$dose_new)
+max.size.ingest.um = POD$max.size.ingest.um
+
+paste(effect.type, effect.metric, "for", species, "exposed to",  exposure.conc.particles.L, 
+      "particles/L of", dispersity, particle.size, "um", particle.shape, polymer, "microplastics")
+```
+
+In order to convert the *monodisperse* effect concentration to a *polydisperse* mixture of microplastic particles, a correction must occur which takes into consideration the ecologically relevant metric (ERM) [(Koelmans et al 2017)](https://europepmc.org/article/med/28971682). For a given ERM, the threshold may be related to both mono- or polydisperse particles interchangeably so long as the total magnitude of ERM remains the same (Koelmans et al, 2020). 
+
+$EC_{poly} * \mu_{x,poly} = EC_{mono} * \mu_{x,mono}$
+
+In this example of a monodisperse effect concentration for *C.Daphnia*, $EC_{mono}$ is in particle count per volume (i.e. 27 particles/L), and $\mu_{x,mono}$ is the mean value of the ERM of interest in this study, which in the case of particle count, is 1. 
+```{r}
+mu_x.mono = 1
+```
+
+Particles follow a power law regime in the marine environment, so $\mu_{x,poly}$ may be calculated using the following equation (equation 4, Kooi et al 2021):
+
+$\mu_{x,poly} = \frac{1 - a_{x}}{2 - a_{x}}  \frac{X^{2-a_x}_{UL} - X^{2-a_x}_{LL}}{X^{1-a_x}_{UL} - X^{1-a_x}_{LL}}$
+
+Where $a_x$ relates to the power law distribution of microplastic particles in the marine environment (i.e. particle length; 2.07; [Kooi et al 2021](https://doi.org/10.1016/j.watres.2021.117429)), and UL and LL are the upper and lower limits of bioavailability for this species/life stage/effect metric, respectively.
+
+In this example, the organism of interest is *Cerodaphnia magna*, which has an average body length of 0.14 cm, and an estimated maximum ingestible particle size of 104 um particles based on estimated mouth size opening using the allometric model provided in [Jâms et al. (2020)](https://doi.org/10.1038/s41467-020-15406-6). Therefore, $L_{UL,m}$ would be equivalent to 104 um, and $L_{LL,m}$ would be the lower size range of the bin for which the SSD is built- in this example, 1 um as a (default) lower limit. 
+
+Note that if bioavailability for an ERM of interest is based on a different parameter (for example, tissue translocation potential), $L_{UL,m}$ would be equivalent to that size. A default assumption for an upper limit of tissue translocation for this exercise is 88 um based on the assessment of translocatable MP sizes in Coffin et al. (In Progress).
+
+$\mu_{x,poly}$ for particles for the 1-104 um fraction in the marine environment is then calculated:
+```{r}
+### Generalizable function that works on any value (alpha == 1 and == 2 are limits!)
+mux_polyfnx <- function(a.x, x_UL, x_LL) {
+  # Validate inputs
+  if (length(a.x) != length(x_UL) || length(a.x) != length(x_LL)) {
+    stop("a.x, x_UL, and x_LL must have the same length.")
+  }
+
+  # Initialize result vector
+  mux.poly <- numeric(length(a.x))
+
+  # Loop through each element to handle row-by-row logic
+  for (i in seq_along(a.x)) {
+    if (is.na(a.x[i]) || is.na(x_UL[i]) || is.na(x_LL[i])) {
+      # Handle NA values
+      mux.poly[i] <- NA
+    } else if (a.x[i] == 1) {
+      # Special case: a.x == 1
+      if (x_UL[i] > 0 && x_LL[i] > 0) {
+        mux.poly[i] <- (x_UL[i] - x_LL[i]) / log(x_UL[i] / x_LL[i])
+      } else {
+        mux.poly[i] <- NA  # Invalid input for log
+      }
+    } else if (a.x[i] == 2) {
+      # Special case: a.x == 2
+      epsilon <- 1e-10  # Small value to avoid division by zero
+      if (x_UL[i] > 0 && x_LL[i] > 0) {
+        mux.poly[i] <- log(x_UL[i] / x_LL[i]) /
+          ((x_LL[i] + epsilon)^-1 - (x_UL[i] + epsilon)^-1)
+      } else {
+        mux.poly[i] <- NA  # Invalid input for log
+      }
+    } else {
+      # General case: a.x != 1 and a.x != 2
+      if (x_UL[i] > 0 && x_LL[i] > 0) {
+        mux.poly[i] <- ((1 - a.x[i]) / (2 - a.x[i])) *
+          ((x_UL[i]^(2 - a.x[i]) - x_LL[i]^(2 - a.x[i])) /
+             (x_UL[i]^(1 - a.x[i]) - x_LL[i]^(1 - a.x[i])))
+      } else {
+        mux.poly[i] <- NA  # Invalid input for power calculations
+      }
+    }
+  }
+
+  # Return the result
+  return(mux.poly)
+}
+
+#define parameters for C.daphnia
+upper.ingestible.length.um = max.size.ingest.um #mouth size opening
+upper.ingestible.width.um = upper.ingestible.length.um # * R.ave #length to width ratio
+lower.ingestible.length.um = 1
+lower.ingestible.width.um = lower.ingestible.length.um #* R.ave
+
+# marine surface water alpha for length
+alpha = 2.07
+
+#compute
+mu_x.poly <- mux_polyfnx(a.x = alpha, 
+                         x_UL = upper.ingestible.width.um,
+                         x_LL = lower.ingestible.width.um)
+#report
+paste("mu_x_poly:", round(mu_x.poly,2))
+```
+Now that $\mu_{x,poly}$, $\mu_{x,mono}$, and $EC_{mono}$ are known for this example, the *bioavailable* *polydisperse* effect concentration $EC_{poly}$ may then be calculated using the equation:
+
+$EC_{poly} = \frac{EC_{mono} * \mu_{x,mono}}{\mu_{x,poly}}$
+
+```{r}
+EC_poly <- (POD$dose_new * mu_x.mono)/mu_x.poly
+paste("EC_poly:",signif(EC_poly,5), "particles/L")
+```
+Now that the *bioavailable*, *polydisperse* effect concentration is known for this example, in order to relate this threshold effect concentration to an *environmentally relevant* (e.g. 1 - 5,000 um) range of particles ($EC_{env}$; particles/L) a further correction must occur using the following equation (equation 2; [Kooi et al 2021](https://doi.org/10.1016/j.watres.2021.117429)):
+
+$EC_{env} = EC_{poly} * CF_{bio}$
+
+Where $CF_{bio}$ is a dimensionless correction factor for the bioavailable effect concentration. This equation  rescales the bioavailable effect concentration (particles/L) to an environmentally relevant concentration for the microplastics default (D) size range (e.g. 1 to 5,000 um) according to the power law distribution for length (L) with slope $\alpha_L$ in Table S4 of Kooi et al (2021). $CF_{bio}$ is calculated as follows [Kooi et al 2021](https://doi.org/10.1016/j.watres.2021.117429):
+
+$CF_{bio} = \frac{L^{1-a}_{UL,D} - L^{1-a}_{LL,D}}{L^{1-a}_{UL,B} - L^{1-a}_{LL,B}}$
+
+In this example, the organism of interest is *Cerodaphnia magna*, which has an average body length of 0.14 cm, and an estimated maximum ingestible size range of 104 um particles, $L_{UL,B}$ would be equivalent to 104 um, and $L_{LL,B}$ would be the lower size range of the bin for which the SSD is built- in this example, 1 um as a lower  (default) limit. Further, the upper limit (UL,D) and lower limit (LL,D) of the default size range are 5,000 and 1 um, respectively.
+```{r}
+#function to derive correction factor (CF) from Koelmans et al (equation 2)
+CFfnx = function(a, #default alpha from Koelmans et al (2020)
+                 x2D, #set detault values to convert ranges to (1-5,000 um) #5mm is upper defuault 
+                 x1D, #1 um is lower default size
+                 x2M, x1M){
+  
+  CF = (x2D^(1-a)-x1D^(1-a))/(x2M^(1-a)-x1M^(1-a))
+  
+  return(CF)
+}
+### Define params for ###
+alpha = alpha #table s4 for freshwater surface water
+x2D_set = 5000
+x1D_set = 1
+x2M = max.size.ingest.um
+x1M = 1
+
+# calculate CF_bio
+CF_bio <- CFfnx(a = alpha, 
+                x2D = x2D_set,
+                x1D = x1D_set,
+                x1M = x1M, 
+                x2M = x2M)
+paste("CF_bio = ",signif(CF_bio,4), "(unitless)")
+```
+Finally, the $EC_{env}$ is calculated for particles/L as an ERM:
+
+```{r}
+EC_env <- EC_poly * CF_bio
+paste("EC_env = ",signif(EC_env,4), "Particles/L (1-5,000 um; marine surface water )")
+```
+
+### Volume (Ingestion)
+
+In the case of an ERM of interest being volume, $\mu_{x,mono}$ is equivalent to the average volume of a the monodisperse particle (i.e. $\mu_{v,mono}$), calculated as follows:
+
+$\mu_{v,mono} = V_{i} = \frac{4}{3}\pi abc$
+
+Where $V_i$ is the volume for a given particle *i*, and a, b, and c are radii along the principal axes, corresponding to one-half times the length, width, and height of an ellipsoid. Upper and lower limits of bioavailability for volume correspond to the maximum ingestible size of particles and the lower limit of the size range to be aligned to (typically 1 micron).
+
+<-- [Ellipsoid Volume](www/ellipsoid_volume.jpg) -->
+Image source: Wikipedia.com
+
+The above equation can be applied to fragments, thin films, microbeads, spheres, or fibers given a known length to width ratios for such shapes, with the height assumed to be equivalent to 0.67 x width (Kooi et al 2021). Width to length ratios differ for microplastics differ by compartment, with averages ranging from 0.67 to 0.77 (Kooi et al 2021; Table S3). Averaged values may be used to estimate the volume of polydisperse environmental mixtures of microplastics.
+
+Substituting $R_i$ for the length to width ratio of a particles, the formula simplifies to:
+
+$V_i = 0.111667*pi*R_i^2*L_i^3$
+
+Where $L_i$ is the length of the particle (um) and $R_i$ is the width:length ratio of the particle (unitless). 
+
+For the example of a 2 um PE sphere, the length was reported ($L_i = 2 \mu m$), and since the particle is spherical - the width is therefore equivalent to the length. If, for example, a fragment was used and the width was not reported by the authors, a default value of 0.77 (length to width ratio) would be used, which is the average for marine surface water ($R_i = 0.77$) as reported in Kooi et al. (2021). 
+
+$\mu_{v,mono}$ is calculated:
+```{r} 
+# equation for volume (polydisperese particles)
+volumefnx_poly = function(width, length){
+  height = width #0.67 * width #heigth = width produces an ellipsoid
+  volume = (4/3) * pi * (length/2) * (width/2) * (height/2) 
+  return(volume)}
+
+#Volume equation for elongated sphere (fragments)
+volumefnx = function(R, L){
+  volume = 0.111667 * pi * R^2 * L^3 #assumes height = 0.67 * Width, and Width:Length ratio is 'R' (0.77 average in marine surface water)
+  return(volume)}
+
+#equation for fibers (cylinder) V = pi*r^2*h (where r = particle width/2 and h = particle length). Assume 15 um if width not reported (kooi et al 2021)
+volumefnx_fiber = function(width, length){
+  radius = width/2
+  volume = pi * (radius) ^ 2 * length
+  return(volume)
+}
+
+R.ave <- 0.77 #marine average length to width ratio of particles
+
+mu_v.mono <- POD %>% 
+  # conditional logic to estimate particle volume based on shape
+ mutate(particle.volume.um3 = case_when(shape_f == "Sphere" ~ (4/3)*pi*((size.length.um.used.for.conversions/2)^3),
+                                         shape_f == "Fiber" & is.na(size.width.um.used.for.conversions) ~ 
+                                          volumefnx_fiber(width = 15, length = size.length.um.used.for.conversions),  #assume 15 um as width (kooi et al 2021)
+                                         shape_f == "Fiber" & !is.na(size.width.um.used.for.conversions) ~ 
+                                          volumefnx_fiber(width = size.width.um.used.for.conversions, length = size.length.um.used.for.conversions), #if width reported
+                                         shape_f == "Fragment" ~ volumefnx(R = R.ave, L = size.length.um.used.for.conversions))) %>% 
+  pull(particle.volume.um3)
+
+
+paste("mu_v.mono = ", signif(mu_v.mono,3), "um^3")
+```
+
+$\mu_{v,poly}$ is then calculated using the volume of particles that are bioaccessible (based on mouth opening and particle length), the volume of particles for the lower limit of the size range of interest.
+
+As discussed above, for the example of an organism of interest of *Cerodaphnia magna*, the estimated maximum ingestible size range is 104 um particles, $L_{UL,m}$ would therefore be equivalent to 104 um, and $L_{LL,m}$ would be the lower size range of the bin for which the SSD is built- in this example, 1 um as a lower limit. Volumetric limits are calculated:
+
+```{r}
+x_LL_v = volumefnx_poly(width = lower.ingestible.width.um,
+                      length = lower.ingestible.length.um)
+x_UL_v = volumefnx_poly(width = upper.ingestible.width.um,
+                      length = upper.ingestible.length.um)
+
+
+paste("x_UL_v = ", scales::comma(x_UL_v), "um^3;",
+      "x_LL_v = ", signif(x_LL_v,3), "um^3")
+```
+$\mu_{v,poly}$ may now be calculated given these limits, using an alpha value of 1.48 for volume in the marine surface water environment (Kooi et al 2021):
+```{r}
+a.v = 1.48
+#compute
+mu_v.poly <- mux_polyfnx(a.x = a.v, 
+                         x_UL = x_UL_v,
+                         x_LL = x_LL_v)
+#report
+paste("mu_v_poly:", round(mu_v.poly,2), "um^3")
+```
+Now that $\mu_{v,poly}$, $\mu_{v,mono}$, and $EC_{mono}$ are known for this example for volume, the *bioavailable* *polydisperse* effect concentration $EC_{poly}$ for the volume ERM may then be calculated:
+
+```{r}
+EC_poly_v <- (exposure.conc.particles.L * mu_v.mono)/mu_v.poly
+paste("EC_poly_v:",signif(EC_poly_v,5), "particles/L")
+```
+Again, to relate this *bioavailable*, *polydisperse* effect threshold ($EC_{poly,v}$) to an environmentally relevant *polydisperse* mixture of particles for the volume ERM, an additional correction must be applied to rescale the threshold to the size range of interest (e.g. 1-5,000 um) using $CF_{bio}$, identical as for particles. 
+
+```{r}
+EC_env_v <- EC_poly_v * CF_bio
+paste("EC_env_v = ",signif(EC_env_v,3), "Particles/L (1-5,000 um; marine surface water )")
+```
+
+###  Surface Area (translocation)
+For surface area as an ERM, $\mu_{sa,mono}$ is equivalent to the average surface area ($SA$) of the *monodisperse* particle for the effect threshold, calculated as follows:
+
+$\mu_{sa,mono} = SA = 4 \pi (\frac{(ab)^{1.6} + (ac)^{1.6} + (bc)^{1.6}}{3})^{1/1.6}$
+
+With a, b, c being equal to 0.5x length, 0.5x width, and 0.5x height, respectively. 
+
+For the example of a 2 um PE sphere, the length was reported ($a = 0.5* 2 \mu m$), and since the particle is a sphere, width and height are also equal to this value. In the case of a fragment or fiber, however, the width may be estimated as being 0.77 is used ($b = 0.5 * 0.77 * 2 \mu m$), which is the average length to width ratio for MPs in marine surface water (Kooi et al. 2021), with the height assumed to be 0.67 times the width ($c = 0.5 * 0.77 * 0.67 * 2 \mu m$) (Kooi et al 2021). Surface area is calculated:
+```{r}
+#### Particle Characteristics Equations ####
+#surface area equation for elongated spheres (fragments)
+SAfnx = function(a, # length
+                 b, # width
+                 c){ # height\
+  # a, b, and c are equivalent to 1/2th of the length, width, and height, respectively
+  a <- 0.5 * a
+  b <- 0.5 * b
+  c <- 0.5 * c
+  SA = 4*pi*(((a*b)^1.6 + (a*c)^1.6 + (b*c)^1.6) / 3)^(1/1.6)
+  return(SA)}
+
+#cylinder equation for SA. S = 2pi*r*h + 2pi*r^2, where r = width/2 and h = length 
+SAfnx_fiber = function(width, length){
+  radius = width / 2
+  SA = 2*pi*radius*length + 2*pi*radius^2
+  return(SA)
+}
+
+#calculate for 10 um fragment
+mu_sa.mono = POD %>% 
+  mutate(particle.surface.area.um2 = case_when(shape_f == "Sphere" ~ 
+                                                 SAfnx(a = size.length.um.used.for.conversions,
+                                                       b = size.length.um.used.for.conversions,
+                                                       c = size.length.um.used.for.conversions),
+                                             shape_f == "Fiber" & is.na(size.width.um.used.for.conversions) ~ 
+                                               SAfnx_fiber(width = 15, length = size.length.um.used.for.conversions), #assum 15 um width (kooi et al 2021)
+                                             shape_f == "Fiber" & !is.na(size.width.um.used.for.conversions) ~ 
+                                               SAfnx_fiber(width = size.width.um.used.for.conversions, length = size.length.um.used.for.conversions), #if width is known
+                                             shape_f == "Fragment" ~
+                                               SAfnx(a = size.length.um.used.for.conversions,
+                                                                         b = R.ave * size.length.um.used.for.conversions,
+                                                                         c = R.ave * 0.67 * size.length.um.used.for.conversions))) %>% 
+  pull(particle.surface.area.um2)
+  
+
+paste("mu_sa.mono = ", signif(mu_sa.mono,3), "um^2")
+```
+
+Since the probability distribution of ERM $sa$ (surface area) follows a power law regime, the mean ERM value for the polydisperse particles, $\mu_{sa,poly}$, can be calculated. For surface area of environmentally disperse particles, UL and LL are calculated using the equation for the surface area of an ellipsoid (above).
+
+
+```{r}
+upper.tissue.trans.size.um = 88 #um
+# calculate lower ingestible surface area
+x_LL_sa = SAfnx(a = lower.ingestible.length.um, #length
+                b = lower.ingestible.width.um, #width
+                c = lower.ingestible.width.um) #height = 0.67 * width
+
+# calculate upper tissue translocatable surface area
+x_UL_sa = SAfnx(a = upper.tissue.trans.size.um, #()
+                b = upper.tissue.trans.size.um, #()
+                c = upper.tissue.trans.size.um)
+
+paste("x_UL = ", scales::comma(x_UL_sa,2), "um^2",
+      ";x_LL = ", round(x_LL_sa,2), "um^2")
+```
+$\mu_{sa,poly}$ may now be calculated given these limits, using an alpha value of 1.5 for surface area in the marine surface water environment (Kooi et al 2021):
+```{r}
+a.sa = 1.5
+#compute
+mu_sa.poly <- mux_polyfnx(a.x = a.sa, 
+                         x_UL = x_UL_sa,
+                         x_LL = x_LL_sa)
+#report
+paste("mu_sa_poly:", round(mu_sa.poly,2), "um^2")
+```
+Now that $\mu_{v,poly}$, $\mu_{v,mono}$, and $EC_{mono}$ are known for this example for surface area, the *bioavailable* *polydisperse* effect concentration $EC_{poly}$ for the surface area ERM may then be calculated:
+
+```{r}
+EC_poly_sa <- (exposure.conc.particles.L * mu_sa.mono)/mu_sa.poly
+paste("EC_poly_sa:",signif(EC_poly_sa,5), "particles/L")
+```
+Again, to relate this *bioavailable*, *polydisperse* effect threshold ($EC_{poly,sa}$) to an environmentally relevant *polydisperse* mixture of particles for the surface area ERM, an additional correction must be applied to rescale the threshold to the size range of interest (e.g. 1-5,000 um) using $CF_{bio}$, identical as for particles. 
+
+```{r}
+EC_env_sa <- EC_poly_sa * CF_bio
+paste("EC_env_sa = ",signif(EC_env_sa,4), "Particles/L (1-5,000 um; marine surface water )")
+```
+
+
+### Mass (Translocation)
+In the case of an ERM of interest being total mass, $\mu_{x,mono}$ is equivalent to the average mass of a the monodisperse particle (i.e. $\mu_{m,mono}$), calculated as follows:
+
+$\mu_{m,mono} = m = pV*\frac{1}{1e12}*1e6$
+
+Where *m* is the mass (ug), *p* is density (g/cm^3), *V* is volume (um^3) - which is calculated by the cube of the radius of each particle (i.e. 1/2 * length, or 2.5 um), and additional conversion factors for g to ug (1e6) and cm^3 to um^3 (1e-12).
+
+```{r}
+density.g.cm3 <- POD$density.g.cm3
+paste(polymer, "density:", density.g.cm3, "g/cm^3")
+```
+
+
+For the example of a 2 um polyethylene sphere, the volume was calculated above (~ $4.2 um^3$), and the density of polyethylene was is estimated to be 0.987 g/cm^3. $\mu_{x,mono}$ is calculated:
+
+```{r}
+massfnx_mono = function(R, L, p){
+  mass = p * #density (g/cm^3)
+    0.111667 * pi * R^2 * L^3 * # volume (um^3): assumes height = 0.67 * Width, and Width:Length ratio is 'R' (compartment-specific)
+    1/1e12 * 1e6 #correction factor
+  return(mass)}
+
+mu_m.mono <- massfnx_mono(R = R.ave,  L = particle.size, p = density.g.cm3)
+paste("mu_m,mono:", signif(mu_m.mono,3),"ug")
+```
+Since the probability distribution of ERM $m$ (mass) follows a power law regime, the mean ERM value for the polydisperse particles, $\mu_{m,poly}$, can be calculated by first calculating the lower and upper ingestible masses of particles based on the length of the ingestible particle. The UL and LL are respectively defined as the upper and lower limit in ERM $m$ (mass) for which the mean is calculated, and $a_m$ is the power law exponent of mass. In the case of marine surface water,an $a_m$ of 1.32 is utilized (Kooi et al 2021; Table S4).
+
+For mass, UL and LL are mass-based upper and lower limits of bioaccessibility based on the width of particles, respectively. To estimate mass-based limits based on size, the volume of bioaccessible particles is first calculated using the equation for the volume of an ellipsoid, then multipied by the average density of particles in the 1-5,000 um distribution in the environmental compartment of interest (e.g.surface marine water: 1.10 g/cm^3) (Kooi et al 2021; table S3).
+
+```{r}
+massfnx_poly = function(width, length, p){
+  height =  width
+  volume = (4/3) * pi * (length/2) * (width/2) * (height/2) #assumes height = 0.67 * Width 
+  mass = p * #density (g/cm^3)
+    volume * # volume (um^3): assumes height = 0.67 * Width, and Width:Length ratio is 'R' (compartment-specific)
+    1/1e12 * 1e6 #correction factor
+  return(mass)}
+
+p.ave = 1.1
+
+#lower limit
+x_LL_m = massfnx_poly(width = lower.ingestible.width.um, #smallest ingestible width
+               length = lower.ingestible.length.um, # smallest length 
+               p = p.ave) #average density
+#upper limit
+x_UL_m = massfnx_poly(width = upper.tissue.trans.size.um,
+               length = upper.tissue.trans.size.um, #upper default length
+               p = p.ave) #average density
+
+paste("x_UL = ",signif(x_UL_m,2), "ug",
+      ";x_LL = ", signif(x_LL_m,2), "ug")
+```
+
+$\mu_{m,poly}$ may now be calculated given these limits, using an alpha value of $a_m$ of 1.32 for the marine surface water environment (Kooi et al 2021):
+```{r}
+a.m = 1.32
+#compute
+mu_m.poly <- mux_polyfnx(a.x = a.m, 
+                         x_UL = x_UL_m,
+                         x_LL = x_LL_m)
+#report
+paste("mu_m_poly:", signif(mu_m.poly,2), "ug")
+```
+
+Now that $\mu_{m,poly}$, $\mu_{m,mono}$, and $EC_{mono}$ are known for this example for mass, the *bioavailable* *polydisperse* effect concentration $EC_{poly}$ for the mass ERM may then be calculated:
+
+```{r}
+EC_poly_m <- (exposure.conc.particles.L * mu_m.mono)/mu_m.poly
+paste("EC_poly_m:",signif(EC_poly_m,5), "particles/L")
+```
+Again, to relate this *bioavailable*, *polydisperse* effect threshold ($EC_{poly,sa}$) to an environmentally relevant *polydisperse* mixture of particles for the mass ERM, an additional correction must be applied to rescale the threshold to the size range of interest (e.g. 1-5,000 um) using $CF_{bio}$, identical as for particles. 
+
+```{r}
+EC_env_m <- EC_poly_m * CF_bio
+paste("EC_env_m = ",signif(EC_env_m,4), "Particles/L (1-5,000 um; marine surface water)")
+```
+
+### Specific Surface Area (Translocation)
+
+In the case of an ERM of interest being specific surface area, $\mu_{ssa,mono}$ is equivalent to the surface area of a 2 um PE sphere (i.e. $\mu_{sa,mono}$) divided by the mass (i.e. $\mu_{m,mono}$), calculated as follows:
+
+$\mu_{sa,mono} = SSA = \frac{SA}{m}$
+
+Where *SA* is the surface area (um^2) of the particle, and *m* is the mass (ug).
+
+```{r}
+mu_ssa.mono = mu_sa.mono/mu_m.mono
+paste("mu_ssa,mono:", formatC(mu_ssa.mono,format = "e", digits = 2),"um^2/ug")
+```
+
+Since the probability distribution of the inverse of the ERM $ssa$ (specific surface area; i.e. 1/SSA) follows a power law regime, the mean ERM value for the polydisperse particles, $\mu_{1/ssa,poly}$, can be calculated, where UL and LL are respectively defined as the inverse of the upper and lower limit in ERM $ssa$ (i.e. 1/ssa) for which the mean is calculated, and $a_1/ssa$ is the power law exponent of the inverse of specific surface area. For example, marine surface water has an $a_1/ssa$ of 1.98 (Kooi et al 2021; Table S4). For specific surface area, UL and LL are the inverse of the area/mass-based upper and lower limits of bioaccessibility based on the width of particles, respectively. To estimate area/mass-based limits based on size, the volume of bioaccessible particles  is first calculated using the equation for the surface area of an ellipsoid, then divided by the lower and upper bioavailable  mass of particles in the 1-5,000 um distribution in surface marine water, as calculated above.
+
+```{r}
+#max ingestible specific surface area
+SSA.inversefnx = function(sa,
+                  m){
+  SSA.inverse = m/sa
+    return(SSA.inverse)}
+
+#calculate
+x_LL_ssa = SSA.inversefnx(sa = x_LL_sa, m = x_LL_m)
+x_UL_ssa = SSA.inversefnx(sa = x_UL_sa, m = x_UL_m)
+
+#report
+paste("x_UL_1/ssa = ", signif(x_UL_ssa,3), "ug/um^2;",
+      "x_LL_1/ssa = ", signif(x_LL_ssa,3), "ug/um^2")
+```
+
+$\mu_{m,poly}$ may now be calculated given these limits, using an alpha value of $a_ssa$ of 1.98 for the marine surface water environment (Kooi et al 2021):
+```{r}
+a.ssa = 1.98 # A_SSA for marine surface water
+  
+mu_ssa.poly.inverse <- mux_polyfnx(a.x = a.ssa, 
+            x_UL = x_UL_ssa,
+            x_LL = x_LL_ssa) 
+
+paste("mu_1/ssa,poly =",signif(mu_ssa.poly.inverse,3), "ug/um^2")
+```
+
+Now that $\mu_{1/ssa,poly}$, $\mu_{ssa,mono}$, and $EC_{mono}$ are known for this example for specific surface area, the *bioavailable* *polydisperse* effect concentration $EC_{poly}$ for the specific surface area ERM may then be calculated by first taking the inverse of $\mu_{1/ssa,poly}$ to obtain $\mu_{ssa,poly}$:
+
+```{r}
+mu_ssa.poly <- 1/mu_ssa.poly.inverse
+paste("mu_1/ssa,poly =",scales::comma(mu_ssa.poly,3), "um^2/ug")
+```
+
+
+```{r}
+EC_poly_ssa <- (exposure.conc.particles.L * mu_ssa.mono)/mu_ssa.poly
+paste("EC_poly_ssa:",scales::comma(EC_poly_ssa,5), "particles/L")
+```
+Again, to relate this *bioavailable*, *polydisperse* effect threshold ($EC_{poly,ssa}$) to an environmentally relevant *polydisperse* mixture of particles for the specific surface area ERM, an additional correction must be applied to rescale the threshold to the size range of interest (e.g. 1-5,000 um) using $CF_{bio}$, identical as for particles. 
+
+```{r}
+EC_env_ssa <- EC_poly_ssa * CF_bio
+paste("EC_env_ssa = ",scales::comma(EC_env_ssa,4), "Particles/L (1-5,000 um; marine surface water)")
+```
+
+## Aligning Occurence Data for Risk Characterization
+Given an upper limit (UL) and lower limit (LL) of the measured (M) and default size range (D), a dimensionless correction factor ($CF_{meas}$) for measured environmental concentrations may be calculated, which rescales the measured (M) number concentrations for a certain size range to the number concentration for the microplastics default (D) size range (e.g. 1 to 5,000 um) according to the power law distribution for length (L) with slope $\alpha_L$ in Table S4 of Kooi et al (2021). 
+
+The following equation for $CF_{meas}$ is identical for effect concentration ($CF_{Bio}$) except the bioavailable fraction of particles is denoted as UL,B and LL,B on the denominator (Koelmans et al., 2020; Kooi et al., 2021).
+
+$CF_{Meas} = \frac{L^{1-a}_{UL,D} - L^{1-a}_{LL,D}}{L^{1-a}_{UL,M} - L^{1-a}_{LL,M}}$
+
+For example, a marine surface water concentration of 10 particles/L for 300 - 5,000 um is used.
+```{r}
+C_meas = 10
+paste("C_meas =",C_meas, "particles/L (300 - 5,000 um; marine surface water)")
+```
+To compare this concentration to the environmentally relevant (1 - 5,000 um) effect threshold (EC_env) in particles/L (calculated above), $CF_{meas}$ is first calculated.
+
+```{r}
+### Define params for ###
+alpha = alpha #table s4 for freshwater surface water
+x2D_set = 5000
+x1D_set = 1
+x2M = 5000
+x1M = 300
+
+# calculate CF_bio
+CF_meas <- CFfnx(a = alpha, 
+                x2D = x2D_set,
+                x1D = x1D_set,
+                x1M = x1M, 
+                x2M = x2M)
+paste("CF_meas = ",signif(CF_meas,4), "(unitless)")
+```
+
+The resulting correction factor ($CF_{meas}$ (unitless) is then multiplied by the measured concentration ($C_{Meas}$) to obtain a rescaled exposure number concentration $C_{Env} =  CF_{meas} x C_{meas}$.
+```{r}
+C_env <- CF_meas * C_meas
+paste("C_env =",scales::comma(C_env,4), "particles/L (1 - 5,000 um; marine surface water)")
+```
+This measured rescaled environmental concentration $C_{env}$ may then be directly compared to the rescaled effect thresholds for various ERM $EC_{env,x}$ to determine if risk is present using the traditional PNEC/PEC formula:
+
+```{r}
+risk <- tibble('ERM' = c("Unaligned",
+                         "Volume (Ingestion)", "Surface Area (Translocation)", "Mass (Translocation)",
+                         "Specific Surface Area (Translocation)"),
+               'EC_env' = c(exposure.conc.particles.L, EC_env_v, EC_env_sa, EC_env_m, EC_env_ssa)) %>% 
+  mutate('PNEC/PEC' =  C_env / EC_env)
+
+# build gt table
+full_val_range_1 <- risk %>% 
+    ungroup %>% 
+    select_if(is.numeric) %>% 
+    range
+
+gt(risk) %>% 
+  tab_header(title = paste("1-5,000 um Thresholds (Aligned) Compared to Environmental Concentration (Rescaled)"), 
+             subtitle = paste("Thresholds presented in particles/L. Re-scaled environmental concentration = ", scales::comma(C_env), "particles/L")) %>% 
+  fmt_number(columns = c(EC_env, 'PNEC/PEC'),
+             n_sigfig = 2,
+             use_seps = TRUE) %>% 
+    data_color(
+    columns = names(risk)[2:3],
+    colors = scales::col_numeric(
+      palette = paletteer::paletteer_d(palette = "ggsci::teal_material") %>% as.character(),
+      domain = full_val_range_1),
+    alpha = 0.75) %>% 
+    tab_options(column_labels.hidden = FALSE) #%>% 
+    #as_raw_html() # return as htmlk 
+```
+
+In this case, the environmental concentration is nearly 500x higher than the effect threshold for food dilution (i.e., volume-aligned; ingestion-restricted EC_env), so exceedance of a NOEC for this particular endpoint/species (i.e. Number of Offspring,*C.Daphnia*) would be expected to occur for that ERM. Risk based on the tissue-translocation mediated effect ERM (i.e., surface-area aligned, translocation-restricted EC_env) is still expected to occur, however with a lower magnitude of exceedance than for food dilution. Other alignments (mass, specific surface area, unaligned) are simply shown for demonstrative purposes here, and their reliability has not been demonstrated yet.
+
+The above approach used for particles as an ecologically relevant metric may be applied for any other ecologically relevant metric for which particle distributions are characterized in the environmental compartment of interest. 

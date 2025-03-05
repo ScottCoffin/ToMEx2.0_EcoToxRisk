@@ -427,12 +427,22 @@ mux_polyfnx_generalizable <- function(a.x, x_UL, x_LL) {
 
 ### Calculating max ingestible parameters ###
 ## function to calcualte min and max ingestible surface area ##
-SAfnx = function(a, # a = 0.5 * length
-                 b, # b = 0.5 * width
-                 c # c = 0.5 * height (note that hieght is 0.67 * width)
-){
+SAfnx = function(a, # length
+                 b, # width
+                 c){ # height\
+  # a, b, and c are equivalent to 1/2th of the length, width, and height, respectively
+  a <- 0.5 * a
+  b <- 0.5 * b
+  c <- 0.5 * c
   SA = 4*pi*(((a*b)^1.6 + (a*c)^1.6 + (b*c)^1.6) / 3)^(1/1.6)
   return(SA)}
+
+#cylinder equation for SA. S = 2pi*r*h + 2pi*r^2, where r = width/2 and h = length 
+SAfnx_fiber = function(width, length){
+  radius = width / 2
+  SA = 2*pi*radius*length + 2*pi*radius^2
+  return(SA)
+}
 
 ## max ingestible volume ##
 
@@ -514,14 +524,14 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
   #### Surface area ERM ####
 ##--- environmental calculations ---###
   #calculate lower translocatable surface area
-  mutate(x_LL_sa_trans = SAfnx(a = 0.5 * x1D_set, #length
-                               b = 0.5 * x1D_set, #0.5 * R.ave * x1D_set, #width
-                               c = 0.5 * x1D_set  #0.5 * R.ave * 0.67 * x1D_set #height
+  mutate(x_LL_sa_trans = SAfnx(a = x1D_set, #length
+                               b = x1D_set, #R.ave * x1D_set, #width
+                               c = x1D_set  # R.ave * 0.67 * x1D_set #height
                                )) %>%  
   #calculate upper translocatable surface area
-  mutate(x_UL_sa_trans = SAfnx(a = 0.5 * x2M_trans, 
-                               b = 0.5 * x2M_trans, #width #0.5 * R.ave * x2M, 
-                               c = 0.5 * x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
+  mutate(x_UL_sa_trans = SAfnx(a = x2M_trans, 
+                               b = x2M_trans, #width # R.ave * x2M, 
+                               c = x2M_trans #heigth # R.ave * 0.67 * x2M
                                )) %>%  
   #calculate mu_x_poly (env) for surface area
   mutate(mu.sa.poly_trans = mux_polyfnx_generalizable(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
@@ -591,7 +601,12 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
   
    ###### CLEANUP #####
   mutate(particles.mL.ox.stress = EC_env_sa.particles.mL_trans,
-         particles.mL.food.dilution = EC_env_v.particles.mL_ingest)
+         particles.mL.food.dilution = EC_env_v.particles.mL_ingest) %>% 
+  mutate(particles.mL.food.dilution = case_when(
+    Group == "Algae" ~ NA,
+    T ~ particles.mL.food.dilution
+  )) %>% 
+  filter(size.length.um.used.for.conversions >= 1)
 ```
 
 ###### Save Aligned dataset
@@ -728,7 +743,7 @@ filtered.data.small.default_t1.2 <- aoc_risk_paper %>%
          !environment %in% c("Terrestrial", "Not Reported"),
          Group != "Bacterium",
          Group != "Plant",
-         effect.metric != "HONEC")
+         effect.metric != "HONEC") 
 
 filtered.data.small.default_t3.4 <- filtered.data.small.default_t1.2 %>% 
  filter(risk.13 != 1,
@@ -975,14 +990,14 @@ calculate_thresholds <- function(data, label) {
     #### Surface area ERM ####
   ##--- environmental calculations ---###
   #calculate lower translocatable surface area
-  mutate(x_LL_sa_trans = SAfnx(a = 0.5 * x1D_set, #length
-                               b = 0.5 * x1D_set, #0.5 * R.ave * x1D_set, #width
-                               c = 0.5 * x1D_set  #0.5 * R.ave * 0.67 * x1D_set #height
+  mutate(x_LL_sa_trans = SAfnx(a = x1D_set, #length
+                               b = x1D_set, # R.ave * x1D_set, #width
+                               c = x1D_set  #R.ave * 0.67 * x1D_set #height
   )) %>%  
     #calculate upper translocatable surface area
-    mutate(x_UL_sa_trans = SAfnx(a = 0.5 * x2M_trans, 
-                                 b = 0.5 * x2M_trans, #width #0.5 * R.ave * x2M, 
-                                 c = 0.5 * x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
+    mutate(x_UL_sa_trans = SAfnx(a = x2M_trans, 
+                                 b = x2M_trans, #width #R.ave * x2M, 
+                                 c = x2M_trans #heigth #R.ave * 0.67 * x2M
     )) %>%  
     #calculate mu_x_poly (env) for surface area
     mutate(mu.sa.poly_trans = mux_polyfnx_generalizable(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
@@ -1053,6 +1068,14 @@ calculate_thresholds <- function(data, label) {
     ###### CLEANUP #####
   mutate(particles.mL.ox.stress = EC_env_sa.particles.mL_trans,
          particles.mL.food.dilution = EC_env_v.particles.mL_ingest) %>% 
+     #ensure algae not used in food dilution
+  mutate(particles.mL.food.dilution = case_when(
+    Group == "Algae" ~ NA,
+    T ~ particles.mL.food.dilution)) %>% 
+     # ensure no negative numbers!
+     filter(particles.mL.food.dilution > 0) %>% 
+     filter(particles.mL.ox.stress > 0) %>% 
+     filter(size.length.um.used.for.conversions >= 1) %>% 
     #### annotate studies in which particles are too big to be ingested or translocated for those ERMs (to be filtered in ssd functions)
     mutate(translocatable = as.factor(ifelse(size.length.um.used.for.conversions > x2M_trans, 
                                    "not translocatable", 
@@ -1094,9 +1117,15 @@ calculate_thresholds <- function(data, label) {
   ##### SAVE OUTPUT OF MONTE CARLO ######
   
   thresholds_results <- list("label" = as.character(label), 
-                                  particles_mL_ox_stress = aoc_iter$particles.mL.ox.stress,
-                                  particles_mL_food_dilution = aoc_iter$particles.mL.food.dilution,
-                                  unique_id = aoc_iter$unique_id,
+                                  full_dataset = list(
+                                    species = aoc_iter$Species,
+                                    group = aoc_iter$Group,
+                                    environment = aoc_iter$environment,
+                                    study = paste(aoc_iter$authors, aoc_iter$year),
+                                    doi = aoc_iter$doi,
+                                    particles_mL_ox_stress = aoc_iter$particles.mL.ox.stress,
+                                    particles_mL_food_dilution = aoc_iter$particles.mL.food.dilution,
+                                    unique_id = aoc_iter$unique_id),
                                   base_thresholds = list(
                                     "label" = as.character(label), 
                                     marine = marine_thresholds,
@@ -1313,7 +1342,7 @@ food_quality <- all_thresholds_combined %>%
   xlab("Particles/L (Food Dilution)") +
   ylab("Quality Filters") +
   scale_x_log10(#labels = scales::comma,
-                limits = c(0.0000001, 100000)) +
+                limits = c(0.0000001, 500000)) +
   theme_minimal(base_size = 14) +
   theme(legend.position = "none") +
   coord_cartesian(clip = "off")+ 
@@ -1339,7 +1368,7 @@ tissue_quality <- all_thresholds_combined %>%
   geom_text(aes(label = signif(`Tissue Translocation (5th %)`, 2), x = `Tissue Translocation (5th %)` * 0.08), vjust = +0.5) +
   geom_text(aes(label = signif(`Tissue Translocation (95th %)`, 2), x = `Tissue Translocation (95th %)` * 8), vjust = +0.5) +
   scale_x_log10(#labels = scales::comma,
-                limits = c(0.0000001, 100000)) +
+                limits = c(0.0000001, 500000)) +
   xlab("Particles/L (Tissue Translocation)") +
   ylab("Quality Filters") +
   coord_cartesian(clip = "off") +
@@ -1513,18 +1542,133 @@ best_data_thresholds <- calculate_thresholds(best_data, label = "best data")
 
 ```
 
-```{r}
-# Combine all thresholds into a single table
 
-# Combine the marine thresholds from each dataset
+```{r}
+library(dplyr)
+
+# Function to extract minimum rows for both metrics and environments
+extract_minimum_rows <- function(dataset, label) {
+  # Convert the dataset to a data frame
+  data <- as.data.frame(dataset$full_dataset)
+  
+  # Extract minimum rows for Marine environment
+  marine_min_food <- data %>%
+    filter(environment == "Marine") %>%
+    slice(which.min(particles_mL_food_dilution)) %>%
+    mutate(label = label, metric = "particles_mL_food_dilution")
+  
+  marine_min_ox <- data %>%
+    filter(environment == "Marine") %>%
+    slice(which.min(particles_mL_ox_stress)) %>%
+    mutate(label = label, metric = "particles_mL_ox_stress")
+  
+  # Extract minimum rows for Freshwater environment
+  freshwater_min_food <- data %>%
+    filter(environment == "Freshwater") %>%
+    slice(which.min(particles_mL_food_dilution)) %>%
+    mutate(label = label, metric = "particles_mL_food_dilution")
+  
+  freshwater_min_ox <- data %>%
+    filter(environment == "Freshwater") %>%
+    slice(which.min(particles_mL_ox_stress)) %>%
+    mutate(label = label, metric = "particles_mL_ox_stress")
+  
+  # Combine all extracted rows
+  bind_rows(marine_min_food, marine_min_ox, freshwater_min_food, freshwater_min_ox)
+}
+
+# Apply the function to each dataset
+risk_tech_minimum <- extract_minimum_rows(risk_tech, "risk and tech")
+tech_minimum <- extract_minimum_rows(tech, "tech only")
+risk_minimum <- extract_minimum_rows(risk, "risk only")
+no_quality_minimum <- extract_minimum_rows(no_quality, "no quality filters")
+best_data_minimum <- extract_minimum_rows(best_data_thresholds, "best data")
+
+# Combine all minimum rows into a single data frame
+all_minimum_rows <- bind_rows(
+  risk_tech_minimum,
+  tech_minimum,
+  risk_minimum,
+  no_quality_minimum,
+  best_data_minimum
+)
+
+# Rename columns as required
+all_minimum_rows <- all_minimum_rows %>%
+  rename(
+    most_sensitive_species = species,
+    most_sensitive_group = group,
+    most_sensitive_study = study
+  )
+
+# Combine the marine thresholds
 marine_thresholds <- bind_rows(
   risk_tech$base_thresholds$marine,
   tech$base_thresholds$marine,
   risk$base_thresholds$marine,
   no_quality$base_thresholds$marine,
-  best_data_thresholds$base_thresholds$marine
+  best_data_thresholds$base_thresholds$marine,
+  all_minimum_rows %>% filter(environment == "Marine")
+) %>%
+  mutate(environment = "Marine")
+
+# Combine the freshwater thresholds
+freshwater_thresholds <- bind_rows(
+  risk_tech$base_thresholds$freshwater,
+  tech$base_thresholds$freshwater,
+  risk$base_thresholds$freshwater,
+  no_quality$base_thresholds$freshwater,
+  best_data_thresholds$base_thresholds$freshwater
+) %>%
+  mutate(environment = "Freshwater") %>% 
+  left_join(all_minimum_rows, by = c("environment", "label"),
+            relationship = "many-to-many")
+
+# Combine the marine and freshwater data into a single unified data frame
+unified_thresholds <- bind_rows(marine_thresholds, freshwater_thresholds)
+
+# View the final unified thresholds
+print(unified_thresholds)
+```
+
+```{r}
+# Combine all thresholds into a single table
+# Convert datasets to data frames and extract the minimum rows
+risk_tech_data <- as.data.frame(risk_tech$full_dataset)
+risk_tech_data %>% filter(environment == "Freshwater") %>%  filter(particles_mL_food_dilution == min(particles_mL_food_dilution, na.rm = TRUE)) %>% distinct()
+
+risk_tech_minimum <- risk_tech_data[which.min(risk_tech_data$particles_mL_food_dilution), 1:4] %>% 
+  mutate(label = "risk and tech")
+
+tech_data <- as.data.frame(tech$full_dataset)
+tech_minimum <- tech_data[which.min(tech_data$particles_mL_food_dilution), 1:4] %>% 
+  mutate(label = "tech only")
+
+risk_data <- as.data.frame(risk$full_dataset)
+risk_minimum <- risk_data[which.min(risk_data$particles_mL_food_dilution), 1:4] %>% 
+  mutate(label = "risk only")
+
+no_quality_data <- as.data.frame(no_quality$full_dataset)
+no_quality_minimum <- no_quality_data[which.min(no_quality_data$particles_mL_food_dilution), 1:4] %>% 
+  mutate(label = "no quality filters")
+
+best_data_data <- as.data.frame(best_data_thresholds$full_dataset)
+best_data_minimum <- best_data_data %>% filter()
+
+# Combine the marine thresholds from each dataset
+marine_thresholds <- bind_rows(
+  risk_tech$base_thresholds$marine,
+  risk_tech_minimum,
+  tech$base_thresholds$marine,
+  tech_minimum,
+  risk$base_thresholds$marine,
+  risk_minimum,
+  no_quality$base_thresholds$marine,
+  no_quality_minimum,
+  best_data_thresholds$base_thresholds$marine,
+  best_data_minimum
 ) %>% 
-mutate(Environment = "Marine")  
+  mutate(Environment = "Marine")
 
 # Combine the freshwater thresholds from each dataset
 freshwater_thresholds <- bind_rows(
@@ -1883,7 +2027,7 @@ leave_one_out_df <- bind_rows(tier1_sensitivity_tissue_freshwater$sensitivity_su
   mutate(tier = as.factor(tier)) %>% 
   left_join(thresholds,
             by = c("ERM", "tier", "environment")) %>% 
-  mutate(fold_change = (hcx / threshold) - 1)
+  mutate(fold_change = (hcx / threshold))
 
 write.csv(leave_one_out_df,
           "../output/data/leave_one_out.csv")
@@ -1929,7 +2073,7 @@ leave_one_out_df_trim <- leave_one_out_df %>%
 leave_one_out_ggplot <- ggplot() +
   geom_jitter(data = leave_one_out_df_trim,
               aes(x = fold_change, y = tier, color = tier,
-             text = paste0("fold_change: ", scales::percent(fold_change, 0.1, big.mark = ","),
+             text = paste0("fold_change: ", signif(fold_change, 2),
                                               "<br>HCx: ",scientific(hcx, 3), " particles/L",
                                               "<br>Study: ", authoryear,
                                               "<br>Species: " ,species_multiple,
@@ -1975,7 +2119,7 @@ leave_one_out_ggplot <- ggplot() +
   #geom_vline(xintercept = 0.00001, alpha = 0.5, color = "grey60") +
   scale_x_continuous(
     trans = pseudo_log_trans(base = 2),
-                       breaks = c(-1, 0, 1, 2, 4, 8, 16, 40)
+                       breaks = c(0.01, 1, 2, 4, 8, 16, 40)
   ) + 
                     # breaks = c(-1, 0, 1, 10, 100), 
                    #   limits = c(min_fold_change, max_fold_change), 
@@ -3698,5 +3842,40 @@ freshwater_food_plots <- ggarrange(tier3_4_food_freshwater_pssdPlot,
                         ncol = 1, nrow = 2)
 
 freshwater_food_plots
+```
+
+# Export relevant data to Excel
+```{r}
+# Load the openxlsx package
+library(openxlsx)
+
+#fix encoding to UTF-8
+tomex2.0_aoc_z_final_utf8 <- stringi::stri_enc_toutf8(tomex2.0_aoc_z_final, validate = TRUE)
+
+# List of data frame names
+dataframe_names <- c("unified_thresholds", "leave_one_out_df", "tomex2.0_aoc_z_final_utf8")
+
+# Corresponding custom sheet names
+sheet_names <- c("Thrshlds_Tr_ERM_Env_Qulty", "Leave_one_out_studies", "Full ToMEx2.0 dataset")
+
+# Create a new Excel workbook
+wb <- createWorkbook()
+
+# Loop through the list of data frame names and write them to the workbook
+for (i in seq_along(dataframe_names)) {
+  # Get the data frame by its name
+  df <- get(dataframe_names[i])
+  
+  # Add a worksheet with the custom name
+  addWorksheet(wb, sheet_names[i])
+  
+  # Write the data frame to the worksheet
+  writeData(wb, sheet_names[i], df)
+}
+
+# Save the workbook to a file
+saveWorkbook(wb, "../output/data/supplemental_information.xlsx", overwrite = TRUE)
+
+cat("Data frames have been written to ../output/data/supplemental_information.xlsx with custom sheet names\n")
 ```
 

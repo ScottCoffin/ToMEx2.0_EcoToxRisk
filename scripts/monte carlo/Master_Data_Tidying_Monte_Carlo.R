@@ -145,14 +145,14 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
   #### Surface area ERM ####
 ##--- environmental calculations ---###
 #calculate lower translocatable surface area
-mutate(x_LL_sa_trans = SAfnx(a = 0.5 * x1D_set, #length
-                             b = 0.5 * x1D_set, #0.5 * R.ave * x1D_set, #width
-                             c = 0.5 * x1D_set  #0.5 * R.ave * 0.67 * x1D_set #height
+mutate(x_LL_sa_trans = SAfnx(a = X1D_set, #length
+                             b = x1D_set, #0.5 * R.ave * x1D_set, #width
+                             c = x1D_set  #0.5 * R.ave * 0.67 * x1D_set #height
 )) %>%  
   #calculate upper translocatable surface area
-  mutate(x_UL_sa_trans = SAfnx(a = 0.5 * x2M_trans, 
-                               b = 0.5 * x2M_trans, #width #0.5 * R.ave * x2M, 
-                               c = 0.5 * x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
+  mutate(x_UL_sa_trans = SAfnx(a = x2M_trans, 
+                               b = x2M_trans, #width #0.5 * R.ave * x2M, 
+                               c = x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
   )) %>%  
   #calculate mu_x_poly (env) for surface area
   mutate(mu.sa.poly_trans = mux_polyfnx_generalizable(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
@@ -469,14 +469,14 @@ model_wrapper <- function(params, iteration){
     #### Surface area ERM ####
   ##--- environmental calculations ---###
   #calculate lower translocatable surface area
-  mutate(x_LL_sa_trans = SAfnx(a = 0.5 * x1D_set, #length
-                               b = 0.5 * x1D_set, #0.5 * R.ave * x1D_set, #width
-                               c = 0.5 * x1D_set  #0.5 * R.ave * 0.67 * x1D_set #height
+  mutate(x_LL_sa_trans = SAfnx(a = x1D_set, #length
+                               b = x1D_set, #0.5 * R.ave * x1D_set, #width
+                               c = x1D_set  #0.5 * R.ave * 0.67 * x1D_set #height
   )) %>%  
     #calculate upper translocatable surface area
-    mutate(x_UL_sa_trans = SAfnx(a = 0.5 * x2M_trans, 
-                                 b = 0.5 * x2M_trans, #width #0.5 * R.ave * x2M, 
-                                 c = 0.5 * x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
+    mutate(x_UL_sa_trans = SAfnx(a = x2M_trans, 
+                                 b = x2M_trans, #width #0.5 * R.ave * x2M, 
+                                 c = x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
     )) %>%  
     #calculate mu_x_poly (env) for surface area
     mutate(mu.sa.poly_trans = mux_polyfnx_generalizable(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
@@ -997,14 +997,14 @@ model_wrapper_sobol <- function(params, iteration, N, sobol_results, save_interv
     #### Surface area ERM ####
   ##--- environmental calculations ---###
   #calculate lower translocatable surface area
-  mutate(x_LL_sa_trans = SAfnx(a = 0.5 * x1D_set, #length
-                               b = 0.5 * x1D_set, #0.5 * R.ave * x1D_set, #width
-                               c = 0.5 * x1D_set  #0.5 * R.ave * 0.67 * x1D_set #height
+  mutate(x_LL_sa_trans = SAfnx(a = x1D_set, #length
+                               b = x1D_set, #0.5 * R.ave * x1D_set, #width
+                               c = x1D_set  #0.5 * R.ave * 0.67 * x1D_set #height
   )) %>%  
     #calculate upper translocatable surface area
-    mutate(x_UL_sa_trans = SAfnx(a = 0.5 * x2M_trans, 
-                                 b = 0.5 * x2M_trans, #width #0.5 * R.ave * x2M, 
-                                 c = 0.5 * x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
+    mutate(x_UL_sa_trans = SAfnx(a = x2M_trans, 
+                                 b = x2M_trans, #width #0.5 * R.ave * x2M, 
+                                 c = x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
     )) %>%  
     #calculate mu_x_poly (env) for surface area
     mutate(mu.sa.poly_trans = mux_polyfnx_generalizable(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 

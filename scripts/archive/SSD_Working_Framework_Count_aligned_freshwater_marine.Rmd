@@ -230,12 +230,23 @@ mux.polyfnx.2 = function(x_UL,x_LL){
 
 ### Calculating max ingestible parameters ###
 ## function to calcualte min and max ingestible surface area ##
-SAfnx = function(a, # a = 0.5 * length
-                 b, # b = 0.5 * width
-                 c # c = 0.5 * height (note that hieght is 0.67 * width)
-){
+#### Particle Characteristics Equations ####
+SAfnx = function(a, # length
+                 b, # width
+                 c){ # height\
+  # a, b, and c are equivalent to 1/2th of the length, width, and height, respectively
+  a <- 0.5 * a
+  b <- 0.5 * b
+  c <- 0.5 * c
   SA = 4*pi*(((a*b)^1.6 + (a*c)^1.6 + (b*c)^1.6) / 3)^(1/1.6)
   return(SA)}
+
+#cylinder equation for SA. S = 2pi*r*h + 2pi*r^2, where r = width/2 and h = length 
+SAfnx_fiber = function(width, length){
+  radius = width / 2
+  SA = 2*pi*radius*length + 2*pi*radius^2
+  return(SA)
+}
 
 ## max ingestible volume ##
 volumefnx = function(R, L){
@@ -342,13 +353,13 @@ aoc_final_small <- aoc_intermediate_alphas  %>%
   #### Surface area ERM ####
   mutate(mu.sa.mono = particle.surface.area.um2) %>% #define mu_x_mono for alignment to ERM
   #calculate lower ingestible surface area
-  mutate(x_LL_sa = SAfnx(a = 0.5 * x1D_set, 
-                         b = 0.5 * R.ave * x1D_set, 
-                         c = 0.5 * R.ave * 0.67 * x1D_set)) %>%  
+  mutate(x_LL_sa = SAfnx(a = x1D_set, 
+                         b =  R.ave * x1D_set, 
+                         c =  R.ave * 0.67 * x1D_set)) %>%  
   #calculate upper ingestible surface area
-  mutate(x_UL_sa = SAfnx(a = 0.5 * x2M, 
-                         b = 0.5 * R.ave *x2M, 
-                         c = 0.5 * R.ave * 0.67 * x2M)) %>%  
+  mutate(x_UL_sa = SAfnx(a = x2M, 
+                         b = R.ave *x2M, 
+                         c = R.ave * 0.67 * x2M)) %>%  
   #calculate mu_x_poly for surface area
   mutate(mu.sa.poly = case_when(a.sa == 2 ~ mux.polyfnx.2(x_UL_sa, x_LL_sa),
                                 a.sa != 2 ~ mux.polyfnx(a.sa, x_UL_sa, x_LL_sa)
@@ -452,13 +463,13 @@ aoc_final_large <- aoc_intermediate_alphas  %>%
   #### Surface area ERM ####
   mutate(mu.sa.mono = particle.surface.area.um2) %>% #define mu_x_mono for alignment to ERM
   #calculate lower ingestible surface area
-  mutate(x_LL_sa = SAfnx(a = 0.5 * x1D_set, 
-                         b = 0.5 * R.ave * x1D_set, 
-                         c = 0.5 * R.ave * 0.67 * x1D_set)) %>%  
+  mutate(x_LL_sa = SAfnx(a =  x1D_set, 
+                         b =  R.ave * x1D_set, 
+                         c =  R.ave * 0.67 * x1D_set)) %>%  
   #calculate upper ingestible surface area
-  mutate(x_UL_sa = SAfnx(a = 0.5 * x2M, 
-                         b = 0.5 * R.ave *x2M, 
-                         c = 0.5 * R.ave * 0.67 * x2M)) %>%  
+  mutate(x_UL_sa = SAfnx(a =  x2M, 
+                         b =  R.ave *x2M, 
+                         c =  R.ave * 0.67 * x2M)) %>%  
   #calculate mu_x_poly for surface area
   #calculate mu_x_poly for surface area
   mutate(mu.sa.poly = case_when(a.sa == 2 ~ mux.polyfnx.2(x_UL_sa, x_LL_sa),

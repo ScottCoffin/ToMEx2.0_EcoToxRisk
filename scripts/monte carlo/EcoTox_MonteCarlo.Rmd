@@ -605,14 +605,14 @@ alignmentFxn <- function(df = tomex2.0_aoc_z_final){
     #### Surface area ERM ####
   ##--- environmental calculations ---###
   #calculate lower translocatable surface area
-  mutate(x_LL_sa_trans = SAfnx(a = 0.5 * x1D_set, #length
-                               b = 0.5 * x1D_set, #0.5 * R.ave * x1D_set, #width
-                               c = 0.5 * x1D_set  #0.5 * R.ave * 0.67 * x1D_set #height
+  mutate(x_LL_sa_trans = SAfnx(a = x1D_set, #length
+                               b = x1D_set, #0.5 * R.ave * x1D_set, #width
+                               c = x1D_set  #0.5 * R.ave * 0.67 * x1D_set #height
   )) %>%  
     #calculate upper translocatable surface area
-    mutate(x_UL_sa_trans = SAfnx(a = 0.5 * x2M_trans, 
-                                 b = 0.5 * x2M_trans, #width #0.5 * R.ave * x2M, 
-                                 c = 0.5 * x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
+    mutate(x_UL_sa_trans = SAfnx(a = x2M_trans, 
+                                 b = x2M_trans, #width #0.5 * R.ave * x2M, 
+                                 c = x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
     )) %>%  
     #calculate mu_x_poly (env) for surface area
     mutate(mu.sa.poly_trans = mux_polyfnx_generalizable(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
@@ -684,6 +684,11 @@ alignmentFxn <- function(df = tomex2.0_aoc_z_final){
   mutate(particles.mL.ox.stress = EC_env_sa.particles.mL_trans,
          particles.mL.food.dilution = EC_env_v.particles.mL_ingest
          ) %>% 
+    #ensure algae not considered for food dilution ERM
+    mutate(particles.mL.food.dilution = case_when(
+      Group == "Algae" ~ NA,
+      T ~ particles.mL.food.dilution
+    )) %>% 
     #### annotate studies in which particles are too big to be ingested or translocated for those ERMs (to be filtered in ssd functions)
     mutate(translocatable = ifelse(size.length.um.used.for.conversions > x2M_trans, 
                                    "not translocatable", 
@@ -1810,9 +1815,9 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
 
 ```{r eval=FALSE, include=FALSE}
 # Number of samples
-#n_sobol <- 1000
+n_sobol <- 1000
 
-n_sobol <- 10
+#n_sobol <- 10
 
 matrices <- c("A", "B", "AB", "BA")
 first <- total <- "azzini"
