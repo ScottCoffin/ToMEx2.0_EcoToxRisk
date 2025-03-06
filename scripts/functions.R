@@ -141,10 +141,10 @@ mux_polyfnx_generalizable <- function(a.x, x_UL, x_LL) {
 #   return(mux.poly)}
 # 
 # #max ingestible specific surface area
-# SSA.inversefnx = function(sa, #surface area, calcaulted elsewhere
-#                           m){ #mass, calculated elsewhere
-#   SSA.inverse = m / sa
-#   return(SSA.inverse)}
+SSA.inversefnx = function(sa, #surface area, calcaulted elsewhere
+                          m){ #mass, calculated elsewhere
+  SSA.inverse = m / sa
+  return(SSA.inverse)}
 
 #data tidying functions from Ana
 

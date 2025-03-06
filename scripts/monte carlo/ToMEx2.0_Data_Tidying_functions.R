@@ -529,11 +529,10 @@ tomex2.0_aoc_setup <- tomex2.0 %>%
   bodysize_addons <- bodysize_addons %>% 
     mutate(species_f = as.factor(species_f)) %>% 
     #annotate whether max size ingest was estimated or reported (all estiamted here)
-    mutate(max.size.ingest.reported.estimated = "estimated") %>% 
-    #calculate maximum ingestible size (if not already in database)
-    body.length.mm = body.length.cm * 10 %>% 
-    mutate(max.size.ingest.mm = 10^(beta_log10_body_length * log10(body.length.mm) - body_length_intercept)) %>% #(Jâms, et al 2020 Nature paper)correction for cm to mm
-    mutate(max.size.ingest.um = 1000 * max.size.ingest.mm)
+    mutate(max.size.ingest.reported.estimated = "estimated",
+           #calculate maximum ingestible size (if not already in database)
+           max.size.ingest.mm = 10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept),#(Jâms, et al 2020 Nature paper)correction for cm to mm
+           max.size.ingest.um = 1000 * max.size.ingest.mm)
 
   bodysize_summary <- bind_rows(bodysize_summary,bodysize_addons)
   
@@ -549,6 +548,11 @@ aoc_setup <- aoc_setup %>%
   #Remove effect metrics when there are less than 3 treatments
   mutate(effect.metric = factor(ifelse(treatments < 3, NA_character_, effect.metric))) %>% 
   #Nominal Alternative Doses
+  # mutate(dose.mg.kg.sed.nominal = nominal.dose.mg.kg.sediment,
+  #        dose.particles.kg.sed.nominal = nominal.dose.particles.kg.sediment,
+  #        dose.mg.kg.sed.measured = measured.dose.mg.kg.sediment,
+  #        dose.particles.kg.sed.measured = measured.dose.particles.kg.sediment
+  #        ) %>% 
   mutate(`Nominal Dose Alternative Type` = case_when(
     # !is.na(dose.mg.kg.sed.nominal) ~ dose.mg.kg.sed.nominal,
     !is.na(dose.mg.kg.food.nominal) ~ dose.mg.kg.food.nominal,

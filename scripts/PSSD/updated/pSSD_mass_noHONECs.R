@@ -8,7 +8,7 @@ library(trapezoid)
 #### Main parameters ####
 
 # number of simulations for the triangular distributions of the endpoints and assessment factors
-SIM <- 10000
+SIM <- 10
 
 # coefficient of variation for the endpoint distributions
 CV.DP <- 0.3

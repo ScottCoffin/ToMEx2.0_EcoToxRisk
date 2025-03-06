@@ -90,7 +90,7 @@ thresholds_df %>%
     x_UL = x2D_set, #upper limit of default range
     x_LL = x1D_set # lower limit of default range
     )) %>% 
-  mutate(tissue_translocation_ug.L =  `Tissue Translocation (Default)` * mux.polyfnx(
+  mutate(tissue_translocation_ug.L =  `Tissue Translocation (Default)` *mux_polyfnx_generalizable(
     a.x = a.m.input, #alpha for marine surface water for mass
     x_UL = x2D_set, #upper limit of default range
     x_LL = x1D_set # lower limit of default range
@@ -120,12 +120,18 @@ thresholds_df %>%
 ```{r}
 #### read in input data necessary for functionalized data tidying 
 # ToMEx 1.0 data file (no alignments)
-aoc <- read_csv("ref data/AquaticOrganisms_Clean_final.csv", 
-                guess_max = 10000, show_col_types = FALSE) %>% rowid_to_column()
+# aoc <- read_csv("ref data/AquaticOrganisms_Clean_final.csv", 
+#                 guess_max = 10000, show_col_types = FALSE) %>% rowid_to_column()
 
+# TomEx 1.0 data file prepped in ToMEx2.0_AquaticOrganisms repo (main folder)
+aoc <- read_rds("../../data/input/aoc_setup.RDS")
+  
 # ToMEx 2.0 data file (no alignments)
-## dataset prepared in RShiny repo and imported ##
+#### tomex2_input.rds generated in ToMEx2.0_AquaticOrganisms/monte carlo/Master_Data_Tidying_Monte_Carlo and stored in ref data/ folder
 tomex2.0 <- read_rds("ref data/tomex2_input.rds")
+
+# tomex2.0 <- read_rds("../../data/input/aoc_z_tomex2.rds") %>% 
+#   filter(source == "ToMEx 2.0") 
 
 # LEgacy file from May, 2024 for beta-testing
 #tomex2.0 <- read_rds("ref data/tomex2_input_May2024.rds")
@@ -512,7 +518,8 @@ param_values
 ## Generate Base dataframes
 
 ```{r warning=FALSE}
-
+source("RDAmaker_functions.R") #functionalized data tidying script for ToMEx 1.0 data
+source("ToMEx2.0_Data_Tidying_functions.R") #functionalized data tidying script for ToMEx 2.0 data
 
 # these functions perform alignments
 aoc_setup <- ToMEx1.0fxn(aoc = aoc, #dataset input
@@ -548,6 +555,7 @@ alignmentFxn <- function(df = tomex2.0_aoc_z_final){
   
  ### perform alignments
   aoc_MC_iter <- df  %>% 
+    mutate(x1M_set = x1M_set) %>% 
     #ensure only considering particles in valid size range
     filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set)) %>% 
     ungroup() %>% 
@@ -863,7 +871,7 @@ MC_results_parallel <- foreach(i = 1:n_sim,
                       .export = c("model_wrapper", "ToMEx1.0fxn", "ToMEx2.0fxn",
                                   
                                   "CFfnx", "filter_environment_data", "generate_structure_checks",
-                                  "massfnx_poly", "mux.polyfnx", "mux.polyfnx.2",
+                                  "massfnx_poly", 
                                   "mux_polyfnx_generalizable",
                                   "process_environment_data", "SAfnx", "SAfnx_fiber", "sensitivity_t1",
                                   "SSA.inversefnx", "SSD_function_t1", "SSD_function_t2",
@@ -1815,9 +1823,9 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
 
 ```{r eval=FALSE, include=FALSE}
 # Number of samples
-n_sobol <- 1000
+#n_sobol <- 1000
 
-#n_sobol <- 10
+n_sobol <- 10
 
 matrices <- c("A", "B", "AB", "BA")
 first <- total <- "azzini"
@@ -2306,7 +2314,7 @@ sobol_results <- foreach(i = 1:n_row_sobol,
                                   
                                   .export = c("model_wrapper", "ToMEx1.0fxn", "ToMEx2.0fxn",
                                   "CFfnx", "filter_environment_data", "generate_structure_checks",
-                                  "massfnx_poly", "mux.polyfnx", "mux.polyfnx.2",
+                                  "massfnx_poly", 
                                   "mux_polyfnx_generalizable",
                                   "process_environment_data", "SAfnx", "SAfnx_fiber", "sensitivity_t1",
                                   "SSA.inversefnx", "SSD_function_t1", "SSD_function_t2",
