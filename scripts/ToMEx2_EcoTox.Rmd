@@ -528,6 +528,99 @@ upper.tissue.trans.size.um <- 88 #10 #um #set size for x2M
 
 # calculate ERM for each species
 aoc_final <- aoc_intermediate_alphas  %>% 
+   # define environment-specific alpha parameters #
+    mutate(alpha = case_when(environment == "Marine" ~ alpha.marine,
+                             environment == "Freshwater" ~ alpha.marine),
+           a.sa = case_when(environment == "Marine" ~ a.sa.marine,
+                            environment == "Freshwater" ~ a.sa.marine),
+           a.v = case_when(environment == "Marine" ~ a.v.marine,
+                            environment == "Freshwater" ~ a.v.marine),
+           a.m = case_when(environment == "Marine" ~ a.m.marine,
+                           environment == "Freshwater" ~ a.m.marine),
+           a.ssa = case_when(environment == "Marine" ~ a.ssa.marine,
+                           environment == "Freshwater" ~ a.ssa.marine),
+           R.ave = case_when(environment == "Marine" ~ R.ave.water.marine,
+                             environment == "Freshwater" ~ R.ave.water.marine),
+           p.ave = case_when(environment == "Marine" ~ p.ave.marine,
+                             environment == "Freshwater" ~ p.ave.marine)
+           ) %>% 
+  ###### re-calculate size, surface area, volume, mass based on user-defined R.ave ####
+#### Note that in this instance, we are using marine values across the board - regardles of species! #
+    ## calculate size parameters using compartment characteristics
+    mutate(size.width.min.um.used.for.conversions = case_when(
+      shape_f == "sphere" ~ size.length.min.um.used.for.conversions, #all dims same
+      shape_f == "fiber" ~ R.ave * size.length.min.um.used.for.conversions, #median holds for all particles (Kooi et al 2021)
+      shape_f == "Not Reported" ~ R.ave * size.length.min.um.used.for.conversions, # average width to length ratio in the marine environment (kooi et al 2021)
+      shape_f == "fragment" ~ R.ave * size.length.min.um.used.for.conversions)) %>% # average width to length ratio in the marine environment (kooi et al 2021)
+      mutate(size.height.min.um.used.for.conversions = case_when(
+        shape_f == "sphere" ~ size.length.min.um.used.for.conversions, #all dims same
+        shape_f == "Not Reported" ~ R.ave * H_W_ratio * size.length.min.um.used.for.conversions, # average width to length ratio in the marine environment (kooi et al 2021)
+        shape_f == "fiber" ~  R.ave * size.length.min.um.used.for.conversions, #height same as width for fibers
+        shape_f == "fragment" ~ R.ave * H_W_ratio * size.length.min.um.used.for.conversions)) %>% # average width to length ratio in the marine environment AND average height to width ratio (kooi et al 2021)
+      # maxima
+      mutate(size.length.max.um.used.for.conversions = case_when(
+        is.na(size.length.max.mm.measured) ~ size.length.max.mm.nominal * 1000,
+        !is.na(size.length.max.mm.measured) ~ size.length.max.mm.measured * 1000)) %>% 
+      mutate(size.width.max.um.used.for.conversions = case_when(
+        shape_f == "sphere" ~ size.length.max.um.used.for.conversions, #all dims same
+        shape_f == "fiber" ~ R.ave * size.length.max.um.used.for.conversions, #median holds for all particles (Kooi et al 2021) #there are no fibers
+        shape_f == "Not Reported" ~ R.ave * size.length.max.um.used.for.conversions, # average width to length ratio in the marine environment (kooi et al 2021)
+        shape_f == "fragment" ~ R.ave * size.length.max.um.used.for.conversions)) %>% # average width to length ratio in the marine environment (kooi et al 2021)
+      mutate(size.height.max.um.used.for.conversions = case_when(
+        shape_f == "sphere" ~ size.length.max.um.used.for.conversions, #all dims same
+        shape_f == "Not Reported" ~ R.ave * H_W_ratio * size.length.max.um.used.for.conversions, # average width to length ratio in the marine environment (kooi et al 2021)
+        shape_f == "fiber" ~ R.ave * size.length.max.um.used.for.conversions, #hieght same as width
+        shape_f == "fragment" ~ R.ave * H_W_ratio * size.length.max.um.used.for.conversions)) %>%  # average width to length ratio in the marine environment AND average height to width ratio (kooi et al 2021)
+      # first ensure that width and height are filled out (sometimes there are reported, but if not, some default assumptions are made to estimate them)
+      mutate(size.width.um.used.for.conversions = case_when(
+        is.na(size.width.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
+        is.na(size.width.um.used.for.conversions) & shape_f == "Sphere" ~ size.length.um.used.for.conversions, # W = L for spheres
+        is.na(size.width.um.used.for.conversions) & shape_f == "Fragment" ~ size.length.um.used.for.conversions * R.ave, #use average width:length ratio for fragments
+        is.na(size.width.um.used.for.conversions) & shape_f == "Not Reported" ~ size.length.um.used.for.conversions * R.ave, #Assume fragment
+        T ~ size.width.um.used.for.conversions # if available, use as-is
+      )) %>% 
+      #estimate height based on shape (data doesn't exist in ToMEx for monodisperse, because never reported)
+      mutate(size.height.um.used.for.conversions = case_when(
+        shape_f == "Sphere" ~ size.length.um.used.for.conversions, # if spherical, height = length
+        shape_f != "Sphere" ~ size.width.um.used.for.conversions * H_W_ratio # if not spherical, height = width * H:W ratio
+      )) %>% 
+      # calculate volume for monodisperse particles #
+      mutate(particle.volume.um3 = volumefnx(R = R.ave,
+                                             length = size.length.um.used.for.conversions, 
+                                             width = size.width.um.used.for.conversions,
+                                             height = size.height.um.used.for.conversions
+      )) %>% 
+      # calculate min and max volume when polydisperse particles are used (being sure to use ingestion-restricted sizes)
+      mutate(particle.volume.um3.min = volumefnx(R = R.ave, 
+                                                 length = size.length.min.um.used.for.conversions,
+                                                 width = size.width.min.um.used.for.conversions, 
+                                                 height = size.height.min.um.used.for.conversions),
+             particle.volume.um3.max = volumefnx(R = R.ave,
+                                                 length = size.length.max.um.used.for.conversions,
+                                                 width = size.width.max.um.used.for.conversions, 
+                                                 height = size.height.max.um.used.for.conversions)) %>% 
+      # calculate surface are for monodisperse particles
+      mutate(particle.surface.area.um2 = SAfnx(length = size.length.um.used.for.conversions,
+                                               width = size.width.um.used.for.conversions,
+                                               height = size.height.um.used.for.conversions,
+                                               R = R.ave,
+                                               H_W_ratio = H_W_ratio)) %>% 
+      # calculate min/max SA for polydisperse mixtures (being sure to use translocation-restricted polydisperse upper sizes)
+      mutate(particle.surface.area.um2.min = SAfnx(length = size.length.min.um.used.for.conversions,
+                                                   width = size.width.min.um.used.for.conversions,
+                                                   height = size.height.min.um.used.for.conversions,
+                                                   R = R.ave,
+                                                   H_W_ratio = H_W_ratio),
+             particle.surface.area.um2.max = SAfnx(length = size.length.max.um.used.for.conversions,
+                                                   width = size.width.max.um.used.for.conversions,
+                                                   height = size.height.max.um.used.for.conversions,
+                                                   R = R.ave,
+                                                   H_W_ratio = H_W_ratio)) %>% 
+      #calculate minimum and maximum mass for polydisperse particles
+      mutate(mass.per.particle.mg.min = massfnx(v = particle.volume.um3.min, p = density.g.cm3) * 1e-3) %>% #equation uses g/cm3
+      mutate(mass.per.particle.mg.max = massfnx(v = particle.volume.um3.max, p = density.g.cm3) * 1e-3) %>%   #equation uses g/cm3
+      mutate(mass.per.particle.mg = massfnx(v = particle.volume.um3, p = density.g.cm3) * 1e-3) %>%   #equation uses g/cm3
+  
   mutate(x1M_set = x1M_set) %>% 
   ungroup() %>% 
    #### TISSUE TRANSLOCATION ####
@@ -677,13 +770,14 @@ collapsed <- filtered.data %>%
  if(n_distinct(collapsed$Species) > 5){
 #fit distributions
 dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c( "llogis", "lnorm", 
+                                                            "weibull",
                                                             #"gamma",
                                                             "lgumbel"#, "burrIII3"
                                                             ), 
                        computable = FALSE, silent = FALSE) 
 #use average distribution with weighthing based on AICC
 preds <- predict(dists, average = TRUE, 
-                 #ic = "aicc",
+                 ic = "aicc",
                  nboot = nboot, ci= TRUE) 
 #report HC metrics of interest
 hc5lcl <- c(preds$lcl[hcxlcl]) #CI05
@@ -707,9 +801,11 @@ collapsed <- filtered.data %>%
 #fit distributions
 dists <- ssd_fit_dists(collapsed, left = "Conc", 
                        dists = c( "llogis", "lnorm", #"burrIII3", #"gamma",
+                                  "weibull",
                                   "lgumbel"), computable = FALSE, silent = FALSE) 
 #use average distribution with weighthing based on AICC
-preds <- predict(dists, average = TRUE,# ic = "aicc",
+preds <- predict(dists, average = TRUE,
+                 ic = "aicc",
                  nboot = nboot, ci= TRUE) 
 #report HC metrics of interest
 hcx_est <- c(preds$est[hcx]) #HC5
@@ -739,10 +835,11 @@ collapsed <- filtered.data %>%
 #fit distributions
  if(n_distinct(collapsed$Species) > 5){
 dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c( "llogis", "lnorm", #"burrIII3",#"gamma",
+                                                            "weibull",
                                                             "lgumbel"), computable = FALSE, silent = FALSE) 
 #use average distribution with weighthing based on AICC
 preds <- predict(dists, average = TRUE, 
-                 #ic = "aicc", 
+                 ic = "aicc", 
                  nboot = nboot, ci= TRUE) 
 #report HC metrics of interest
 hcx_est <- c(preds$est[hcx]) #HC5
@@ -768,17 +865,20 @@ aoc_risk_paper <- aoc_final %>%
   drop_na(effect.metric) %>% 
    filter(
      tier_zero_tech_f == "Red Criteria Passed",
-     tier_zero_tech_f == "Red Criteria Passed",
          tier_zero_risk_f == "Red Criteria Passed", #All thresholds must pass technical and risk red criteria
          risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been)
-   )
+   ) %>% 
+  mutate(AF.total = af.time * af.noec) %>% 
+  distinct(Species, doi, dose.particles.mL.master, poly_f, shape_f, .keep_all = T) 
+  
 
 ####---- TISSUE TRANSLOCATION ------#####
 filtered.data.small.default_t1.2 <- aoc_risk_paper %>% 
           mutate(dose_new = particles.mL.ox.stress / (af.time * af.noec)) %>%  
          drop_na(dose_new) %>% 
-         mutate(dose_new = dose_new * 1000) %>% #convert particles/mL to particles/L
-  filter(between(size.length.um.used.for.conversions, x1D_set, upper.tissue.trans.size.um),
+  mutate(dose_new = dose_new * 1000) %>% #convert particles/mL to particles/L
+  filter(dose_new > 0) %>% 
+  filter(between(size.length.um.used.for.conversions, x1D_set, x2M_trans),
          shape_f != "Not Reported",
          poly_f != "Not Reported",
          !environment %in% c("Terrestrial", "Not Reported"),
@@ -803,8 +903,10 @@ filtered.data.large.default_t1.2 <- aoc_risk_paper %>%
          mutate(dose_new = particles.mL.food.dilution / (af.time * af.noec)) %>%  
          drop_na(dose_new) %>% 
          mutate(dose_new = dose_new * 1000) %>% #convert particles/mL to particles/L
-  filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
+  filter(dose_new > 0) %>% 
+  filter(between(size.length.um.used.for.conversions, x1D_set, x2M_ingest),
          poly_f != "Not Reported",
+         shape_f != "Not Reported",
          !environment %in% c("Terrestrial", "Not Reported"),
          Group != "Bacterium",
          Group != "Plant",
@@ -844,6 +946,68 @@ base_thresholds %>%
          "Tissue (Marine/Fresh)" = paste0(`Tissue Translocation (Default)`, " (", `Tissue Translocation (5th %)`, " to ", `Tissue Translocation (95th %)`,")")) %>% 
   select(Tier, "Food (Marine/Fresh)", "Tissue (Marine/Fresh)")
 ```
+
+
+#### Inspect dataframes feeding SSDs
+##### Summarized
+```{r}
+filtered.data.small.default_t1.2 %>% 
+   group_by(Species, Group) %>%
+      summarise(geomeanEffect = exp(mean(log(dose_new))),
+                minConcEffect = min(dose_new), meanConcEffect = mean(dose_new, na.rm = T), 
+                medianConcEffect = median(dose_new, na.rm = T), SDConcEffect = sd(dose_new, na.rm = T),
+                MaxConcEffect = max(dose_new), 
+                CI95_LCL = meanConcEffect - 1.96 * sd(dose_new) / sqrt(n()),  
+                firstQuartileConcEffect = quantile(dose_new, 0.25, na.rm = TRUE),
+                CI95_UCL = meanConcEffect + 1.96 * sd(dose_new) / sqrt(n()),  
+                thirdQuartileConcEffect = quantile(dose_new, 0.75), 
+                CountEffect = n(), 
+                MinEffectType = lvl1_f[which.min(dose_new)], 
+                Minlvl2EffectType = lvl2_f[which.min(dose_new)], 
+                MinEnvironment = environment[which.min(dose_new)], 
+                MinDoi = doi[which.min(dose_new)], 
+                MinLifeStage = life_f[which.min(dose_new)], 
+                Mininvitro.invivo = vivo_f[which.min(dose_new)]) %>%   #set concentration to minimum observed effect
+  arrange(desc(minConcEffect))
+
+```
+```{r}
+filtered.data.small.default_t1.2 %>% 
+   group_by(Species, Group, environment) %>% 
+  summarize(n_studies = n_distinct(doi),
+            n_PODs = n_distinct(dose.particles.mL.master)) %>% 
+  arrange(desc(n_PODs))
+```
+
+
+
+##### Full datatable
+```{r}
+filtered.data.small.default_t1.2 %>% 
+  mutate(dose_new_particles_mL = signif(dose_new / 1000), 3) %>% 
+  dplyr::select(Group, Species, #environment,
+                dose_new_particles_mL,
+                #dose_new,
+                dose.particles.mL.master,
+                EC_env_v.particles.mL_ingest, EC_poly_v.particles.mL_ingest,
+                EC_mono_p.particles.mL_ingest, mu.v.mono,
+                particle.volume.um3.min, particle.volume.um3.max,
+                R.ave,
+                mu.v.poly_ingest,
+                x2M_ingest, EC_poly_p.particles.mL_ingest,  CF_bio_ingest ,
+                effect.metric, acute.chronic_f,
+                AF.total, 
+                max.size.ingest.um, body.length.cm, 
+                lvl1_f, lvl2_f,
+                poly_f, shape_f, size.length.um.used.for.conversions, size.width.um.used.for.conversions, 
+                particle.surface.area.um2,  particle.volume.um3,  mass.per.particle.mg, density.g.cm3,
+                polydispersity,
+                doi, authors, year
+                ) %>% 
+  arrange(dose_new_particles_mL)# %>%  
+   #filter(Species == "Parvocalanus crassirostris")
+```
+
 
 
 ![Agreed-upon framework](assets/treshold_framework.png)
@@ -3228,7 +3392,10 @@ MC_example_plots
 aoc_risk_paper_MC <- aoc_MC %>% 
   drop_na(effect.metric) %>% 
    filter(
-     tier_zero_tech_f == ("Red Criteria Passed"))
+     tier_zero_tech_f == ("Red Criteria Passed")) %>% 
+        distinct(Species, doi, dose.particles.mL.master, poly_f, shape_f, .keep_all = T) 
+  # make sure we're not using a multiplicity of doses that are identical
+
 
 ####---- TISSUE TRANSLOCATION ------#####
 filtered.data.small.default_t1.2_MC <- aoc_risk_paper_MC %>% 
@@ -3236,7 +3403,7 @@ filtered.data.small.default_t1.2_MC <- aoc_risk_paper_MC %>%
          mutate(dose_new_particles_L = mean_particles_L_ox_stress) %>% 
          mutate(dose_new_particles_L_sd = sd_particles_L_ox_stress) %>% 
          drop_na(dose_new_particles_L) %>% 
-  filter(between(size.length.um.used.for.conversions, 1, upper.tissue.trans.size.um),
+  filter(between(size.length.um.used.for.conversions, x1D_set, x2M_trans),
          shape_f != "Not Reported",
          poly_f != "Not Reported",
          !environment %in% c("Terrestrial", "Not Reported"),
@@ -3252,8 +3419,9 @@ filtered.data.small.default_t3.4_MC <- filtered.data.small.default_t1.2_MC %>%
 filtered.data.large.default_t1.2_MC <- aoc_risk_paper_MC %>% 
    # remove algae, as food dilution MOE doesn't make sense for algae
   filter(Group != "Algae") %>% 
-    filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
+    filter(between(size.length.um.used.for.conversions, x1D_set, x2M_trans),
          poly_f != "Not Reported",
+         shape_f != "Not Reported",
          !environment %in% c("Terrestrial", "Not Reported"),
          Group != "Bacterium",
          Group != "Plant",

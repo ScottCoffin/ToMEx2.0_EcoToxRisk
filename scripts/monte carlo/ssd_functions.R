@@ -157,6 +157,7 @@ filter_environment_data <- function(data, env_filter, upper.tissue.trans.size.um
   filtered_data_small_default_t1_2 <- data %>%
     ungroup() %>% 
     mutate(dose_new = particles.mL.ox.stress / (af.time * af.noec)) %>%
+    distinct(Species, doi, dose_new, poly_f, shape_f, .keep_all = T)  %>% 
     drop_na(dose_new) %>%
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(between(size.length.um.used.for.conversions, x1D_set, upper.tissue.trans.size.um),
@@ -177,6 +178,7 @@ filter_environment_data <- function(data, env_filter, upper.tissue.trans.size.um
   filtered_data_large_default_t1_2 <- data %>%
     filter(Group != "Algae") %>%
     mutate(dose_new = particles.mL.food.dilution / (af.time * af.noec)) %>%
+    distinct(Species, doi, dose_new, poly_f, shape_f, .keep_all = T)  %>% 
     drop_na(dose_new) %>%
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
@@ -225,6 +227,7 @@ process_environment_data <- function(data,
   filtered_data_small_default_t1_2 <- data %>%
     ungroup() %>% 
     mutate(dose_new = particles.mL.ox.stress / (af.time * af.noec)) %>%
+    distinct(Species, doi, dose_new, poly_f, shape_f, .keep_all = T)  %>% 
     drop_na(dose_new) %>%
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(
@@ -254,6 +257,7 @@ process_environment_data <- function(data,
   filtered_data_large_default_t1_2 <- data %>%
     filter(Group != "Algae") %>%
     mutate(dose_new = particles.mL.food.dilution / (af.time * af.noec)) %>%
+    distinct(Species, doi, dose_new, poly_f, shape_f, .keep_all = T)  %>% 
     drop_na(dose_new) %>%
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
