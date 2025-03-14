@@ -1,6 +1,7 @@
 species_f,body.length.cm,body.size.source
 Acartia tonsa,1.05E-01,"average calculated from mean body lengths reported in Sabatini, M. E. (1990) https://doi.org/10.1163/156854090X00282 (1250µm) and Holmes-Hackerd et al. 2023 (850µm); both for females"
 Acropora NA,5,same as Acropora muricata
+Alitta virens,50,https://apps.ecology.wa.gov/publications/documents/1803371.pdf
 Aliivibrio fischeri,2.00E-04,Silva et al. 2021: https://doi.org/10.3390/chemosensors9100283
 Amphidinium carterae,1.27E-03,Gárate-Lizárraga et al. 2019: 10.1016/j.marpolbul.2019.06.073; Authors refer to measurements from an MSc thesis by Hernández-Castro 2017: https://repositoriodigital.ipn.mx/jspui/handle/123456789/26358
 Amphiura filiformis,0.9,"Buchanan 1964: https://doi.org/10.1017/S0025315400027776; disk size (without arms)
@@ -10,13 +11,18 @@ Anodonta anatina,10,Freer et al. 2010: https://doi.org/10.1021/cg901265x
 Aphylla williamsoni,7,"estimated based on Gloyd, L.K., 1936. Three new North American species of Gomphinae (Odonata).— Occ. Pap. Mus.
 Zool Univ. Mich. 326:1-18,3 pis"
 Apostichopus japonicus,10,length of middle sized individuals based on: Yamana&Hamano 1006: 10.1111/j.1444-2906.2006.01187.x
+Apostichopus japonicus,10,length of middle sized individuals based on: Yamana&Hamano 1006: 10.1111/j.1444-2906.2006.01187.x
+Asellus aquaticus,0.2,https://doi.org/10.1101/2021.03.18.435985 medain at day 20 of experiment
 Artemia salina,0.1,Riisgard et al. 2015:https://doi.org/10.1163/1937240X-00002362
 Aurelia sp.,10,adult medusa bell diameter; Marques et al. 2015: https://doi.org/10.1093/plankt/fbv059
 Brachionus calyciflorus,0.02,Xi et al. 2011:https://doi.org/10.1080/02705060.2002.9663886
 Brachionus fernandoi,0.02,same as for B. calyciflorus
+Carassius auratus,22,"Page, L.M., and B.M. Burr. 1991. A field guide to freshwater fishes of North America north of Mexico. The Peterson Field Guide Series, volume 42. Houghton Mifflin Company, Boston, MA."
 Centropristis striata,17,female length upon maturation; Kendall 1977:https://repository.library.noaa.gov/view/noaa/47725
 Chaetoceros neogracile,7.00E-04,Gonzalez-Fernandez et al. 2019: https://doi.org/10.1016/j.envpol.2019.04.093
 Charybdis japonica,5,carapace size at maturation; Yu et al. 2021: https://doi.org/10.7717/peerj.12282
+Chironomus riparius,1.21,"https://www.chironomidae.net/Martin/NACytfiles/Spy.html#:~:text=Larva%20a%20medium%20sized%20thummi,10.5%2D14.4)%20mm)."
+Corophium volutator,0.4,average size at 7 weeks https://link.springer.com/article/10.1007/s00244-007-9057-6
 Chlamydomonas reinhardtii,0.001,"Kuchka&Jarvik1982: https://doi.org/10.1083/jcb.92.1.170 
 
 
@@ -35,11 +41,14 @@ Gasterosteus aculeatus,5.3,Rowland1989: https://doi.org/10.1016/0003-3472(89)901
 Gyrodinium sp.,0.006,Sullivan&Swift2003: https://doi.org/10.1046/j.1529-8817.2003.02094.x
 Halomonas alkaliphila,0.0002,Sun et al. 2018: https://doi.org/10.1016/j.scitotenv.2018.06.141
 Heterocapsa triquetra,0.0023,Horner 2002 via: https://phytoplankton.eoas.ubc.ca/research/phytoplankton/dinoflagellates/heterocapsa/h_triquetra.html
+Hediste diversicolor,9,"median of 6 -12 cm as listed in https://www.marlin.ac.uk/species/detail/1426#:~:text=Hediste%20diversicolor%20is%20one%20of,chaetae%20bearing%20segments%20(chaetigers)."
 Hydrilla Verticillata,20,"maximum length larger, but likely not in experiments; Cook&Lüönd1982: https://doi.org/10.1016/0304-3770(82)90074-2"
 Hydropsyche pellucidula,1.15,no literature reference found; number taken from: https://www.naturespot.org.uk/species/hydropsyche-pellucidula 
 Hypophthalmichthys molitrix,70,Lenaerts et al. 2015: 10.3391/ai.2015.10.4.08
 Karenia mikimotoi,0.0023,Zhao et al. 2020:https://doi.org/10.1016/j.marpolbul.2020.111074
 Lemna minor,0.3,"frond length; Moody&Miller (2005). LEMNA MINOR GROWTH INHIBITION TEST, in: Blaise & Férard (eds.) Small-scale freshwater toxicity investigations, Volume 1: Toxicity test methods. Springer, The Netherlands."
+Limecola balthica,0.6,mature when shell reaches 6 mmhttps://www.marlin.ac.uk/habitats/detail/1465
+Lumbriculus variegatus,3,median of 2-5 cm from https://doi.org/10.1016/j.aquatox.2004.04.006
 Ictalurus punctatus,40,standard length; Bosworth&Wolters2005: https://doi.org/10.1111/j.1365-2109.2005.01206.x
 Litopenaeus vannamei,12,et al. 2011: https://li01.tci-thaijo.org/index.php/anres/article/view/245306.
 Macroalgae NA,20,"often much larger, but likely not more than 20cm in experiments"
@@ -52,11 +61,15 @@ Moina macrocopa,0.1,"Vignatti et al. 2013:https://doi.org/10.1590/S1676-06032013
 Myriophyllum verticillatum,20,"grows larger, but likely not longer than 20cm in experiments"
 Mytilus coruscus,4.5,"shell length where >50% of mussels were sexually mature; Lee tet al. 2007; Korean Journal of Malacology, Vol. 23(2): 199-208: https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=45159d93d4c1f135651e389d8071db5e2c1ef0f2"
 Neocaridina palmata,1.8,Kenny et al. 2014: https://doi.org/10.3390/md12031419
+Ostrea edulis,11,"Carriker, Melbourne R.; Gaffney, Patrick M. (1996) The Eastern Oyster Crassostrea virginica, Maryland Sea Grant, College Park MD. Pp."
 Oryzias javanicus,5,Said & Mayasari 2021: doi:10.1088/1755-1315/744/1/012069
+Oryzias latipes,3.5,medain of 3-4 cm from https://doi.org/10.1534/genetics.114.173849
 Oxyrrhis marina,0.0025,Lowe et al. 2010:doi: 10.1093/plankt/fbq110
 Perca flavescens,17,average length at which 50% of individuals were matures; Gislason et al. 2017: https://doi.org/10.1139/cjfas-2016-0211
 Perca fluviatilis,15,average length at which 50% of individuals were matures; Heibo & Magnhagen 2005: https://doi.org/10.1111/j.1600-0633.2005.00108.x
 Potamogeton crispus,20,"grows larger, but likely not longer than 20cm in experiments"
+Potamopyrgus antipodarum,0.5,"typical length reported in https://invasions.si.edu/nemesis/species_summary/205006#:~:text=Potamopyrgus%20antipodarum%20is%20commonly%20known,near%2Dmarine%20salinities%20in%20estuaries."
+Porcellana platycheles,1.5,max length reported in https://www.marlin.ac.uk/species/detail/1573
 Procambarus clarkii,7.3,average size at maturation; Correia & Costa 1994: ISSN: 0870-6581; available at https://repositorio.uac.pt/handle/10400.3/2124
 Protopalythoa NA,0.5,column (scapus) diameter; Ryland & Lancaster 2003: https://doi.org/10.1071/IS02008
 Protoperidinium bipes,0.0051,Phan-Tan et al. 2018:https://doi.org/10.1007/s00300-018-2262-0
@@ -68,12 +81,15 @@ Scenedesmus armatus,0.0015,"cell length; Comas & Komarek 1984: Arch.Hydrobiol.Su
 Scenedesmus obliquus,0.0012,"cell length; Hegewald 1997: Algae (The KoreanJournal of Phycology), 12(4):235-246"
 Seriatopora hystrix,3,Mendrik et al. 2021: https://doi.org/10.1016/j.envpol.2020.116238
 Skeletonema costatum,0.001,Sarno et al. 2006: https://doi.org/10.1111/j.1529-8817.2006.00305.x
+Sparus aurata,35,typical length reported in https://www.fishbase.se/summary/Sparus-aurata.html
+Sphaerium corneum,1.35,"https://nas.er.usgs.gov/queries/greatlakes/FactSheet.aspx?Species_ID=131#:~:text=Sphaerium%20corneum%20can%20grow%20to,Vaillancourt%201986%2C%20Mackie%202000)."
 Spirulina NA,8.00E-04,Masojidek&Torzillo 2008: https://doi.org/10.1016/B978-008045405-4.00830-2
 Strombidium sulcatum,0.004,Dolan 2018: https://doi.org/10.1016/j.ejop.2018.08.002
 Tetraselmis chuii,0.0013,Kokkali et al. 2020: 10.3390/molecules25173921
 Thalassiosira pseudonana,0.0004,Kirkham et al. 2017: https://doi.org/10.1038/ismej.2017.100
 Tisochrysis lutea,0.0005,Orlova et al. 2023: https://doi.org/10.1134/S1063074023030094
 Tubastrea aurea,13,colony size; https://animal-world.com/yellow-sun-coral/
+Tubifex NA,2.54,length to about 1 inch reported in https://mdc.mo.gov/discover-nature/field-guide/tubificid-worms-tubifex-worms
 Vallisneria denseserrulata,20,"grows larger, but likely not longer than 20cm in experiments"
 Vallisneria natans,20,"grows larger, but likely not longer than 20cm in experiments"
 Cerastoderma edule,1.42,10.1021/acs.est.3c06829

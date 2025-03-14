@@ -26,7 +26,8 @@ SSD_function_t1 <- function(filtered.data, hcxlcl){
     )
   } else {
   #fit distributions
-  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
+  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("llogis", "lnorm", #"gamma",
+                                                             "lgumbel"), computable = FALSE, silent = FALSE) 
   #use average distribution with weighthing based on AICC
   preds <- predict(dists, average = TRUE, 
                    #ic = "aicc",
@@ -76,7 +77,8 @@ SSD_function_t2 <- function(filtered.data, hcx){
     
   #fit distributions
   dists <- ssd_fit_dists(collapsed, left = "Conc", 
-                         dists = c( "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
+                         dists = c( "llogis", "lnorm", #"gamma", 
+                                    "lgumbel"), computable = FALSE, silent = FALSE) 
   #use average distribution with weighthing based on AICC
   preds <- predict(dists, average = TRUE,# ic = "aicc",
                    nboot = nboot, ci= TRUE) 
@@ -128,7 +130,8 @@ SSD_function_t3_4 <- function(filtered.data, hcx){
   } else {
     
   #fit distributions
-  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c( "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
+  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c( "llogis", "lnorm",# "gamma", 
+                                                              "lgumbel"), computable = FALSE, silent = FALSE) 
   #use average distribution with weighthing based on AICC
   preds <- predict(dists, average = TRUE, 
                    #ic = "aicc", 
@@ -198,7 +201,26 @@ filter_environment_data <- function(data, env_filter, upper.tissue.trans.size.um
 
 
 ## function to generate threshold based on different environment filterings (Marine or Freshwater,etc.)
-process_environment_data <- function(data, env_filter, upper.tissue.trans.size.um, x1D_set, x2D_set) {
+process_environment_data <- function(data, 
+                                     env_filter = "Marine",
+                                     upper.tissue.trans.size.um = 88, 
+                                     x1D_set = 1,
+                                     x2D_set = 5000
+                                     ) {
+  
+  
+  ###  only if it doesn't already exist (ensures compatibility with Shiny app) ##
+  if (!"particles.mL.ox.stress" %in% names(data)) {
+    data <- data %>% 
+      mutate(particles.mL.ox.stress = EC_env_sa.particles.mL_trans)
+  }
+  
+  if (!"particles.mL.food.dilution" %in% names(data)) {
+    data <- data %>% 
+      mutate(particles.mL.food.dilution = EC_env_v.particles.mL_ingest)
+  }
+
+  
   # Filter and process data for Tissue Translocation
   filtered_data_small_default_t1_2 <- data %>%
     ungroup() %>% 

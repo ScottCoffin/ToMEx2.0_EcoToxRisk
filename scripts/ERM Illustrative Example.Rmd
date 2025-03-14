@@ -1005,8 +1005,8 @@ Now that $\mu_{m,poly}$, $\mu_{m,mono}$, and $EC_{mono}$ are known for this exam
 
 ```{r}
 POD <- POD %>% 
-  mutate(EC_poly_m.particles.L_ingest = (dose.particles.L * mu.v.mono)/mu.v.poly_ingest,
-         EC_poly_m.particles.L_trans = (dose.particles.L * mu.v.mono)/mu.v.poly_trans)   
+  mutate(EC_poly_m.particles.L_ingest = (dose.particles.L * mu.m.mono)/mu.m.poly_ingest,
+         EC_poly_m.particles.L_trans = (dose.particles.L * mu.m.mono)/mu.m.poly_trans)   
 
 
 POD %>% select(
@@ -1276,11 +1276,11 @@ gt(risk) %>%
 
 The above approach used for particles as an ecologically relevant metric may be applied for any other ecologically relevant metric for which particle distributions are characterized in the environmental compartment of interest. 
 
-# Putting it all together
-In practice, we would perform each of these operations in an efficient, in-line method (a pipe). Below is a functionalized version of the alignment code:
+<!-- # Putting it all together -->
+<!-- In practice, we would perform each of these operations in an efficient, in-line method (a pipe). Below is a functionalized version of the alignment code: -->
 
-```{r}
+<!-- ```{r} -->
 
-```
+<!-- ``` -->
 
 

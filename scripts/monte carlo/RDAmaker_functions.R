@@ -715,23 +715,7 @@ aoc_setup <- aoc_v1 %>% # start with original dataset
                            environment == "Freshwater" & exposure.route == "water" ~ R.ave.water.freshwater,
                            environment == "Freshwater" & exposure.route == "sediment" ~ R.ave.sediment.freshwater,
                            T ~ NA)) %>% # if doesn't meet these conditions, annotate as NA
-  #calculate surface area based on shape
-#calculate surface area based on shape
-mutate(particle.surface.area.um2 = case_when(shape == "sphere" ~ particle.surface.area.um2,
-                                             shape == "fiber" & is.na(size.width.um.used.for.conversions) ~ SAfnx_fiber(width = 15, length = size.length.um.used.for.conversions), #assum 15 um width (kooi et al 2021)
-                                             shape == "fiber" & !is.na(size.width.um.used.for.conversions) ~ SAfnx_fiber(width = size.width.um.used.for.conversions, length = size.length.um.used.for.conversions), #if width is known
-                                             shape == "fragment" ~ SAfnx(a = size.length.um.used.for.conversions,
-                                                                         b = R.ave * size.length.um.used.for.conversions,
-                                                                         c = R.ave * 0.67 * size.length.um.used.for.conversions))) %>% 
-  mutate(particle.volume.um3 = case_when(shape == "sphere" ~ particle.volume.um3, #sphere volume is correct in excel
-                                         shape == "fiber" & is.na(size.width.um.used.for.conversions) ~ volumefnx_fiber(width = 15, length = size.length.um.used.for.conversions), #assume 15 um as width (kooi et al 2021)
-                                         shape == "fiber" & !is.na(size.width.um.used.for.conversions) ~ volumefnx_fiber(width = size.width.um.used.for.conversions, length = size.length.um.used.for.conversions), #if width reported
-                                         shape == "fragment" ~ volumefnx(R = R.ave, L = size.length.um.used.for.conversions))) %>% 
-  
-  #calcualte dose metrics accordingly
-  mutate(dose.surface.area.um2.mL.master = particle.surface.area.um2 * dose.particles.mL.master) %>% 
-  mutate(particle.surface.area.um2.mg = particle.surface.area.um2 / mass.per.particle.mg) %>% 
-  
+
   # create label for polydispersity
   mutate(polydispersity = case_when(
     is.na(size.length.min.mm.nominal|size.length.min.mm.measured) ~ "monodisperse",
@@ -766,26 +750,54 @@ mutate(particle.surface.area.um2 = case_when(shape == "sphere" ~ particle.surfac
     shape == "Not Reported" ~ R.ave * 0.67 * size.length.max.um.used.for.conversions, # average width to length ratio in the marine environment (kooi et al 2021)
     shape == "fiber" ~ R.ave * size.length.max.um.used.for.conversions, #hieght same as width
     shape == "fragment" ~ R.ave * 0.67 * size.length.max.um.used.for.conversions)) %>%  # average width to length ratio in the marine environment AND average height to width ratio (kooi et al 2021)
-  
+  #estimate height based on shape (data doesn't exist in ToMEx for monodisperse, because never reported)
+  mutate(size.height.um.used.for.conversions = case_when(
+    shape_f == "Sphere" ~ size.length.um.used.for.conversions, # if spherical, height = length
+    shape_f != "Sphere" ~ size.width.um.used.for.conversions * H_W_ratio # if not spherical, height = width * H:W ratio
+  )) %>% 
+  mutate(H_W_ratio = 0.67) %>% #kooi et al. (2021)
   #calculate minimum and maximum surface area for polydisperse particles
-  mutate(particle.surface.area.um2.min = SAfnx(a = size.length.min.um.used.for.conversions,
-                                               b = size.width.min.um.used.for.conversions,
-                                               c = size.height.min.um.used.for.conversions)) %>%
-  mutate(particle.surface.area.um2.max = SAfnx(a = size.length.max.um.used.for.conversions,
-                                               b = size.width.max.um.used.for.conversions,
-                                               c = size.height.max.um.used.for.conversions)) %>% 
+  mutate(particle.volume.um3 = volumefnx(R = R.ave,
+                                         length = size.length.um.used.for.conversions, 
+                                         width = size.width.um.used.for.conversions,
+                                         height = size.height.um.used.for.conversions
+  )) %>% 
+  # calculate min and max volume when polydisperse particles are used (being sure to use ingestion-restricted sizes)
+  mutate(particle.volume.um3.min = volumefnx(R = R.ave, 
+                                             length = size.length.min.um.used.for.conversions,
+                                             width = size.width.min.um.used.for.conversions, 
+                                             height = size.height.min.um.used.for.conversions),
+         particle.volume.um3.max = volumefnx(R = R.ave,
+                                             length = size.length.max.um.used.for.conversions,
+                                             width = size.width.max.um.used.for.conversions, 
+                                             height = size.height.max.um.used.for.conversions)) %>% 
+  # calculate surface are for monodisperse particles
+  mutate(particle.surface.area.um2 = SAfnx(length = size.length.um.used.for.conversions,
+                                           width = size.width.um.used.for.conversions,
+                                           height = size.height.um.used.for.conversions,
+                                           R = R.ave,
+                                           H_W_ratio = H_W_ratio)) %>% 
+  # calculate min/max SA for polydisperse mixtures (being sure to use translocation-restricted polydisperse upper sizes)
+  mutate(particle.surface.area.um2.min = SAfnx(length = size.length.min.um.used.for.conversions,
+                                               width = size.width.min.um.used.for.conversions,
+                                               height = size.height.min.um.used.for.conversions,
+                                               R = R.ave,
+                                               H_W_ratio = H_W_ratio),
+         particle.surface.area.um2.max = SAfnx(length = size.length.max.um.used.for.conversions,
+                                               width = size.width.max.um.used.for.conversions,
+                                               height = size.height.max.um.used.for.conversions,
+                                               R = R.ave,
+                                               H_W_ratio = H_W_ratio)) %>% 
   #calculate minimum and maximum volume for polydisperse particles
-  mutate(particle.volume.um3.min = volumefnx_poly(length = size.length.min.um.used.for.conversions,
-                                                  width =  size.width.min.um.used.for.conversions)) %>% 
-  mutate(particle.volume.um3.max = volumefnx_poly(length = size.length.max.um.used.for.conversions,
-                                                  width = size.width.max.um.used.for.conversions)) %>% 
-  #calculate minimum and maximum volume for polydisperse particles
-  mutate(mass.per.particle.mg.min = massfnx_poly(length = size.length.min.um.used.for.conversions,
-                                                 width = size.width.min.um.used.for.conversions,
-                                                 p = density.g.cm3)) %>% #equation usess g/cm3
-  mutate(mass.per.particle.mg.max = massfnx_poly(length = size.length.max.um.used.for.conversions,
-                                                 width = size.width.max.um.used.for.conversions,
-                                                 p = density.g.cm3)) %>%   #equation usess g/cm3
+  mutate(mass.per.particle.mg.min = massfnx(v = particle.volume.um3.min, p = density.g.cm3) * 1e-3) %>% #equation uses g/cm3
+  mutate(mass.per.particle.mg.max = massfnx(v = particle.volume.um3.max, p = density.g.cm3) * 1e-3) %>%   #equation uses g/cm3
+  mutate(mass.per.particle.mg = massfnx(v = particle.volume.um3, p = density.g.cm3) * 1e-3) %>%   #equation uses g/cm3
+  
+  
+  #calcualte dose metrics accordingly
+  mutate(dose.surface.area.um2.mL.master = particle.surface.area.um2 * dose.particles.mL.master) %>% 
+  mutate(particle.surface.area.um2.mg = particle.surface.area.um2 / mass.per.particle.mg) %>% 
+  
   
   #Sediment-based concentration metrics
   mutate(dose.mg.kg.sediment.master = if_else(!is.na(dose.mg.kg.sed.measured), dose.mg.kg.sed.measured, dose.mg.kg.sed.nominal)) %>% #Create master column with measured concentrations preferred
