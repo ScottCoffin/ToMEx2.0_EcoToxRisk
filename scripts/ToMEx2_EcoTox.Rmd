@@ -130,7 +130,8 @@ source("alignment_functions.R")
 getwd()
 
 aoc_z <- readRDS("../data/input/aoc_z_tomex2.RDS") %>%  #dataset is prepped in shiny repo
-  rename(environment = env_f)# %>% 
+  rename(environment = env_f) %>% 
+  filter(!doi %in% c("10.1016/j.marpolbul.2021.112369", "10.3390/nano11030649")) #filter out Capolupo et al. (2021) and Richardson et al. (2021) because they were retracted
   #select(-rowid)# %>% #existing rowid is actually replicated (not sure how)
   #mutate(rowid = row_number())
 
@@ -345,9 +346,9 @@ a.v.freshwater = 1.68 #a_V for freshwater surface water volume
 a.m.freshwater = 1.65 # upper limit fora_m for mass for freshwater surface water in table S4 
 a.ssa.freshwater = 2.71 # A_SSA for freshwater surface water
 
-beta_log10_body_length <-  0.9341 # Jâms, et al 2020 Nature paper
-body_length_intercept <- 1.1200 # Jâms, et al 2020 Nature paper
-H_W_ratio <- 0.67 # H:W ratio across all environments/particle types
+beta_log10_body_length = 0.9341 # Jâms, et al 2020 Nature paper
+body_length_intercept = 1.1200 # Jâms, et al 2020 Nature paper
+H_W_ratio = 0.67 # H:W ratio across all environments/particle types
 
 #join alpha values for each data point
 aoc_intermediate_alphas <- aoc_intermediate %>% 
@@ -520,29 +521,75 @@ SSA.inversefnx = function(sa, #surface area, calcaulted elsewhere
 Here we will calculate two aligned exposure concentrations: surface area (1 - 83 um), and volume (1 - 5,000 um). For both, the upper aligned value is the smaller of either the nominal size listed or the mouth size of the species.
 
 ```{r}
-###define sizes for alignment##
-x1M_set <- 1 #um lower size for all alignments
-x1D_set <- 1 #um lower size for all alignments
-x2D_set <- 5000 #um
-upper.tissue.trans.size.um <- 88 #10 #um #set size for x2M
 
+align_data <- function(df,
+                       x1M_set_input = 1, #um lower size for all alignments
+                       x1D_set_input = 1, #um lower size for all alignments
+                       x2D_set_input = 5000, #um
+                       upper.tissue.trans.size.um_input = 88,
+                       R.ave.marine_input = 0.77, # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
+                       R.ave.freshwater_input = 0.67, # average length to width ratio of microplastics in freshwater environment (Kooi et al. 2021)
+                       R.ave.sediment.marine_input = 0.75, # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
+                       R.ave.sediment.freshwater_input = 0.70, # average length to width ratio of microplastics in freshwater environment (Kooi et al. 2021)
+                       p.ave.marine_input = 1.10, #average density in marine surface water
+                       alpha.marine_input = 2.07, #table s4 for marine surface water. length
+                       a.sa.marine_input = 1.50, #marine surface area power law
+                       a.v.marine_input = 1.48, #a_V for marine surface water volume
+                       a.m.marine_input = 1.32, # upper limit fora_m for mass for marine surface water in table S4 
+                       a.ssa.marine_input = 1.98, # A_SSA for marine surface water
+                       p.ave.freshwater_input = 1.04, #average density in freshwater surface water
+                       alpha.freshwater_input = 2.64, #table s4 for freshwater surface water. length
+                       a.sa.freshwater_input = 2.00, #freshwater surface area power law
+                       a.v.freshwater_input = 1.68, #a_V for freshwater surface water volume
+                       a.m.freshwater_input = 1.65, # upper limit fora_m for mass for freshwater surface water in table S4 
+                       a.ssa.freshwater_input = 2.71, # A_SSA for freshwater surface water
+                       beta_log10_body_length_input = 0.9341, # Jâms, et al 2020 Nature paper
+                       body_length_intercept_input = 1.1200, # Jâms, et al 2020 Nature paper
+                       H_W_ratio_input = 0.67 # H:W ratio across all environments/particle types
+                       ){ #10 #um #set size for x2M)
+  
+  df <- df %>% 
+    mutate(x1M_set = x1M_set_input,
+           x1D_set = x1D_set_input,
+           x2D_set = x2D_set_input,
+           upper.tissue.trans.size.um  = upper.tissue.trans.size.um_input,
+           beta_log10_body_length = beta_log10_body_length_input,
+           body_length_intercept = body_length_intercept_input,
+           H_W_ratio = H_W_ratio_input,
+           R.ave.marine = R.ave.marine_input,                                 
+           R.ave.freshwater = R.ave.freshwater_input, 
+           R.ave.sediment.marine = R.ave.sediment.marine_input,
+           R.ave.sediment.freshwater = R.ave.sediment.freshwater_input, 
+           p.ave.marine = p.ave.marine_input,
+           alpha.marine = alpha.marine_input,
+           a.sa.marine = a.sa.marine_input, 
+           a.v.marine = a.v.marine_input, 
+           a.m.marine = a.m.marine_input, 
+           a.ssa.marine = a.ssa.marine_input, 
+           p.ave.freshwater = p.ave.freshwater_input, 
+           alpha.freshwater = alpha.freshwater_input,
+           a.sa.freshwater = a.sa.freshwater_input, 
+           a.v.freshwater = a.v.freshwater_input, 
+           a.m.freshwater = a.m.freshwater_input,                     
+           a.ssa.freshwater = a.ssa.freshwater_input)
+  
 # calculate ERM for each species
-aoc_final <- aoc_intermediate_alphas  %>% 
-   # define environment-specific alpha parameters #
+aoc_final <- df %>% 
+  # define environment-specific alpha parameters #
     mutate(alpha = case_when(environment == "Marine" ~ alpha.marine,
-                             environment == "Freshwater" ~ alpha.marine),
+                             environment == "Freshwater" ~ alpha.freshwater),
            a.sa = case_when(environment == "Marine" ~ a.sa.marine,
-                            environment == "Freshwater" ~ a.sa.marine),
+                            environment == "Freshwater" ~ a.sa.freshwater),
            a.v = case_when(environment == "Marine" ~ a.v.marine,
-                            environment == "Freshwater" ~ a.v.marine),
+                            environment == "Freshwater" ~ a.v.freshwater),
            a.m = case_when(environment == "Marine" ~ a.m.marine,
-                           environment == "Freshwater" ~ a.m.marine),
+                           environment == "Freshwater" ~ a.m.freshwater),
            a.ssa = case_when(environment == "Marine" ~ a.ssa.marine,
-                           environment == "Freshwater" ~ a.ssa.marine),
-           R.ave = case_when(environment == "Marine" ~ R.ave.water.marine,
-                             environment == "Freshwater" ~ R.ave.water.marine),
+                           environment == "Freshwater" ~ a.ssa.freshwater),
+           R.ave = case_when(environment == "Marine" ~ R.ave.marine,
+                             environment == "Freshwater" ~ R.ave.freshwater),
            p.ave = case_when(environment == "Marine" ~ p.ave.marine,
-                             environment == "Freshwater" ~ p.ave.marine)
+                             environment == "Freshwater" ~ p.ave.freshwater)
            ) %>% 
   ###### re-calculate size, surface area, volume, mass based on user-defined R.ave ####
 #### Note that in this instance, we are using marine values across the board - regardles of species! #
@@ -731,6 +778,9 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
     T ~ particles.mL.food.dilution
   )) %>% 
   filter(size.length.um.used.for.conversions >= 1)
+
+aoc_final
+}
 ```
 
 ###### Save Aligned dataset
@@ -769,12 +819,17 @@ collapsed <- filtered.data %>%
 
  if(n_distinct(collapsed$Species) > 5){
 #fit distributions
-dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c( "llogis", "lnorm", 
-                                                            "weibull",
-                                                            #"gamma",
-                                                            "lgumbel"#, "burrIII3"
+dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c( "llogis", 
+                                                            "lnorm", 
+                                                            #"lnorm_lnorm",
+                                                            #"weibull",
+                                                            "lgumbel" ,
+                                                            "gamma"#,
+                                                           #"burrIII3"
                                                             ), 
                        computable = FALSE, silent = FALSE) 
+autoplot(dists)
+
 #use average distribution with weighthing based on AICC
 preds <- predict(dists, average = TRUE, 
                  ic = "aicc",
@@ -800,9 +855,10 @@ collapsed <- filtered.data %>%
  if(n_distinct(collapsed$Species) > 5){
 #fit distributions
 dists <- ssd_fit_dists(collapsed, left = "Conc", 
-                       dists = c( "llogis", "lnorm", #"burrIII3", #"gamma",
-                                  "weibull",
-                                  "lgumbel"), computable = FALSE, silent = FALSE) 
+                       dists = c( "llogis", "lnorm", "gamma",
+                                  #"weibull",
+                                  "lgumbel"
+                                  ), computable = FALSE, silent = FALSE) 
 #use average distribution with weighthing based on AICC
 preds <- predict(dists, average = TRUE,
                  ic = "aicc",
@@ -834,8 +890,9 @@ collapsed <- filtered.data %>%
   summarize(Conc = quantile(dose_new, 0.50))
 #fit distributions
  if(n_distinct(collapsed$Species) > 5){
-dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c( "llogis", "lnorm", #"burrIII3",#"gamma",
-                                                            "weibull",
+dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c( "llogis", "lnorm", #"burrIII3",
+                                                            "gamma",
+                                                           # "weibull",
                                                             "lgumbel"), computable = FALSE, silent = FALSE) 
 #use average distribution with weighthing based on AICC
 preds <- predict(dists, average = TRUE, 
@@ -858,8 +915,11 @@ list(hcx_est = hcx_est,
 ```
 
 
-##### Base Thresholds
+##### Base Thresholds (using marine alphas for freshwater and marine species combined)
 ```{r warning=FALSE}
+
+#### STEP 1 ###
+## first filter data as desired
 #filter out risk criteria (not done above)#
 aoc_risk_paper <- aoc_final %>% 
   drop_na(effect.metric) %>% 
@@ -870,10 +930,25 @@ aoc_risk_paper <- aoc_final %>%
    ) %>% 
   mutate(AF.total = af.time * af.noec) %>% 
   distinct(Species, doi, dose.particles.mL.master, poly_f, shape_f, .keep_all = T) 
-  
+
+#### STEP 2 ###
+### align data using function defined above ####
+## just use marine values for everything
+aoc_marine_alphas_aligned <- align_data(df = aoc_risk_paper,
+                                        alpha.freshwater_input = 2.07,
+                                        a.sa.freshwater_input = 1.5,
+                                        a.v.freshwater_input  = 1.48,
+                                        a.m.freshwater_input = 1.32,
+                                        a.ssa.freshwater_input = 1.98,
+                                        R.ave.freshwater_input = 0.77,
+                                        p.ave.freshwater_input = 1.1)
+
+
+#### STEP 3 - Run SSDs ###
+derive_thresholds <- function(aligned_data){
 
 ####---- TISSUE TRANSLOCATION ------#####
-filtered.data.small.default_t1.2 <- aoc_risk_paper %>% 
+filtered.data.small.default_t1.2 <- aligned_data %>% 
           mutate(dose_new = particles.mL.ox.stress / (af.time * af.noec)) %>%  
          drop_na(dose_new) %>% 
   mutate(dose_new = dose_new * 1000) %>% #convert particles/mL to particles/L
@@ -897,7 +972,7 @@ small.default.t3 <- SSD_function_t3_4(filtered.data = filtered.data.small.defaul
 small.default.t4 <- SSD_function_t3_4(filtered.data = filtered.data.small.default_t3.4, hcx = 10)
 
 ####---- Food Dilution ------#####
-filtered.data.large.default_t1.2 <- aoc_risk_paper %>% 
+filtered.data.large.default_t1.2 <- aligned_data %>% 
    # remove algae, as food dilution MOE doesn't make sense for algae
   filter(Group != "Algae") %>% 
          mutate(dose_new = particles.mL.food.dilution / (af.time * af.noec)) %>%  
@@ -930,16 +1005,26 @@ base_thresholds <- tibble(
   "Food Dilution (5th %)" = c(NA, large.default.t2$hcx05cl, large.default.t3$hcx05cl, large.default.t4$hcx05cl),
   "Food Dilution (95th %)" = c(NA, large.default.t2$hcx95cl, large.default.t3$hcx95cl, large.default.t4$hcx95cl))
 
+return(list(
+  data = list(
+    filtered.data.small.default_t1.2 = filtered.data.small.default_t1.2,
+    filtered.data.small.default_t3.4 = filtered.data.small.default_t3.4,
+    filtered.data.large.default_t1.2 = filtered.data.large.default_t1.2,
+    filtered.data.large.default_t3.4 = filtered.data.large.default_t3.4
+      ),
+  base_thresholds = base_thresholds
+))
+}
 
+## apply function
+marine_alpha_thresholds <- derive_thresholds(aoc_marine_alphas_aligned)
 
-base_thresholds
+marine_alpha_thresholds$base_thresholds
+
 ```
-```{r}
-kable(base_thresholds)
-```
 
 ```{r}
-base_thresholds %>% 
+marine_alpha_thresholds$base_thresholds %>% 
   mutate_if(is.numeric, ~signif(., 2)) %>% 
   mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
   mutate("Food (Marine/Fresh)" = paste0(`Food Dilution (Default)`, " (", `Food Dilution (5th %)`, " to ", `Food Dilution (95th %)`,")"),
@@ -951,7 +1036,7 @@ base_thresholds %>%
 #### Inspect dataframes feeding SSDs
 ##### Summarized
 ```{r}
-filtered.data.small.default_t1.2 %>% 
+marine_alpha_thresholds$data$filtered.data.small.default_t1.2 %>% 
    group_by(Species, Group) %>%
       summarise(geomeanEffect = exp(mean(log(dose_new))),
                 minConcEffect = min(dose_new), meanConcEffect = mean(dose_new, na.rm = T), 
@@ -972,7 +1057,7 @@ filtered.data.small.default_t1.2 %>%
 
 ```
 ```{r}
-filtered.data.small.default_t1.2 %>% 
+marine_alpha_thresholds$data$filtered.data.small.default_t1.2 %>% 
    group_by(Species, Group, environment) %>% 
   summarize(n_studies = n_distinct(doi),
             n_PODs = n_distinct(dose.particles.mL.master)) %>% 
@@ -983,16 +1068,16 @@ filtered.data.small.default_t1.2 %>%
 
 ##### Full datatable
 ```{r}
-filtered.data.small.default_t1.2 %>% 
+marine_alpha_thresholds$data$filtered.data.small.default_t1.2 %>% 
   mutate(dose_new_particles_mL = signif(dose_new / 1000), 3) %>% 
-  dplyr::select(Group, Species, #environment,
+  dplyr::select(Group, Species, environment,
                 dose_new_particles_mL,
                 #dose_new,
                 dose.particles.mL.master,
                 EC_env_v.particles.mL_ingest, EC_poly_v.particles.mL_ingest,
                 EC_mono_p.particles.mL_ingest, mu.v.mono,
                 particle.volume.um3.min, particle.volume.um3.max,
-                R.ave,
+                R.ave, p.ave, alpha,
                 mu.v.poly_ingest,
                 x2M_ingest, EC_poly_p.particles.mL_ingest,  CF_bio_ingest ,
                 effect.metric, acute.chronic_f,
@@ -1008,6 +1093,38 @@ filtered.data.small.default_t1.2 %>%
    #filter(Species == "Parvocalanus crassirostris")
 ```
 
+### Split Marine/Freshwater thresholds
+
+```{r message=FALSE, warning=FALSE}
+# align using default settings with marine/freshwater values set to species
+aoc_aligned <- align_data(df = aoc_risk_paper)
+
+## split freshwater/marine and derive
+freshwater_data <- aoc_aligned %>% filter(environment == "Freshwater")
+marine_data <- aoc_aligned %>% filter(environment == "Marine")
+
+marine_only_thresholds <- derive_thresholds(aligned_data = marine_data)
+freshwater_only_thresholds <- derive_thresholds(aligned_data = freshwater_data)
+```
+
+##### MARINE THRESHOLDS #####
+```{r}
+marine_only_thresholds$base_thresholds %>% 
+  mutate_if(is.numeric, ~signif(., 2)) %>% 
+  mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
+  mutate("Food (Marine)" = paste0(`Food Dilution (Default)`, " (", `Food Dilution (5th %)`, " to ", `Food Dilution (95th %)`,")"),
+         "Tissue (Marine)" = paste0(`Tissue Translocation (Default)`, " (", `Tissue Translocation (5th %)`, " to ", `Tissue Translocation (95th %)`,")")) %>% 
+  select(Tier, "Food (Marine)", "Tissue (Marine)")
+```
+##### FRESHWATER THRESHOLDS #####
+```{r}
+freshwater_only_thresholds$base_thresholds %>% 
+  mutate_if(is.numeric, ~signif(., 2)) %>% 
+  mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
+  mutate("Food (Freshwater)" = paste0(`Food Dilution (Default)`, " (", `Food Dilution (5th %)`, " to ", `Food Dilution (95th %)`,")"),
+         "Tissue (Freshwater)" = paste0(`Tissue Translocation (Default)`, " (", `Tissue Translocation (5th %)`, " to ", `Tissue Translocation (95th %)`,")")) %>% 
+  select(Tier, "Food (Freshwater)", "Tissue (Freshwater)")
+```
 
 
 ![Agreed-upon framework](assets/treshold_framework.png)
