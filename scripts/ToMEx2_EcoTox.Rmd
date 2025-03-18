@@ -3149,11 +3149,13 @@ summary_stats_base_thresholds <- all_thresholds_long %>%
 
 ### Ggplot of SSD Tier Thresholds
 # Prepare the data by calculating ERM and filtering
-prepared_data <- all_thresholds_long %>%
+all_MC_data_long <- all_thresholds_long %>%
   mutate(ERM = case_when(
     grepl("Tissue", Metric) ~ "Tissue Translocation",
     grepl("Food", Metric) ~ "Food Dilution"
-  )) %>%
+  )) 
+
+prepared_data <-  all_MC_data_long %>%
   filter(
     grepl("Default", Metric),
     Environment == "Marine"
@@ -3225,7 +3227,146 @@ MC_histograms_light
 
 ```
 
+#### Comparison of MC and Deterministic Thresholds
+```{r}
 
+### MARINE ##
+base_tissue_marine <- data.frame(Tier = c("1", "2", "3", "4"),
+                          ERM = "Tissue Translocation", 
+                          Environment = "Marine",
+                          PNEC = marine_only_thresholds$base_thresholds$`Tissue Translocation (Default)`,
+                          PNEClcl = marine_only_thresholds$base_thresholds$`Tissue Translocation (5th %)`,
+                          PNECucl = marine_only_thresholds$base_thresholds$`Tissue Translocation (95th %)`)
+
+base_food_marine <- data.frame(Tier = c("1", "2", "3", "4"),
+                        ERM = "Food Dilution", 
+                        Environment = "Marine",
+                        PNEC = marine_only_thresholds$base_thresholds$`Food Dilution (Default)`,
+                        PNEClcl = marine_only_thresholds$base_thresholds$`Food Dilution (5th %)`,
+                        PNECucl = marine_only_thresholds$base_thresholds$`Food Dilution (95th %)`)
+
+
+#### FRESHWATER ####
+base_tissue_freshwater <- data.frame(Tier = c("1", "2", "3", "4"),
+                          ERM = "Tissue Translocation", 
+                          Environment = "Freshwater",
+                          PNEC = freshwater_only_thresholds$base_thresholds$`Tissue Translocation (Default)`,
+                          PNEClcl = freshwater_only_thresholds$base_thresholds$`Tissue Translocation (5th %)`,
+                          PNECucl = freshwater_only_thresholds$base_thresholds$`Tissue Translocation (95th %)`)
+
+base_food_freshwater <- data.frame(Tier = c("1", "2", "3", "4"),
+                        ERM = "Food Dilution", 
+                        Environment = "Freshwater",
+                        PNEC = freshwater_only_thresholds$base_thresholds$`Food Dilution (Default)`,
+                        PNEClcl = freshwater_only_thresholds$base_thresholds$`Food Dilution (5th %)`,
+                        PNECucl = freshwater_only_thresholds$base_thresholds$`Food Dilution (95th %)`)
+
+base_thresholds_df <- rbind(base_tissue_marine, base_food_marine, base_tissue_freshwater, base_food_freshwater) %>% 
+    mutate(y_position = case_when(
+    ERM == "Tissue Translocation" & Environment == "Freshwater" ~ 2,  # Offset for Tissue Translocation
+    ERM == "Tissue Translocation" & Environment == "Marine" ~ 0.9,  # Offset for Tissue Translocation
+    ERM == "Food Dilution" & Environment == "Freshwater" ~ 1.6,  # Offset for Tissue Translocation
+    ERM == "Food Dilution" & Environment == "Marine" ~ 0.5,  # Offset for Tissue Translocation
+  ))
+
+base_thresholds_df
+```
+
+
+```{r}
+library(cols4all)
+#data prep
+t3f_marine <- all_MC_data_long  %>% 
+  filter(ERM == "Food Dilution",
+         Tier == "Tier3",
+         Environment == "Marine") %>% 
+  rename(PNEC = Value) %>% 
+  mutate(Environment = as.factor(Environment))
+
+#data prep
+t3f_freshwater <- all_MC_data_long  %>% 
+  filter(ERM == "Food Dilution",
+         Tier == "Tier3",
+         Environment == "Freshwater") %>% 
+  rename(PNEC = Value) %>% 
+  mutate(Environment = as.factor(Environment))
+
+#data prep
+t3t_marine <- all_MC_data_long  %>% 
+  filter(ERM == "Tissue Translocation",
+         Tier == "Tier3",
+         Environment == "Marine") %>% 
+  rename(PNEC = Value) %>% 
+  mutate(Environment = as.factor(Environment))
+
+#data prep
+t3t_freshwater <- all_MC_data_long  %>% 
+  filter(ERM == "Tissue Translocation",
+         Tier == "Tier3",
+         Environment == "Freshwater") %>% 
+  rename(PNEC = Value) %>% 
+  mutate(Environment = as.factor(Environment))
+
+
+
+## join DFs
+PNEC_dfs <- rbind(t3f_marine, t3f_freshwater, t3t_marine, t3t_freshwater) %>% 
+ mutate(y_position = (as.numeric(factor(Environment)) - 2) + (as.numeric(factor(ERM)) - 1.5) * 0.4)  # Adjust 0.1 or other value as needed
+
+#plot
+PNEC_MCSSDvSSD <- ggplot() +
+   geom_violin(data = PNEC_dfs, aes(x = PNEC, y = Environment, fill = ERM, color = ERM),
+               draw_quantiles = c(0.05, 0.5, 0.95), linewidth = 1.2,
+               alpha = 0.75) +
+   # geom_jitter(data = PNEC_dfs, aes(x = PNEC, y = y_position, fill = ERM, color = ERM),
+   #             height = 0.15, size = 1.5, alpha = 0.03) +  # Jittered points
+   geom_point(data = base_thresholds_df %>% filter(Tier == 3), 
+              aes(x = PNEC, y = y_position, fill = ERM),
+              size = 5, shape = 23, 
+              color = "white",
+              alpha = 0.95,
+              stroke = 1.8 #thickness of outline
+              ) +
+   geom_errorbarh(data = base_thresholds_df %>% filter(Tier == 3), 
+                  aes(xmin = PNEClcl, xmax = PNECucl, y = y_position, fill = ERM, color = ERM),
+                  height = 0.2,
+                  alpha = 0.75,
+                  linewidth = 1.2) +
+  scale_color_discrete_c4a_cat() +
+  scale_fill_discrete_c4a_cat()+
+  scale_x_log10() +
+ #  scale_x_log10(breaks = c(0.01, 0.1, 1, 10, 100, 1000, 10000, 1000000, 10000000),
+                 #limits = c(0.001, 10000000),
+  #               labels = scales::label_comma()) +
+  labs(title = "Comparison of Monte-Carlo [mcSSDs] and Deterministic [dSSD] Thresholds",
+       subtitle = "(Violin Plots = mcSSDs; Diamonds/Error-Bars = dSSD; Tier 3 only)",
+       fill = "Ecologically-Relevant Metric",
+       color = "Ecologically-Relevant Metric"
+       ) +
+  xlab("PNEC (Particles/L; 1 to 5,000 um)") +
+  ylab("Environment")
+
+PNEC_MCSSDvSSD_dark <- PNEC_MCSSDvSSD + theme.dark
+PNEC_MCSSDvSSD_light <- PNEC_MCSSDvSSD + theme.light
+
+# ggsave(filename = "PNEC_pSSDvSSD.tiff",
+#        path = "../output/presentation_Figs/", 
+#        plot = PNEC_pSSDvSSD_dark, width = 12, height = 10, units = "in")
+
+ggsave(filename = "PNEC_pSSDvSSD.jpg",
+       path = "../output/presentation_Figs/", 
+       plot = PNEC_pSSDvSSD_dark, width = 12, height = 10, units = "in")
+
+ggsave(filename = "PNEC_MCSSDvSSD.tiff",
+       path = "../output/Manuscript_Figs/", 
+       plot = PNEC_MCSSDvSSD_light, width = 10, height = 8, units = "in")
+
+ggsave(filename = "PNEC_MCSSDvSSD.jpg",
+       path = "../output/Manuscript_Figs/", 
+       plot = PNEC_MCSSDvSSD_light, width = 10, height = 8, units = "in")
+
+PNEC_MCSSDvSSD_light
+```
 
 ### CoV Determination
 ```{r eval=FALSE, include=FALSE}
@@ -3310,9 +3451,9 @@ xlims <- c(min_val - pad, max_val + pad)
 
 hist_cv_food <- aoc_MC %>% 
    filter(ingestible %in% c("ingestible", "ingestible (all)", "ingestible (some)"),
-         group != "Algae") %>% 
-  filter(particles_L_food_dilution > 0) %>% 
-  drop_na(particles_L_food_dilution) %>% 
+         Group != "Algae") %>% 
+  filter(particles_L_food_dilution_deterministic > 0) %>% 
+  drop_na(particles_L_food_dilution_deterministic) %>% 
   ggplot(aes(x = CoV_food_dilution, fill = polydispersity)) +
   geom_histogram(position = "identity", alpha = 0.5) +
  # xlim(xlims) +  # Set x limits
@@ -3325,8 +3466,8 @@ hist_cv_food <- aoc_MC %>%
 
 hist_cv_ox <- aoc_MC %>% 
    filter(translocatable %in% c("translocatable", "translocatable (all)", "translocatable (some)")) %>% 
-  filter(particles_L_ox_stress > 0) %>% 
-  drop_na(particles_L_ox_stress) %>% 
+  filter(particles_L_ox_stress_deterministic > 0) %>% 
+  drop_na(particles_L_ox_stress_deterministic) %>% 
   ggplot(aes(x = CoV_ox_stress, fill = polydispersity)) +
   geom_histogram(position = "identity", alpha = 0.5) +
   fill.type +
@@ -3336,7 +3477,7 @@ hist_cv_ox <- aoc_MC %>%
   ylab("Toxicity Data Points") +
   theme.light +
   theme(legend.position = "none",
-        axis.title.y = element_blank())
+        axis.title.y = element_blank()) 
 
 CoV_plots <- ggarrange(hist_cv_food, hist_cv_ox,
                        labels = c("A", "B"),
@@ -3752,7 +3893,7 @@ MC_example_plots
 #### Filtering for threshold prep
 ```{r}
 #filter out risk criteria (not done above)#
-aoc_risk_paper_MC <- aoc_MC_sobol %>% 
+aoc_risk_paper_MC <- aoc_MC %>% 
   drop_na(effect.metric) %>% 
    filter(
      tier_zero_tech_f == ("Red Criteria Passed"))  %>% 
@@ -4005,17 +4146,17 @@ run_pSSD_analysis <- function(data_matrices, num_iterations, sim, cv_dp, cv_uf, 
   return(list(pSSD = pSSD, corr_endpoints = corr_endpoints))
 }
 
-#example
-tier1_2_food_pssd <- run_pSSD_analysis(
-  data_matrices = tier1_2_food_matrices,
-  num_iterations = 10,
-  sim = SIM,
-  cv_dp = CV.DP,  # Example coefficient of variation for DP
-  cv_uf = CV.UF,  # Example coefficient of variation for UF
-  data_name = "tier1_2_food"
-)
-
-tier1_2_food_pssd$pSSD
+# #example
+# tier1_2_food_pssd <- run_pSSD_analysis(
+#   data_matrices = tier1_2_food_matrices,
+#   num_iterations = 10,
+#   sim = SIM,
+#   cv_dp = CV.DP,  # Example coefficient of variation for DP
+#   cv_uf = CV.UF,  # Example coefficient of variation for UF
+#   data_name = "tier1_2_food"
+# )
+# 
+# tier1_2_food_pssd$pSSD
 ```
 
 ###Plotting
@@ -4408,20 +4549,20 @@ summary_table
 ```{r}
 base_tissue <- data.frame(Tier = c("1", "2", "3", "4"),
                           ERM = "Tissue Translocation", 
-                          PNEC = base_thresholds$`Tissue Translocation (Default)`,
-                          PNEClcl = base_thresholds$`Tissue Translocation (5th %)`,
-                          PNECucl = base_thresholds$`Tissue Translocation (95th %)`)
+                          PNEC = marine_only_thresholds$base_thresholds$`Tissue Translocation (Default)`,
+                          PNEClcl = marine_only_thresholds$base_thresholds$`Tissue Translocation (5th %)`,
+                          PNECucl = marine_only_thresholds$base_thresholds$`Tissue Translocation (95th %)`)
 
 base_food <- data.frame(Tier = c("1", "2", "3", "4"),
                         ERM = "Food Dilution", 
-                        PNEC = base_thresholds$`Food Dilution (Default)`,
-                        PNEClcl = base_thresholds$`Food Dilution (5th %)`,
-                        PNECucl = base_thresholds$`Food Dilution (95th %)`)
+                        PNEC = marine_only_thresholds$base_thresholds$`Food Dilution (Default)`,
+                        PNEClcl = marine_only_thresholds$base_thresholds$`Food Dilution (5th %)`,
+                        PNECucl = marine_only_thresholds$base_thresholds$`Food Dilution (95th %)`)
 
-base_thesholds_df <- rbind(base_tissue, base_food) %>% 
+base_thresholds_df <- rbind(base_tissue, base_food) %>% 
    mutate(y_position = (as.numeric(Tier) - 2) + (as.numeric(factor(ERM)) - 1.5) * 0.9)  # Adjust 0.1 or other value as needed
 
-base_thesholds_df
+base_thresholds_df
 ```
 
 
@@ -4444,14 +4585,14 @@ PNEC_pSSDvSSD <- ggplot() +
                alpha = 0.75) +
    geom_jitter(data = PNEC_dfs, aes(x = PNEC, y = y_position, fill = ERM, color = ERM),
                height = 0.15, size = 1.5, alpha = 0.03) +  # Jittered points
-   geom_point(data = base_thesholds_df %>% filter(Tier>2), 
+   geom_point(data = base_thresholds_df %>% filter(Tier>2), 
               aes(x = PNEC, y = y_position, fill = ERM),
               size = 5, shape = 23, 
               color = "white",
               alpha = 0.95,
               stroke = 1.8 #thickness of outline
               ) +
-   geom_errorbarh(data = base_thesholds_df %>% filter(Tier>2), 
+   geom_errorbarh(data = base_thresholds_df %>% filter(Tier>2), 
                   aes(xmin = PNEClcl, xmax = PNECucl, y = y_position, fill = ERM, color = ERM),
                   height = 0.2,
                   alpha = 0.75,
@@ -4557,7 +4698,7 @@ freshwater_food_plots
 library(openxlsx)
 
 #fix encoding to UTF-8
-tomex2.0_aoc_z_final_utf8 <- stringi::stri_enc_toutf8(tomex2.0_aoc_z_final, validate = TRUE)
+tomex2.0_aoc_z_final_utf8 <- stringi::stri_enc_toutf8(aoc_aligned_no_filters, validate = TRUE)
 
 # List of data frame names
 dataframe_names <- c("unified_thresholds", "leave_one_out_df", "tomex2.0_aoc_z_final_utf8")
