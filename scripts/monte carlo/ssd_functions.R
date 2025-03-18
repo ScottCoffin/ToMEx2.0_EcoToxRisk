@@ -26,7 +26,9 @@ SSD_function_t1 <- function(filtered.data, hcxlcl){
     )
   } else {
   #fit distributions
-  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("llogis", "lnorm", #"gamma",
+  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("llogis",
+                                                             "lnorm",
+                                                             "gamma",
                                                              "lgumbel"), computable = FALSE, silent = FALSE) 
   #use average distribution with weighthing based on AICC
   preds <- predict(dists, average = TRUE, 
@@ -77,7 +79,9 @@ SSD_function_t2 <- function(filtered.data, hcx){
     
   #fit distributions
   dists <- ssd_fit_dists(collapsed, left = "Conc", 
-                         dists = c( "llogis", "lnorm", #"gamma", 
+                         dists = c( "llogis",
+                                    "lnorm",
+                                    "gamma",
                                     "lgumbel"), computable = FALSE, silent = FALSE) 
   #use average distribution with weighthing based on AICC
   preds <- predict(dists, average = TRUE,# ic = "aicc",
@@ -130,8 +134,10 @@ SSD_function_t3_4 <- function(filtered.data, hcx){
   } else {
     
   #fit distributions
-  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c( "llogis", "lnorm",# "gamma", 
-                                                              "lgumbel"), computable = FALSE, silent = FALSE) 
+  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("llogis",
+                                                             "lnorm",
+                                                             "gamma",
+                                                             "lgumbel"), computable = FALSE, silent = FALSE) 
   #use average distribution with weighthing based on AICC
   preds <- predict(dists, average = TRUE, 
                    #ic = "aicc", 
@@ -182,6 +188,7 @@ filter_environment_data <- function(data, env_filter, upper.tissue.trans.size.um
     filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
+           shape_f != "Not Reported",
            poly_f != "Not Reported",
            environment %in% env_filter,
            Group != "Bacterium",
@@ -233,15 +240,13 @@ process_environment_data <- function(data,
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(
           between(size.length.um.used.for.conversions, x1D_set, upper.tissue.trans.size.um),
-           shape_f != "Not Reported",
+          translocatable != "not translocatable",
+          shape_f != "Not Reported",
            poly_f != "Not Reported",
            environment %in% env_filter,
            Group != "Bacterium",
            Group != "Plant",
            effect.metric != "HONEC",
-          #ingestible == "ingestible",
-           #only consider studies in which particles are below x2M_trans (translocation only!)
-           #translocatable == "translocatable",
           dose_new > 0
     ) 
   
@@ -262,7 +267,9 @@ process_environment_data <- function(data,
     filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
+           ingestible != "not ingestible",
            poly_f != "Not Reported",
+           shape_f != "Not Reported",
            environment %in% env_filter,
            Group != "Bacterium",
            Group != "Plant",
