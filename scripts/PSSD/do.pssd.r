@@ -132,3 +132,80 @@ do.pSSD <- function(DP,
   return(NOEC_comb)
   
 }
+
+
+#################################################################
+#### Scott's attempt at fixing the negative number issues #####
+#################################################################
+do.pSSD_mod <- function(DP, DP.SD, UFt, UFdd, SIM, CV.DP, CV.UF) {
+  # Check for species with no data
+  if (any(apply(DP, 2, function(x) length(which(!is.na(x)))) == 0)) {
+    warning("No data is available for one or more species, it/they won't contribute to the PSSD calculation.")
+    ind.sp.rem <- which(apply(DP, 2, function(x) length(which(!is.na(x)))) == 0)
+    DP <- DP[, -ind.sp.rem]
+    DP.SD <- DP.SD[, -ind.sp.rem]
+    UFt <- UFt[, -ind.sp.rem]
+    UFdd <- UFdd[, -ind.sp.rem]
+  }
+  
+  require(trapezoid)
+  require(mc2d)
+  
+  # Calculate corrected endpoints
+  corr.endpoints <- DP / (UFdd * UFt)
+  sort.endpoints <- apply(corr.endpoints, 2, sort)
+  
+  # Initialize matrix for results
+  NOEC_comb <- matrix(NA, ncol(DP), SIM, dimnames = list(colnames(DP), NULL))
+  
+  for (sp in colnames(DP)) {
+    # Identify min and max indices
+    ind.min <- which.min(corr.endpoints[, sp])
+    ind.max <- which.max(corr.endpoints[, sp])
+    
+    # Handle CV.DP as a matrix or scalar
+    CV.DP2 <- if (is.matrix(CV.DP)) CV.DP[, sp] else CV.DP
+    
+    # Calculate sp.min and sp.max with explicit non-negative checks
+    sp.min <- max(0, corr.endpoints[ind.min, sp] * (1 - (sqrt(sum((CV.DP2 / 2.45)^2) + 2 * (CV.UF / 2.45)^2) * 2.45)))
+    sp.max <- max(0, corr.endpoints[ind.max, sp] * (1 + (sqrt(sum((CV.DP2 / 2.45)^2) + 2 * (CV.UF / 2.45)^2) * 2.45)))
+    
+    # Debugging: Print sp.min and sp.max to ensure they are non-negative
+    print(paste("Species:", sp, "sp.min:", sp.min, "sp.max:", sp.max))
+    
+    # Handle cases based on the number of unique endpoints
+    if (length(unique(sort.endpoints[[sp]])) == 1) {
+      # Single endpoint: Use truncated triangular distribution
+      NOEC_comb[sp, ] <- rtrunc("rtriang", min = sp.min, 
+                                mode = sort.endpoints[[sp]][1], 
+                                max = sp.max, 
+                                n = SIM, linf = 0)
+      
+    } else if (length(sort.endpoints[[sp]]) == 2) {
+      # Two endpoints: Use truncated trapezoidal distribution
+      NOEC_comb[sp, ] <- rtrunc("rtrapezoid", SIM, 
+                                mode1 = sort.endpoints[[sp]][1], 
+                                mode2 = sort.endpoints[[sp]][2], 
+                                min = sp.min, max = sp.max, linf = 0)
+      
+    } else {
+      # Three or more endpoints: Bootstrap with uncertainty factor
+      low <- max(0, (1 - (sqrt(sum(c(DP.SD[, sp], CV.DP2, CV.UF)^2, na.rm = T)))))
+      high <- (1 + (sqrt(sum(c(DP.SD[, sp], CV.DP2, CV.UF)^2, na.rm = T))))
+      
+      # Debugging: Print low and high to ensure they are valid
+      print(paste("Species:", sp, "low:", low, "high:", high))
+      
+      uncertainty_factor <- runif(min = low, max = high, n = SIM)
+      data <- rnorm(mean = mean(sort.endpoints[[sp]]), 
+                    sd = max(1e-6, sd(sort.endpoints[[sp]])),  
+                    n = SIM)
+      
+      # Ensure no negative values in the final result
+      NOEC_comb[sp, ] <- pmax(0, data * uncertainty_factor)
+    }
+  }
+  
+  # Return the final matrix
+  return(NOEC_comb)
+}

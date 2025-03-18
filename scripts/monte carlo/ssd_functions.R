@@ -157,8 +157,8 @@ filter_environment_data <- function(data, env_filter, upper.tissue.trans.size.um
   filtered_data_small_default_t1_2 <- data %>%
     ungroup() %>% 
     mutate(dose_new = particles.mL.ox.stress / (af.time * af.noec)) %>%
-    distinct(Species, doi, dose_new, poly_f, shape_f, .keep_all = T)  %>% 
     drop_na(dose_new) %>%
+    filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(between(size.length.um.used.for.conversions, x1D_set, upper.tissue.trans.size.um),
            shape_f != "Not Reported",
@@ -178,8 +178,8 @@ filter_environment_data <- function(data, env_filter, upper.tissue.trans.size.um
   filtered_data_large_default_t1_2 <- data %>%
     filter(Group != "Algae") %>%
     mutate(dose_new = particles.mL.food.dilution / (af.time * af.noec)) %>%
-    distinct(Species, doi, dose_new, poly_f, shape_f, .keep_all = T)  %>% 
     drop_na(dose_new) %>%
+    filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
            poly_f != "Not Reported",
@@ -203,6 +203,7 @@ filter_environment_data <- function(data, env_filter, upper.tissue.trans.size.um
 
 
 ## function to generate threshold based on different environment filterings (Marine or Freshwater,etc.)
+## data should be aligned ##
 process_environment_data <- function(data, 
                                      env_filter = "Marine",
                                      upper.tissue.trans.size.um = 88, 
@@ -227,8 +228,8 @@ process_environment_data <- function(data,
   filtered_data_small_default_t1_2 <- data %>%
     ungroup() %>% 
     mutate(dose_new = particles.mL.ox.stress / (af.time * af.noec)) %>%
-    distinct(Species, doi, dose_new, poly_f, shape_f, .keep_all = T)  %>% 
     drop_na(dose_new) %>%
+    filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(
           between(size.length.um.used.for.conversions, x1D_set, upper.tissue.trans.size.um),
@@ -238,9 +239,9 @@ process_environment_data <- function(data,
            Group != "Bacterium",
            Group != "Plant",
            effect.metric != "HONEC",
-          ingestible == "ingestible",
+          #ingestible == "ingestible",
            #only consider studies in which particles are below x2M_trans (translocation only!)
-           translocatable == "translocatable",
+           #translocatable == "translocatable",
           dose_new > 0
     ) 
   
@@ -257,8 +258,8 @@ process_environment_data <- function(data,
   filtered_data_large_default_t1_2 <- data %>%
     filter(Group != "Algae") %>%
     mutate(dose_new = particles.mL.food.dilution / (af.time * af.noec)) %>%
-    distinct(Species, doi, dose_new, poly_f, shape_f, .keep_all = T)  %>% 
     drop_na(dose_new) %>%
+    filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
            poly_f != "Not Reported",
@@ -266,7 +267,6 @@ process_environment_data <- function(data,
            Group != "Bacterium",
            Group != "Plant",
            effect.metric != "HONEC",
-           ingestible == "ingestible", #only consider studies in which particles are below x2M_ingest )
            dose_new > 0) 
   
   filtered_data_large_default_t3_4 <- filtered_data_large_default_t1_2 %>%

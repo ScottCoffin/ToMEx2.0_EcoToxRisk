@@ -147,14 +147,14 @@ bodysize_addons <- read_csv("ref data/gape_size.csv", show_col_types = FALSE) #c
 ```{r}
 ## Monte Carlo Params ##
 nboot = 10 #ssd bootstraps
-n_sim <- 10 #monte carlo simulations
+n_sim <- 100 #monte carlo simulations
 
 ## Alingment Params ##
 x1M_set <- 1 #um lower size for all alignments
 x1D_set <- 1 #um lower size for all alignments
 x2D_set <- 5000 #um
 
-upper.tissue.trans.size.um <- 83 #10 #um #set size for x2M #only used for determinstic assessment
+upper.tissue.trans.size.um <- 88 #10 #um #set size for x2M #only used for determinstic assessment
 ```
 
 ### Dynamic Parameters
@@ -209,11 +209,13 @@ R.ave.water.marine <- 0.77 # average length to width ratio of microplastics in m
 R_ave.water.marine <- 0.77 # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
 R.ave.water.marine.sd = 0.29 #Tablse s3. Marine surface water
 R.ave.water.marine_samples <- rnorm(n_sim, mean = R.ave.water.marine, sd = R.ave.water.marine.sd)
+H_W_ratio.marine_samples <- R.ave.water.marine_samples
 
 R.ave.water.freshwater <- 0.67 # average length to width ratio of microplastics in freshwater environment (Kooi et al. 2021)
 R_ave.water.freshwater <- 0.67 # average length to width ratio of microplastics in freshwater environment (Kooi et al. 2021)
 R.ave.water.freshwater.sd = 0.28 #Tablse s3. freshwater surface water
 R.ave.water.freshwater_samples <- rnorm(n_sim, mean = R.ave.water.freshwater, sd = R.ave.water.freshwater.sd)
+H_W_ratio.freshwater_samples <- R.ave.water.freshwater_samples
 
 R.ave.sediment.marine <- 0.75 # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
 R.ave.sediment.marine.sd = 0.30 #Tablse s3. Marine surface sediment
@@ -324,12 +326,14 @@ param_values <- data.frame(
   a.m.marine = a.m.marine_samples,
   a.ssa.marine = a.ssa.marine_samples,
   R.ave.water.marine = R.ave.water.marine_samples,
+  H_W_ratio.marine_samples = H_W_ratio.marine_samples,
   alpha.freshwater = alpha.freshwater_samples,
   a.sa.freshwater = a.sa.freshwater_samples,
   a.v.freshwater = a.v.freshwater_samples,
   a.m.freshwater = a.m.freshwater_samples,
   a.ssa.freshwater = a.ssa.freshwater_samples,
   R.ave.water.freshwater = R.ave.water.freshwater_samples,
+  H_W_ratio.freshwater_samples = H_W_ratio.freshwater_samples,
   #R.ave.sediment.marine = R.ave.sediment.marine_samples,
   #R.ave.sediment.freshwater = R.ave.sediment.freshwater_samples,
   sim_beta_log10_body_length = sim_beta_log10_body_length_samples,
@@ -377,8 +381,14 @@ generate_data <- function(n_sim = 10,
   ## width to length ratios. If R > 1, then width now becomes length - so it is meaningless. R cannot be negative.  
   R.ave.water.marine.samples <- rtruncnorm(n_sim, mean = R.ave.water.marine, a = 0.0001, b = 1, #min and max
                                            sd = R.ave.water.marine.sd)
+  
+  H_W_ratio.marine_samples <- R.ave.water.marine.samples
+  
   R.ave.water.freshwater.samples <- rtruncnorm(n_sim, mean = R.ave.water.freshwater, a = 0.0001, b = 1,
                                                sd = R.ave.water.freshwater.sd)
+  
+  H_W_ratio.freshwater_samples <- R.ave.water.freshwater.samples
+  
   R.ave.sediment.marine.samples <- rtruncnorm(n_sim, mean = R.ave.sediment.marine, a = 0.0001, b = 1,
                                               sd = R.ave.sediment.marine.sd)
   R.ave.sediment.freshwater.samples <- rtruncnorm(n_sim, mean = R.ave.sediment.freshwater, a = 0.0001, b = 1,
@@ -419,12 +429,14 @@ generate_data <- function(n_sim = 10,
     a.m.marine = a.m.marine.samples,
     a.ssa.marine = a.ssa.marine.samples,
     R.ave.water.marine = R.ave.water.marine.samples,
+    H_W_ratio.marine = H_W_ratio.marine_samples,
     alpha.freshwater = alpha.freshwater.samples,
     a.sa.freshwater = a.sa.freshwater.samples,
     a.v.freshwater = a.v.freshwater.samples,
     a.m.freshwater = a.m.freshwater.samples,
     a.ssa.freshwater = a.ssa.freshwater.samples,
     R.ave.water.freshwater = R.ave.water.freshwater.samples,
+    H_W_ratio.freshwater = H_W_ratio.freshwater_samples,
     sim_beta_log10_body_length = sim_beta_log10_body_length_samples,
     sim_body_length_intercept = sim_body_length_intercept_samples,
     upper.tissue.trans.size.um = upper.tissue.trans.size.um.samples
@@ -448,6 +460,7 @@ MC_param_histograms_base <- param_values %>%
   pivot_longer(cols = everything()) %>% 
   mutate(name = factor(name, levels = c("alpha.marine", "a.sa.marine", "a.v.marine",
                                         "a.m.marine", "a.ssa.marine", "R.ave.water.marine",
+                                        "H_W_ratio.marine", "H_W_ratio.freshwater",
                                         "alpha.freshwater", "a.sa.freshwater", "a.v.freshwater",
                                         "a.m.freshwater", "a.ssa.freshwater", "R.ave.water.freshwater",
                                   "sim_beta_log10_body_length","sim_body_length_intercept","upper.tissue.trans.size.um"))) %>% 
@@ -517,32 +530,50 @@ param_values
 
 ## Generate Base dataframes
 
-```{r warning=FALSE}
-source("RDAmaker_functions.R") #functionalized data tidying script for ToMEx 1.0 data
-source("ToMEx2.0_Data_Tidying_functions.R") #functionalized data tidying script for ToMEx 2.0 data
+<!-- ```{r warning=FALSE} -->
+<!-- source("RDAmaker_functions.R") #functionalized data tidying script for ToMEx 1.0 data -->
+<!-- source("ToMEx2.0_Data_Tidying_functions.R") #functionalized data tidying script for ToMEx 2.0 data -->
 
-# these functions perform alignments
-aoc_setup <- ToMEx1.0fxn(aoc = aoc, #dataset input
-                         #### parameters ###
-                         R.ave.water.marine = R.ave.water.marine,
-                         R.ave.water.freshwater = R.ave.water.freshwater,
-                         R.ave.sediment.marine = R.ave.sediment.marine,
-                         R.ave.sediment.freshwater = R.ave.sediment.freshwater,
-                         beta_log10_body_length = beta_log10_body_length,
-                         body_length_intercept = body_length_intercept) 
+<!-- # these functions perform alignments -->
+<!-- aoc_setup <- ToMEx1.0fxn(aoc = aoc, #dataset input -->
+<!--                          #### parameters ### -->
+<!--                          R.ave.water.marine = R.ave.water.marine, -->
+<!--                          R.ave.water.freshwater = R.ave.water.freshwater, -->
+<!--                          R.ave.sediment.marine = R.ave.sediment.marine, -->
+<!--                          R.ave.sediment.freshwater = R.ave.sediment.freshwater, -->
+<!--                          beta_log10_body_length = beta_log10_body_length, -->
+<!--                          body_length_intercept = body_length_intercept)  -->
 
-## generate ToMEx 2.0 dataset ###
-tomex2.0_aoc_z_final <- ToMEx2.0fxn(aoc_setup = aoc_setup, #ToMEx 1.0 (tidyed)
-                                    tomex2.0 = tomex2.0, #tomex 2.0 base
-                                    bodysize_addons = bodysize_addons, #aux data
-                                    ### parameters
-                                    R.ave.water.marine = R.ave.water.marine,
-                                    R.ave.water.freshwater = R.ave.water.freshwater,
-                                    R.ave.sediment.marine = R.ave.sediment.marine,
-                                    R.ave.sediment.freshwater = R.ave.sediment.freshwater,
-                                    beta_log10_body_length = beta_log10_body_length,
-                                    body_length_intercept = body_length_intercept)
+<!-- ## generate ToMEx 2.0 dataset ### -->
+<!-- tomex2.0_aoc_z_final <- ToMEx2.0fxn(aoc_setup = aoc_setup, #ToMEx 1.0 (tidyed) -->
+<!--                                     tomex2.0 = tomex2.0, #tomex 2.0 base -->
+<!--                                     bodysize_addons = bodysize_addons, #aux data -->
+<!--                                     ### parameters -->
+<!--                                     R.ave.water.marine = R.ave.water.marine, -->
+<!--                                     R.ave.water.freshwater = R.ave.water.freshwater, -->
+<!--                                     R.ave.sediment.marine = R.ave.sediment.marine, -->
+<!--                                     R.ave.sediment.freshwater = R.ave.sediment.freshwater, -->
+<!--                                     beta_log10_body_length = beta_log10_body_length, -->
+<!--                                     body_length_intercept = body_length_intercept) -->
+<!-- ``` -->
+
+```{r}
+aoc_risk_paper <- readRDS("../../data/input/aoc_z_tomex2.RDS") %>%  #dataset is prepped in shiny repo
+  rename(environment = env_f) %>% 
+  filter(!doi %in% c("10.1016/j.marpolbul.2021.112369", "10.3390/nano11030649")) %>%  #filter out Capolupo et al. (2021) and Richardson et al. (2021) because they were retracted
+  mutate(AF.total = af.time * af.noec) %>%  #calculate composite AF
+  drop_na(effect.metric) %>% 
+   filter(
+     !environment %in% c("Terrestrial", "Not Reported"),
+         Group != "Bacterium",
+         Group != "Plant",
+         effect.metric != "HONEC",
+     tier_zero_tech_f == "Red Criteria Passed",
+     tier_zero_risk_f == "Red Criteria Passed", #All thresholds must pass technical and risk red criteria
+     risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been)
+   ) 
 ```
+
 
 # Monte Carlo
 
@@ -551,37 +582,85 @@ tomex2.0_aoc_z_final <- ToMEx2.0fxn(aoc_setup = aoc_setup, #ToMEx 1.0 (tidyed)
 ### Alignment functions
 
 ```{r}
-alignmentFxn <- function(df = tomex2.0_aoc_z_final){
+align_data <- function(df,
+                       x1M_set_input = 1, #um lower size for all alignments
+                       x1D_set_input = 1, #um lower size for all alignments
+                       x2D_set_input = 5000, #um
+                       upper.tissue.trans.size.um_input = 88,
+                       R.ave.marine_input = 0.77, # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
+                       H_W_ratio.marine_input = 0.77, # H:W ratio assumed same as width:length ratio (Kooi et al. 2021)
+                       R.ave.freshwater_input = 0.67, # average length to width ratio of microplastics in freshwater environment (Kooi et al. 2021)
+                       H_W_ratio.freshwater_input = 0.67, # H:W ratio assumed same as width:length ratio (Kooi et al. 2021)
+                       R.ave.sediment.marine_input = 0.75, # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
+                       R.ave.sediment.freshwater_input = 0.70, # average length to width ratio of microplastics in freshwater environment (Kooi et al. 2021)
+                       p.ave.marine_input = 1.10, #average density in marine surface water
+                       alpha.marine_input = 2.07, #table s4 for marine surface water. length
+                       a.sa.marine_input = 1.50, #marine surface area power law
+                       a.v.marine_input = 1.48, #a_V for marine surface water volume
+                       a.m.marine_input = 1.32, # upper limit fora_m for mass for marine surface water in table S4 
+                       a.ssa.marine_input = 1.98, # A_SSA for marine surface water
+                       p.ave.freshwater_input = 1.04, #average density in freshwater surface water
+                       alpha.freshwater_input = 2.64, #table s4 for freshwater surface water. length
+                       a.sa.freshwater_input = 2.00, #freshwater surface area power law
+                       a.v.freshwater_input = 1.68, #a_V for freshwater surface water volume
+                       a.m.freshwater_input = 1.65, # upper limit fora_m for mass for freshwater surface water in table S4 
+                       a.ssa.freshwater_input = 2.71, # A_SSA for freshwater surface water
+                       beta_log10_body_length_input = 0.9341, # Jâms, et al 2020 Nature paper
+                       body_length_intercept_input = 1.1200 # Jâms, et al 2020 Nature paper
+                       ){ #10 #um #set size for x2M)
   
- ### perform alignments
-  aoc_MC_iter <- df  %>% 
-    mutate(x1M_set = x1M_set) %>% 
-    #ensure only considering particles in valid size range
-    filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set)) %>% 
-    ungroup() %>% 
-    rename(environment = env_f) %>% 
-    ### First filter the data ####
-  ## First filter data with global filters
-  filter(!environment %in% c("Terrestrial", "Not Reported"),
-         Group != "Bacterium",
-         Group != "Plant",
-         effect.metric != "HONEC",
-         tier_zero_tech_f == "Red Criteria Passed",
-         tier_zero_risk_f == "Red Criteria Passed", #All thresholds must pass technical and risk red criteria
-         risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been scored) - KEEP THIS AFTER THE RED CRITERIA FILTERS  
-  ) %>% 
-    #Remove 26C temperature treatment data from Jaimukar et al. 2018
-    filter(!(article == 42 & media.temp == 26)) %>% 
-    mutate(max.size.ingest.um = 1000 * max.size.ingest.mm) %>%  #makes it less confusing below
-    # calculate ERM for each species
-    #### TISSUE TRANSLOCATION ####
-  # define upper size length for Translocation 
-  #set to 83um for upper limit or max size ingest, whichever is smaller
-  mutate(x2M_trans = case_when(
-    is.na(max.size.ingest.um) ~ upper.tissue.trans.size.um,
-    TRUE ~ pmin(max.size.ingest.um, upper.tissue.trans.size.um)
-  )) %>% 
-    # define environment-specific alpha parameters #
+  # Check if columns exist and conditionally create them
+    if (!"dose.mg.kg.sed.measured" %in% names(df)) {
+      df <- df %>%
+        mutate(dose.mg.kg.sed.measured = measured.dose.mg.kg.sediment)
+    }
+  
+  if (!"dose.mg.kg.sed.nominal" %in% names(df)) {
+    df <- df %>%
+      mutate(dose.mg.kg.sed.nominal = nominal.dose.mg.kg.sediment)
+  }
+  
+  if (!"dose.particles.kg.sed.nominal" %in% names(df)) {
+    df <- df %>%
+      mutate(dose.particles.kg.sed.nominal = nominal.dose.particles.kg.sediment)
+  }
+  
+  if (!"environment" %in% names(df)){
+    df <- df %>% 
+      mutate(environment = env_f)
+    }
+  
+  df <- df %>% 
+    ungroup() %>%  #if data grouped - bad things happen
+    #assign user  input values
+    mutate(x1M_set = x1M_set_input,
+           x1D_set = x1D_set_input,
+           x2D_set = x2D_set_input,
+           upper.tissue.trans.size.um  = upper.tissue.trans.size.um_input,
+           beta_log10_body_length = beta_log10_body_length_input,
+           body_length_intercept = body_length_intercept_input,
+           H_W_ratio.marine = H_W_ratio.marine_input,
+           H_W_ratio.freshwater = H_W_ratio.freshwater_input,
+           R.ave.marine = R.ave.marine_input,                                 
+           R.ave.freshwater = R.ave.freshwater_input, 
+           R.ave.sediment.marine = R.ave.sediment.marine_input,
+           R.ave.sediment.freshwater = R.ave.sediment.freshwater_input, 
+           p.ave.marine = p.ave.marine_input,
+           alpha.marine = alpha.marine_input,
+           a.sa.marine = a.sa.marine_input, 
+           a.v.marine = a.v.marine_input, 
+           a.m.marine = a.m.marine_input, 
+           a.ssa.marine = a.ssa.marine_input, 
+           p.ave.freshwater = p.ave.freshwater_input, 
+           alpha.freshwater = alpha.freshwater_input,
+           a.sa.freshwater = a.sa.freshwater_input, 
+           a.v.freshwater = a.v.freshwater_input, 
+           a.m.freshwater = a.m.freshwater_input,                     
+           a.ssa.freshwater = a.ssa.freshwater_input)
+  
+# calculate ERM for each species
+aoc_final <- df %>% 
+  # define environment-specific alpha parameters #
     mutate(alpha = case_when(environment == "Marine" ~ alpha.marine,
                              environment == "Freshwater" ~ alpha.freshwater),
            a.sa = case_when(environment == "Marine" ~ a.sa.marine,
@@ -592,113 +671,282 @@ alignmentFxn <- function(df = tomex2.0_aoc_z_final){
                            environment == "Freshwater" ~ a.m.freshwater),
            a.ssa = case_when(environment == "Marine" ~ a.ssa.marine,
                            environment == "Freshwater" ~ a.ssa.freshwater),
+           R.ave = case_when(environment == "Marine" ~ R.ave.marine,
+                             environment == "Freshwater" ~ R.ave.freshwater),
+           H_W_ratio = case_when(environment == "Marine" ~ H_W_ratio.marine,
+                             environment == "Freshwater" ~ H_W_ratio.freshwater),
+           p.ave = case_when(environment == "Marine" ~ p.ave.marine,
+                             environment == "Freshwater" ~ p.ave.freshwater)
            ) %>% 
-    # calculate effect threshold for particles
-    mutate(EC_mono_p.particles.mL_trans = dose.particles.mL.master) %>% 
-    mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
-    mutate(mu.p.poly_trans = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles
-                                         x_UL= x2M_trans, #upper ingestible size limit (width of particle)
-                                         x_LL = x1M_set)) %>% 
-    # polydisperse effect threshold for particles
-    mutate(EC_poly_p.particles.mL_trans = (EC_mono_p.particles.mL_trans * mu.p.mono)/mu.p.poly_trans) %>% 
-    #calculate CF_bio for all conversions
-    mutate(CF_bio_trans = CFfnx(x1M = x1M_set,#lower size bin
-                                x2M = x2M_trans, #upper translocatable
-                                x1D = x1D_set, #default
-                                x2D = x2D_set,  #default
-                                a = alpha)) %>%  
-    ## Calculate environmentally relevant effect threshold for particles
-    mutate(EC_env_p.particles.mL_trans = EC_poly_p.particles.mL_trans * CF_bio_trans) %>%  #aligned particle effect concentraiton (1-5000 um)
-    
-    #### Surface area ERM ####
-  ##--- environmental calculations ---###
-  #calculate lower translocatable surface area
-  mutate(x_LL_sa_trans = SAfnx(a = x1D_set, #length
-                               b = x1D_set, #0.5 * R.ave * x1D_set, #width
-                               c = x1D_set  #0.5 * R.ave * 0.67 * x1D_set #height
-  )) %>%  
-    #calculate upper translocatable surface area
-    mutate(x_UL_sa_trans = SAfnx(a = x2M_trans, 
-                                 b = x2M_trans, #width #0.5 * R.ave * x2M, 
-                                 c = x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M
-    )) %>%  
-    #calculate mu_x_poly (env) for surface area
-    mutate(mu.sa.poly_trans = mux_polyfnx_generalizable(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
-    
-    ##--- laboratory calculations ---###
-    ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
-    #(note that if mixed particles were used, a different equation must be used)
-    mutate(mu.sa.mono = case_when(
-      polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported surface area in monodisperse
-      polydispersity == "polydisperse" ~  mux_polyfnx_generalizable(a.x = a.sa, 
-                                                      x_LL = particle.surface.area.um2.min,
-                                                      x_UL = particle.surface.area.um2.max))) %>% 
-    
-    #calculate polydisperse effect concentration for surface area (particles/mL)
-    mutate(EC_poly_sa.particles.mL_trans = (EC_mono_p.particles.mL_trans * mu.sa.mono)/mu.sa.poly_trans) %>%  
-    #calculate environmentally realistic effect threshold
-    mutate(EC_env_sa.particles.mL_trans = EC_poly_sa.particles.mL_trans * CF_bio_trans) %>% 
-    
-    ##### FOOD DILUTION ####
-  # define upper size length for ingestion 
+  
+  ###############################################################################
+  ###### Determine bioaccesible fractions for polydisperse particle mixtures ####
+######################################################################################
+# define upper size length for ingestion 
   mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ x2D_set, 
                                 max.size.ingest.um < x2D_set ~ max.size.ingest.um,
                                 max.size.ingest.um > x2D_set ~ x2D_set
-  )) %>%  #set to 5,000 as upper limit or max size ingest, whichever is smaller
-    # calculate effect threshold for particles
-    mutate(EC_mono_p.particles.mL_ingest = dose.particles.mL.master) %>% 
-    mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
-    mutate(mu.p.poly_ingest = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles
-                                          x_UL= x2M_ingest, #upper ingestible size limit
-                                          x_LL = x1M_set)) %>% 
-    # polydisperse effect threshold for particles
-    mutate(EC_poly_p.particles.mL_ingest = (EC_mono_p.particles.mL_ingest * mu.p.mono)/mu.p.poly_ingest) %>% 
-    #calculate CF_bio for all conversions
-    mutate(CF_bio_ingest = CFfnx(x1M = x1M_set,#lower size bin
-                                 x2M = x2M_ingest, #upper ingestible length
-                                 x1D = x1D_set, #default
-                                 x2D = x2D_set,  #default upper size range
-                                 a = alpha)) %>%  
-    ## Calculate environmentally relevant effect threshold for particles
-    mutate(EC_env_p.particles.mL_ingest = EC_poly_p.particles.mL_ingest * CF_bio_ingest) %>%  #aligned particle effect concentraiton (1-5000 um)
-    
-    
-    #### volume ERM ####
-  ##--- environmental calculations ---###
-  #calculate lower ingestible volume 
-  mutate(x_LL_v_ingest = volumefnx_poly(length = x1D_set,
-                                        width = x1D_set)) %>% 
-    #calculate maximum ingestible volume 
-    mutate(x_UL_v_ingest = volumefnx_poly(length = x2M_ingest, # length-limited
-                                          #x2D_set, #upper definiton (accouunts for fibers) CONSERVATIVE
-                                          width = x2M_ingest)) %>% #ingestion-limited
-    # calculate mu.v.poly
-    mutate(mu.v.poly_ingest = mux_polyfnx_generalizable(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
-    ##--- laboratory calculations ---###
-    ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
-    #(note that if mixed particles were used, a different equation must be used)
-    mutate(mu.v.mono = case_when(
-      polydispersity == "monodisperse" ~ particle.volume.um3, # use reported volume in monodisperse
-      polydispersity == "polydisperse" ~ mux_polyfnx_generalizable(a.x = a.v, 
-                                                     x_LL = particle.volume.um3.min,
-                                                     x_UL = particle.volume.um3.max))) %>% 
-    
-    #calculate polydisperse effect concentration for volume (particles/mL)
-    mutate(EC_poly_v.particles.mL_ingest = (EC_mono_p.particles.mL_ingest * mu.v.mono)/mu.v.poly_ingest) %>%  
-    #calculate environmentally realistic effect threshold
-    mutate(EC_env_v.particles.mL_ingest = EC_poly_v.particles.mL_ingest * CF_bio_ingest) %>% 
-    
-    ###### CLEANUP #####
-  mutate(particles.mL.ox.stress = EC_env_sa.particles.mL_trans,
-         particles.mL.food.dilution = EC_env_v.particles.mL_ingest
-         ) %>% 
-    #ensure algae not considered for food dilution ERM
-    mutate(particles.mL.food.dilution = case_when(
-      Group == "Algae" ~ NA,
-      T ~ particles.mL.food.dilution
+                                )) %>%  #set to 5,000 as upper limit or max size ingest, whichever is smaller
+  # define upper size length for Translocation 
+#set to 88um for upper limit or max size ingest, whichever is smaller
+mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size.um, 
+                             max.size.ingest.um  < upper.tissue.trans.size.um ~  max.size.ingest.um,
+                             max.size.ingest.um  > upper.tissue.trans.size.um ~ upper.tissue.trans.size.um)) %>% 
+  # tag ingestible/translocatable for monodisperse
+      mutate(ingestible = case_when(
+      polydispersity == "monodisperse" & size.length.um.used.for.conversions <= x2M_ingest ~ "ingestible",
+      polydispersity == "monodisperse" & size.length.um.used.for.conversions > x2M_ingest ~ "not ingestible"),
+      translocatable = case_when(
+        polydispersity == "monodisperse" & size.length.um.used.for.conversions <= x2M_trans ~ "translocatable",
+        polydispersity == "monodisperse" & size.length.um.used.for.conversions > x2M_trans ~ "not translocatable")) %>% 
+        
+  ## assign whether polydisperse data are partially, fully, or not bioavailable
+  mutate(ingestible_poly = case_when(
+    polydispersity == "polydisperse" & size.length.max.um.used.for.conversions <= x2M_ingest & size.length.min.um.used.for.conversions <= x2M_ingest ~ "ingestible (all)",
+    polydispersity == "polydisperse" & size.length.max.um.used.for.conversions > x2M_ingest & size.length.min.um.used.for.conversions <= x2M_ingest ~ "ingestible (some)",
+    polydispersity == "polydisperse" & size.length.max.um.used.for.conversions > x2M_ingest & size.length.min.um.used.for.conversions > x2M_ingest ~ "not ingestible"),
+    translocatable_poly = case_when(
+    polydispersity == "polydisperse" & size.length.max.um.used.for.conversions <= x2M_trans & size.length.min.um.used.for.conversions <= x2M_trans ~ "translocatable (all)",
+    polydispersity == "polydisperse" & size.length.max.um.used.for.conversions > x2M_trans & size.length.min.um.used.for.conversions <= x2M_trans ~ "translocatable (some)",
+    polydispersity == "polydisperse" & size.length.max.um.used.for.conversions > x2M_trans & size.length.min.um.used.for.conversions > x2M_trans ~ "not translocatable")
+      ) %>% 
+  # For the partially ingestible/translocatable study, we prepare this data for alignment using a two-step process, in which we first re-calculate #   # the effect concentration (particles/volume) using the Correction Factor equation (Koelmans et al. 2019):
+  ####### STEP 1: Re-Calculate Dose  for ingestible/translocatable fractions ####
+ # correct for partially translocatable particles
+  mutate(CF_bioavailable_trans = case_when(translocatable_poly == "translocatable (some)" ~ CFfnx(a = alpha,
+                                                                                                  x1D = size.length.min.um.used.for.conversions,
+                                                                                                  x2D = x2M_trans,
+                                                                                                  x1M = size.length.min.um.used.for.conversions,
+                                                                                                  x2M = size.length.max.um.used.for.conversions),
+                                           T ~ 1)) %>% # all other cases retain original dose
+  # now correct the dosage (will be fraction )
+  mutate(dose.particles.mL.trans = case_when(translocatable_poly == "translocatable (some)" ~ CF_bioavailable_trans * dose.particles.mL.master,
+                                             T ~ dose.particles.mL.master)) %>% 
+  # correct for partially ingestible particles
+    mutate(CF_bioavailable_ingest = case_when(ingestible_poly == "ingestible (some)" ~ CFfnx(a = alpha,
+                                                                                             x1D = size.length.min.um.used.for.conversions,
+                                                                                             x2D = x2M_ingest,
+                                                                                             x1M = size.length.min.um.used.for.conversions,
+                                                                                             x2M = size.length.max.um.used.for.conversions),
+                                              T ~ 1)) %>% 
+  mutate(dose.particles.mL.ingest = case_when(ingestible_poly == "ingestible (some)" ~ CF_bioavailable_ingest * dose.particles.mL.master,
+                                             T ~ dose.particles.mL.master)) %>% 
+  
+  ##### STEP 2: re-assign the min/max sizes of the particle distributions to those that are actually bioavailable within the exposure mixture,             ## labelling them accordingly for use in translocation or food dilution-associated ERM calculations.
+  ##### ----- LENGTH ------ ###
+  # no need to correct monodisperse. Min for polydispserse remains same #
+    ## polydisperse ##
+  mutate(size.length.max.um.trans = case_when(translocatable_poly == "translocatable (some)" ~ x2M_trans,
+                                              T ~ size.length.max.um.used.for.conversions),
+         size.length.max.um.ingest = case_when(ingestible_poly == "ingestible (some)" ~ x2M_ingest,
+                                               T ~ size.length.max.um.used.for.conversions)) %>% 
+  ##### ----- WIDTH ------ ###
+   ## Monodisperse ##
+     mutate(size.width.um.used.for.conversions = case_when(
+        is.na(size.width.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
+        is.na(size.width.um.used.for.conversions) & shape_f == "Sphere" ~ size.length.um.used.for.conversions, # W = L for spheres
+        is.na(size.width.um.used.for.conversions) & shape_f == "Fragment" ~ size.length.um.used.for.conversions * R.ave, #use average width:length ratio for fragments
+        is.na(size.width.um.used.for.conversions) & shape_f == "Not Reported" ~ size.length.um.used.for.conversions * R.ave, #Assume fragment
+        T ~ size.width.um.used.for.conversions # if available, use as-is
+      )) %>% 
+  ### Polydisperse ###
+    # Min is always same #
+  # calculate size parameters using compartment characteristics
+    mutate(size.width.min.um.used.for.conversions = case_when(
+      shape_f == "sphere" ~ size.length.min.um.used.for.conversions, #all dims same
+      shape_f == "fiber" ~ R.ave * size.length.min.um.used.for.conversions, #median holds for all particles (Kooi et al 2021)
+      shape_f == "Not Reported" ~ R.ave * size.length.min.um.used.for.conversions, # average width to length ratio in the marine environment (kooi et al 2021)
+      shape_f == "fragment" ~ R.ave * size.length.min.um.used.for.conversions)) %>% # average width to length ratio in the marine environment (kooi et al 2021)
+  ### Max depends on ingest/trans limits ###
+  # TRANS #
+    mutate(size.width.max.um.trans = case_when(
+    is.na(size.width.max.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
+    shape_f == "Sphere" ~ size.length.max.um.trans, # W = L for spheres
+    shape_f == "Fragment" ~ size.length.max.um.trans * R.ave, #use average width:length ratio for fragments
+    T ~ size.width.max.um.used.for.conversions # if available, use as-is (fibers only)
     )) %>% 
-    #### annotate studies in which particles are too big to be ingested or translocated for those ERMs (to be filtered in ssd functions)
-    mutate(translocatable = ifelse(size.length.um.used.for.conversions > x2M_trans, 
+  # INGEST #
+   mutate(size.width.max.um.ingest = case_when(
+    is.na(size.width.max.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
+    shape_f == "Sphere" ~ size.length.max.um.ingest, # W = L for spheres
+    shape_f == "Fragment" ~ size.length.max.um.ingest * R.ave, #use average width:length ratio for fragments
+    T ~ size.width.max.um.used.for.conversions # if available, use as-is (fibers only)
+    )) %>% 
+  ###### ------ HEIGHT ----- ##### 
+ ## Monodisperse ##
+#estimate height based on shape (data doesn't exist in ToMEx for monodisperse, because never reported)
+      mutate(size.height.um.used.for.conversions = case_when(
+        shape_f == "Sphere" ~ size.length.um.used.for.conversions, # if spherical, height = length
+        shape_f != "Sphere" ~ size.width.um.used.for.conversions * H_W_ratio # if not spherical, height = width * H:W ratio
+      )) %>% 
+  ### Polydisperse ##
+  ## Min is always same ##
+ mutate(size.height.min.um.used.for.conversions = case_when(
+    shape_f == "Sphere" ~ size.length.min.um.used.for.conversions, # if spherical, height = length
+    shape_f != "Sphere" ~ size.width.min.um.used.for.conversions * H_W_ratio # if not spherical, height = width * H:W ratio
+    )) %>%  # environment AND average height to width ratio (kooi et al 2021)
+  # trans #
+   mutate(size.height.max.um.trans = case_when(
+    shape_f == "Sphere" ~ size.width.max.um.trans, # if spherical, height = length
+    shape_f != "Sphere" ~ size.width.max.um.trans * H_W_ratio # if not spherical, height = width * H:W ratio
+    )) %>% 
+  # Ingest # 
+    mutate(size.height.max.um.ingest = case_when(
+    shape_f == "Sphere" ~ size.width.max.um.ingest, # if spherical, height = length
+    shape_f != "Sphere" ~ size.width.max.um.ingest * H_W_ratio # if not spherical, height = width * H:W ratio
+    )) %>% 
+  ############ ------ Volume ------ ##########
+  ###### re-calculate size, surface area, volume, mass based on user-defined R.ave ####
+  #### Monodisperse ##
+      # calculate volume for monodisperse particles #
+      mutate(particle.volume.um3 = volumefnx(R = R.ave,
+                                             length = size.length.um.used.for.conversions, 
+                                             width = size.width.um.used.for.conversions,
+                                             height = size.height.um.used.for.conversions
+      )) %>% 
+  #### Polydisperse ##
+  mutate(particle.volume.um3.min = volumefnx(R = R.ave, 
+                                                 length = size.length.min.um.used.for.conversions,
+                                                 width = size.width.min.um.used.for.conversions, 
+                                                 height = size.height.min.um.used.for.conversions)) %>% 
+  ### Trans ##
+      # calculate min and max volume when polydisperse particles are used (being sure to use ingestion-restricted sizes)
+       # calculate max volume when polydisperse particles are used (translocation-limited)
+  mutate(particle.volume.um3.max.trans = volumefnx(R = R.ave,
+                                                   length = size.length.max.um.trans,
+                                                   width = size.width.max.um.trans, 
+                                                   height = size.height.max.um.trans)) %>%
+  ### Ingest  ##
+ # calculate max volume when polydisperse particles are used (ingestlocation-limited)
+  mutate(particle.volume.um3.max.ingest = volumefnx(R = R.ave,
+                                                   length = size.length.max.um.ingest,
+                                                   width = size.width.max.um.ingest, 
+                                                   height = size.height.max.um.ingest)) %>% 
+  ############ ------ Surface Area ------ ##########
+      # calculate surface are for monodisperse particles
+      mutate(particle.surface.area.um2 = SAfnx(length = size.length.um.used.for.conversions,
+                                               width = size.width.um.used.for.conversions,
+                                               height = size.height.um.used.for.conversions,
+                                               R = R.ave,
+                                               H_W_ratio = H_W_ratio)) %>% 
+  ##### Polydisperse ###
+  # calculate min/max SA for polydisperse mixtures (being sure to use translocation/ingestion-restricted polydisperse upper sizes)
+      mutate(particle.surface.area.um2.min = SAfnx(length = size.length.min.um.used.for.conversions,
+                                                   width = size.width.min.um.used.for.conversions,
+                                                   height = size.height.min.um.used.for.conversions,
+                                                   R = R.ave,
+                                                   H_W_ratio = H_W_ratio)) %>% 
+  ### Trans ## 
+        mutate(particle.surface.area.um2.max.trans = SAfnx(R = R.ave,
+                                                     H_W_ratio = H_W_ratio,
+                                                     length = size.length.max.um.trans,
+                                                     width = size.width.max.um.trans, 
+                                                     height = size.height.max.um.trans)) %>% 
+   ### Ingest ### 
+      mutate(particle.surface.area.um2.max.ingest = volumefnx(R = R.ave,
+                                                   length = size.length.max.um.ingest,
+                                                   width = size.width.max.um.ingest, 
+                                                   height = size.height.max.um.ingest)) %>% 
+  #calculate mass for monodisperse particles  
+  mutate(mass.per.particle.mg = massfnx(v = particle.volume.um3, p = density.g.cm3) * 1e-3) %>%   #equation uses g/cm3    
+  #calculate minimum and maximum mass or polydisperse particles
+      mutate(mass.per.particle.mg.min = massfnx(v = particle.volume.um3.min, p = density.g.cm3) * 1e-3) %>% #equation uses g/cm3
+  # Trans
+      mutate(mass.per.particle.mg.max.trans = massfnx(v = particle.volume.um3.max.trans, p = density.g.cm3) * 1e-3) %>%   #equation uses g/cm3
+  # Ingest
+      mutate(mass.per.particle.mg.max.ingest = massfnx(v = particle.volume.um3.max.ingest, p = density.g.cm3) * 1e-3) %>%   #equation uses g/cm3
+   ################################################################
+  ########################## ALIGNMENTS ##########################
+###################################################################
+mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
+  #### TISSUE TRANSLOCATION ####
+ # calculate effect threshold for particles
+  mutate(EC_mono_p.particles.mL_trans = dose.particles.mL.trans) %>%
+  mutate(mu.p.poly_trans = mux_polyfnx(a.x = alpha, 
+                                       x_UL= x2M_trans, #upper translocatable size limit (width of particle)
+                                       x_LL = x1M_set)) %>% 
+  # polydisperse effect threshold for particles
+  mutate(EC_poly_p.particles.mL_trans = (EC_mono_p.particles.mL_trans * mu.p.mono)/mu.p.poly_trans) %>% 
+   #calculate CF_bio for all conversions
+  mutate(CF_bio_trans = CFfnx(x1M = x1M_set,#lower size bin
+                              x2M = x2M_trans, #upper translocatable
+                              x1D = x1D_set, #default
+                              x2D = x2D_set,  #default
+                              a = alpha)) %>%  
+  ## Calculate environmentally relevant effect threshold for particles
+  mutate(EC_env_p.particles.mL_trans = EC_poly_p.particles.mL_trans * CF_bio_trans) %>%  #aligned particle effect concentraiton (1-5000 um)
+  
+  #### Surface area ERM ####
+##--- environmental calculations ---###
+  #calculate lower translocatable surface area
+  mutate(x_LL_sa_trans = SAfnx(length = x1D_set, 
+                               width = x1D_set, 
+                               height = x1D_set),
+  #calculate upper translocatable surface area using spherical assumption
+         x_UL_sa_trans = SAfnx(length = x2M_trans, 
+                               width = x2M_trans, 
+                               height = x2M_trans)) %>%  
+  #calculate mu_x_poly (env) for surface area
+  mutate(mu.sa.poly_trans = mux_polyfnx(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>% 
+  
+  ##--- laboratory calculations ---###
+  ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
+  #(note that if mixed particles were used, a different equation must be used)
+  mutate(mu.sa.mono.trans = case_when(
+    polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported surface area in monodisperse
+    polydispersity == "polydisperse" ~  mux_polyfnx(a.x = a.sa, 
+                                                    x_LL = particle.surface.area.um2.min,
+                                                    x_UL = particle.surface.area.um2.max.trans))) %>% 
+  
+   #calculate polydisperse effect concentration for surface area (particles/mL)
+  mutate(EC_poly_sa.particles.mL_trans = (EC_mono_p.particles.mL_trans * mu.sa.mono.trans)/mu.sa.poly_trans) %>%  
+  #calculate environmentally realistic effect threshold
+  mutate(EC_env_sa.particles.mL_trans = EC_poly_sa.particles.mL_trans * CF_bio_trans) %>% 
+  
+  ##### FOOD DILUTION ####
+ # calculate effect threshold for particles
+  mutate(EC_mono_p.particles.mL_ingest = dose.particles.mL.ingest) %>% 
+  mutate(mu.p.poly_ingest = mux_polyfnx(a.x = alpha, #alpha for particles
+                                        x_UL= x2M_ingest, #upper ingestible size limit
+                                        x_LL = x1M_set)) %>% 
+  # polydisperse effect threshold for particles
+  mutate(EC_poly_p.particles.mL_ingest = (EC_mono_p.particles.mL_ingest * mu.p.mono)/mu.p.poly_ingest) %>% 
+   #calculate CF_bio for all conversions
+  mutate(CF_bio_ingest = CFfnx(x1M = x1M_set,#lower size bin
+                               x2M = x2M_ingest, #upper ingestible length
+                               x1D = x1D_set, #default
+                               x2D = x2D_set,  #default upper size range
+                               a = alpha)) %>%  
+  ## Calculate environmentally relevant effect threshold for particles
+  mutate(EC_env_p.particles.mL_ingest = EC_poly_p.particles.mL_ingest * CF_bio_ingest) %>%  #aligned particle effect concentraiton (1-5000 um)
+  #### volume ERM ####
+##--- environmental calculations ---###
+  #calculate lower ingestible volume (assumed spherical)
+  mutate(x_LL_v_ingest = volumefnx(length = x1D_set,
+                                     width = x1D_set,
+                                     height = x1D_set),
+         # max ingestible volume assumed to be spherical
+           x_UL_v_ingest = volumefnx(length = x2M_ingest, 
+                                     width = x2M_ingest,
+                                     height = x2M_ingest)) %>%
+  # calculate mu.v.poly
+  mutate(mu.v.poly_ingest = mux_polyfnx(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>% 
+  ##--- laboratory calculations ---###
+  ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  #
+  #(note that if mixed particles were used, a different equation must be used)
+  mutate(mu.v.mono.ingest = case_when(
+    polydispersity == "monodisperse" ~ particle.volume.um3, # use reported volume in monodisperse
+    polydispersity == "polydisperse" ~ mux_polyfnx(a.x = a.v, 
+                                                   x_LL = particle.volume.um3.min,
+                                                   x_UL = particle.volume.um3.max.ingest))) %>% 
+  
+  #calculate polydisperse effect concentration for volume (particles/mL)
+  mutate(EC_poly_v.particles.mL_ingest = (EC_mono_p.particles.mL_ingest * mu.v.mono.ingest)/mu.v.poly_ingest) %>%  
+    #calculate environmentally realistic effect threshold
+  mutate(EC_env_v.particles.mL_ingest = EC_poly_v.particles.mL_ingest * CF_bio_ingest) %>% 
+  
+   ###### CLEANUP #####
+ mutate(translocatable = ifelse(size.length.um.used.for.conversions > x2M_trans, 
                                    "not translocatable", 
                                    "translocatable")) %>% 
     mutate(ingestible = ifelse(size.length.um.used.for.conversions > x2M_ingest, 
@@ -707,16 +955,193 @@ alignmentFxn <- function(df = tomex2.0_aoc_z_final){
     
     #rowwise() %>%
     mutate(unique_id = row_number()) %>% 
-    # mutate(unique_id = digest::digest(paste(across(everything()), collapse = "-"), algo = "md5")) %>%
-    ungroup()
-  
-  return(aoc_MC_iter)
-}
+  ##### EASY ID ###
+  mutate(particles.mL.ox.stress = EC_env_sa.particles.mL_trans,
+         particles.mL.food.dilution = EC_env_v.particles.mL_ingest) %>% 
+  mutate(particles.mL.food.dilution = case_when(
+    Group == "Algae" ~ NA,
+    T ~ particles.mL.food.dilution
+    )) 
 
-## derive deterministic aligned dataset
-aoc_aligned_test <- alignmentFxn(df = tomex2.0_aoc_z_final) %>% 
-   mutate(unique_id = as.factor(unique_id))
+
+aoc_final
+}
 ```
+
+
+
+<!-- ```{r} -->
+<!-- alignmentFxn <- function(df = tomex2.0_aoc_z_final){ -->
+
+<!--  ### perform alignments -->
+<!--   aoc_MC_iter <- df  %>%  -->
+<!--     mutate(x1M_set = x1M_set) %>%  -->
+<!--     #ensure only considering particles in valid size range -->
+<!--     filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set)) %>%  -->
+<!--     ungroup() %>%  -->
+<!--     rename(environment = env_f) %>%  -->
+<!--     ### First filter the data #### -->
+<!--   ## First filter data with global filters -->
+<!--   filter(!environment %in% c("Terrestrial", "Not Reported"), -->
+<!--          Group != "Bacterium", -->
+<!--          Group != "Plant", -->
+<!--          effect.metric != "HONEC", -->
+<!--          tier_zero_tech_f == "Red Criteria Passed", -->
+<!--          tier_zero_risk_f == "Red Criteria Passed", #All thresholds must pass technical and risk red criteria -->
+<!--          risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been scored) - KEEP THIS AFTER THE RED CRITERIA FILTERS   -->
+<!--   ) %>%  -->
+<!--     #Remove 26C temperature treatment data from Jaimukar et al. 2018 -->
+<!--     filter(!(article == 42 & media.temp == 26)) %>%  -->
+<!--     mutate(max.size.ingest.um = 1000 * max.size.ingest.mm) %>%  #makes it less confusing below -->
+<!--     # calculate ERM for each species -->
+<!--     #### TISSUE TRANSLOCATION #### -->
+<!--   # define upper size length for Translocation  -->
+<!--   #set to 83um for upper limit or max size ingest, whichever is smaller -->
+<!--   mutate(x2M_trans = case_when( -->
+<!--     is.na(max.size.ingest.um) ~ upper.tissue.trans.size.um, -->
+<!--     TRUE ~ pmin(max.size.ingest.um, upper.tissue.trans.size.um) -->
+<!--   )) %>%  -->
+<!--     # define environment-specific alpha parameters # -->
+<!--     mutate(alpha = case_when(environment == "Marine" ~ alpha.marine, -->
+<!--                              environment == "Freshwater" ~ alpha.freshwater), -->
+<!--            a.sa = case_when(environment == "Marine" ~ a.sa.marine, -->
+<!--                             environment == "Freshwater" ~ a.sa.freshwater), -->
+<!--            a.v = case_when(environment == "Marine" ~ a.v.marine, -->
+<!--                             environment == "Freshwater" ~ a.v.freshwater), -->
+<!--            a.m = case_when(environment == "Marine" ~ a.m.marine, -->
+<!--                            environment == "Freshwater" ~ a.m.freshwater), -->
+<!--            a.ssa = case_when(environment == "Marine" ~ a.ssa.marine, -->
+<!--                            environment == "Freshwater" ~ a.ssa.freshwater), -->
+<!--            ) %>%  -->
+<!--     # calculate effect threshold for particles -->
+<!--     mutate(EC_mono_p.particles.mL_trans = dose.particles.mL.master) %>%  -->
+<!--     mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles -->
+<!--     mutate(mu.p.poly_trans = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles -->
+<!--                                          x_UL= x2M_trans, #upper ingestible size limit (width of particle) -->
+<!--                                          x_LL = x1M_set)) %>%  -->
+<!--     # polydisperse effect threshold for particles -->
+<!--     mutate(EC_poly_p.particles.mL_trans = (EC_mono_p.particles.mL_trans * mu.p.mono)/mu.p.poly_trans) %>%  -->
+<!--     #calculate CF_bio for all conversions -->
+<!--     mutate(CF_bio_trans = CFfnx(x1M = x1M_set,#lower size bin -->
+<!--                                 x2M = x2M_trans, #upper translocatable -->
+<!--                                 x1D = x1D_set, #default -->
+<!--                                 x2D = x2D_set,  #default -->
+<!--                                 a = alpha)) %>%   -->
+<!--     ## Calculate environmentally relevant effect threshold for particles -->
+<!--     mutate(EC_env_p.particles.mL_trans = EC_poly_p.particles.mL_trans * CF_bio_trans) %>%  #aligned particle effect concentraiton (1-5000 um) -->
+
+<!--     #### Surface area ERM #### -->
+<!--   ##--- environmental calculations ---### -->
+<!--   #calculate lower translocatable surface area -->
+<!--   mutate(x_LL_sa_trans = SAfnx(a = x1D_set, #length -->
+<!--                                b = x1D_set, #0.5 * R.ave * x1D_set, #width -->
+<!--                                c = x1D_set  #0.5 * R.ave * 0.67 * x1D_set #height -->
+<!--   )) %>%   -->
+<!--     #calculate upper translocatable surface area -->
+<!--     mutate(x_UL_sa_trans = SAfnx(a = x2M_trans,  -->
+<!--                                  b = x2M_trans, #width #0.5 * R.ave * x2M,  -->
+<!--                                  c = x2M_trans #heigth #0.5 * R.ave * 0.67 * x2M -->
+<!--     )) %>%   -->
+<!--     #calculate mu_x_poly (env) for surface area -->
+<!--     mutate(mu.sa.poly_trans = mux_polyfnx_generalizable(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>%  -->
+
+<!--     ##--- laboratory calculations ---### -->
+<!--     ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  # -->
+<!--     #(note that if mixed particles were used, a different equation must be used) -->
+<!--     mutate(mu.sa.mono = case_when( -->
+<!--       polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported surface area in monodisperse -->
+<!--       polydispersity == "polydisperse" ~  mux_polyfnx_generalizable(a.x = a.sa,  -->
+<!--                                                       x_LL = particle.surface.area.um2.min, -->
+<!--                                                       x_UL = particle.surface.area.um2.max))) %>%  -->
+
+<!--     #calculate polydisperse effect concentration for surface area (particles/mL) -->
+<!--     mutate(EC_poly_sa.particles.mL_trans = (EC_mono_p.particles.mL_trans * mu.sa.mono)/mu.sa.poly_trans) %>%   -->
+<!--     #calculate environmentally realistic effect threshold -->
+<!--     mutate(EC_env_sa.particles.mL_trans = EC_poly_sa.particles.mL_trans * CF_bio_trans) %>%  -->
+
+<!--     ##### FOOD DILUTION #### -->
+<!--   # define upper size length for ingestion  -->
+<!--   mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ x2D_set,  -->
+<!--                                 max.size.ingest.um < x2D_set ~ max.size.ingest.um, -->
+<!--                                 max.size.ingest.um > x2D_set ~ x2D_set -->
+<!--   )) %>%  #set to 5,000 as upper limit or max size ingest, whichever is smaller -->
+<!--     # calculate effect threshold for particles -->
+<!--     mutate(EC_mono_p.particles.mL_ingest = dose.particles.mL.master) %>%  -->
+<!--     mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles -->
+<!--     mutate(mu.p.poly_ingest = mux_polyfnx_generalizable(a.x = alpha, #alpha for particles -->
+<!--                                           x_UL= x2M_ingest, #upper ingestible size limit -->
+<!--                                           x_LL = x1M_set)) %>%  -->
+<!--     # polydisperse effect threshold for particles -->
+<!--     mutate(EC_poly_p.particles.mL_ingest = (EC_mono_p.particles.mL_ingest * mu.p.mono)/mu.p.poly_ingest) %>%  -->
+<!--     #calculate CF_bio for all conversions -->
+<!--     mutate(CF_bio_ingest = CFfnx(x1M = x1M_set,#lower size bin -->
+<!--                                  x2M = x2M_ingest, #upper ingestible length -->
+<!--                                  x1D = x1D_set, #default -->
+<!--                                  x2D = x2D_set,  #default upper size range -->
+<!--                                  a = alpha)) %>%   -->
+<!--     ## Calculate environmentally relevant effect threshold for particles -->
+<!--     mutate(EC_env_p.particles.mL_ingest = EC_poly_p.particles.mL_ingest * CF_bio_ingest) %>%  #aligned particle effect concentraiton (1-5000 um) -->
+
+
+<!--     #### volume ERM #### -->
+<!--   ##--- environmental calculations ---### -->
+<!--   #calculate lower ingestible volume  -->
+<!--   mutate(x_LL_v_ingest = volumefnx_poly(length = x1D_set, -->
+<!--                                         width = x1D_set)) %>%  -->
+<!--     #calculate maximum ingestible volume  -->
+<!--     mutate(x_UL_v_ingest = volumefnx_poly(length = x2M_ingest, # length-limited -->
+<!--                                           #x2D_set, #upper definiton (accouunts for fibers) CONSERVATIVE -->
+<!--                                           width = x2M_ingest)) %>% #ingestion-limited -->
+<!--     # calculate mu.v.poly -->
+<!--     mutate(mu.v.poly_ingest = mux_polyfnx_generalizable(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>%  -->
+<!--     ##--- laboratory calculations ---### -->
+<!--     ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  # -->
+<!--     #(note that if mixed particles were used, a different equation must be used) -->
+<!--     mutate(mu.v.mono = case_when( -->
+<!--       polydispersity == "monodisperse" ~ particle.volume.um3, # use reported volume in monodisperse -->
+<!--       polydispersity == "polydisperse" ~ mux_polyfnx_generalizable(a.x = a.v,  -->
+<!--                                                      x_LL = particle.volume.um3.min, -->
+<!--                                                      x_UL = particle.volume.um3.max))) %>%  -->
+
+<!--     #calculate polydisperse effect concentration for volume (particles/mL) -->
+<!--     mutate(EC_poly_v.particles.mL_ingest = (EC_mono_p.particles.mL_ingest * mu.v.mono)/mu.v.poly_ingest) %>%   -->
+<!--     #calculate environmentally realistic effect threshold -->
+<!--     mutate(EC_env_v.particles.mL_ingest = EC_poly_v.particles.mL_ingest * CF_bio_ingest) %>%  -->
+
+<!--     ###### CLEANUP ##### -->
+<!--   mutate(particles.mL.ox.stress = EC_env_sa.particles.mL_trans, -->
+<!--          particles.mL.food.dilution = EC_env_v.particles.mL_ingest -->
+<!--          ) %>%  -->
+<!--     #ensure algae not considered for food dilution ERM -->
+<!--     mutate(particles.mL.food.dilution = case_when( -->
+<!--       Group == "Algae" ~ NA, -->
+<!--       T ~ particles.mL.food.dilution -->
+<!--     )) %>%  -->
+<!--     #### annotate studies in which particles are too big to be ingested or translocated for those ERMs (to be filtered in ssd functions) -->
+<!--     mutate(translocatable = ifelse(size.length.um.used.for.conversions > x2M_trans,  -->
+<!--                                    "not translocatable",  -->
+<!--                                    "translocatable")) %>%  -->
+<!--     mutate(ingestible = ifelse(size.length.um.used.for.conversions > x2M_ingest,  -->
+<!--                                "not ingestible",  -->
+<!--                                "ingestible")) %>%  -->
+
+<!--     #rowwise() %>% -->
+<!--     mutate(unique_id = row_number()) %>%  -->
+<!--     # mutate(unique_id = digest::digest(paste(across(everything()), collapse = "-"), algo = "md5")) %>% -->
+<!--     ungroup() -->
+
+<!--   return(aoc_MC_iter) -->
+<!-- } -->
+
+<!-- ## derive deterministic aligned dataset -->
+<!-- aoc_aligned_test <- alignmentFxn(df = tomex2.0_aoc_z_final) %>%  -->
+<!--    mutate(unique_id = as.factor(unique_id)) -->
+<!-- ``` -->
+```{r}
+aoc_aligned_test <- align_data(aoc_risk_paper) %>% 
+    mutate(unique_id = as.factor(unique_id))
+```
+
 
 ### Model Wrapper
 
@@ -755,37 +1180,59 @@ model_wrapper <- function(params, iteration, MC_results_name){
   ####### ---- RUN FUNCTIONS ---- ###
   ### Static with base parameters to ensure everything is working ###
   ## generate ToMEx 1.0 dataset ###
-  aoc_setup <- ToMEx1.0fxn(aoc = aoc,
-                           R.ave.water.marine = R.ave.water.marine,
-                           R.ave.water.freshwater = R.ave.water.freshwater,
-                           R.ave.sediment.marine = R.ave.sediment.marine,
-                           R.ave.sediment.freshwater = R.ave.sediment.freshwater,
-                           beta_log10_body_length = beta_log10_body_length,
-                           body_length_intercept = body_length_intercept) 
-  
-  ## generate ToMEx 2.0 dataset ###
-  tomex2.0_aoc_z_final <- ToMEx2.0fxn(aoc_setup = aoc_setup,
-                                      tomex2.0 = tomex2.0,
-                                      bodysize_addons = bodysize_addons,
-                                      R.ave.water.marine = R.ave.water.marine,
-                                      R.ave.water.freshwater = R.ave.water.freshwater,
-                                      R.ave.sediment.marine = R.ave.sediment.marine,
-                                      R.ave.sediment.freshwater = R.ave.sediment.freshwater,
-                                      beta_log10_body_length = beta_log10_body_length,
-                                      body_length_intercept = body_length_intercept)
+  # aoc_setup <- ToMEx1.0fxn(aoc = aoc,
+  #                          R.ave.water.marine = R.ave.water.marine,
+  #                          R.ave.water.freshwater = R.ave.water.freshwater,
+  #                          R.ave.sediment.marine = R.ave.sediment.marine,
+  #                          R.ave.sediment.freshwater = R.ave.sediment.freshwater,
+  #                          beta_log10_body_length = beta_log10_body_length,
+  #                          body_length_intercept = body_length_intercept) 
+  # 
+  # ## generate ToMEx 2.0 dataset ###
+  # tomex2.0_aoc_z_final <- ToMEx2.0fxn(aoc_setup = aoc_setup,
+  #                                     tomex2.0 = tomex2.0,
+  #                                     bodysize_addons = bodysize_addons,
+  #                                     R.ave.water.marine = R.ave.water.marine,
+  #                                     R.ave.water.freshwater = R.ave.water.freshwater,
+  #                                     R.ave.sediment.marine = R.ave.sediment.marine,
+  #                                     R.ave.sediment.freshwater = R.ave.sediment.freshwater,
+  #                                     beta_log10_body_length = beta_log10_body_length,
+  #                                     body_length_intercept = body_length_intercept)
   
   ### perform alignments
-aoc_MC_iter <- alignmentFxn(df = tomex2.0_aoc_z_final)
+#aoc_MC_iter <- alignmentFxn(df = tomex2.0_aoc_z_final)
+
+aoc_MC_iter <- align_data(aoc_risk_paper,
+                          upper.tissue.trans.size.um_input = params$upper.tissue.trans.size.um[1],
+                          body_length_intercept_input = params$sim_body_length_intercept[1],
+                          beta_log10_body_length_input = params$sim_beta_log10_body_length[1],
+                          R.ave.marine_input = params$R.ave.water.marine[1],
+                          H_W_ratio.marine_input = params$H_W_ratio.marine[1],
+                          alpha.marine_input = params$alpha.marine[1],
+                          a.sa.marine_input = params$a.sa.marine[1],
+                          a.v.marine_input = params$a.v.marine[1],
+                          a.m.marine_input = params$a.m.marine[1],
+                          R.ave.freshwater_input = params$R.ave.water.freshwater[1],
+                          H_W_ratio.freshwater_input = params$H_W_ratio.freshwater[1],
+                          alpha.freshwater_input = params$alpha.freshwater[1],
+                          a.sa.freshwater_input = params$a.sa.freshwater[1],
+                          a.v.freshwater_input = params$a.v.freshwater[1],
+                          a.m.freshwater_input = params$a.m.freshwater[1]
+                          )
 
   ##### Base Thresholds
   #filter out risk criteria (not done above)#
-  aoc_risk_paper <- aoc_MC_iter %>%
+  aoc_aligned <- aoc_MC_iter %>%
+      # ensure particles are within valid range
+    filter(size.length.um.used.for.conversions >= x1D_set)  %>% 
     drop_na(effect.metric) %>%
-    filter(tier_zero_tech_f == ("Red Criteria Passed")) %>% 
+    filter(tier_zero_tech_f == ("Red Criteria Passed")) 
     # ensure no negative numbers are included and that all values are realistic (also done in functions, but doing here so that no confusion occurs anywhere else)
+    
+  aoc_risk_paper <- aoc_aligned %>%   
     filter(particles.mL.food.dilution > 0,
-           particles.mL.ox.stress > 0
-           )
+           particles.mL.ox.stress > 0 )
+  
   
   # calculate thresholds for different environments
   marine_thresholds <- process_environment_data(aoc_risk_paper,
@@ -840,7 +1287,7 @@ aoc_MC_iter <- alignmentFxn(df = tomex2.0_aoc_z_final)
 ### Parallel Computing
 
 ```{r}
-n_sim <- 10 #10 for beta-testing, 1000 for full 
+n_sim <- 100 #10 for beta-testing, 1000 for full 
 ```
 
 ```{r eval=FALSE, include=FALSE}
@@ -868,18 +1315,16 @@ MC_results_parallel <- foreach(i = 1:n_sim,
                       .packages = c("tidyverse", "ssdtools", "doParallel", "truncnorm"), 
                       .options.snow = opts,
                       .combine = rbind,
-                      .export = c("model_wrapper", "ToMEx1.0fxn", "ToMEx2.0fxn",
-                                  
-                                  "CFfnx", "filter_environment_data", "generate_structure_checks",
-                                  "massfnx_poly", 
-                                  "mux_polyfnx_generalizable",
-                                  "process_environment_data", "SAfnx", "SAfnx_fiber", "sensitivity_t1",
+                      .export = c("model_wrapper", "aoc_risk_paper", #"ToMEx1.0fxn", "ToMEx2.0fxn",
+                                  "align_data",
+                                   "filter_environment_data", "generate_structure_checks",
+                                  "process_environment_data",  "sensitivity_t1",
                                   "SSA.inversefnx", "SSD_function_t1", "SSD_function_t2",
                                   "SSD_function_t3_4", "summarize_and_print", "update_particle_length",
-                                  "volumefnx", "volumefnx_fiber", "volumefnx_poly",
+                                  "volumefnx", "SAfnx", "massfnx",  "mux_polyfnx", "CFfnx",
                                   "MC_results_parallel",
                                   "n_sim",
-                                  "aoc", "tomex2.0", "bodysize_addons",
+                                  #"aoc", "tomex2.0", "bodysize_addons",
                                   "x1D_set", "x2D_set")
                       ) %dopar% {
                         
@@ -900,7 +1345,9 @@ MC_results_parallel <- foreach(i = 1:n_sim,
   a.m.freshwater <- as.numeric(params$a.m.freshwater[1])
   a.ssa.freshwater <- as.numeric(params$a.ssa.freshwater[1])
   R_ave_water_marine <- as.numeric(params$R.ave.water.marine[1])
+  H_W_ratio_marine <- as.numeric(params$H_W_ratio.marine[1])
   R_ave_water_freshwater <- as.numeric(params$R.ave.water.freshwater[1])
+  H_W_ratio_freshwater <- as.numeric(params$H_W_ratio.freshwater[1])
   R_ave_sediment_marine <- as.numeric(params$R.ave.sediment.marine[1])
   R_ave_sediment_freshwater <- as.numeric(params$R.ave.sediment.freshwater[1])
   sim_beta_log10_body_length <- as.numeric(params$sim.beta.log10.body.length[1])
@@ -909,7 +1356,8 @@ MC_results_parallel <- foreach(i = 1:n_sim,
                         
                         #
                         # Run the model function
-                        MC_results_parallel[[i]] <- model_wrapper(param_set, i,
+                        MC_results_parallel[[i]] <- model_wrapper(params,
+                                                                  i,
                                                                   MC_results_name = MC_results_parallel)
                         
                         }
@@ -1127,14 +1575,14 @@ min_max
 
 ```{r}
 # define functino for making figures for marine and freshwater
-MC_histograms_fxn <- function(long_data,
+MC_histograms_fxn <- function(long_data = all_thresholds_long,
                               environment = "Marine",
-                              n_bins = 1000,
+                              n_bins = round(n_sim *0.8),
                               units_input = "Particles/L",
                               #define custom limits for FD and tissue trans
-                              food_limits = c(0.0001, 500), tissue_limits = c(05, 25000),
+                              food_limits = c(0.0001, 500), 
+                              tissue_limits = c(05, 25000),
                               x_axis_input = element_blank()){
-  
   
 
   # long_data should be long data (see code for generating all_thresholds_long)
@@ -1301,9 +1749,10 @@ return(list(MC_histograms_light, MC_histograms_dark))
 
 ```{r eval=FALSE, include=FALSE}
 ### Generate plots
-MC_histograms_marine <- MC_histograms_fxn(all_thresholds_long, "Marine",
+MC_histograms_marine <- MC_histograms_fxn(all_thresholds_long, 
+                                          "Marine",
                                           n_bins = round(n_sim *0.8),
-                                          units_input = "ug/L",
+                                        #  units_input = "ug/L",
                                           food_limits = c(signif((min_max$min[3] * 0.5),1),
                                                           signif((min_max$max[3] * 2), 1)),
                                           tissue_limits = c(signif((min_max$min[4] * 0.5), 1),
@@ -1721,55 +2170,74 @@ Uncoment if need to run single-threading instead of parallel
 ```{r}
 model_wrapper_sobol_parallel <- function(params, simulation_id) {
   # Unpack parameters and ensure numeric conversion
-  alpha.marine <- as.numeric(params$alpha.marine[1])
-  a.sa.marine <- as.numeric(params$a.sa.marine[1])
-  a.v.marine <- as.numeric(params$a.v.marine[1])
-  a.m.marine <- as.numeric(params$a.m.marine[1])
-  a.ssa.marine <- as.numeric(params$a.ssa.marine[1])
-  alpha.freshwater <- as.numeric(params$alpha.freshwater[1])
-  a.sa.freshwater <- as.numeric(params$a.sa.freshwater[1])
-  a.v.freshwater <- as.numeric(params$a.v.freshwater[1])
-  a.m.freshwater <- as.numeric(params$a.m.freshwater[1])
-  a.ssa.freshwater <- as.numeric(params$a.ssa.freshwater[1])
-  R_ave_water_marine <- as.numeric(params$R.ave.water.marine[1])
-  R_ave_water_freshwater <- as.numeric(params$R.ave.water.freshwater[1])
-  sim_beta_log10_body_length <- as.numeric(params$sim.beta.log10.body.length[1])
-  sim_body_length_intercept <- as.numeric(params$sim.body.length.intercept[1])
-  sim.upper.tissue.trans.size.um <- as.numeric(params$upper.tissue.trans.size.um[1])
+  # alpha.marine <- as.numeric(params$alpha.marine[1])
+  # a.sa.marine <- as.numeric(params$a.sa.marine[1])
+  # a.v.marine <- as.numeric(params$a.v.marine[1])
+  # a.m.marine <- as.numeric(params$a.m.marine[1])
+  # a.ssa.marine <- as.numeric(params$a.ssa.marine[1])
+  # alpha.freshwater <- as.numeric(params$alpha.freshwater[1])
+  # a.sa.freshwater <- as.numeric(params$a.sa.freshwater[1])
+  # a.v.freshwater <- as.numeric(params$a.v.freshwater[1])
+  # a.m.freshwater <- as.numeric(params$a.m.freshwater[1])
+  # a.ssa.freshwater <- as.numeric(params$a.ssa.freshwater[1])
+  # R_ave_water_marine <- as.numeric(params$R.ave.water.marine[1])
+  # R_ave_water_freshwater <- as.numeric(params$R.ave.water.freshwater[1])
+  # sim_beta_log10_body_length <- as.numeric(params$sim.beta.log10.body.length[1])
+  # sim_body_length_intercept <- as.numeric(params$sim.body.length.intercept[1])
+  # sim.upper.tissue.trans.size.um <- as.numeric(params$upper.tissue.trans.size.um[1])
 
-  ####### ---- RUN FUNCTIONS ---- ###
-  # Generate ToMEx 1.0 dataset
-  aoc_setup <- ToMEx1.0fxn(aoc = aoc,
-                           R.ave.water.marine = R_ave_water_marine,
-                           R.ave.water.freshwater = R_ave_water_freshwater,
-                           R.ave.sediment.marine = R.ave.sediment.marine,
-                           R.ave.sediment.freshwater = R.ave.sediment.freshwater,
-                           beta_log10_body_length = sim_beta_log10_body_length,
-                           body_length_intercept = sim_body_length_intercept)
+  # ####### ---- RUN FUNCTIONS ---- ###
+  # # Generate ToMEx 1.0 dataset
+  # aoc_setup <- ToMEx1.0fxn(aoc = aoc,
+  #                          R.ave.water.marine = R_ave_water_marine,
+  #                          R.ave.water.freshwater = R_ave_water_freshwater,
+  #                          R.ave.sediment.marine = R.ave.sediment.marine,
+  #                          R.ave.sediment.freshwater = R.ave.sediment.freshwater,
+  #                          beta_log10_body_length = sim_beta_log10_body_length,
+  #                          body_length_intercept = sim_body_length_intercept)
+  # 
+  # # Generate ToMEx 2.0 dataset
+  # tomex2.0_aoc_z_final <- ToMEx2.0fxn(aoc_setup = aoc_setup,
+  #                                     tomex2.0 = tomex2.0,
+  #                                     bodysize_addons = bodysize_addons,
+  #                                     R.ave.sediment.marine = R.ave.sediment.marine,
+  #                                     R.ave.sediment.freshwater = R.ave.sediment.freshwater,
+  #                                     R.ave.water.marine = R_ave_water_marine,
+  #                                     R.ave.water.freshwater = R_ave_water_freshwater,
+  #                                     beta_log10_body_length = sim_beta_log10_body_length,
+  #                                     body_length_intercept = sim_body_length_intercept)
+  # 
+  # # Perform alignments
+  # aoc_MC_iter <- alignmentFxn(df = tomex2.0_aoc_z_final)
   
-  # Generate ToMEx 2.0 dataset
-  tomex2.0_aoc_z_final <- ToMEx2.0fxn(aoc_setup = aoc_setup,
-                                      tomex2.0 = tomex2.0,
-                                      bodysize_addons = bodysize_addons,
-                                      R.ave.sediment.marine = R.ave.sediment.marine,
-                                      R.ave.sediment.freshwater = R.ave.sediment.freshwater,
-                                      R.ave.water.marine = R_ave_water_marine,
-                                      R.ave.water.freshwater = R_ave_water_freshwater,
-                                      beta_log10_body_length = sim_beta_log10_body_length,
-                                      body_length_intercept = sim_body_length_intercept)
   
-  # Perform alignments
-  aoc_MC_iter <- alignmentFxn(df = tomex2.0_aoc_z_final)
+aoc_MC_iter <- align_data(aoc_risk_paper,
+                          upper.tissue.trans.size.um_input = params$upper.tissue.trans.size.um[1],
+                          body_length_intercept_input = params$sim_body_length_intercept[1],
+                          beta_log10_body_length_input = params$sim_beta_log10_body_length[1],
+                          R.ave.marine_input = params$R.ave.water.marine[1],
+                          H_W_ratio.marine_input = params$H_W_ratio.marine[1],
+                          alpha.marine_input = params$alpha.marine[1],
+                          a.sa.marine_input = params$a.sa.marine[1],
+                          a.v.marine_input = params$a.v.marine[1],
+                          a.m.marine_input = params$a.m.marine[1],
+                          R.ave.freshwater_input = params$R.ave.water.freshwater[1],
+                          H_W_ratio.freshwater_input = params$H_W_ratio.freshwater[1],
+                          alpha.freshwater_input = params$alpha.freshwater[1],
+                          a.sa.freshwater_input = params$a.sa.freshwater[1],
+                          a.v.freshwater_input = params$a.v.freshwater[1],
+                          a.m.freshwater_input = params$a.m.freshwater[1]
+                          )
+
   
   # Filter out risk criteria and calculate thresholds for different environments
-  aoc_risk_paper <- aoc_MC_iter %>%
-    drop_na(effect.metric) %>%
-    filter(tier_zero_tech_f == "Red Criteria Passed",
-           particles.mL.ox.stress > 0,
-           particles.mL.food.dilution > 0)
-  
+  aoc_aligned <- aoc_MC_iter %>% 
+     drop_na(effect.metric) %>%
+    filter(tier_zero_tech_f == "Red Criteria Passed")
+    
+
   # Calculate thresholds for marine and freshwater
-  marine_thresholds <- process_environment_data(aoc_risk_paper,
+  marine_thresholds <- process_environment_data(aoc_aligned,
                                                 "Marine",
                                                 upper.tissue.trans.size.um = sim.upper.tissue.trans.size.um,
                                                 x1D_set = x1D_set, 
@@ -1777,7 +2245,7 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
     ## convert particles/L thresholds to volume, mass, surface area (ERM-dependent)
     convert_units_fxn(environment = "Marine", params = params[1,])
   
-  freshwater_thresholds <- process_environment_data(aoc_risk_paper,
+  freshwater_thresholds <- process_environment_data(aoc_aligned,
                                                     "Freshwater",
                                                     upper.tissue.trans.size.um = sim.upper.tissue.trans.size.um,
                                                     x1D_set = x1D_set, 
@@ -1798,13 +2266,16 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
       tox_vals = list(
         simulation_id = simulation_id,
     #    iteration = as.numeric(i),
-      particles_mL_ox_stress = aoc_risk_paper$particles.mL.ox.stress,
-      particles_mL_food_dilution = aoc_risk_paper$particles.mL.food.dilution,
-      ingestible = aoc_risk_paper$ingestible,
-      translocatable = aoc_risk_paper$translocatable,
-      species = aoc_risk_paper$Species,
-      group = aoc_risk_paper$Group,
-      unique_id = aoc_risk_paper$unique_id), #row id that allows matching back to database
+      particles_mL_ox_stress = aoc_aligned$particles.mL.ox.stress,
+      particles_mL_food_dilution = aoc_aligned$particles.mL.food.dilution,
+      ingestible = aoc_aligned$ingestible,
+      ingestible_poly = aoc_aligned$ingestible_poly,
+      translocatable = aoc_aligned$translocatable,
+      translocatable_poly = aoc_aligned$translocatable_poly,
+      species = aoc_aligned$Species,
+      group = aoc_aligned$Group,
+      dose.particles.mL.master = aoc_aligned$dose.particles.mL.master,
+      unique_id = aoc_aligned$unique_id), #row id that allows matching back to database
       base_thresholds = list(
         simulation_id = simulation_id,
         marine = marine_thresholds,
@@ -1821,18 +2292,18 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
 
 ### Define Matrix
 
-```{r eval=FALSE, include=FALSE}
+```{r include=FALSE}
 # Number of samples
 #n_sobol <- 1000
 
-n_sobol <- 10
+n_sobol <- 3
 
 matrices <- c("A", "B", "AB", "BA")
 first <- total <- "azzini"
 
 params <- c("alpha.marine", "a.sa.marine", "a.v.marine", "a.m.marine", "a.ssa.marine", 
             "alpha.freshwater", "a.sa.freshwater", "a.v.freshwater", "a.m.freshwater", "a.ssa.freshwater", 
-            "R.ave.water.marine", "R.ave.water.freshwater",
+            "R.ave.water.marine", "R.ave.water.freshwater", "H_W_ratio.marine", "H_W_ratio.freshwater",
           #  "R.ave.sediment.marine", "R.ave.sediment.freshwater",
             "sim.beta.log10.body.length", "sim.body.length.intercept",
             "upper.tissue.trans.size.um")
@@ -1859,7 +2330,9 @@ mat[, a.v.freshwater := rnorm(.N,   mean = a_v.freshwater, sd = a.v.sd.freshwate
 mat[, a.m.freshwater := rnorm(.N,   mean = a_m.freshwater, sd = a.m.sd.freshwater)]
 mat[, a.ssa.freshwater := rnorm(.N,   mean = a_ssa.freshwater, sd = a.ssa.sd.freshwater)]
 mat[, R.ave.water.marine := rtruncnorm(.N, a = 0.0001, b= 1, mean = R_ave.water.marine, sd = R.ave.water.marine.sd)]
+mat[, H_W_ratio.marine := rtruncnorm(.N, a = 0.0001, b= 1, mean = R_ave.water.marine, sd = R.ave.water.marine.sd)]
 mat[, R.ave.water.freshwater := rtruncnorm(.N, a = 0.0001, b= 1, mean = R_ave.water.freshwater, sd = R.ave.water.freshwater.sd)]
+mat[, H_W_ratio.freshwater := rtruncnorm(.N, a = 0.0001, b= 1, mean = R_ave.water.freshwater, sd = R.ave.water.freshwater.sd)]
 mat[, sim.beta.log10.body.length := rnorm(.N, mean = beta_log10_body_length, sd = se_beta_log10_body_length)]
 mat[, sim.body.length.intercept := rnorm(.N, mean = body_length_intercept, sd = se_body_length_intercept)]
 #mat[, "R.ave.sediment.marine" := rtruncnorm(.N, a = 0.0001, b= 0.9999, mean = 0.75, sd = 0.30)]
@@ -1915,12 +2388,14 @@ MC_param_histograms_base <- mat %>%
          "Mass Alpha (Marine)" = "a.m.marine",
          "Volume Alpha (Marine)" = "a.v.marine",
          "Length-Width Ratio (Marine)" = "R.ave.water.marine",
+         "Height-Width Ratio (Marine)" = "H_W_ratio.marine",
          
          "Length Alpha (Freshwater)" = "alpha.freshwater",
          "Surface Area Alpha (Freshwater)" = "a.sa.freshwater",
          "Mass Alpha (Freshwater)" = "a.m.freshwater",
          "Volume Alpha (Freshwater)" = "a.v.freshwater",
          "Length-Width Ratio (Freshwater)" = "R.ave.water.freshwater",
+         "Height-Width Ratio (Freshwater)" = "H_W_ratio.freshwater",
          
          "log10(Body Length, mm) - beta" = "sim.beta.log10.body.length",
          "log10(Body Length, mm) - intercept" = "sim.body.length.intercept",
@@ -2027,10 +2502,21 @@ surface_area_data <- mat %>%
   mutate(Environment = if_else(grepl("Marine", name), "Marine", "Freshwater"))
 
 ratio_data <- mat %>%
-  select(R.ave.water.marine, R.ave.water.freshwater) %>%
+  select(R.ave.water.marine, R.ave.water.freshwater
+         ) %>%
   rename(
     "Length-Width Ratio (Marine)" = "R.ave.water.marine",
     "Length-Width Ratio (Freshwater)" = "R.ave.water.freshwater"
+  ) %>%
+  pivot_longer(cols = everything(), names_to = "name", values_to = "value") %>%
+  mutate(Environment = if_else(grepl("Marine", name), "Marine", "Freshwater"))
+
+H_W_ratio_data <- mat %>%
+  select(H_W_ratio.marine, H_W_ratio.freshwater
+         ) %>%
+  rename(
+    "Height-Width Ratio (Marine)" = "H_W_ratio.marine",
+    "Height-Width Ratio (Freshwater)" = "H_W_ratio.freshwater"
   ) %>%
   pivot_longer(cols = everything(), names_to = "name", values_to = "value") %>%
   mutate(Environment = if_else(grepl("Marine", name), "Marine", "Freshwater"))
@@ -2179,6 +2665,32 @@ length_width_plot <- ratio_data %>%
     ) +
   ggtitle("Length to Width Ratio")
 
+## height to width
+height_width_plot <- H_W_ratio_data %>% 
+    ggplot(aes(x = value, fill = Environment)) +
+  # Histogram with density on the y-axis
+ # geom_histogram(aes(y = after_stat(density)), bins = 350, alpha = 0.5, position = "identity") +
+  # Density line overlay
+  geom_density(aes(y = after_stat(density)), size = 0.8, adjust = 1.5, alpha = 0.6) +
+    # geom_vline(aes(xintercept = median(value), color = Environment), linetype = "dashed", size = 0.7) +
+    # geom_vline(aes(xintercept = quantile(value, 0.05)), linetype = "dotted", size = 0.7) +
+    # geom_vline(aes(xintercept = quantile(value, 0.95)), linetype = "dotted", size = 0.7) +
+    scale_fill_manual(values = param_colors) +
+    scale_color_manual(values = param_colors) +
+   # coord_cartesian(xlim = c(alpha_min, alpha_max)) +
+    theme_minimal(base_size = 12) +
+    labs(x = "Value", y = "Relative Frequency") +
+    theme(
+     # legend.position = "none",
+      plot.title = element_text(size = 15, face = "bold", hjust = 0.5),
+      axis.title.y = element_blank(),
+      axis.title.x = element_text(size = 13),
+      axis.text.x = element_text(size = 10),
+      axis.text.y = element_blank(),
+      strip.text = element_text(size = 12, face = "bold")
+    ) +
+  ggtitle("Height to Width Ratio")
+
 
 ##### Body length
 
@@ -2242,6 +2754,7 @@ alpha_combined_plot <- ggarrange(alpha_length_plot,
                                  alpha_volume_plot,
                                  alpha_surface_area_plot,
                                  length_width_plot,
+                                 height_width_plot,
                                  common.legend = T,
                                  nrow = 3, ncol = 2,
                                  #   label.x = 0.5,  # Center labels horizontally
@@ -2288,7 +2801,7 @@ alpha_combined_plot
 
 ### Run Sobol (Parallel-Processing)
 
-```{r eval=FALSE, message=FALSE, include=FALSE}
+```{r message=FALSE, include=FALSE}
 # Set up parallel processing
 num_cores <- min(12, detectCores())  # Adjust the number of cores as needed
 cl <- makeCluster(num_cores)
@@ -2312,17 +2825,19 @@ sobol_results <- foreach(i = 1:n_row_sobol,
                                   .packages = c("tidyverse", "doParallel", "truncnorm", "sensobol", "ssdtools"),
                                   .options.snow = opts,
                                   
-                                  .export = c("model_wrapper", "ToMEx1.0fxn", "ToMEx2.0fxn",
-                                  "CFfnx", "filter_environment_data", "generate_structure_checks",
-                                  "massfnx_poly", 
-                                  "mux_polyfnx_generalizable",
-                                  "process_environment_data", "SAfnx", "SAfnx_fiber", "sensitivity_t1",
-                                  "SSA.inversefnx", "SSD_function_t1", "SSD_function_t2",
+                                  .export = c("model_wrapper",
+                                              "aoc_risk_paper",
+                                              "align_data",
+                                              # "ToMEx1.0fxn", "ToMEx2.0fxn",
+                                   "filter_environment_data", "generate_structure_checks",
+                                  "mux_polyfnx", "CFfnx",
+                                  "process_environment_data",  "sensitivity_t1",
+                                  "SSD_function_t1", "SSD_function_t2",
                                   "SSD_function_t3_4", "summarize_and_print", "update_particle_length",
-                                  "volumefnx", "volumefnx_fiber", "volumefnx_poly",
+                                  "volumefnx", "SAfnx", "massfnx", "SSA.inversefnx",
                                   "MC_results_parallel",
                                   "n_sim",
-                                  "aoc", "tomex2.0", "bodysize_addons",
+                                  #"aoc", "tomex2.0", "bodysize_addons",
                                   "x1D_set", "x2D_set",
                                   "model_wrapper_sobol_parallel", "mat"),
                                   .combine = rbind) %dopar% {
@@ -2375,7 +2890,7 @@ close(pb)
 stopCluster(cl)
 
 # Save the final results
-#saveRDS(sobol_results, "output/sobol_results.rds")
+saveRDS(sobol_results, "output/sobol_results.rds")
 ```
 
 
@@ -2715,14 +3230,17 @@ all_thresholds_violin_sobol <- all_thresholds_sobol_long %>%
   scale_color_manual(values = tier_colors) +
   scale_x_log10(
     name = "Particles/L (1 - 5000 µm particles)",
-    labels = scales::comma
+  # labels = scales::label_number(accuracy = 0.01, trim = TRUE),
+    breaks = scales::trans_breaks("log10", function(x) 10^x)  # Major gridlines at log10 integers
   ) +
   facet_grid(rows = vars(Environment), cols = vars(ERM), scales = "free") +
   theme_bw(base_size = 16) +
-  theme(legend.position = "none")
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 12, angle = 45, margin = margin(t = 12)))
 
+getwd()
 
-ggsave("output/all_thresholds_violin_sobol.jpg",
+ggsave("../../output/Manuscript_Figs/all_thresholds_violin_sobol.jpg",
        all_thresholds_violin_sobol, 
        dpi = 300,
        width = 10, height = 5,
@@ -2764,15 +3282,16 @@ all_thresholds_violin_sobol_mass <- all_thresholds_sobol_long %>%
   scale_fill_manual(values = tier_colors) +
   scale_color_manual(values = tier_colors) +
   scale_x_log10(
-    name = "µg/L (1 - 5000 µm particles)",
-    labels = scales::comma
+    name = "µg/L (1 - 5000 µm particles)"#,
+  #  labels = scales::comma
   ) +
   facet_grid(rows = vars(Environment), cols = vars(ERM), scales = "free") +
   theme_bw(base_size = 16) +
-  theme(legend.position = "none")
+  theme(legend.position = "none",
+          axis.text.x = element_text(size = 12, angle = 45, margin = margin(t = 12)))
 
 
-ggsave("output/all_thresholds_violin_sobol_mass.jpg",
+ggsave("../../output/Manuscript_Figs/all_thresholds_violin_sobol_mass.jpg",
        all_thresholds_violin_sobol_mass, 
        dpi = 300,
        width = 10, height = 5,
@@ -2799,9 +3318,19 @@ results_df_sobol <- do.call(rbind, lapply(MC_results_tox_sobol, function(x) {
     species = x$species,
     group = x$group,
     ingestible = factor(x$ingestible),
-    translocatable = factor(x$translocatable)
+    ingestible_poly = x$ingestible_poly,
+    translocatable = factor(x$translocatable),
+    translocatable_poly = factor(x$translocatable_poly)
   )
-})) 
+})) %>% 
+  mutate(
+    ingestible = case_when(
+      !is.na(ingestible_poly) ~ ingestible_poly,
+      T ~ ingestible),
+    translocatable = case_when(
+      !is.na(translocatable_poly) ~ translocatable_poly,
+      T ~ translocatable))
+
 
 
 #Save file for EcoTox Project
@@ -2814,7 +3343,9 @@ skimr::skim(results_df_sobol)
 ## Step 2:
 # Calculate CoV
 cov_results_sobol_ox_stress <- results_df_sobol %>%
-  filter(translocatable == "translocatable") %>% 
+  filter(translocatable %in% c("translocatable", "translocatable (all)", "translocatable (some)")) %>% 
+  filter(particles_L_ox_stress > 0) %>% 
+  drop_na(particles_L_ox_stress) %>% 
   group_by(unique_id) %>%
   summarise(sd_particles_L_ox_stress = sd(particles_L_ox_stress, na.rm = TRUE),
             mean_particles_L_ox_stress = mean(particles_L_ox_stress, na.rm = TRUE),
@@ -2824,8 +3355,10 @@ cov_results_sobol_ox_stress <- results_df_sobol %>%
             max_particles_L_ox_stress = max(particles_L_ox_stress, na.rm = T))
 
 cov_results_sobol_food <- results_df_sobol %>%
-  filter(ingestible == "ingestible",
+  filter(ingestible %in% c("ingestible", "ingestible (all)", "ingestible (some)"),
          group != "Algae") %>% 
+  filter(particles_L_food_dilution > 0) %>% 
+  drop_na(particles_L_food_dilution) %>% 
   group_by(unique_id) %>%
   summarize(
 #food dilution
@@ -2968,7 +3501,7 @@ hist_cv_food_sobol_marine <- aoc_MC_sobol %>%
   filter(environment == "Marine") %>% 
   filter(ingestible == "ingestible") %>% 
   ggplot(aes(x = CoV_food_dilution, fill = polydispersity)) +
-  geom_histogram(position = "identity", alpha = 0.5, binwidth = 0.2) +
+  geom_histogram(position = "identity", alpha = 0.5, binwidth = 0.1) +
   scale_x_log10() +
   xlim(xlims) +  # Set x limits
   xlab("Coefficient of Variation (unitless)") +
@@ -2986,7 +3519,7 @@ hist_cv_ox_sobol_marine <- aoc_MC_sobol %>%
   filter(environment == "Marine") %>% 
   filter(translocatable == "translocatable") %>% 
   ggplot(aes(x = CoV_ox_stress, fill = polydispersity)) +
-  geom_histogram(position = "identity", alpha = 0.5, binwidth = 0.2) +
+  geom_histogram(position = "identity", alpha = 0.5, binwidth = 0.1) +
   #fill.type +
   scale_x_log10() +
    xlim(xlims) +  # Set x limits
@@ -3022,7 +3555,7 @@ CoV_plots_sobol
 ```{r}
 simple_RSD <- summary_stats_base_thresholds_sobol %>% 
   #mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
-  mutate(percentRSD = (100* Std_Dev) /  Mean) %>% 
+  mutate(percentRSD = paste0( signif( (100* Std_Dev) /  Mean, 3), " %"  ))%>% 
   filter(grepl("Default", Metric)) %>% 
   select(Environment, Metric, percentRSD, Tier) %>% 
   pivot_wider(values_from = percentRSD,
@@ -3458,7 +3991,7 @@ length_y_rows
 ### Calculate Sobol Indices
 
 ```{r}
-R <- 4000 #bootstrap iterations
+R <- 1#  4000 #bootstrap iterations
 ind.marine_food_T3 <- sobol_indices(Y = Y_marine_food_T3_valid, 
                                     N = n_sobol, 
                                     params = food_marine_params, boot = TRUE, R = R)

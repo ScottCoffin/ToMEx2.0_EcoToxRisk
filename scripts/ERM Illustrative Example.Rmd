@@ -288,7 +288,7 @@ aoc_z_filtered <- aoc_z %>%
                                                            ),
     T ~ 1
     )) %>% 
-  mutate(dose.particles.L_trans = case_when(
+  mutate(dose.particles.L.trans = case_when(
     translocatable_poly == "translocatable (some)" ~ CF_bioavailable_trans * dose.particles.L,
     T ~ dose.particles.L
   )) %>% 
@@ -302,7 +302,7 @@ aoc_z_filtered <- aoc_z %>%
                                                    ),
     T ~ 1
     )) %>% 
-  mutate(dose.particles.L_ingest = case_when(
+  mutate(dose.particles.L.ingest = case_when(
     ingestible_poly == "ingestible (some)" ~ CF_bioavailable_ingest * dose.particles.L,
     T ~ dose.particles.L
   ))
@@ -328,8 +328,8 @@ aoc_z_filtered %>% select(translocatable_poly,
                           Species,
                           dose.particles.L,
                           CF_bioavailable_trans,
-                          dose.particles.L_trans,
-                          dose.particles.L_ingest
+                          dose.particles.L.trans,
+                          dose.particles.L.ingest
                           ) %>% 
   mutate_if(is.numeric, ~signif(., 3)) %>% 
   drop_na(translocatable_poly) %>% 
@@ -357,10 +357,10 @@ aoc_z_filtered %>%
          Species,
          CF_bioavailable_trans,
          CF_bioavailable_ingest,
-         size.length.max.um.used.for.conversions,
-         size.length.min.um.used.for.conversions,
          size.length.max.um.trans,
-         size.length.max.um.ingest
+         size.length.max.um.ingest,
+         size.length.max.um.used.for.conversions,
+         size.length.min.um.used.for.conversions
                           ) %>% 
   drop_na(translocatable_poly) %>% 
     mutate_if(is.numeric, ~signif(., 3)) %>% 
@@ -369,7 +369,7 @@ aoc_z_filtered %>%
   datatable()
 ```
 
-
+### Select Data for Demonstration
 
 ```{r}
 # get lowest NOEC for monodisperse particles for C.dubia
@@ -384,11 +384,40 @@ aoc_z_filtered %>%
 polydisperse_example <- aoc_z_filtered %>%
   # filter out studies that used particles unable to be ingested (simple example)
    filter(max.size.ingest.um > size.length.um.used.for.conversions) %>%
+  filter(polydispersity == "polydisperse",
+         shape_f == "Sphere"
+         ) %>%
+  filter(dose.particles.L == min(dose.particles.L, na.rm = TRUE)) %>%
+    distinct(dose.particles.L, .keep_all = T)
+
+## example 3: partially bioavailable polydisperese particles
+polydisperse_partial_example <- aoc_z_filtered %>%
+  # filter out studies that used particles unable to be ingested (simple example)
+   filter(max.size.ingest.um > size.length.um.used.for.conversions,
+          size.length.max.um.used.for.conversions > upper.tissue.trans.size.um) %>% 
   filter(polydispersity == "polydisperse") %>%
   filter(dose.particles.L == min(dose.particles.L, na.rm = TRUE)) %>%
     distinct(dose.particles.L, .keep_all = T)
 
-POD <- bind_rows(monodisperse_example, polydisperse_example)
+POD <- bind_rows(monodisperse_example, polydisperse_example, polydisperse_partial_example)
+
+POD %>% 
+  select(doi,
+         Species,
+         polydispersity,
+         shape_f,
+         poly_f,
+         lvl1_f,
+         size.length.um.used.for.conversions, 
+         size.length.min.um.used.for.conversions,
+         size.length.max.um.used.for.conversions,
+         size.length.max.um.trans,
+         size.length.max.um.ingest,
+         dose.particles.L,
+         dose.particles.L.trans,
+         dose.particles.L.ingest
+         ) %>% 
+  t()
 ```
 
 ### Particle ERM Alignment (continued) 
@@ -459,8 +488,8 @@ POD <- POD %>%
                           max.size.ingest.um >= upper.tissue.trans.size.um ~ upper.tissue.trans.size.um)) %>%  #if max ingestible size is bigger than translocatable size, then use the translocatable size
   # determine mu_p_poly for ingestion
   mutate(mu.p.poly_ingest = mux_polyfnx(a.x = alpha, 
-                                 x_UL = x2M_ingest,
-                                 x_LL = x1M_set)) %>% 
+                                        x_UL = x2M_ingest,
+                                        x_LL = x1M_set)) %>% 
   # determine mu.p_poly for translocation
   mutate(mu.p.poly_trans = mux_polyfnx(a.x = alpha, 
                                         x_UL = x2M_trans,
@@ -483,13 +512,14 @@ These $EC_{poly}$ values will be calculated for both ingestion-restricted and tr
 ```{r}
 POD <- POD %>% 
   mutate(mu.p.mono = 1) %>% 
-  mutate(EC_poly_p.particles.L_ingest = (dose.particles.L * mu.p.mono ) / mu.p.poly_ingest,
-         EC_poly_p.particles.L_trans = (dose.particles.L * mu.p.mono ) / mu.p.poly_trans)
+  mutate(EC_poly_p.particles.L_ingest = (dose.particles.L.ingest * mu.p.mono ) / mu.p.poly_ingest,
+         EC_poly_p.particles.L_trans = (dose.particles.L.trans * mu.p.mono ) / mu.p.poly_trans)
 
 POD %>% select(
   size.length.um.used.for.conversions,
   shape_f,
-  dose.particles.L,
+  dose.particles.L.ingest,
+  dose.particles.L.trans,
    EC_poly_p.particles.L_ingest,
    EC_poly_p.particles.L_trans
 ) %>% 
@@ -518,10 +548,19 @@ POD <- POD %>% mutate(
                         x2D = x2D_set,  #default upper size range
                         a = alpha)) 
 
-cat("CF_bio_ingest = ", signif(POD$CF_bio_ingest[1],4), "(unitless) \n",
-    "CF_bio_trans = ", signif(POD$CF_bio_trans[1],4), "(unitless) \n",
-    "applicable for", POD$Species[1], "with ingestible size range of:", POD$x1M_set[1], "to", round(POD$x2M_ingest[1],1), "um", "\n",
-    "and translocatable size range of:",  POD$x1M_set[1], "to", POD$x2M_trans[1], "um")
+POD %>% 
+  select(Species,
+         shape_f,
+         CF_bio_ingest,
+         CF_bio_trans,
+         x1M_set,
+         x2M_ingest,
+         x2M_trans)
+
+# cat("CF_bio_ingest = ", signif(POD$CF_bio_ingest[1],4), "(unitless) \n",
+#     "CF_bio_trans = ", signif(POD$CF_bio_trans[1],4), "(unitless) \n",
+#     "applicable for", POD$Species[1], "with ingestible size range of:", POD$x1M_set[1], "to", round(POD$x2M_ingest[1],1), "um", "\n",
+#     "and translocatable size range of:",  POD$x1M_set[1], "to", POD$x2M_trans[1], "um")
 ```
 Finally, the $EC_{env}$ is calculated for particles/L as an ERM separately for ingestion and translocation-aligned values:
 
@@ -533,12 +572,15 @@ POD <- POD %>%
          EC_env_p.particles.L_trans = EC_poly_p.particles.L_trans * CF_bio_trans)
 
 POD %>% select(
-  size.length.um.used.for.conversions,
+  Species,
   shape_f,
-  dose.particles.L,
+  size.length.um.used.for.conversions,
+  dose.particles.L.ingest,
   EC_env_p.particles.L_ingest,
+  dose.particles.L.trans,
   EC_env_p.particles.L_trans) %>% 
-  mutate_if(is.numeric, ~signif(.,3))
+  mutate_if(is.numeric, ~signif(.,3)) %>% 
+  t()
 ```
 
 
@@ -620,21 +662,63 @@ POD <- POD %>%
                                          width = size.width.um.used.for.conversions,
                                          height = size.height.um.used.for.conversions
                                          )) %>% 
-  # calculate min and max volume when polydisperse particles are used
-  mutate(particle.volume.um3.min = volumefnx(R = R.ave, 
-                                             length = size.length.min.um.used.for.conversions,
-                                             width = size.width.min.um.used.for.conversions, 
-                                             height = size.height.min.um.used.for.conversions),
-         particle.volume.um3.max = volumefnx(R = R.ave,
-                                             length = size.length.max.um.used.for.conversions,
-                                             width = size.width.max.um.used.for.conversions, 
-                                             height = size.height.max.um.used.for.conversions)) %>% 
+  
+    ################## POLYDISPERSE #########################
+# minimum is always calculated the same regardless of range 
+mutate(particle.volume.um3.min = volumefnx(R = R.ave, 
+                                           length = size.length.min.um.used.for.conversions,
+                                           width = size.width.min.um.used.for.conversions, 
+                                           height = size.height.min.um.used.for.conversions)) %>% 
+  # Maximums must be estimated based on bioavailable fractions
+  ### Note that the bioavailable fractions must be used only (as calcualted above) ##
+  ## first estimate maximum height of bioavailable-restricted particles # Note that min height remains the same
+ ### split by translocation and ingestion #
+  mutate(size.width.max.um.trans = case_when(
+    is.na(size.width.max.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
+    shape_f == "Sphere" ~ size.length.max.um.trans, # W = L for spheres
+    shape_f == "Fragment" ~ size.length.max.um.trans * R.ave, #use average width:length ratio for fragments
+    T ~ size.width.max.um.used.for.conversions # if available, use as-is (fibers only)
+    )) %>% 
+  # now calcualte height based on bioavailable width
+  mutate(size.height.max.um.trans = case_when(
+    shape_f == "Sphere" ~ size.width.max.um.trans, # if spherical, height = length
+    shape_f != "Sphere" ~ size.width.max.um.trans * H_W_ratio # if not spherical, height = width * H:W ratio
+    )) %>% 
+  # calculate max volume when polydisperse particles are used (translocation-limited)
+  mutate(particle.volume.um3.max.trans = volumefnx(R = R.ave,
+                                                   length = size.length.max.um.trans,
+                                                   width = size.width.max.um.trans, 
+                                                   height = size.height.max.um.trans)) %>% 
 # now determine mu.v.mono for monodisperse and polydisperse lab exposure particles
-   mutate(mu.v.mono = case_when(
+   mutate(mu.v.mono.trans = case_when(
     polydispersity == "monodisperse" ~ particle.volume.um3, # use reported volume in monodisperse
     polydispersity == "polydisperse" ~ mux_polyfnx(a.x = a.v, 
                                                    x_LL = particle.volume.um3.min,
-                                                   x_UL = particle.volume.um3.max)))
+                                                   x_UL = particle.volume.um3.max.trans))) %>% 
+  ### now repeat for ingestion-limited ###
+    mutate(size.width.max.um.ingest = case_when(
+    is.na(size.width.max.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
+    shape_f == "Sphere" ~ size.length.max.um.ingest, # W = L for spheres
+    shape_f == "Fragment" ~ size.length.max.um.ingest * R.ave, #use average width:length ratio for fragments
+    T ~ size.width.max.um.used.for.conversions # if available, use as-is (fibers only)
+    )) %>% 
+  # now calcualte height based on bioavailable width
+  mutate(size.height.max.um.ingest = case_when(
+    shape_f == "Sphere" ~ size.width.max.um.ingest, # if spherical, height = length
+    shape_f != "Sphere" ~ size.width.max.um.ingest * H_W_ratio # if not spherical, height = width * H:W ratio
+    )) %>% 
+  # calculate max volume when polydisperse particles are used (ingestlocation-limited)
+  mutate(particle.volume.um3.max.ingest = volumefnx(R = R.ave,
+                                                   length = size.length.max.um.ingest,
+                                                   width = size.width.max.um.ingest, 
+                                                   height = size.height.max.um.ingest)) %>% 
+# now determine mu.v.mono for monodisperse and polydisperse lab exposure particles
+   mutate(mu.v.mono.ingest = case_when(
+    polydispersity == "monodisperse" ~ particle.volume.um3, # use reported volume in monodisperse
+    polydispersity == "polydisperse" ~ mux_polyfnx(a.x = a.v, 
+                                                   x_LL = particle.volume.um3.min,
+                                                   x_UL = particle.volume.um3.max.ingest)))
+
 
 POD %>% select(
   shape_f,
@@ -642,15 +726,22 @@ POD %>% select(
   size.length.um.used.for.conversions,
   size.length.min.um.used.for.conversions,
   particle.volume.um3,
+  particle.volume.um3.min,
+  particle.volume.um3.max.trans,
+  particle.volume.um3.max.ingest,
   size.width.min.um.used.for.conversions,
   size.height.min.um.used.for.conversions,
   size.length.max.um.used.for.conversions,
-  size.width.max.um.used.for.conversions,
-  size.height.max.um.used.for.conversions,
+  size.width.max.um.trans,
+  size.width.max.um.ingest,
+  size.height.max.um.trans,
+  size.height.max.um.ingest,
   particle.volume.um3.min,
-  particle.volume.um3.max,
+  particle.volume.um3.max.trans,
+  particle.volume.um3.max.ingest,
   a.v,
-  mu.v.mono) %>% 
+  mu.v.mono.trans,
+  mu.v.mono.ingest) %>% 
   mutate_if(is.numeric, ~signif(.,3)) %>% 
   t()
 ```
@@ -680,13 +771,18 @@ POD <- POD %>%
                                    height = x2M_trans))
 
 
-cat("x_UL_v_ingest = ", comma(POD$x_UL_v_ingest[1],3), "um^3 \n",
+
+
+cat("Calculated parameters for example 1 (monodisperse exposure): \n",
+    "x_UL_v_ingest = ", comma(POD$x_UL_v_ingest[1],3), "um^3 \n",
     "x_LL_v_ingest = ", signif(POD$x_LL_v_ingest[1],2), "um^3 \n",
     "x_UL_v_trans = ", comma(POD$x_UL_v_trans[1],3), "um^3 \n",
     "x_LL_v_trans = ", signif(POD$x_LL_v_trans[1],2), "um^3 \n",
-    "applicable for", POD$Species[1], "with ingestible size range of:", POD$x1M_set[1], "to", round(POD$x2M_ingest[1],1), "um", "\n",
+    "applicable for", as.character(POD$Species[1]), "with ingestible size range of:", POD$x1M_set[1], "to", round(POD$x2M_ingest[1],1), "um", "\n",
     "and translocatable size range of:",  POD$x1M_set[1], "to", POD$x2M_trans[1], "um")
 ```
+
+
 $\mu_{v,poly}$ may now be calculated given these limits, using an alpha value of 1.48 for volume in the marine surface water environment (Kooi et al 2021):
 ```{r}
 a.v = 1.48
@@ -704,17 +800,20 @@ Now that $\mu_{v,poly}$, $\mu_{v,mono}$, and $EC_{mono}$ are known for this exam
 
 ```{r}
 POD <- POD %>% 
-  mutate(EC_poly_v.particles.L_ingest = (dose.particles.L * mu.v.mono)/mu.v.poly_ingest,
-         EC_poly_v.particles.L_trans = (dose.particles.L * mu.v.mono)/mu.v.poly_trans)   
+  mutate(EC_poly_v.particles.L_ingest = (dose.particles.L.ingest * mu.v.mono.ingest)/mu.v.poly_ingest,
+         EC_poly_v.particles.L_trans = (dose.particles.L.trans * mu.v.mono.trans)/mu.v.poly_trans)   
 
 
 POD %>% select(
+  Species,
   size.length.um.used.for.conversions,
   shape_f,
-  dose.particles.L,
+  dose.particles.L.ingest,
+  dose.particles.L.trans,
   EC_poly_v.particles.L_ingest,
   EC_poly_v.particles.L_trans) %>% 
-  mutate_if(is.numeric, ~signif(.,3))
+  mutate_if(is.numeric, ~signif(.,3)) %>% 
+  t()
 ```
 Again, to relate these *bioavailable*, *polydisperse* effect thresholds ($EC_{poly,v_ingest/trans}$) to an environmentally relevant *polydisperse* mixture of particles for the volume ERM, an additional correction must be applied to rescale the threshold to the size range of interest (e.g. 1-5,000 um) using $CF_{bio}$, identical as for particles. 
 
@@ -782,31 +881,49 @@ SAfnx = function(length,
   return(SA)}
 
 POD <- POD %>% 
+  #assign a.sa for environment of interest
+  mutate(a.sa = a.sa.marine) %>% 
+  
+  # ###### MONODISPERSE ######
   #note that width and height estimations were done in previous chunks for fragments and fibers
   mutate(particle.surface.area.um2 = SAfnx(length = size.length.um.used.for.conversions,
                                            width = size.width.um.used.for.conversions,
                                            height = size.height.um.used.for.conversions,
                                            R = R.ave,
                                            H_W_ratio = H_W_ratio)) %>% 
-  # calculate min/max SA for polydisperse mixtures
-  mutate(particle.surface.area.um2.min = SAfnx(length = size.length.min.um.used.for.conversions,
-                                               width = size.width.min.um.used.for.conversions,
-                                               height = size.height.min.um.used.for.conversions,
-                                               R = R.ave,
-                                               H_W_ratio = H_W_ratio),
-         particle.surface.area.um2.max = SAfnx(length = size.length.max.um.used.for.conversions,
-                                               width = size.width.max.um.used.for.conversions,
-                                               height = size.height.max.um.used.for.conversions,
-                                               R = R.ave,
-                                               H_W_ratio = H_W_ratio)) %>% 
-  #assign a.sa for environment of interest
-  mutate(a.sa = a.sa.marine) %>% 
-  # mu.x_poly equation must be used in case of polydisperse exposure concentrations 
-   mutate(mu.sa.mono = case_when(
-     polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported surface area in monodisperse
-     polydispersity == "polydisperse" ~  mux_polyfnx(a.x = a.sa, 
-                                  x_LL = particle.surface.area.um2.min,
-                                  x_UL = particle.surface.area.um2.max))) 
+    ################## POLYDISPERSE #########################
+# minimum is always calculated the same regardless of range 
+mutate(particle.surface.area.um2.min = SAfnx(R = R.ave, 
+                                             H_W_ratio = H_W_ratio,
+                                             length = size.length.min.um.used.for.conversions,
+                                             width = size.width.min.um.used.for.conversions, 
+                                             height = size.height.min.um.used.for.conversions)) %>% 
+  # Maximums must be estimated based on bioavailable fractions
+ ### split by translocation and ingestion #
+  # calculate max volume when polydisperse particles are used (translocation-limited)
+  mutate(particle.surface.area.um2.max.trans = SAfnx(R = R.ave,
+                                                     H_W_ratio = H_W_ratio,
+                                                     length = size.length.max.um.trans,
+                                                     width = size.width.max.um.trans, 
+                                                     height = size.height.max.um.trans)) %>% 
+  # calculate max volume when polydisperse particles are used (ingestlocation-limited)
+  mutate(particle.surface.area.um2.max.ingest = volumefnx(R = R.ave,
+                                                   length = size.length.max.um.ingest,
+                                                   width = size.width.max.um.ingest, 
+                                                   height = size.height.max.um.ingest)) %>% 
+# now determine mu.sa.mono for monodisperse and polydisperse lab exposure particles
+   mutate(mu.sa.mono.ingest = case_when(
+    polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported volume in monodisperse
+    polydispersity == "polydisperse" ~ mux_polyfnx(a.x = a.sa, 
+                                                   x_LL = particle.surface.area.um2.min,
+                                                   x_UL = particle.surface.area.um2.max.ingest))) %>% 
+  
+     # now determine mu.sa.mono for monodisperse and polydisperse lab exposure particles
+   mutate(mu.sa.mono.trans = case_when(
+    polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported volume in monodisperse
+    polydispersity == "polydisperse" ~ mux_polyfnx(a.x = a.sa, 
+                                                   x_LL = particle.surface.area.um2.min,
+                                                   x_UL = particle.surface.area.um2.max.trans))) 
   
 
 POD %>% select(
@@ -823,7 +940,9 @@ POD %>% select(
   particle.surface.area.um2.min,
   particle.surface.area.um2.max,
   a.sa,
-  mu.sa.mono) %>% 
+  mu.sa.mono.trans,
+  mu.sa.mono.ingest
+  ) %>% 
   mutate_if(is.numeric, ~signif(.,3)) %>% 
   t() #%>% 
 #  mutate_if(is.numeric, ~signif(.,3))
@@ -875,8 +994,8 @@ Now that $\mu_{sa,poly, trans/ingest}$ and $\mu_{sa,mono}$ are calculated, the *
 
 ```{r}
 POD <- POD %>% 
-  mutate(EC_poly_sa.particles.L_trans = (dose.particles.L  * mu.sa.mono)/mu.sa.poly_trans,
-         EC_poly_sa.particles.L_ingest = (dose.particles.L  * mu.sa.mono)/mu.sa.poly_ingest)  
+  mutate(EC_poly_sa.particles.L_trans = (dose.particles.L.trans  * mu.sa.mono.trans)/mu.sa.poly_trans,
+         EC_poly_sa.particles.L_ingest = (dose.particles.L.ingest  * mu.sa.mono.ingest)/mu.sa.poly_ingest)  
   
 POD %>% select(
   size.length.um.used.for.conversions,
