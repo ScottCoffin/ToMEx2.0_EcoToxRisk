@@ -458,6 +458,7 @@ skimr::skim(param_values)
 
 ```{r}
 MC_param_histograms_base <- param_values %>% 
+  select(-simulation_id) %>% 
   pivot_longer(cols = everything()) %>% 
   mutate(name = factor(name, levels = c("alpha.marine", "a.sa.marine", "a.v.marine",
                                         "a.m.marine", "a.ssa.marine", "R.ave.water.marine",
@@ -980,7 +981,7 @@ aoc_final
 
 TEST to make sure produces same df as in deterministic thresholds.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 aoc_aligned_test <- align_data(aoc_risk_paper) %>% 
     mutate(unique_id = as.factor(unique_id)) %>% 
   filter(
@@ -998,19 +999,15 @@ aoc_aligned_test <- align_data(aoc_risk_paper) %>%
   #  filter(tier_zero_tech_f == ("Red Criteria Passed")) 
     # ensure no negative numbers are included and that all values are realistic (also done in functions, but doing here so that no confusion occurs anywhere else)
     
-  aoc_risk_paper <- aoc_aligned #%>%   
-  #  filter(particles.mL.food.dilution > 0,
-        #   particles.mL.ox.stress > 0 )
-  
   
   # calculate thresholds for different environments
-marine_thresholds <- process_environment_data(aoc_risk_paper,
+marine_thresholds <- process_environment_data(aoc_aligned,
                                                 "Marine", 
                                                 upper.tissue.trans.size.um = upper.tissue.trans.size.um,
                                                 x1D_set = x1D_set, 
                                                 x2D_set = x2D_set)
   
-freshwater_thresholds <- process_environment_data(aoc_risk_paper, 
+freshwater_thresholds <- process_environment_data(aoc_aligned, 
                                                     "Freshwater",
                                                     upper.tissue.trans.size.um = upper.tissue.trans.size.um,
                                                     x1D_set = x1D_set, 
@@ -1048,13 +1045,14 @@ formatted_thresholds
 
 MC threshold dataset
 ```{r}
-aoc_risk_paper %>% 
+aoc_aligned %>% 
       filter(Group != "Algae") %>%
     mutate(dose_new = particles.mL.food.dilution / (af.time * af.noec)) %>%
     drop_na(dose_new) %>%
     filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
+           ingestible != "not ingestible",
            shape_f != "Not Reported",
            poly_f != "Not Reported",
            environment %in% "Marine",
@@ -1067,6 +1065,7 @@ aoc_risk_paper %>%
   dplyr::select(Group, Species, environment,
                 dose_new,
                 dose_new_particles_mL,
+                ingestible,
                 AF.total, 
                 particles.mL.food.dilution,
                 #dose_new,
@@ -1098,12 +1097,14 @@ aoc_risk_paper %>%
 
 Deterministic threshold dataset 
 ```{r}
-marine_alpha_thresholds$data$filtered.data.small.default_t1.2 %>% 
+marine_alpha_thresholds$data$filtered.data.large.default_t1.2 %>% 
   filter(environment == "Marine") %>% 
   mutate(dose_new_particles_mL = dose_new / 1000) %>% 
   dplyr::select(Group, Species, environment,
                 dose_new,
                 dose_new_particles_mL,
+                ingestible,
+                translocatable,
                 AF.total, 
                 particles.mL.food.dilution,
                 #dose_new,
@@ -1305,7 +1306,7 @@ aoc_MC_iter <- align_data(aoc_risk_paper,
     MC_results_name[[i]] <- list(
       tox_vals = list(
         simulation_id = simulation_id,
-    #    iteration = as.numeric(i),
+        iteration = as.numeric(i),
       particles_mL_ox_stress = aoc_aligned$particles.mL.ox.stress,
       particles_mL_food_dilution = aoc_aligned$particles.mL.food.dilution,
       ingestible = aoc_aligned$ingestible,
@@ -1333,7 +1334,7 @@ aoc_MC_iter <- align_data(aoc_risk_paper,
 ### Parallel Computing 
 
 ```{r}
-n_sim <- 1000 #10 for beta-testing, 1000 for full 
+n_sim <- 100 #10 for beta-testing, 1000 for full 
 saveRDS(n_sim, "output/n_sim.rds")
 ```
 
@@ -1362,7 +1363,7 @@ MC_results_parallel <- foreach(i = 1:n_sim,
                       .packages = c("tidyverse", "ssdtools", "doParallel", "truncnorm"), 
                       .options.snow = opts,
                       .combine = rbind,
-                      .export = c("model_wrapper", "aoc_risk_paper", #"ToMEx1.0fxn", "ToMEx2.0fxn",
+                      .export = c("model_wrapper", "aoc_aligned", #"ToMEx1.0fxn", "ToMEx2.0fxn",
                                   "align_data",
                                    "filter_environment_data", "generate_structure_checks",
                                   "process_environment_data",  "sensitivity_t1",
@@ -1730,7 +1731,7 @@ return(list(MC_histograms_light, MC_histograms_dark))
 
 #### Generate Histograms
 
-```{r eval=FALSE, include=FALSE}
+```{r include=FALSE}
 ### Generate plots
 MC_histograms_marine <- MC_histograms_fxn(all_thresholds_long, 
                                           "Marine",
@@ -1973,7 +1974,7 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
   # aoc_MC_iter <- alignmentFxn(df = tomex2.0_aoc_z_final)
   
   
-aoc_MC_iter <- align_data(aoc_risk_paper,
+aoc_MC_iter <- align_data(aoc_aligned,
                           upper.tissue.trans.size.um_input = params$upper.tissue.trans.size.um[1],
                           body_length_intercept_input = params$sim_body_length_intercept[1],
                           beta_log10_body_length_input = params$sim_beta_log10_body_length[1],
@@ -2056,9 +2057,9 @@ aoc_MC_iter <- align_data(aoc_risk_paper,
 
 ```{r include=FALSE}
 # Number of samples
-n_sobol <- 1000
+#n_sobol <- 1000
 
-#n_sobol <- 3
+n_sobol <- 100
 
 matrices <- c("A", "B", "AB", "BA")
 first <- total <- "azzini"
@@ -2588,7 +2589,7 @@ sobol_results <- foreach(i = 1:n_row_sobol,
                                   .options.snow = opts,
                                   
                                   .export = c("model_wrapper",
-                                              "aoc_risk_paper",
+                                              "aoc_aligned",
                                               "align_data",
                                               # "ToMEx1.0fxn", "ToMEx2.0fxn",
                                    "filter_environment_data", "generate_structure_checks",
@@ -3139,7 +3140,7 @@ cov_results_sobol <- full_join(cov_results_sobol_ox_stress,
 skimr::skim(cov_results_sobol)
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r include=FALSE}
 # Step 3: merge with full dataset and deterministic dataset
 aoc_MC_sobol <- merge(aoc_aligned_test,
                 cov_results_sobol, by = "unique_id", all.x = TRUE)
@@ -3225,11 +3226,12 @@ xlims <- c(min_val - pad, max_val + pad)
 ```{r}
 hist_cv_food_sobol_freshwater <- aoc_MC_sobol %>% 
   filter(environment == "Freshwater") %>% 
-  filter(ingestible == "ingestible") %>% 
+  filter(ingestible != "not ingestible") %>% 
   ggplot(aes(x = CoV_food_dilution, fill = polydispersity)) +
   geom_histogram(position = "identity", alpha = 0.5, binwidth = 0.2) +
   scale_x_log10() +
-  xlim(xlims) +  # Set x limits
+  xlim(c(0, 2.75)) +
+# xlim(xlims) +  # Set x limits
   xlab("Coefficient of Variation (unitless)") +
   ylab("Freshwater") +
 #fill.type +
@@ -3243,12 +3245,13 @@ theme(axis.title.y = element_text(size = 12),
 
 hist_cv_ox_sobol_freshwater <- aoc_MC_sobol %>% 
   filter(environment == "Freshwater") %>% 
-  filter(translocatable == "translocatable") %>% 
+  filter(translocatable != "not translocatable") %>% 
   ggplot(aes(x = CoV_ox_stress, fill = polydispersity)) +
   geom_histogram(position = "identity", alpha = 0.5, binwidth = 0.2) +
   #fill.type +
   scale_x_log10() +
-   xlim(xlims) +  # Set x limits
+  xlim(c(0, 2.75)) +
+ #  xlim(xlims) +  # Set x limits
   xlab("Coefficient of Variation (unitless)") +
   ylab("Toxicity Data Points") +
  #  theme.light +
@@ -3261,11 +3264,12 @@ hist_cv_ox_sobol_freshwater <- aoc_MC_sobol %>%
 
 hist_cv_food_sobol_marine <- aoc_MC_sobol %>% 
   filter(environment == "Marine") %>% 
-  filter(ingestible == "ingestible") %>% 
+  filter(ingestible != "not ingestible") %>% 
   ggplot(aes(x = CoV_food_dilution, fill = polydispersity)) +
   geom_histogram(position = "identity", alpha = 0.5, binwidth = 0.1) +
   scale_x_log10() +
-  xlim(xlims) +  # Set x limits
+  xlim(c(0, 2.75)) +
+  #xlim(xlims) +  # Set x limits
   xlab("Coefficient of Variation (unitless)") +
   ylab("Marine") +
 #fill.type +
@@ -3279,12 +3283,13 @@ theme(axis.title.x = element_blank(),
 
 hist_cv_ox_sobol_marine <- aoc_MC_sobol %>% 
   filter(environment == "Marine") %>% 
-  filter(translocatable == "translocatable") %>% 
+  filter(translocatable != "not translocatable") %>% 
   ggplot(aes(x = CoV_ox_stress, fill = polydispersity)) +
   geom_histogram(position = "identity", alpha = 0.5, binwidth = 0.1) +
   #fill.type +
   scale_x_log10() +
-   xlim(xlims) +  # Set x limits
+  xlim(c(0, 2.75)) +
+   #xlim(xlims) +  # Set x limits
   xlab("Coefficient of Variation (unitless)") +
   ylab("Toxicity Data Points") +
 #   theme.light +
@@ -3752,7 +3757,7 @@ length_y_rows
 
 ### Calculate Sobol Indices
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 R <-  4000 #bootstrap iterations
 ind.marine_food_T3 <- sobol_indices(Y = Y_marine_food_T3_valid, 
                                     N = n_sobol, 
@@ -3773,7 +3778,7 @@ ind.freshwater_tissue_T3 <- sobol_indices(Y = Y_freshwater_tissue_T3_valid,
 
 ### Calculate Sobol Indices
 
-```{r eval=FALSE, include=FALSE}
+```{r include=FALSE}
 R <- 4000 #bootstrap iterations
 
 ind.marine_food_T3 <- sobol_indices(Y = Y_marine_food_T3_valid[1:length_y_rows_marine_food], 
@@ -3885,7 +3890,7 @@ ggsave(filename = "sobol_indices.jpg",
 
 indices
 ```
-```{r}
+```{r eval=FALSE, include=FALSE}
 # Combine Sobol' index data into a single data frame
 sobol_combined <- bind_rows(
   ind.marine_food_T3 %>% mutate(Environment = "Marine", Type = "Food Dilution"),

@@ -901,7 +901,14 @@ mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
     mutate(ingestible = ifelse(size.length.um.used.for.conversions > x2M_ingest, 
                                "not ingestible", 
                                "ingestible")) %>% 
-    
+  ## collapse poly/mono bioavailbilities
+     mutate(
+    ingestible = case_when(
+      !is.na(ingestible_poly) ~ ingestible_poly,
+      T ~ ingestible),
+    translocatable = case_when(
+      !is.na(translocatable_poly) ~ translocatable_poly,
+      T ~ translocatable)) %>% 
     #rowwise() %>%
     mutate(unique_id = row_number()) %>% 
   ##### EASY ID ###
@@ -990,7 +997,9 @@ collapsed <- filtered.data %>%
  if(n_distinct(collapsed$Species) > 5){
 #fit distributions
 dists <- ssd_fit_dists(collapsed, left = "Conc", 
-                       dists = c( "llogis", "lnorm", "gamma",
+                       dists = c( "llogis",
+                                  "lnorm",
+                                  "gamma",
                                   #"weibull",
                                   "lgumbel"
                                   ), computable = FALSE, silent = FALSE) 
@@ -1025,7 +1034,8 @@ collapsed <- filtered.data %>%
   summarize(Conc = quantile(dose_new, 0.50))
 #fit distributions
  if(n_distinct(collapsed$Species) > 5){
-dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c( "llogis", "lnorm", #"burrIII3",
+dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c( "llogis",
+                                                            "lnorm", #"burrIII3",
                                                             "gamma",
                                                            # "weibull",
                                                             "lgumbel"), computable = FALSE, silent = FALSE) 
@@ -1092,6 +1102,7 @@ filtered.data.small.default_t1.2 <- aligned_data %>%
   mutate(dose_new = dose_new * 1000) %>% #convert particles/mL to particles/L
   filter(dose_new > 0) %>% 
   filter(between(size.length.um.used.for.conversions, x1D_set, x2M_trans),
+         translocatable != "not translocatable",
          shape_f != "Not Reported",
          poly_f != "Not Reported",
          !environment %in% c("Terrestrial", "Not Reported"),
@@ -1118,6 +1129,7 @@ filtered.data.large.default_t1.2 <- aligned_data %>%
          mutate(dose_new = dose_new * 1000) %>% #convert particles/mL to particles/L
   filter(dose_new > 0) %>% 
   filter(between(size.length.um.used.for.conversions, x1D_set, x2M_ingest),
+         ingestible != "not ingestible",
          poly_f != "Not Reported",
          shape_f != "Not Reported",
          !environment %in% c("Terrestrial", "Not Reported"),
@@ -1169,6 +1181,7 @@ marine_alpha_thresholds$base_thresholds %>%
          "Tissue (Marine/Fresh)" = paste0(`Tissue Translocation (Default)`, " (", `Tissue Translocation (5th %)`, " to ", `Tissue Translocation (95th %)`,")")) %>% 
   select(Tier, "Food (Marine/Fresh)", "Tissue (Marine/Fresh)")
 ```
+
 
 
 #### Inspect dataframes feeding SSDs
@@ -1283,6 +1296,8 @@ marine_alpha_thresholds$data$filtered.data.small.default_t1.2 %>%
 # align using default settings with marine/freshwater values set to species
 aoc_aligned <- align_data(df = aoc_risk_paper)
 
+saveRDS(aoc_aligned, "../output/data/aligned_data.rds")
+
 ## split freshwater/marine and derive
 freshwater_data <- aoc_aligned %>% filter(environment == "Freshwater")
 marine_data <- aoc_aligned %>% filter(environment == "Marine")
@@ -1293,23 +1308,35 @@ freshwater_only_thresholds <- derive_thresholds(aligned_data = freshwater_data)
 
 ##### MARINE THRESHOLDS #####
 ```{r}
-marine_only_thresholds$base_thresholds %>% 
+formatted_marine_base <- marine_only_thresholds$base_thresholds %>% 
   mutate_if(is.numeric, ~signif(., 2)) %>% 
   mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
   mutate("Food (Marine)" = paste0(`Food Dilution (Default)`, " (", `Food Dilution (5th %)`, " to ", `Food Dilution (95th %)`,")"),
          "Tissue (Marine)" = paste0(`Tissue Translocation (Default)`, " (", `Tissue Translocation (5th %)`, " to ", `Tissue Translocation (95th %)`,")")) %>% 
   select(Tier, "Food (Marine)", "Tissue (Marine)")
+
+formatted_marine_base
 ```
+
+
 ##### FRESHWATER THRESHOLDS #####
 ```{r}
-freshwater_only_thresholds$base_thresholds %>% 
+formatted_freshwater_base <-freshwater_only_thresholds$base_thresholds %>% 
   mutate_if(is.numeric, ~signif(., 2)) %>% 
   mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
   mutate("Food (Freshwater)" = paste0(`Food Dilution (Default)`, " (", `Food Dilution (5th %)`, " to ", `Food Dilution (95th %)`,")"),
          "Tissue (Freshwater)" = paste0(`Tissue Translocation (Default)`, " (", `Tissue Translocation (5th %)`, " to ", `Tissue Translocation (95th %)`,")")) %>% 
   select(Tier, "Food (Freshwater)", "Tissue (Freshwater)")
+
+formatted_freshwater_base
 ```
 
+
+```{r}
+getwd()
+formatted_thresholds <- cbind(formatted_marine_base, formatted_freshwater_base)
+write.csv(formatted_thresholds, "../data/output/formatted_thresholds.csv")
+```
 
 ![Agreed-upon framework](assets/treshold_framework.png)
 
@@ -2348,30 +2375,83 @@ print(unified_thresholds)
 ## Freshwater vs. Marine species sensitivity
 We performed an additional sensitivity analysis aimed at disentangling the species sensitivities for freshwater and marine environments from their respective environmental distributions in the resulting thresholds to shed light on whether marine or freshwater species are innately more or less sensitive to microplastics. To accomplish this, we simply generated a set of thresholds using freshwater species, but used marine environmental microplastics distribution data for the alignments, comparing the resulting thresholds. 
 
-```{r}
-#
-#
-# # Extract and combine base_thresholds for each environment
-# all_thresholds_marine <- bind_rows(risk_tech$base_thresholds$marine)
-#
-# all_thresholds_freshwater <- bind_rows(risk_tech$base_thresholds$freshwater)
-#
-#
-# # Combine marine and freshwater data into one data frame with an additional "Environment" column
-# all_thresholds_combined <- bind_rows(
-#   mutate(all_thresholds_marine, Environment = "Marine"),
-#   mutate(all_thresholds_freshwater, Environment = "Freshwater"),
-#   mutate(Environment = as.factor(Environment)))
-#
-# # pivot_longer
-# all_thresholds_long <- all_thresholds_combined %>%
-#   pivot_longer(
-#     cols = -c(Tier, label, Environment),
-#     names_to = "Metric",
-#     values_to = "Value"
-#   )
-# all_thresholds_long
+### Freshwater species with marine params
+
+```{r message=FALSE, warning=FALSE}
+# align all data to marine params (done above)
+# aoc_marine_alphas_aligned
+
+# derive thresholds using freshwater species but with marine params
+freshwater_species_marine_params_thresholds <- derive_thresholds(aoc_marine_alphas_aligned %>% 
+                                                                   filter(environment == "Freshwater"))
+
+# compare freshwater species marine params thresholds with freshwater species freshwater params thresholds
+
+formatted_freshwater_species_marine_params_thresholds <- freshwater_species_marine_params_thresholds$base_thresholds %>% 
+  mutate_if(is.numeric, ~signif(., 2)) %>% 
+  mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
+  mutate("Food (Freshwater Sp., marine params)" = paste0(`Food Dilution (Default)`, " (", `Food Dilution (5th %)`, " to ", `Food Dilution (95th %)`,")"),
+         "Tissue (Freshwater Sp., marine params)" = paste0(`Tissue Translocation (Default)`, " (", `Tissue Translocation (5th %)`, " to ", `Tissue Translocation (95th %)`,")")) %>% 
+  select(Tier, "Food (Freshwater Sp., marine params)", "Tissue (Freshwater Sp., marine params)") 
+
+# rename cols in above calcualted
+formatted_freshwater_species_freshwater_params_thresholds <- formatted_freshwater_base %>% 
+  rename("Food (Freshwater sp., freshwater params)" = "Food (Freshwater)",
+         "Tissue (Freshwater sp., freshwater params)" = "Tissue (Freshwater)")
+
+#join up
+params_species_sensitivity_analysis_freshwater_sp <- left_join(formatted_freshwater_species_marine_params_thresholds,
+                                                               formatted_freshwater_species_freshwater_params_thresholds)
+
+params_species_sensitivity_analysis_freshwater_sp
 ```
+
+### Marine species with freshwater params
+
+```{r message=FALSE, warning=FALSE}
+# align all data to freshwater params
+aoc_freshwater_alphas_aligned <- align_data(aoc_risk_paper,
+                
+                       R.ave.marine_input = 0.67, # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
+                       H_W_ratio.marine_input = 0.67, # H:W ratio assumed same as width:length ratio (Kooi et al. 2021)
+                     R.ave.sediment.marine_input = 0.70, # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
+                       p.ave.marine_input = 1.04, #average density in marine surface water
+                       alpha.marine_input = 2.64, #table s4 for marine surface water. length
+                       a.sa.marine_input = 2.00, #marine surface area power law
+                       a.v.marine_input = 1.68, #a_V for marine surface water volume
+                       a.m.marine_input = 1.65, # upper limit fora_m for mass for marine surface water in table S4 
+                       a.ssa.marine_input = 2.71, # A_SSA for marine surface water
+                                            )
+
+# derive thresholds using freshwater species but with marine params
+marine_species_freshwater_params_thresholds <- derive_thresholds(aoc_freshwater_alphas_aligned %>% 
+                                                                   filter(environment == "Marine"))
+
+# compare marine species freshwater params thresholds with marine species marine params thresholds
+
+formatted_marine_species_freshwater_params_thresholds <- marine_species_freshwater_params_thresholds$base_thresholds %>% 
+  mutate_if(is.numeric, ~signif(., 2)) %>% 
+  mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
+  mutate("Food (Marine Sp., freshwater params)" = paste0(`Food Dilution (Default)`, " (", `Food Dilution (5th %)`, " to ", `Food Dilution (95th %)`,")"),
+         "Tissue (Marine Sp., freshwater params)" = paste0(`Tissue Translocation (Default)`, " (", `Tissue Translocation (5th %)`, " to ", `Tissue Translocation (95th %)`,")")) %>% 
+  select(Tier, "Food (Marine Sp., freshwater params)", "Tissue (Marine Sp., freshwater params)") 
+
+# rename cols in above calcualted
+formatted_marine_species_marine_params_thresholds <- formatted_marine_base %>% 
+  rename("Food (marine sp., marine params)" = "Food (Marine)",
+         "Tissue (marine sp., marine params)" = "Tissue (Marine)")
+
+#join up
+params_species_sensitivity_analysis_marine_sp <- left_join(formatted_marine_species_freshwater_params_thresholds,
+                                                               formatted_marine_species_marine_params_thresholds)
+
+params_species_sensitivity_analysis_marine_sp
+```
+```{r}
+freshwater_marine_params_species_sensitivity_analysis <- 
+  left_join(params_species_sensitivity_analysis_freshwater_sp, params_species_sensitivity_analysis_marine_sp)
+```
+
 
 ## Leave-one-out method
 These techniques are based on the Leave-One-Out-method, in which we recalculate the results of our meta-analysis K − 1  times, each times leaving out one study. This way, we can more easily detect studies which influence the overall estimate of our meta-analysis the most, and this lets us better assess if this influence may distort our pooled effect (Viechtbauer and Cheung 2010).
@@ -3040,13 +3120,138 @@ ggsave(filename = "MC_param_histograms.jpg",
  NOTE: this is done in scripts/monte carlo/Master_Data_Tidying_Monte_Carlo.R. The reason is that the data prep scripts are extremely complicated, and preserving every nuance with perfect fidelity through copying into this markdown script has proven impossible. Just import the final RDS file generated from that script.
  
 ```{r}
+#regular MC
+#MC_results <- readRDS("monte carlo/output/MC_results.rds")
+n_sim <- readRDS("monte carlo/output/n_sim.rds")
+#sobol 
 MC_results <- readRDS("monte carlo/output/MC_results_sobol.rds")
-summary_stats_base_thresholds <- readRDS("monte carlo/output/summary_stats_base_thresholds_sobol.rds")
+#summary_stats_base_thresholds_MC <- readRDS("monte carlo/output/summary_stats_base_thresholds.rds")
+
+summary_stats_base_thresholds_MC <- readRDS("monte carlo/output/summary_stats_base_thresholds_sobol.rds")
 ```
+
+#### Pretty table summarizing MC results
+###### Particles/L
+```{r}
+library(scales)
+
+## Freshwater MC
+Freshwater_MC <- summary_stats_base_thresholds_MC %>% 
+  filter(str_detect(Metric, "Default"),
+         Environment == "Freshwater") %>% 
+  select(Tier, Metric, Median, contains("Percentile")) %>% 
+  mutate(Threshold = paste0(comma(Median), " (", comma(Percentile_5th),
+                            " to ", comma(Percentile_95th), ")")) %>% 
+  select(-c(Median, Percentile_5th, Percentile_95th)) %>% 
+  pivot_wider(names_from = Metric, values_from = Threshold) %>% 
+  rename_with(~ gsub("(Default)", "Freshwater", .x), everything())
+
+# Marine MC
+Marine_MC <-summary_stats_base_thresholds_MC %>% 
+  filter(str_detect(Metric, "Default"),
+         Environment == "Marine") %>% 
+  select(Tier, Metric, Median, contains("Percentile")) %>% 
+  mutate(Threshold = paste0(comma(Median), " (", comma(Percentile_5th),
+                            " to ", comma(Percentile_95th), ")")) %>% 
+  select(-c(Median, Percentile_5th, Percentile_95th)) %>% 
+  pivot_wider(names_from = Metric, values_from = Threshold) %>% 
+  rename_with(~ gsub("(Default)", "Marine", .x), everything())
+
+simple_thresholds_MC <- left_join(Freshwater_MC, Marine_MC)
+
+write.csv(simple_thresholds_MC,
+          "output/simple_thresholds_table.csv")
+
+simple_thresholds_MC
+```
+###### Percent RSD
+```{r}
+# Freshwater MC
+MC_RSD <- summary_stats_base_thresholds_MC %>% 
+  filter(str_detect(Metric, "Default")) %>% 
+  select(Tier, Environment, Metric, Mean, Std_Dev) %>% 
+  mutate(Metric_Environment = paste(Metric, Environment)) %>% 
+  mutate(percent_RSD = paste0(signif(100 * (Std_Dev / Mean),3), "%")) %>% 
+  select(-c(Mean, Std_Dev, Environment, Metric)) %>% 
+  pivot_wider(names_from = Metric_Environment, values_from = percent_RSD) %>% 
+  rename_with(~ gsub("(Default)", "", .x), everything())
+
+MC_RSD
+```
+
+
+###### ug/L
+```{r}
+library(scales)
+
+## Freshwater MC
+Freshwater_MC_mass <- summary_stats_base_thresholds_MC %>% 
+  filter(str_detect(Metric, "ug.L"),
+         Environment == "Freshwater") %>% 
+  select(Tier, Metric, Median, contains("Percentile")) %>% 
+  mutate(Threshold = paste0(comma(Median), " (", comma(Percentile_5th),
+                            " to ", comma(Percentile_95th), ")")) %>% 
+  select(-c(Median, Percentile_5th, Percentile_95th)) %>% 
+  pivot_wider(names_from = Metric, values_from = Threshold) %>% 
+  rename_with(~ gsub("ug.L", "Freshwater (ug/L)", .x), everything())
+
+# Marine MC
+Marine_MC_mass <- summary_stats_base_thresholds_MC %>% 
+  filter(str_detect(Metric, "ug.L"),
+         Environment == "Marine") %>% 
+  select(Tier, Metric, Median, contains("Percentile")) %>% 
+  mutate(Threshold = paste0(comma(Median), " (", comma(Percentile_5th),
+                            " to ", comma(Percentile_95th), ")")) %>% 
+  select(-c(Median, Percentile_5th, Percentile_95th)) %>% 
+  pivot_wider(names_from = Metric, values_from = Threshold) %>% 
+    rename_with(~ gsub("ug.L", "Marine (ug/L)", .x), everything())
+
+simple_thresholds_MC_mass <- left_join(Freshwater_MC_mass, Marine_MC_mass,
+                                             by = "Tier")
+
+write.csv(simple_thresholds_MC_mass,
+          "output/simple_thresholds_MC_mass.csv")
+
+simple_thresholds_MC_mass
+```
+ 
+###### Metadata
+```{r}
+## Freshwater MC
+Freshwater_MC_meta <- summary_stats_base_thresholds_MC %>% 
+  filter(str_detect(Metric, "N"),
+         Environment == "Freshwater") %>% 
+  select(Tier, Metric, Median, contains("Percentile")) %>% 
+  mutate(Threshold = paste0(comma(Median), " (", comma(Percentile_5th),
+                            " to ", comma(Percentile_95th), ")")) %>% 
+  select(-c(Median, Percentile_5th, Percentile_95th)) %>% 
+  pivot_wider(names_from = Metric, values_from = Threshold) %>% 
+  rename_with(~ gsub("N", "Freshwater", .x), everything())
+
+# Marine MC
+Marine_MC_meta <-summary_stats_base_thresholds_MC %>% 
+ filter(str_detect(Metric, "N"),
+         Environment == "Marine") %>% 
+  select(Tier, Metric, Median, contains("Percentile")) %>% 
+  mutate(Threshold = paste0(comma(Median), " (", comma(Percentile_5th),
+                            " to ", comma(Percentile_95th), ")")) %>% 
+  select(-c(Median, Percentile_5th, Percentile_95th)) %>% 
+  pivot_wider(names_from = Metric, values_from = Threshold) %>% 
+  rename_with(~ gsub("N", "Marine", .x), everything())
+
+simple_thresholds_MC_meta <- left_join(Freshwater_MC_meta, Marine_MC_meta)
+
+write.csv(simple_thresholds_MC_meta,
+          "output/simple_thresholds_table_meta.csv")
+
+simple_thresholds_MC_meta
+```
+
  
 ```{r}
 aoc_MC <- readRDS("monte carlo/output/aoc_MC.rds")
-n_sim <- aoc_MC$n_sim[[1]]
+#n_sim <- aoc_MC$n_sim[[1]]
+
 print(paste("Number of MC Simulations:", n_sim))
 ```
 
@@ -3109,21 +3314,29 @@ left_join(aoc_d_simple, aoc_final_simple, by ="rowid")
 
 ### Threshold distributions
 ```{r}
+# just use the nested dataframes
+first_subtract <- n_sim
+starting_dataframe <- first_subtract + 1
+final_dataframe <- starting_dataframe + n_sim - 1
+
+# save truncated MC result
+MC_results_p <- MC_results_parallel[starting_dataframe:final_dataframe]
+
 # Extract and combine base_thresholds for each environment
-all_thresholds_marine <- map(MC_results, ~ .x$base_thresholds$marine) %>% 
+all_thresholds_marine <- map(MC_results_p, ~ .x$marine) %>% 
   bind_rows(.id = "simulation_id")
 
-all_thresholds_freshwater <- map(MC_results, ~ .x$base_thresholds$freshwater) %>% 
+all_thresholds_freshwater <- map(MC_results_p, ~ .x$freshwater) %>% 
   bind_rows(.id = "simulation_id")
 
-all_thresholds_freshwater_marine <- map(MC_results, ~ .x$base_thresholds$freshwater_marine) %>% 
-  bind_rows(.id = "simulation_id")
+# all_thresholds_freshwater_marine <- map(MC_results, ~ .x$base_thresholds$freshwater_marine) %>% 
+#   bind_rows(.id = "simulation_id")
 
 # Combine marine and freshwater data into one data frame with an additional "Environment" column
 all_thresholds_combined <- bind_rows(
   mutate(all_thresholds_marine, Environment = "Marine"),
   mutate(all_thresholds_freshwater, Environment = "Freshwater"),
-  mutate(all_thresholds_freshwater_marine, Environment = "freshwater_marine"),
+ # mutate(all_thresholds_freshwater_marine, Environment = "freshwater_marine"),
   .id = "simulation_id"
 )
 
@@ -3273,6 +3486,106 @@ base_thresholds_df
 ```
 
 
+
+
+
+#### Tier 2
+```{r}
+library(cols4all)
+#data prep
+t2f_marine <- all_MC_data_long  %>% 
+  filter(ERM == "Food Dilution",
+         Tier == "Tier2",
+         Environment == "Marine") %>% 
+  rename(PNEC = Value) %>% 
+  mutate(Environment = as.factor(Environment))
+
+#data prep
+t2f_freshwater <- all_MC_data_long  %>% 
+  filter(ERM == "Food Dilution",
+         Tier == "Tier2",
+         Environment == "Freshwater") %>% 
+  rename(PNEC = Value) %>% 
+  mutate(Environment = as.factor(Environment))
+
+#data prep
+t2t_marine <- all_MC_data_long  %>% 
+  filter(ERM == "Tissue Translocation",
+         Tier == "Tier2",
+         Environment == "Marine") %>% 
+  rename(PNEC = Value) %>% 
+  mutate(Environment = as.factor(Environment))
+
+#data prep
+t2t_freshwater <- all_MC_data_long  %>% 
+  filter(ERM == "Tissue Translocation",
+         Tier == "Tier2",
+         Environment == "Freshwater") %>% 
+  rename(PNEC = Value) %>% 
+  mutate(Environment = as.factor(Environment))
+
+
+
+## join DFs
+PNEC_dfs <- rbind(t2f_marine, t2f_freshwater, t2t_marine, t2t_freshwater) %>% 
+ mutate(y_position = (as.numeric(factor(Environment)) - 2) + (as.numeric(factor(ERM)) - 1.5) * 0.4)  # Adjust 0.1 or other value as needed
+
+#plot
+PNEC_MCSSDvSSD <- ggplot() +
+   geom_violin(data = PNEC_dfs, aes(x = PNEC, y = Environment, fill = ERM, color = ERM),
+               draw_quantiles = c(0.05, 0.5, 0.95), linewidth = 1.2,
+               alpha = 0.75) +
+   # geom_jitter(data = PNEC_dfs, aes(x = PNEC, y = y_position, fill = ERM, color = ERM),
+   #             height = 0.15, size = 1.5, alpha = 0.02) +  # Jittered points
+   geom_point(data = base_thresholds_df %>% filter(Tier == 2), 
+              aes(x = PNEC, y = y_position, fill = ERM),
+              size = 5, shape = 22, 
+              color = "white",
+              alpha = 0.95,
+              stroke = 1.8 #thickness of outline
+              ) +
+   geom_errorbarh(data = base_thresholds_df %>% filter(Tier == 2), 
+                  aes(xmin = PNEClcl, xmax = PNECucl, y = y_position, fill = ERM, color = ERM),
+                  height = 0.2,
+                  alpha = 0.75,
+                  linewidth = 1.2) +
+  scale_color_discrete_c4a_cat() +
+  scale_fill_discrete_c4a_cat()+
+  scale_x_log10() +
+ #  scale_x_log10(breaks = c(0.01, 0.1, 1, 10, 100, 1000, 10000, 1000000, 10000000),
+                 #limits = c(0.001, 10000000),
+  #               labels = scales::label_comma()) +
+  labs(title = "Comparison of Monte-Carlo [mcSSDs] and Deterministic [dSSD] Thresholds",
+       subtitle = "(Violin Plots = mcSSDs; Diamonds/Error-Bars = dSSD; Tier 2 only)",
+       fill = "Ecologically-Relevant Metric",
+       color = "Ecologically-Relevant Metric"
+       ) +
+  xlab("PNEC (Particles/L; 1 to 5,000 um)") +
+  ylab("Environment")
+
+PNEC_MCSSDvSSD_dark <- PNEC_MCSSDvSSD + theme.dark
+PNEC_MCSSDvSSD_light <- PNEC_MCSSDvSSD + theme.light
+
+# ggsave(filename = "PNEC_pSSDvSSD.tiff",
+#        path = "../output/presentation_Figs/", 
+#        plot = PNEC_pSSDvSSD_dark, width = 12, height = 10, units = "in")
+
+ggsave(filename = "PNEC_pSSDvSSD.jpg",
+       path = "../output/presentation_Figs/", 
+       plot = PNEC_MCSSDvSSD_dark, width = 12, height = 10, units = "in")
+
+ggsave(filename = "PNEC_MCSSDvSSD.tiff",
+       path = "../output/Manuscript_Figs/", 
+       plot = PNEC_MCSSDvSSD_light, width = 10, height = 8, units = "in")
+
+ggsave(filename = "PNEC_MCSSDvSSD.jpg",
+       path = "../output/Manuscript_Figs/", 
+       plot = PNEC_MCSSDvSSD_light, width = 10, height = 8, units = "in")
+
+PNEC_MCSSDvSSD_light
+```
+
+#### Tier 3
 ```{r}
 library(cols4all)
 #data prep
@@ -3347,7 +3660,7 @@ PNEC_MCSSDvSSD <- ggplot() +
   ylab("Environment")
 
 PNEC_MCSSDvSSD_dark <- PNEC_MCSSDvSSD + theme.dark
-PNEC_MCSSDvSSD_light <- PNEC_MCSSDvSSD + theme.light
+PNEC_MCSSDvSSD_light_t3 <- PNEC_MCSSDvSSD + theme.light
 
 # ggsave(filename = "PNEC_pSSDvSSD.tiff",
 #        path = "../output/presentation_Figs/", 
@@ -3355,18 +3668,40 @@ PNEC_MCSSDvSSD_light <- PNEC_MCSSDvSSD + theme.light
 
 ggsave(filename = "PNEC_pSSDvSSD.jpg",
        path = "../output/presentation_Figs/", 
-       plot = PNEC_pSSDvSSD_dark, width = 12, height = 10, units = "in")
+       plot = PNEC_MCSSDvSSD_dark, width = 12, height = 10, units = "in")
 
-ggsave(filename = "PNEC_MCSSDvSSD.tiff",
+ggsave(filename = "PNEC_MCSSDvSSD_t3.tiff",
        path = "../output/Manuscript_Figs/", 
-       plot = PNEC_MCSSDvSSD_light, width = 10, height = 8, units = "in")
+       plot = PNEC_MCSSDvSSD_light_t3, width = 10, height = 8, units = "in")
 
-ggsave(filename = "PNEC_MCSSDvSSD.jpg",
+ggsave(filename = "PNEC_MCSSDvSSD_t3.jpg",
        path = "../output/Manuscript_Figs/", 
-       plot = PNEC_MCSSDvSSD_light, width = 10, height = 8, units = "in")
+       plot = PNEC_MCSSDvSSD_light_t3, width = 10, height = 8, units = "in")
 
-PNEC_MCSSDvSSD_light
+PNEC_MCSSDvSSD_light_t3
 ```
+```{r}
+summary_PNEC_figure <- ggarrange(PNEC_MCSSDvSSD_light + labs(subtitle = "", title = "Tier 2") + 
+                                   theme_minimal(base_size = 13) +
+                                   theme(plot.subtitle =  element_blank(),  plot.title = element_text(hjust = 0.5)),
+          PNEC_MCSSDvSSD_light_t3 + labs(subtitle = "", title = "Tier 3",) + theme_minimal(base_size = 13) +
+            theme(plot.subtitle = element_blank(), plot.title = element_text(hjust = 0.5),
+                                                                                  axis.text.y = element_blank(),
+                                                                                  axis.title.y = element_blank()),
+          nrow = 1,
+          common.legend = T,
+          legend = "bottom")
+
+ggsave(filename = "summary_PNEC_figure.jpg",
+       dpi = 400,
+       path = "../output/Manuscript_Figs/", 
+       plot = summary_PNEC_figure, width = 8, height = 5, units = "in")
+
+summary_PNEC_figure
+```
+
+
+
 
 ### CoV Determination
 ```{r eval=FALSE, include=FALSE}
@@ -3693,9 +4028,9 @@ freshwater_MC_data <-  filter_environment_data(data = aoc_MC %>%
 ### Example MC Results
 ```{r}
 example.df <-  left_join(results_df,
-          #freshwater_MC_data$filtered_data_small_default_t3_4 %>% 
-          aoc_MC %>% 
-            select(c(unique_id,
+                         aoc_MC %>% 
+                           mutate(unique_id = as.character(unique_id)) %>% 
+                           select(c(unique_id,
                      particles_L_food_dilution_deterministic,
                      particles_L_ox_stress_deterministic,
                      environment,
@@ -3704,24 +4039,17 @@ example.df <-  left_join(results_df,
                      size.length.um.used.for.conversions,
                      shape_f,
                      poly_f)),
-          by = "unique_id")
+          by = "unique_id") %>% 
+  mutate(unique_id = as.character(unique_id))
+  #filter(size.length.um.used.for.conversions >= x1D_set)
 
-# example.df.food <-  left_join(results_df,
-#           #freshwater_MC_data$filtered_data_large_default_t3_4 %>% 
-#           aoc_MC %>% 
-#             select(c(unique_id,                               
-#                      particles_L_food_dilution_deterministic,
-#                      particles_L_ox_stress_deterministic,
-#                      CoV_ox_stress, CoV_food_dilution,
-#                      Species, Group, max.size.ingest.um,
-#                      size.length.um.used.for.conversions,
-#                      shape_f,
-#                      poly_f)),
-#           by = "unique_id")
 
 #get a few rowids to select for plotting
 #example.unique_id.ox.stress.max <- example.df.freshwater.tissue %>% 
 example.unique_id.ox.stress.max <- aoc_MC %>% 
+   filter(size.length.um.used.for.conversions >= x1D_set,
+         particles_L_ox_stress_deterministic > 0
+         ) %>% 
   arrange(desc(CoV_ox_stress)) %>% 
   slice(1) %>% 
   pull(unique_id)
@@ -3729,13 +4057,20 @@ example.unique_id.ox.stress.max <- aoc_MC %>%
 
 #example.unique_id.ox.stress.min <- example.df.freshwater.tissue %>% 
 example.unique_id.ox.stress.min <- aoc_MC %>% 
+  filter(size.length.um.used.for.conversions >= x1D_set,
+         particles_L_ox_stress_deterministic > 0
+         ) %>% 
   arrange(CoV_ox_stress) %>% 
    slice(1) %>% 
-  pull(unique_id)
+  pull(unique_id) 
   
 #example.unique_id.food.max <- example.df.freshwater.food %>%
 example.unique_id.food.max <- aoc_MC %>%  
-    filter(Group != "Algae") %>% 
+    filter(Group != "Algae",
+           Species == "Hydra attenuata") %>% 
+    filter(size.length.um.used.for.conversions >= x1D_set,
+         particles_L_food_dilution_deterministic > 0
+         ) %>% 
   arrange(desc(CoV_food_dilution)) %>% 
   slice(1) %>% 
   pull(unique_id)
@@ -3743,6 +4078,9 @@ example.unique_id.food.max <- aoc_MC %>%
 #example.unique_id.food.min <- example.df.freshwater.food %>% 
 example.unique_id.food.min <- aoc_MC %>% 
     filter(Group != "Algae") %>% 
+  filter(size.length.um.used.for.conversions >= x1D_set,
+         particles_L_food_dilution_deterministic > 0
+         ) %>% 
   arrange(CoV_food_dilution) %>% 
    slice(1) %>% 
   pull(unique_id)
@@ -3750,7 +4088,9 @@ example.unique_id.food.min <- aoc_MC %>%
 
 create_ggplot <- function(df_input, unique_id_input, plot_type, metric, metric_label,
                           annotation_x, annotation_y,
-                           x_label, color, effect_metric, y_axis_label = TRUE) {
+                           x_label, color, effect_metric, y_axis_label = TRUE,
+                        x_axis_label = T
+                        ) {
   
   # Filter data for the specific plot
   df_example <- df_input %>% 
@@ -3784,13 +4124,13 @@ create_ggplot <- function(df_input, unique_id_input, plot_type, metric, metric_l
   # Calculate maximum density for y-axis scaling in annotation positioning
   max_density <- max(density(df_example[[metric]], na.rm = TRUE)$y)
   
-  # Define adjusted x and y positions for annotation to remain within plot bounds
+  # # Define adjusted x and y positions for annotation to remain within plot bounds
   # annotation_x <- min(df_example[[metric]]) + (max(df_example[[metric]]) - min(df_example[[metric]])) * 0.05
   # annotation_y <- max_density * 0.8  # Position annotation at 80% of max density
-  
+
   # Plot with raw x-axis data, three vertical lines, and internal subtitle text box
   p <- ggplot(df_example, aes(x = .data[[metric]])) +
-    geom_histogram(aes(y = ..density..), fill = color, color = "black", alpha = 0.5, bins = 100) +
+    geom_histogram(aes(y = ..density..), fill = color, color = "black", alpha = 0.5, bins = 35) +
     
     # Median, 5th, and 95th percentile lines
     geom_vline(xintercept = median_value, linetype = "dotted", color = color, linewidth = 1.1) +
@@ -3800,11 +4140,11 @@ create_ggplot <- function(df_input, unique_id_input, plot_type, metric, metric_l
     # Annotation positioned using adjusted x and y limits
     annotate("text", x = annotation_x, y = annotation_y, 
              label = paste0(example.species, " (", example.group, ")\n",
-                            "Mouth size: ", example.max.size.ingest, " µm\n",
+                            "Mouth size: ", signif(example.max.size.ingest,3), " µm\n",
                             "CoV: ", example.CoV, "\n",
                             "Particle length: ", example.particle.length, " µm\n",
                             "Environment: ", example.environment, "\n",
-                            metric_label, ":\n  ", scientific(median_value, 2)),
+                            "POD",  ":\n ", scientific(median_value, 2), "\n", metric_label),
              hjust = 0, vjust = 1, color = color, size = 3) +
     
     scale_x_log10(name = x_label,
@@ -3813,9 +4153,10 @@ create_ggplot <- function(df_input, unique_id_input, plot_type, metric, metric_l
     theme_light() +
     theme(
       plot.title = element_text(size = 12, hjust = 0.5),
-      axis.title.x = element_text(size = 10),
-      axis.text.y = if (!y_axis_label) element_blank() else element_text(),  # Remove y-axis text for right plots
-      axis.title.y = if (!y_axis_label) element_blank() else element_text()
+      #axis.title.x = element_text(size = 10),
+     # axis.text.y = if (!y_axis_label) element_blank() else element_text(),  # Remove y-axis text for right plots
+      axis.title.y = if (!y_axis_label) element_blank() else element_text(),
+      axis.title.x = if (!x_axis_label) element_blank() else element_text(size = 10)
     )
   
   return(p)
@@ -3834,11 +4175,13 @@ plot_food_min <- create_ggplot(df_input = example.df,
                                metric = "particles_L_food_dilution",
                                metric_label = "Particles/L (Food Dilution)",
                                x_label = "Food Dilution (SD from Mean)", 
-                               annotation_x = 1e3,
-                               annotation_y = 1.5,
+                               annotation_x = 3.2E7,
+                               annotation_y = 21,
                                color = "#663399",
                                effect_metric = aoc_MC$particles_L_food_dilution_deterministic,
-                               y_axis_label = TRUE)
+                               y_axis_label = TRUE,
+                             x_axis_label = F
+                             )
 
 plot_food_max <- create_ggplot(df_input = example.df,
                                unique_id_input = example.unique_id.food.max,
@@ -3846,8 +4189,8 @@ plot_food_max <- create_ggplot(df_input = example.df,
                                metric = "particles_L_food_dilution",
                                metric_label = "Particles/L (Food Dilution)",
                                x_label = "Food Dilution (SD from Mean)", 
-                               annotation_x = 1.e-2,
-                               annotation_y = 0.5,
+                              annotation_x = 5e-3,
+                               annotation_y = 0.8,
                                color = "#663399",
                                effect_metric = aoc_MC$particles_L_food_dilution_deterministic,
                                y_axis_label = TRUE)
@@ -3858,11 +4201,13 @@ plot_tissue_min <- create_ggplot(df_input = example.df,
                                metric = "particles_L_ox_stress",
                                metric_label = "Particles/L (Tissue Translocation)",
                                x_label = "Tissue Translocation (SD from Mean)", 
-                               annotation_x = 1.4e4,
-                               annotation_y = 20,
+                               annotation_x = 7.6e7,
+                               annotation_y = 100,
                                color = "forestgreen",
                                effect_metric = aoc_MC$particles_L_ox_stress_deterministic,
-                               y_axis_label = TRUE)
+                               y_axis_label = F,
+                             x_axis_label = F
+                             )
 
 plot_tissue_max <- create_ggplot(df_input = example.df,
                                unique_id_input = example.unique_id.ox.stress.max,
@@ -3870,15 +4215,16 @@ plot_tissue_max <- create_ggplot(df_input = example.df,
                                metric = "particles_L_ox_stress",
                                metric_label = "Particles/L (Tissue Translocation)",
                                x_label = "Tissue Translocation (SD from Mean)", 
-                               annotation_x = 1e10,
-                               annotation_y = 2.5,
+                               annotation_x = 4e5,
+                               annotation_y = 1.6,
                                color = "forestgreen",
                                effect_metric = aoc_MC$particles_L_ox_stress_deterministic,
-                               y_axis_label = TRUE)
+                               y_axis_label = F)
 
 
 MC_example_plots <- ggarrange(plot_food_min, plot_tissue_min,
-                              plot_food_max, plot_tissue_max
+                              plot_food_max, plot_tissue_max,
+                              labels = c("A", "B", "C", "D")
                               )
 
 ggsave(filename = "MC_example_plots.jpg",
@@ -3909,7 +4255,7 @@ aoc_risk_paper_MC <- aoc_MC %>%
 
 ####---- TISSUE TRANSLOCATION ------#####
 filtered.data.small.default_t1.2_MC <- aoc_risk_paper_MC %>% 
-  filter(translocatable %in% c("translocatable", "translocatable (all)", "translocatable (some)")) %>% 
+  filter(translocatable != "not translocatable") %>% 
   filter(particles_L_ox_stress_deterministic > 0) %>% 
           #mutate(dose_new = particles.L.ox.stress / (af.time * af.noec)) %>% #we should determine if the AFs should be applied, bc I think pSSD does this
          mutate(dose_new_particles_L = mean_particles_L_ox_stress) %>% 
@@ -4701,10 +5047,13 @@ library(openxlsx)
 tomex2.0_aoc_z_final_utf8 <- stringi::stri_enc_toutf8(aoc_aligned_no_filters, validate = TRUE)
 
 # List of data frame names
-dataframe_names <- c("unified_thresholds", "leave_one_out_df", "tomex2.0_aoc_z_final_utf8")
+dataframe_names <- c("formatted_thresholds", "simple_thresholds_MC", "simple_thresholds_MC_mass", "MC_RSD",
+                     "freshwater_marine_params_species_sensitivity_analysis",
+                     "unified_thresholds", "leave_one_out_df", "tomex2.0_aoc_z_final_utf8")
 
 # Corresponding custom sheet names
-sheet_names <- c("Thrshlds_Tr_ERM_Env_Qulty", "Leave_one_out_studies", "Full ToMEx2.0 dataset")
+sheet_names <- c("Deterministic_thresholds", "Monte_Carlo_thresholds", "Monte_Carlo_thresholds_mass", "Monte_Carlo_RSD",
+                 "Fresh_Mar_Sp_Par_sensitivity", "Thrshlds_Tr_ERM_Env_Qulty", "Leave_one_out_studies", "Full ToMEx2.0 dataset")
 
 # Create a new Excel workbook
 wb <- createWorkbook()
