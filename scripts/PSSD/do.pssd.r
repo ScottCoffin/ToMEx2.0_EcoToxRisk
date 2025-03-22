@@ -190,19 +190,21 @@ do.pSSD_mod <- function(DP, DP.SD, UFt, UFdd, SIM, CV.DP, CV.UF) {
       
     } else {
       # Three or more endpoints: Bootstrap with uncertainty factor
-      low <- max(0, (1 - (sqrt(sum(c(DP.SD[, sp], CV.DP2, CV.UF)^2, na.rm = T)))))
-      high <- (1 + (sqrt(sum(c(DP.SD[, sp], CV.DP2, CV.UF)^2, na.rm = T))))
+      #Removing the DP.SD[, sp] from the groups to test
+      high <- (sqrt(sum(c(mean(DP.SD[, sp]/DP[, sp], na.rm = T), 1+CV.DP2, 1+CV.UF)^2, na.rm = T)))
+      low <- 1/high
       
       # Debugging: Print low and high to ensure they are valid
       print(paste("Species:", sp, "low:", low, "high:", high))
       
       uncertainty_factor <- runif(min = low, max = high, n = SIM)
-      data <- rnorm(mean = mean(sort.endpoints[[sp]]), 
-                    sd = max(1e-6, sd(sort.endpoints[[sp]])),  
+      
+      data <- 10^rnorm(mean = mean(log10(sort.endpoints[[sp]])), 
+                    sd = sd(log10(sort.endpoints[[sp]])),  
                     n = SIM)
       
       # Ensure no negative values in the final result
-      NOEC_comb[sp, ] <- pmax(0, data * uncertainty_factor)
+      NOEC_comb[sp, ] <- data * uncertainty_factor
     }
   }
   

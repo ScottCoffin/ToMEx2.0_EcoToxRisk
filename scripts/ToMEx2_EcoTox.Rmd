@@ -1174,7 +1174,7 @@ return(list(
 }
 
 ## apply function
-marine_alpha_thresholds <- derive_thresholds(aoc_marine_alphas_aligned)
+marine_alpha_thresholds <- derive_thresholds(aligned_data = aoc_marine_alphas_aligned)
 
 saveRDS(marine_alpha_thresholds, "../data/output/marine_alpha_thresholds.rds")
 
@@ -4247,6 +4247,11 @@ summarize_distinct <- function(data, name) {
   return(summary)
 }
 
+
+tier1_2_food <- readRDS("../data/output/tier1_2_food.RDS")
+tier3_4_food <- readRDS("../data/output/tier3_4_food.RDS")
+tier1_2_tissue <- readRDS("../data/output/tier1_2_tissue.RDS")
+tier3_4_tissue <- readRDS("../data/output/tier3_4_tissue.RDS")
 #application
 tier1_2_food_summary <- summarize_distinct(tier1_2_food, "Tier 1-2 Food")
 tier3_4_food_summary <- summarize_distinct(tier3_4_food, "Tier 3-4 Food")
@@ -4429,11 +4434,11 @@ prepare_plot_data <- function(pSSD, data_matrices, species_data_source) {
 
   # Define interpolation values
   iv <- seq(-5, 10, 0.001)
-  ECDF.data <- matrix(NA, 10000, length(iv))
+  ECDF.data <- matrix(NA, ncol(pSSD), length(iv))
   
   # Compute ECDF for each column in pSSD
  # for (i in 1:10000) {
-  for (i in 1:10) { # uncomment if not beta testing!
+  for (i in 1:ncol(pSSD)) { # uncomment if not beta testing!
     the.ecdf.f <- ecdf(log(pSSD[, i], base = 10))
     ECDF.data[i, ] <- the.ecdf.f(iv)
   }
@@ -4649,7 +4654,7 @@ tier3_4_food_pssd <- run_pSSD_analysis(
   data_matrices = tier3_4_food_matrices,
   num_iterations = 10,
   sim = SIM,
-  cv_dp = CV.DP.food,  # Example coefficient of variation for DP
+  cv_dp = CV.DP.food, # Example coefficient of variation for DP
   cv_uf = CV.UF,  # Example coefficient of variation for UF
   data_name = "tier3_4_food"
 )
