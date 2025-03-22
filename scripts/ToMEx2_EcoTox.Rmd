@@ -1057,6 +1057,13 @@ list(hcx_est = hcx_est,
      hcx95cl = NA)
 }
 }
+
+SSD_function_t1_v1 <- SSD_function_t1
+SSD_function_t2_v1 <- SSD_function_t2
+SSD_function_t3_4_v1 <- SSD_function_t3_4
+
+# save alt versions for call below (bc we use slightly different outputs for MC analysis, which have the same names)
+
 ```
 
 
@@ -1115,10 +1122,10 @@ filtered.data.small.default_t3.4 <- filtered.data.small.default_t1.2 %>%
          bio_f %in% c("Organism", "Population"))
 
 # get thresholds
-small.default.t1 <- SSD_function_t1(filtered.data = filtered.data.small.default_t1.2, hcxlcl = 5)
-small.default.t2 <- SSD_function_t2(filtered.data = filtered.data.small.default_t1.2, hcx = 5)
-small.default.t3 <- SSD_function_t3_4(filtered.data = filtered.data.small.default_t3.4, hcx = 5)
-small.default.t4 <- SSD_function_t3_4(filtered.data = filtered.data.small.default_t3.4, hcx = 10)
+small.default.t1 <- SSD_function_t1_v1(filtered.data = filtered.data.small.default_t1.2, hcxlcl = 5)
+small.default.t2 <- SSD_function_t2_v1(filtered.data = filtered.data.small.default_t1.2, hcx = 5)
+small.default.t3 <- SSD_function_t3_4_v1(filtered.data = filtered.data.small.default_t3.4, hcx = 5)
+small.default.t4 <- SSD_function_t3_4_v1(filtered.data = filtered.data.small.default_t3.4, hcx = 10)
 
 ####---- Food Dilution ------#####
 filtered.data.large.default_t1.2 <- aligned_data %>% 
@@ -1142,10 +1149,10 @@ filtered.data.large.default_t3.4 <- filtered.data.large.default_t1.2 %>%
          bio_f %in% c("Organism", "Population"))
 
 # get thresholds
-large.default.t1 <- SSD_function_t1(filtered.data = filtered.data.large.default_t1.2, hcxlcl = 5)
-large.default.t2 <- SSD_function_t2(filtered.data = filtered.data.large.default_t1.2, hcx = 5)
-large.default.t3 <- SSD_function_t3_4(filtered.data = filtered.data.large.default_t3.4, hcx = 5)
-large.default.t4 <- SSD_function_t3_4(filtered.data = filtered.data.large.default_t3.4, hcx = 10)
+large.default.t1 <- SSD_function_t1_v1(filtered.data = filtered.data.large.default_t1.2, hcxlcl = 5)
+large.default.t2 <- SSD_function_t2_v1(filtered.data = filtered.data.large.default_t1.2, hcx = 5)
+large.default.t3 <- SSD_function_t3_4_v1(filtered.data = filtered.data.large.default_t3.4, hcx = 5)
+large.default.t4 <- SSD_function_t3_4_v1(filtered.data = filtered.data.large.default_t3.4, hcx = 10)
 
 base_thresholds <- tibble(
   "Tier" = c('Tier1', 'Tier2', 'Tier3', 'Tier4'),
@@ -1168,6 +1175,8 @@ return(list(
 
 ## apply function
 marine_alpha_thresholds <- derive_thresholds(aoc_marine_alphas_aligned)
+
+saveRDS(marine_alpha_thresholds, "../data/output/marine_alpha_thresholds.rds")
 
 marine_alpha_thresholds$base_thresholds
 
@@ -1434,241 +1443,6 @@ here()
 source(here("scripts/monte carlo/RDAmaker_functions.R")) #get ToMEx1.0 fxn
 source("monte carlo/ToMEx2.0_Data_Tidying_functions.R") 
 ```
-<!-- RUN THESE IN CONSOLE -->
-<!-- ```{r} -->
-<!-- getwd() -->
-<!-- #### read in input data necessary for functionalized data tidying  -->
-<!-- # ToMEx 1.0 data file (no alignments) -->
-<!-- aoc <- read_csv("monte carlo/ref data/AquaticOrganisms_Clean_final.csv",  -->
-<!--                 guess_max = 10000, show_col_types = FALSE) %>% rowid_to_column() -->
-
-<!-- ## Some alignments are done in these data processing scripts -->
-<!-- ## generate ToMEx 1.0 dataset ### -->
-<!--   aoc_setup <- ToMEx1.0fxn(aoc = aoc, -->
-<!--                            R.ave.water.marine = R.ave.water.marine, -->
-<!--                            R.ave.water.freshwater = R.ave.water.freshwater, -->
-<!--                            R.ave.sediment.marine = R.ave.sediment.marine, -->
-<!--                            R.ave.sediment.freshwater = R.ave.sediment.freshwater, -->
-<!--                            beta_log10_body_length = beta_log10_body_length, -->
-<!--                            body_length_intercept = body_length_intercept)  -->
-
-<!-- ## generate ToMEx 2.0 dataset ### -->
-<!--   tomex2.0_aoc_z_final <- ToMEx2.0fxn(aoc_setup = aoc_setup, -->
-<!--                                       tomex2.0 = tomex2.0, -->
-<!--                                       bodysize_addons = read_csv("monte carlo/ref data/gape_size.csv", show_col_types = FALSE), -->
-<!--                                       R.ave.water.marine = R.ave.water.marine, -->
-<!--                                       R.ave.water.freshwater = R.ave.water.freshwater, -->
-<!--                                       R.ave.sediment.marine = R.ave.sediment.marine, -->
-<!--                                       R.ave.sediment.freshwater = R.ave.sediment.freshwater, -->
-<!--                                       beta_log10_body_length = beta_log10_body_length, -->
-<!--                                       body_length_intercept = body_length_intercept) %>%  -->
-<!--     mutate(environment = env_f) -->
-
-<!-- ``` -->
-
-<!-- ```{r}   -->
-<!-- #### ORIGINAL FUNCTION #### -->
-<!-- # define function for deriving thresholds with different quality filtered datasets    -->
-<!-- calculate_thresholds <- function(data, label) { -->
-
-<!--    aoc_iter <- data  %>%  -->
-<!--        mutate(x1M_set = x1M_set) %>%  -->
-<!--     #drop_na(effect.metric) %>%  -->
-<!--     ungroup() %>%  -->
-<!--     ### First filter the data #### -->
-<!--   ## First filter data with global filters -->
-<!--   filter(!environment %in% c("Terrestrial", "Not Reported"), -->
-<!--          Group != "Bacterium", -->
-<!--          Group != "Plant", -->
-<!--          effect.metric != "HONEC", -->
-<!--   ) %>%  -->
-<!--     #Remove 26C temperature treatment data from Jaimukar et al. 2018 -->
-<!--     filter(!(article == 42 & media.temp == 26)) %>%  -->
-<!--     mutate(max.size.ingest.um = 1000 * max.size.ingest.mm) %>%  #makes it less confusing below -->
-<!--     # calculate ERM for each species -->
-<!--     #### TISSUE TRANSLOCATION #### -->
-<!--   # define upper size length for Translocation  -->
-<!--   #set to 83um for upper limit or max size ingest, whichever is smaller -->
-<!--   mutate(x2M_trans = case_when( -->
-<!--     is.na(max.size.ingest.um) ~ upper.tissue.trans.size.um, -->
-<!--     TRUE ~ pmin(max.size.ingest.um, upper.tissue.trans.size.um) -->
-<!--   )) %>%  -->
-<!--     # define environment-specific alpha parameters # -->
-<!--     mutate(alpha = case_when(environment == "Marine" ~ alpha.marine, -->
-<!--                              environment == "Freshwater" ~ alpha.freshwater), -->
-<!--            a.sa = case_when(environment == "Marine" ~ a.sa.marine, -->
-<!--                             environment == "Freshwater" ~ a.sa.freshwater), -->
-<!--            a.v = case_when(environment == "Marine" ~ a.v.marine, -->
-<!--                             environment == "Freshwater" ~ a.v.freshwater), -->
-<!--            a.m = case_when(environment == "Marine" ~ a.m.marine, -->
-<!--                            environment == "Freshwater" ~ a.m.freshwater), -->
-<!--            a.ssa = case_when(environment == "Marine" ~ a.ssa.marine, -->
-<!--                            environment == "Freshwater" ~ a.ssa.freshwater), -->
-<!--            ) %>%  -->
-<!--     # calculate effect threshold for particles -->
-<!--     mutate(EC_mono_p.particles.mL_trans = dose.particles.mL.master) %>%  -->
-<!--     mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles -->
-<!--     mutate(mu.p.poly_trans = mux_polyfnx(a.x = alpha, #alpha for particles -->
-<!--                                          x_UL= x2M_trans, #upper ingestible size limit (width of particle) -->
-<!--                                          x_LL = x1M_set)) %>%  -->
-<!--     # polydisperse effect threshold for particles -->
-<!--     mutate(EC_poly_p.particles.mL_trans = (EC_mono_p.particles.mL_trans * mu.p.mono)/mu.p.poly_trans) %>%  -->
-<!--     #calculate CF_bio for all conversions -->
-<!--     mutate(CF_bio_trans = CFfnx(x1M = x1M_set,#lower size bin -->
-<!--                                 x2M = x2M_trans, #upper translocatable -->
-<!--                                 x1D = x1D_set, #default -->
-<!--                                 x2D = x2D_set,  #default -->
-<!--                                 a = alpha)) %>%   -->
-<!--     ## Calculate environmentally relevant effect threshold for particles -->
-<!--     mutate(EC_env_p.particles.mL_trans = EC_poly_p.particles.mL_trans * CF_bio_trans) %>%  #aligned particle effect concentraiton (1-5000 um) -->
-
-<!--     #### Surface area ERM #### -->
-<!--   ##--- environmental calculations ---### -->
-<!--   #calculate lower translocatable surface area -->
-<!--   mutate(x_LL_sa_trans = SAfnx(length = x1D_set,  -->
-<!--                                width = x1D_set,  -->
-<!--                                height = x1D_set), -->
-<!--   #calculate upper translocatable surface area using spherical assumption -->
-<!--          x_UL_sa_trans = SAfnx(length = x2M_trans,  -->
-<!--                                width = x2M_trans,  -->
-<!--                                height = x2M_trans)) %>%   -->
-<!--     #calculate mu_x_poly (env) for surface area -->
-<!--     mutate(mu.sa.poly_trans = mux_polyfnx(a.sa, x_UL_sa_trans, x_LL_sa_trans)) %>%  -->
-
-<!--     ##--- laboratory calculations ---### -->
-<!--     ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  # -->
-<!--     #(note that if mixed particles were used, a different equation must be used) -->
-<!--     mutate(mu.sa.mono = case_when( -->
-<!--       polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported surface area in monodisperse -->
-<!--       polydispersity == "polydisperse" ~  mux_polyfnx(a.x = a.sa,  -->
-<!--                                                       x_LL = particle.surface.area.um2.min, -->
-<!--                                                       x_UL = particle.surface.area.um2.max))) %>%  -->
-
-<!--     #calculate polydisperse effect concentration for surface area (particles/mL) -->
-<!--     mutate(EC_poly_sa.particles.mL_trans = (EC_mono_p.particles.mL_trans * mu.sa.mono)/mu.sa.poly_trans) %>%   -->
-<!--     #calculate environmentally realistic effect threshold -->
-<!--     mutate(EC_env_sa.particles.mL_trans = EC_poly_sa.particles.mL_trans * CF_bio_trans) %>%  -->
-
-<!--     ##### FOOD DILUTION #### -->
-<!--   # define upper size length for ingestion  -->
-<!--   mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ x2D_set,  -->
-<!--                                 max.size.ingest.um < x2D_set ~ max.size.ingest.um, -->
-<!--                                 max.size.ingest.um > x2D_set ~ x2D_set -->
-<!--   )) %>%  #set to 5,000 as upper limit or max size ingest, whichever is smaller -->
-<!--     # calculate effect threshold for particles -->
-<!--     mutate(EC_mono_p.particles.mL_ingest = dose.particles.mL.master) %>%  -->
-<!--     mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles -->
-<!--     mutate(mu.p.poly_ingest = mux_polyfnx(a.x = alpha, #alpha for particles -->
-<!--                                           x_UL= x2M_ingest, #upper ingestible size limit -->
-<!--                                           x_LL = x1M_set)) %>%  -->
-<!--     # polydisperse effect threshold for particles -->
-<!--     mutate(EC_poly_p.particles.mL_ingest = (EC_mono_p.particles.mL_ingest * mu.p.mono)/mu.p.poly_ingest) %>%  -->
-<!--     #calculate CF_bio for all conversions -->
-<!--     mutate(CF_bio_ingest = CFfnx(x1M = x1M_set,#lower size bin -->
-<!--                                  x2M = x2M_ingest, #upper ingestible length -->
-<!--                                  x1D = x1D_set, #default -->
-<!--                                  x2D = x2D_set,  #default upper size range -->
-<!--                                  a = alpha)) %>%   -->
-<!--     ## Calculate environmentally relevant effect threshold for particles -->
-<!--     mutate(EC_env_p.particles.mL_ingest = EC_poly_p.particles.mL_ingest * CF_bio_ingest) %>%  #aligned particle effect concentraiton (1-5000 um) -->
-
-
-<!--     #### volume ERM #### -->
-<!--   ##--- environmental calculations ---### -->
-<!--   #calculate lower ingestible volume  -->
-<!--   mutate(x_LL_v_ingest = volumefnx(length = x1D_set, -->
-<!--                                      width = x1D_set, -->
-<!--                                      height = x1D_set), -->
-<!--            x_UL_v_ingest = volumefnx(length = x2M_ingest,  -->
-<!--                                      width = x2M_ingest, -->
-<!--                                      height = x2M_ingest)) %>% -->
-<!--     # calculate mu.v.poly -->
-<!--     mutate(mu.v.poly_ingest = mux_polyfnx(a.v, x_UL_v_ingest, x_LL_v_ingest)) %>%  -->
-<!--     ##--- laboratory calculations ---### -->
-<!--     ## define mu_x_mono OR mu_x_poly (lab) for alignment to ERM  # -->
-<!--     #(note that if mixed particles were used, a different equation must be used) -->
-<!--     mutate(mu.v.mono = case_when( -->
-<!--       polydispersity == "monodisperse" ~ particle.volume.um3, # use reported volume in monodisperse -->
-<!--       polydispersity == "polydisperse" ~ mux_polyfnx(a.x = a.v,  -->
-<!--                                                      x_LL = particle.volume.um3.min, -->
-<!--                                                      x_UL = particle.volume.um3.max))) %>%  -->
-
-<!--     #calculate polydisperse effect concentration for volume (particles/mL) -->
-<!--     mutate(EC_poly_v.particles.mL_ingest = (EC_mono_p.particles.mL_ingest * mu.v.mono)/mu.v.poly_ingest) %>%   -->
-<!--     #calculate environmentally realistic effect threshold -->
-<!--     mutate(EC_env_v.particles.mL_ingest = EC_poly_v.particles.mL_ingest * CF_bio_ingest) %>%  -->
-
-<!--     ###### CLEANUP ##### -->
-<!--   mutate(particles.mL.ox.stress = EC_env_sa.particles.mL_trans, -->
-<!--          particles.mL.food.dilution = EC_env_v.particles.mL_ingest) %>%  -->
-<!--      #ensure algae not used in food dilution -->
-<!--   mutate(particles.mL.food.dilution = case_when( -->
-<!--     Group == "Algae" ~ NA, -->
-<!--     T ~ particles.mL.food.dilution)) %>%  -->
-<!--      # ensure no negative numbers! -->
-<!--      filter(particles.mL.food.dilution > 0) %>%  -->
-<!--      filter(particles.mL.ox.stress > 0) %>%  -->
-<!--      filter(size.length.um.used.for.conversions >= 1) %>%  -->
-<!--     #### annotate studies in which particles are too big to be ingested or translocated for those ERMs (to be filtered in ssd functions) -->
-<!--     mutate(translocatable = as.factor(ifelse(size.length.um.used.for.conversions > x2M_trans,  -->
-<!--                                    "not translocatable",  -->
-<!--                                    "translocatable"))) %>%  -->
-<!--     mutate(ingestible = as.factor(ifelse(size.length.um.used.for.conversions > x2M_ingest,  -->
-<!--                                "not ingestible",  -->
-<!--                                "ingestible"))) %>%  -->
-
-<!--     #rowwise() %>% -->
-<!--     mutate(unique_id = row_number()) %>%  -->
-<!--     # mutate(unique_id = digest::digest(paste(across(everything()), collapse = "-"), algo = "md5")) %>% -->
-<!--     ungroup() -->
-
-
-<!--   # calculate thresholds for different environments -->
-<!--   marine_thresholds <- process_environment_data(aoc_iter, -->
-<!--                                                 "Marine",  -->
-<!--                                                 upper.tissue.trans.size.um = upper.tissue.trans.size.um, -->
-<!--                                                 x1D_set = x1D_set,  -->
-<!--                                                 x2D_set = x2D_set) %>%  -->
-<!--     mutate("label" = as.character(label)) -->
-
-<!--   freshwater_thresholds <- process_environment_data(aoc_iter,  -->
-<!--                                                     "Freshwater", -->
-<!--                                                     upper.tissue.trans.size.um = upper.tissue.trans.size.um, -->
-<!--                                                     x1D_set = x1D_set,  -->
-<!--                                                     x2D_set = x2D_set)  %>%  -->
-<!--     mutate("label" = as.character(label)) -->
-
-
-<!--   freshwater_marine_thresholds <- process_environment_data(aoc_iter,  -->
-<!--                                                            c("Freshwater", "Marine"), -->
-<!--                                                            upper.tissue.trans.size.um = upper.tissue.trans.size.um, -->
-<!--                                                            x1D_set = x1D_set,  -->
-<!--                                                            x2D_set = x2D_set) %>%  -->
-<!--     mutate("label" = as.character(label)) -->
-
-
-<!--   ##### SAVE OUTPUT OF MONTE CARLO ###### -->
-
-<!--   thresholds_results <- list("label" = as.character(label),  -->
-<!--                                   full_dataset = list( -->
-<!--                                     species = aoc_iter$Species, -->
-<!--                                     group = aoc_iter$Group, -->
-<!--                                     environment = aoc_iter$environment, -->
-<!--                                     study = paste(aoc_iter$authors, aoc_iter$year), -->
-<!--                                     doi = aoc_iter$doi, -->
-<!--                                     particles_mL_ox_stress = aoc_iter$particles.mL.ox.stress, -->
-<!--                                     particles_mL_food_dilution = aoc_iter$particles.mL.food.dilution, -->
-<!--                                     unique_id = aoc_iter$unique_id), -->
-<!--                                   base_thresholds = list( -->
-<!--                                     "label" = as.character(label),  -->
-<!--                                     marine = marine_thresholds, -->
-<!--                                     freshwater = freshwater_thresholds, -->
-<!--                                     freshwater_marine = freshwater_marine_thresholds -->
-<!--                                     )) -->
-
-<!--   return(thresholds_results) -->
-<!--   } #close model_wrapper function -->
-<!-- ``` -->
 
  3-13-2025: Updated function with functionalized alignment
  
@@ -2457,6 +2231,9 @@ freshwater_marine_params_species_sensitivity_analysis <-
 These techniques are based on the Leave-One-Out-method, in which we recalculate the results of our meta-analysis K − 1  times, each times leaving out one study. This way, we can more easily detect studies which influence the overall estimate of our meta-analysis the most, and this lets us better assess if this influence may distort our pooled effect (Viechtbauer and Cheung 2010).
 ### Functions
 ```{r}
+#use SSD functions for MC
+source("monte carlo/ssd_functions.R")
+
 create_leave_one_out_function_t1 <- function(filtered_data) {
   # Vectorized leave-one-out function
   sensitivity_t1 <- Vectorize(function(x, y) {
@@ -3117,15 +2894,24 @@ ggsave(filename = "MC_param_histograms.jpg",
 ```
 
 
- NOTE: this is done in scripts/monte carlo/Master_Data_Tidying_Monte_Carlo.R. The reason is that the data prep scripts are extremely complicated, and preserving every nuance with perfect fidelity through copying into this markdown script has proven impossible. Just import the final RDS file generated from that script.
- 
+#### Import MC Analysis
+
+MC performed in scripts/monte carlo/EcoTox_MonteCarlo.Rmd
 ```{r}
 #regular MC
 #MC_results <- readRDS("monte carlo/output/MC_results.rds")
-n_sim <- readRDS("monte carlo/output/n_sim.rds")
-#sobol 
-MC_results <- readRDS("monte carlo/output/MC_results_sobol.rds")
+#n_sim <- readRDS("monte carlo/output/n_sim.rds")
+#n_sim
+
+#sobol sequence generated data is used because the Latin Hypercube Sampling approach more robustly propagates uncertainties than the standard MC approach
+#MC_results <- readRDS("monte carlo/output/MC_results_sobol.rds")
+
+MC_results <- readRDS("monte carlo/output/sobol_results_filtered.rds")
 #summary_stats_base_thresholds_MC <- readRDS("monte carlo/output/summary_stats_base_thresholds.rds")
+
+n_sim <- summary_stats_base_thresholds_MC$N_sim[1]
+
+n_sim
 
 summary_stats_base_thresholds_MC <- readRDS("monte carlo/output/summary_stats_base_thresholds_sobol.rds")
 ```
@@ -3249,7 +3035,8 @@ simple_thresholds_MC_meta
 
  
 ```{r}
-aoc_MC <- readRDS("monte carlo/output/aoc_MC.rds")
+#aoc_MC <- readRDS("monte carlo/output/aoc_MC.rds")
+aoc_MC <- readRDS("monte carlo/output/aoc_MC_sobol.rds")
 #n_sim <- aoc_MC$n_sim[[1]]
 
 print(paste("Number of MC Simulations:", n_sim))
@@ -3314,40 +3101,42 @@ left_join(aoc_d_simple, aoc_final_simple, by ="rowid")
 
 ### Threshold distributions
 ```{r}
-# just use the nested dataframes
-first_subtract <- n_sim
-starting_dataframe <- first_subtract + 1
-final_dataframe <- starting_dataframe + n_sim - 1
-
-# save truncated MC result
-MC_results_p <- MC_results_parallel[starting_dataframe:final_dataframe]
-
-# Extract and combine base_thresholds for each environment
-all_thresholds_marine <- map(MC_results_p, ~ .x$marine) %>% 
-  bind_rows(.id = "simulation_id")
-
-all_thresholds_freshwater <- map(MC_results_p, ~ .x$freshwater) %>% 
-  bind_rows(.id = "simulation_id")
-
-# all_thresholds_freshwater_marine <- map(MC_results, ~ .x$base_thresholds$freshwater_marine) %>% 
+# # just use the nested dataframes
+# first_subtract <- n_sim
+# starting_dataframe <- first_subtract + 1
+# final_dataframe <- starting_dataframe + n_sim - 1
+# 
+# # save truncated MC result
+# MC_results_p <- MC_results_parallel[starting_dataframe:final_dataframe]
+# 
+# # Extract and combine base_thresholds for each environment
+# all_thresholds_marine <- map(MC_results_p, ~ .x$marine) %>% 
 #   bind_rows(.id = "simulation_id")
+# 
+# all_thresholds_freshwater <- map(MC_results_p, ~ .x$freshwater) %>% 
+#   bind_rows(.id = "simulation_id")
+# 
+# # all_thresholds_freshwater_marine <- map(MC_results, ~ .x$base_thresholds$freshwater_marine) %>% 
+# #   bind_rows(.id = "simulation_id")
+# 
+# # Combine marine and freshwater data into one data frame with an additional "Environment" column
+# all_thresholds_combined <- bind_rows(
+#   mutate(all_thresholds_marine, Environment = "Marine"),
+#   mutate(all_thresholds_freshwater, Environment = "Freshwater"),
+#  # mutate(all_thresholds_freshwater_marine, Environment = "freshwater_marine"),
+#   .id = "simulation_id"
+# )
 
-# Combine marine and freshwater data into one data frame with an additional "Environment" column
-all_thresholds_combined <- bind_rows(
-  mutate(all_thresholds_marine, Environment = "Marine"),
-  mutate(all_thresholds_freshwater, Environment = "Freshwater"),
- # mutate(all_thresholds_freshwater_marine, Environment = "freshwater_marine"),
-  .id = "simulation_id"
-)
+# # Pivot data longer if the data structure requires it
+# # Assuming that your data might already be in a wide format and needs to be made long
+# all_thresholds_long <- all_thresholds_combined %>%
+#   pivot_longer(
+#     cols = -c(Tier, simulation_id, Environment),
+#     names_to = "Metric",
+#     values_to = "Value"
+#   )
 
-# Pivot data longer if the data structure requires it
-# Assuming that your data might already be in a wide format and needs to be made long
-all_thresholds_long <- all_thresholds_combined %>%
-  pivot_longer(
-    cols = -c(Tier, simulation_id, Environment),
-    names_to = "Metric",
-    values_to = "Value"
-  )
+all_thresholds_long <- readRDS("monte carlo/output/all_thresholds_sobol_long_filtered.rds")
 
 # Calculate summary statistics
 summary_stats_base_thresholds <- all_thresholds_long %>%
@@ -3701,6 +3490,121 @@ summary_PNEC_figure
 ```
 
 
+```{r}
+library(ggplot2)
+library(dplyr)
+library(cols4all)
+library(ggpubr)
+
+# Data Preparation for All Tiers
+prepare_data <- function(tier, erm, environment) {
+  all_MC_data_long %>%
+    filter(ERM == erm, Tier == tier, Environment == environment) %>%
+    rename(PNEC = Value) %>%
+    mutate(Environment = as.factor(Environment))
+}
+
+# Combine data for all tiers
+all_tiers_data <- bind_rows(
+  prepare_data("Tier2", "Food Dilution", "Marine"),
+  prepare_data("Tier2", "Food Dilution", "Freshwater"),
+  prepare_data("Tier2", "Tissue Translocation", "Marine"),
+  prepare_data("Tier2", "Tissue Translocation", "Freshwater"),
+  prepare_data("Tier3", "Food Dilution", "Marine"),
+  prepare_data("Tier3", "Food Dilution", "Freshwater"),
+  prepare_data("Tier3", "Tissue Translocation", "Marine"),
+  prepare_data("Tier3", "Tissue Translocation", "Freshwater"),
+  prepare_data("Tier4", "Food Dilution", "Marine"),
+  prepare_data("Tier4", "Food Dilution", "Freshwater"),
+  prepare_data("Tier4", "Tissue Translocation", "Marine"),
+  prepare_data("Tier4", "Tissue Translocation", "Freshwater"),
+  prepare_data("Tier1", "Food Dilution", "Marine"),
+  prepare_data("Tier1", "Food Dilution", "Freshwater"),
+  prepare_data("Tier1", "Tissue Translocation", "Marine"),
+  prepare_data("Tier1", "Tissue Translocation", "Freshwater")
+) %>%
+  mutate(
+    y_position = as.numeric(factor(Tier)) + 
+      (as.numeric(factor(Environment)) - 1.5) * 0.4
+  )
+
+# Create the plot
+# Create the plot
+final_plot <- ggplot() +
+  # Violin plots for Monte Carlo SSDs
+  geom_violin(
+    data = all_tiers_data,
+    aes(x = PNEC, y = Tier, fill = Environment, color = Environment),
+    draw_quantiles = c(0.05, 0.5, 0.95),
+    linewidth = 1.2,
+    alpha = 0.75
+  ) +
+  # Points for deterministic SSDs
+  geom_point(
+    data = base_thresholds_df,
+    aes(x = PNEC, y = as.numeric(factor(Tier)) + 
+          (as.numeric(factor(Environment)) - 1.5) * 0.4, fill = Environment),
+    size = 5,
+    shape = 22,
+    color = "white",
+    alpha = 0.95,
+    stroke = 1.8
+  ) +
+  # Error bars for deterministic SSDs
+  geom_errorbarh(
+    data = base_thresholds_df,
+    aes(
+      xmin = PNEClcl,
+      xmax = PNECucl,
+      y = as.numeric(factor(Tier)) + 
+        (as.numeric(factor(Environment)) - 1.5) * 0.4,
+      fill = Environment,
+      color = Environment
+    ),
+    height = 0.2,
+    alpha = 0.75,
+    linewidth = 1.2
+  ) +
+  # Color scales
+  scale_color_manual(values = c("Marine" = "navyblue", "Freshwater" = "seagreen")) +
+  scale_fill_manual(values = c("Marine" = "navyblue", "Freshwater" = "seagreen")) +
+  # Log scale for x-axis
+  scale_x_log10() +
+  # Labels and titles
+  labs(
+    title = "Comparison of Monte-Carlo [mcSSDs] and Deterministic [dSSD] Thresholds",
+    subtitle = "Violin Plots = mcSSDs; Diamonds/Error-Bars = dSSD; All Tiers",
+    fill = "Environment",
+    color = "Environment",
+    x = "PNEC (Particles/L; 1 to 5,000 um)",
+    y = "Tier"
+  ) +
+  # Facet with free x-axis scales
+  facet_wrap(~ERM, scales = "free_x") +
+  # Themes
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    legend.position = "bottom",
+    strip.text = element_text(size = 14, face = "bold"), # Bold and larger facet titles
+    axis.title.y = element_text(size = 14, face = "bold") # Bold and larger y-axis title
+  )
+
+# Save the plot
+ggsave(
+  filename = "final_plot_all_tiers.jpg",
+  plot = final_plot,
+  path = "../output/Manuscript_Figs/",
+  width = 12,
+  height = 8,
+  units = "in",
+  dpi = 300
+)
+
+# Display the plot
+print(final_plot)
+```
 
 
 ### CoV Determination
@@ -4118,11 +4022,18 @@ create_ggplot <- function(df_input, unique_id_input, plot_type, metric, metric_l
   
   # Calculate percentiles and median for the vertical lines
   median_value <- median(df_example[[metric]], na.rm = TRUE)
+  perc_01 <- quantile(df_example[[metric]], 0.001, na.rm = TRUE)
   perc_5 <- quantile(df_example[[metric]], 0.05, na.rm = TRUE)
   perc_95 <- quantile(df_example[[metric]], 0.95, na.rm = TRUE)
+  perc_999 <- quantile(df_example[[metric]], 0.999, na.rm = TRUE)
   
   # Calculate maximum density for y-axis scaling in annotation positioning
   max_density <- max(density(df_example[[metric]], na.rm = TRUE)$y)
+  
+   # Calculate symmetric x-limits
+  max_distance <- max(median_value - perc_01, perc_999 - median_value)
+  lower_limit <- median_value - max_distance
+  upper_limit <- median_value + max_distance
   
   # # Define adjusted x and y positions for annotation to remain within plot bounds
   # annotation_x <- min(df_example[[metric]]) + (max(df_example[[metric]]) - min(df_example[[metric]])) * 0.05
@@ -4147,7 +4058,9 @@ create_ggplot <- function(df_input, unique_id_input, plot_type, metric, metric_l
                             "POD",  ":\n ", scientific(median_value, 2), "\n", metric_label),
              hjust = 0, vjust = 1, color = color, size = 3) +
     
+     # Apply symmetric x-limits
     scale_x_log10(name = x_label,
+                  limits = c(lower_limit, upper_limit),
                   labels = scales::label_scientific()) +
     labs(y = if (y_axis_label) "Probability Density" else NULL) +  # Conditional y-axis label
     theme_light() +

@@ -85,23 +85,23 @@ if(environment == "Marine"){
 # report the units they're aligned to (um3/L and um2/L)
 thresholds_df %>% 
   # convert tissue translocation thresholds
-  mutate(tissue_translocation_um2.L =  `Tissue Translocation (Default)` * mux_polyfnx_generalizable(
+  mutate(tissue_translocation_um2.L =  `Tissue Translocation (Default)` * mux_polyfnx(
     a.x = a.sa.input, #alpha for marine surface water for surface area
     x_UL = x2D_set, #upper limit of default range
     x_LL = x1D_set # lower limit of default range
     )) %>% 
-  mutate(tissue_translocation_ug.L =  `Tissue Translocation (Default)` *mux_polyfnx_generalizable(
+  mutate(tissue_translocation_ug.L =  `Tissue Translocation (Default)` *mux_polyfnx(
     a.x = a.m.input, #alpha for marine surface water for mass
     x_UL = x2D_set, #upper limit of default range
     x_LL = x1D_set # lower limit of default range
                                        )) %>% 
   ## convert food dilution thresholds
-  mutate(food_dilution_um3.L =  `Food Dilution (Default)` * mux_polyfnx_generalizable
+  mutate(food_dilution_um3.L =  `Food Dilution (Default)` * mux_polyfnx
          (a.x = a.v.input, #alpha for marine surface water for surface area
                                        x_UL = x2D_set, #upper limit of default range
                                        x_LL = x1D_set # lower limit of default range
                                        )) %>% 
-  mutate(food_dilution_ug.L =  `Food Dilution (Default)` * mux_polyfnx_generalizable(
+  mutate(food_dilution_ug.L =  `Food Dilution (Default)` * mux_polyfnx(
     a.x = a.m.input, #alpha for marine surface water for mass
                                        x_UL = x2D_set, #upper limit of default range
                                        x_LL = x1D_set # lower limit of default range
@@ -532,32 +532,6 @@ param_values
 
 ## Generate Base dataframes
 
-<!-- ```{r warning=FALSE} -->
-<!-- source("RDAmaker_functions.R") #functionalized data tidying script for ToMEx 1.0 data -->
-<!-- source("ToMEx2.0_Data_Tidying_functions.R") #functionalized data tidying script for ToMEx 2.0 data -->
-
-<!-- # these functions perform alignments -->
-<!-- aoc_setup <- ToMEx1.0fxn(aoc = aoc, #dataset input -->
-<!--                          #### parameters ### -->
-<!--                          R.ave.water.marine = R.ave.water.marine, -->
-<!--                          R.ave.water.freshwater = R.ave.water.freshwater, -->
-<!--                          R.ave.sediment.marine = R.ave.sediment.marine, -->
-<!--                          R.ave.sediment.freshwater = R.ave.sediment.freshwater, -->
-<!--                          beta_log10_body_length = beta_log10_body_length, -->
-<!--                          body_length_intercept = body_length_intercept)  -->
-
-<!-- ## generate ToMEx 2.0 dataset ### -->
-<!-- tomex2.0_aoc_z_final <- ToMEx2.0fxn(aoc_setup = aoc_setup, #ToMEx 1.0 (tidyed) -->
-<!--                                     tomex2.0 = tomex2.0, #tomex 2.0 base -->
-<!--                                     bodysize_addons = bodysize_addons, #aux data -->
-<!--                                     ### parameters -->
-<!--                                     R.ave.water.marine = R.ave.water.marine, -->
-<!--                                     R.ave.water.freshwater = R.ave.water.freshwater, -->
-<!--                                     R.ave.sediment.marine = R.ave.sediment.marine, -->
-<!--                                     R.ave.sediment.freshwater = R.ave.sediment.freshwater, -->
-<!--                                     beta_log10_body_length = beta_log10_body_length, -->
-<!--                                     body_length_intercept = body_length_intercept) -->
-<!-- ``` -->
 
 ```{r}
 aoc_risk_paper <- readRDS("../../data/input/aoc_z_tomex2.RDS") %>%  #dataset is prepped in shiny repo
@@ -1095,8 +1069,10 @@ aoc_aligned %>%
 ```
 
 
-Deterministic threshold dataset 
+Deterministic threshold dataset prepared in ToMEx2_EcoTox.Rmd
 ```{r}
+marine_alpha_thresholds <- readRDS("../../data/output/marine_alpha_thresholds.rds")
+
 marine_alpha_thresholds$data$filtered.data.large.default_t1.2 %>% 
   filter(environment == "Marine") %>% 
   mutate(dose_new_particles_mL = dose_new / 1000) %>% 
@@ -1146,53 +1122,9 @@ model_wrapper <- function(params, iteration, MC_results_name, simulation_id){
   
   # Print the current iteration
   print(paste("Iteration:", iteration, "of", n_sim))
-  
-  #unpack parameters
-  # Ensure all extracted parameters are correctly coerced to numeric
-  # # Coerce to numeric directly while accessing the first element of potential list
-  # alpha.marine <- as.numeric(params$alpha.marine[1])
-  # a.sa.marine <- as.numeric(params$a.sa.marine[1])
-  # a.v.marine <- as.numeric(params$a.v.marine[1])
-  # a.m.marine <- as.numeric(params$a.m.marine[1])
-  # a.ssa.marine <- as.numeric(params$a.ssa.marine[1])
-  # alpha.freshwater <- as.numeric(params$alpha.freshwater[1])
-  # a.sa.freshwater <- as.numeric(params$a.sa.freshwater[1])
-  # a.v.freshwater <- as.numeric(params$a.v.freshwater[1])
-  # a.m.freshwater <- as.numeric(params$a.m.freshwater[1])
-  # a.ssa.freshwater <- as.numeric(params$a.ssa.freshwater[1])
-  # R_ave_water_marine <- as.numeric(params$R.ave.water.marine[1])
-  # R_ave_water_freshwater <- as.numeric(params$R.ave.water.freshwater[1])
-  # R_ave_sediment_marine <- as.numeric(params$R.ave.sediment.marine[1])
-  # R_ave_sediment_freshwater <- as.numeric(params$R.ave.sediment.freshwater[1])
-  # sim_beta_log10_body_length <- as.numeric(params$sim.beta.log10.body.length[1])
-  # sim_body_length_intercept <- as.numeric(params$sim.body.length.intercept[1])
-  # upper.tissue.trans.size.um <- as.numeric(params$upper.tissue.trans.size.um[1])
-  
-  
-  ####### ---- RUN FUNCTIONS ---- ###
-  ### Static with base parameters to ensure everything is working ###
-  ## generate ToMEx 1.0 dataset ###
-  # aoc_setup <- ToMEx1.0fxn(aoc = aoc,
-  #                          R.ave.water.marine = R.ave.water.marine,
-  #                          R.ave.water.freshwater = R.ave.water.freshwater,
-  #                          R.ave.sediment.marine = R.ave.sediment.marine,
-  #                          R.ave.sediment.freshwater = R.ave.sediment.freshwater,
-  #                          beta_log10_body_length = beta_log10_body_length,
-  #                          body_length_intercept = body_length_intercept) 
-  # 
-  # ## generate ToMEx 2.0 dataset ###
-  # tomex2.0_aoc_z_final <- ToMEx2.0fxn(aoc_setup = aoc_setup,
-  #                                     tomex2.0 = tomex2.0,
-  #                                     bodysize_addons = bodysize_addons,
-  #                                     R.ave.water.marine = R.ave.water.marine,
-  #                                     R.ave.water.freshwater = R.ave.water.freshwater,
-  #                                     R.ave.sediment.marine = R.ave.sediment.marine,
-  #                                     R.ave.sediment.freshwater = R.ave.sediment.freshwater,
-  #                                     beta_log10_body_length = beta_log10_body_length,
-  #                                     body_length_intercept = body_length_intercept)
+ 
   
   ### perform alignments
-#aoc_MC_iter <- alignmentFxn(df = tomex2.0_aoc_z_final)
 
 aoc_MC_iter <- align_data(aoc_risk_paper,
                           upper.tissue.trans.size.um_input = params$upper.tissue.trans.size.um[1],
@@ -1212,63 +1144,7 @@ aoc_MC_iter <- align_data(aoc_risk_paper,
                           a.m.freshwater_input = params$a.m.freshwater[1]
                           )
 
- #  ##### Base Thresholds
- #  #filter out risk criteria (not done above)#
- #  aoc_aligned <- aoc_MC_iter %>%
- #      # ensure particles are within valid range
- #    filter(size.length.um.used.for.conversions >= x1D_set)  %>% 
- #    drop_na(effect.metric) %>%
- #    filter(tier_zero_tech_f == ("Red Criteria Passed")) 
- #    # ensure no negative numbers are included and that all values are realistic (also done in functions, but doing here so that no confusion occurs anywhere else)
- #    
- #  aoc_risk_paper <- aoc_aligned %>%   
- #    filter(particles.mL.food.dilution > 0,
- #           particles.mL.ox.stress > 0 )
- #  
- #  
- #  # calculate thresholds for different environments
- #  marine_thresholds <- process_environment_data(aoc_risk_paper,
- #                                                "Marine", 
- #                                                upper.tissue.trans.size.um = upper.tissue.trans.size.um,
- #                                                x1D_set = x1D_set, 
- #                                                x2D_set = x2D_set)
- #  
- #  freshwater_thresholds <- process_environment_data(aoc_risk_paper, 
- #                                                    "Freshwater",
- #                                                    upper.tissue.trans.size.um = upper.tissue.trans.size.um,
- #                                                    x1D_set = x1D_set, 
- #                                                    x2D_set = x2D_set)
- #  
- #  # freshwater_marine_thresholds <- process_environment_data(aoc_risk_paper, 
- #  #                                                          c("Freshwater", "Marine"),
- #  #                                                          upper.tissue.trans.size.um = upper.tissue.trans.size.um,
- #  #                                                          x1D_set = x1D_set, 
- #  #                                                          x2D_set = x2D_set)
- #  
- #  
- #  ##### SAVE OUTPUT OF MONTE CARLO ######
- #  
- #  MC_results_name[[i]] <- list(
- # # MC_results_beta_test <- list( #uncomment if beta-testing
- #    tox_vals = list(
- #      iteration = as.numeric(i),
- #      particles_mL_ox_stress = aoc_risk_paper$particles.mL.ox.stress,
- #      particles_mL_food_dilution = aoc_risk_paper$particles.mL.food.dilution,
- #      ingestible = aoc_risk_paper$ingestible,
- #      translocatable = aoc_risk_paper$translocatable,
- #      species = aoc_risk_paper$Species,
- #      group = aoc_risk_paper$Group,
- #      #environment = aoc_risk_paper$environment,
- #      unique_id = aoc_risk_paper$unique_id), #row id that allows matching back to database
- #    base_thresholds = list(
- #           marine = marine_thresholds,
- #           freshwater = freshwater_thresholds#,
- #           #       freshwater_marine = freshwater_marine_thresholds
- #                          )
- #    )
- #  
- #  #return(MC_results)
-  
+
   
   
   # Filter out risk criteria and calculate thresholds for different environments
@@ -1293,12 +1169,6 @@ aoc_MC_iter <- align_data(aoc_risk_paper,
                                                     x2D_set = x2D_set) %>% 
     ## convert particles/L thresholds to volume, mass, surface area (ERM-dependent)
     convert_units_fxn(environment = "Freshwater", params = params[1,])
-  
-  # freshwater_marine_thresholds <- process_environment_data(aoc_risk_paper,
-  #                                                          c("Freshwater", "Marine"),
-  #                                                          upper.tissue.trans.size.um = upper.tissue.trans.size.um,
-  #                                                          x1D_set = x1D_set,
-  #                                                          x2D_set = x2D_set)
   
 
   
@@ -1334,7 +1204,7 @@ aoc_MC_iter <- align_data(aoc_risk_paper,
 ### Parallel Computing 
 
 ```{r}
-n_sim <- 100 #10 for beta-testing, 1000 for full 
+n_sim <- 10 #10 for beta-testing, 1000 for full 
 saveRDS(n_sim, "output/n_sim.rds")
 ```
 
@@ -1387,18 +1257,18 @@ MC_results_parallel <- foreach(i = 1:n_sim,
   a.sa.marine <- as.numeric(params$a.sa.marine[1])
   a.v.marine <- as.numeric(params$a.v.marine[1])
   a.m.marine <- as.numeric(params$a.m.marine[1])
-  a.ssa.marine <- as.numeric(params$a.ssa.marine[1])
+  #a.ssa.marine <- as.numeric(params$a.ssa.marine[1])
   alpha.freshwater <- as.numeric(params$alpha.freshwater[1])
   a.sa.freshwater <- as.numeric(params$a.sa.freshwater[1])
   a.v.freshwater <- as.numeric(params$a.v.freshwater[1])
   a.m.freshwater <- as.numeric(params$a.m.freshwater[1])
-  a.ssa.freshwater <- as.numeric(params$a.ssa.freshwater[1])
+  #a.ssa.freshwater <- as.numeric(params$a.ssa.freshwater[1])
   R_ave_water_marine <- as.numeric(params$R.ave.water.marine[1])
   H_W_ratio_marine <- as.numeric(params$H_W_ratio.marine[1])
   R_ave_water_freshwater <- as.numeric(params$R.ave.water.freshwater[1])
   H_W_ratio_freshwater <- as.numeric(params$H_W_ratio.freshwater[1])
-  R_ave_sediment_marine <- as.numeric(params$R.ave.sediment.marine[1])
-  R_ave_sediment_freshwater <- as.numeric(params$R.ave.sediment.freshwater[1])
+  #R_ave_sediment_marine <- as.numeric(params$R.ave.sediment.marine[1])
+  #R_ave_sediment_freshwater <- as.numeric(params$R.ave.sediment.freshwater[1])
   sim_beta_log10_body_length <- as.numeric(params$sim.beta.log10.body.length[1])
   sim_body_length_intercept <- as.numeric(params$sim.body.length.intercept[1])
   upper.tissue.trans.size.um <- as.numeric(params$upper.tissue.trans.size.um[1])
@@ -1932,48 +1802,8 @@ Uncoment if need to run single-threading instead of parallel
 
 ```{r}
 model_wrapper_sobol_parallel <- function(params, simulation_id) {
-  # Unpack parameters and ensure numeric conversion
-  # alpha.marine <- as.numeric(params$alpha.marine[1])
-  # a.sa.marine <- as.numeric(params$a.sa.marine[1])
-  # a.v.marine <- as.numeric(params$a.v.marine[1])
-  # a.m.marine <- as.numeric(params$a.m.marine[1])
-  # a.ssa.marine <- as.numeric(params$a.ssa.marine[1])
-  # alpha.freshwater <- as.numeric(params$alpha.freshwater[1])
-  # a.sa.freshwater <- as.numeric(params$a.sa.freshwater[1])
-  # a.v.freshwater <- as.numeric(params$a.v.freshwater[1])
-  # a.m.freshwater <- as.numeric(params$a.m.freshwater[1])
-  # a.ssa.freshwater <- as.numeric(params$a.ssa.freshwater[1])
-  # R_ave_water_marine <- as.numeric(params$R.ave.water.marine[1])
-  # R_ave_water_freshwater <- as.numeric(params$R.ave.water.freshwater[1])
-  # sim_beta_log10_body_length <- as.numeric(params$sim.beta.log10.body.length[1])
-  # sim_body_length_intercept <- as.numeric(params$sim.body.length.intercept[1])
-  # sim.upper.tissue.trans.size.um <- as.numeric(params$upper.tissue.trans.size.um[1])
 
-  # ####### ---- RUN FUNCTIONS ---- ###
-  # # Generate ToMEx 1.0 dataset
-  # aoc_setup <- ToMEx1.0fxn(aoc = aoc,
-  #                          R.ave.water.marine = R_ave_water_marine,
-  #                          R.ave.water.freshwater = R_ave_water_freshwater,
-  #                          R.ave.sediment.marine = R.ave.sediment.marine,
-  #                          R.ave.sediment.freshwater = R.ave.sediment.freshwater,
-  #                          beta_log10_body_length = sim_beta_log10_body_length,
-  #                          body_length_intercept = sim_body_length_intercept)
-  # 
-  # # Generate ToMEx 2.0 dataset
-  # tomex2.0_aoc_z_final <- ToMEx2.0fxn(aoc_setup = aoc_setup,
-  #                                     tomex2.0 = tomex2.0,
-  #                                     bodysize_addons = bodysize_addons,
-  #                                     R.ave.sediment.marine = R.ave.sediment.marine,
-  #                                     R.ave.sediment.freshwater = R.ave.sediment.freshwater,
-  #                                     R.ave.water.marine = R_ave_water_marine,
-  #                                     R.ave.water.freshwater = R_ave_water_freshwater,
-  #                                     beta_log10_body_length = sim_beta_log10_body_length,
-  #                                     body_length_intercept = sim_body_length_intercept)
-  # 
-  # # Perform alignments
-  # aoc_MC_iter <- alignmentFxn(df = tomex2.0_aoc_z_final)
-  
-  
+# perform alignments using parameters for simulation   
 aoc_MC_iter <- align_data(aoc_aligned,
                           upper.tissue.trans.size.um_input = params$upper.tissue.trans.size.um[1],
                           body_length_intercept_input = params$sim_body_length_intercept[1],
@@ -1998,7 +1828,6 @@ aoc_MC_iter <- align_data(aoc_aligned,
      drop_na(effect.metric) %>%
     filter(tier_zero_tech_f == "Red Criteria Passed")
     
-
   # Calculate thresholds for marine and freshwater
   marine_thresholds <- process_environment_data(aoc_aligned,
                                                 "Marine",
@@ -2015,20 +1844,12 @@ aoc_MC_iter <- align_data(aoc_aligned,
                                                     x2D_set = x2D_set) %>% 
     ## convert particles/L thresholds to volume, mass, surface area (ERM-dependent)
     convert_units_fxn(environment = "Freshwater", params = params[1,])
-  
-  # freshwater_marine_thresholds <- process_environment_data(aoc_risk_paper,
-  #                                                          c("Freshwater", "Marine"),
-  #                                                          upper.tissue.trans.size.um = upper.tissue.trans.size.um,
-  #                                                          x1D_set = x1D_set,
-  #                                                          x2D_set = x2D_set)
-  
-
+ 
   
    # Store results in list
     sobol_result <- list(
       tox_vals = list(
         simulation_id = simulation_id,
-    #    iteration = as.numeric(i),
       particles_mL_ox_stress = aoc_aligned$particles.mL.ox.stress,
       particles_mL_food_dilution = aoc_aligned$particles.mL.food.dilution,
       ingestible = aoc_aligned$ingestible,
@@ -2042,8 +1863,7 @@ aoc_MC_iter <- align_data(aoc_aligned,
       base_thresholds = list(
         simulation_id = simulation_id,
         marine = marine_thresholds,
-        freshwater = freshwater_thresholds#,
-     #   freshwater_marine = freshwater_marine_thresholds
+        freshwater = freshwater_thresholds
         )
       )
 
@@ -2059,15 +1879,15 @@ aoc_MC_iter <- align_data(aoc_aligned,
 # Number of samples
 #n_sobol <- 1000
 
-n_sobol <- 100
+n_sobol <- 589 #times 16 is 10,013
 
 matrices <- c("A", "B", "AB", "BA")
 first <- total <- "azzini"
 
-params <- c("alpha.marine", "a.sa.marine", "a.v.marine", "a.m.marine", "a.ssa.marine", 
-            "alpha.freshwater", "a.sa.freshwater", "a.v.freshwater", "a.m.freshwater", "a.ssa.freshwater", 
+params <- c("alpha.marine", "a.sa.marine", "a.v.marine", "a.m.marine", 
+            "alpha.freshwater", "a.sa.freshwater", "a.v.freshwater", "a.m.freshwater", 
             "R.ave.water.marine", "R.ave.water.freshwater", "H_W_ratio.marine", "H_W_ratio.freshwater",
-          #  "R.ave.sediment.marine", "R.ave.sediment.freshwater",
+          #  "R.ave.sediment.marine", "R.ave.sediment.freshwater", "a.ssa.marine", "a.ssa.freshwater", 
             "sim.beta.log10.body.length", "sim.body.length.intercept",
             "upper.tissue.trans.size.um")
 
@@ -2086,12 +1906,12 @@ mat[, alpha.marine := rnorm(.N,  mean = alpha_marine, sd = alpha.sd.marine)]
 mat[, a.sa.marine := rnorm(.N,   mean = a_sa.marine, sd = a.sa.sd.marine)]
 mat[, a.v.marine := rnorm(.N,   mean = a_v.marine, sd = a.v.sd.marine)]
 mat[, a.m.marine := rnorm(.N,   mean = a_m.marine, sd = a.m.sd.marine)]
-mat[, a.ssa.marine := rnorm(.N,  mean = a_ssa.marine, sd = a.ssa.sd.marine)]
+#mat[, a.ssa.marine := rnorm(.N,  mean = a_ssa.marine, sd = a.ssa.sd.marine)]
 mat[, alpha.freshwater := rnorm(.N,   mean = alpha_freshwater, sd = alpha.sd.freshwater)]
 mat[, a.sa.freshwater := rnorm(.N,   mean = a_sa.freshwater, sd = a.sa.sd.freshwater)]
 mat[, a.v.freshwater := rnorm(.N,   mean = a_v.freshwater, sd = a.v.sd.freshwater)]
 mat[, a.m.freshwater := rnorm(.N,   mean = a_m.freshwater, sd = a.m.sd.freshwater)]
-mat[, a.ssa.freshwater := rnorm(.N,   mean = a_ssa.freshwater, sd = a.ssa.sd.freshwater)]
+#mat[, a.ssa.freshwater := rnorm(.N,   mean = a_ssa.freshwater, sd = a.ssa.sd.freshwater)]
 mat[, R.ave.water.marine := rtruncnorm(.N, a = 0.0001, b= 1, mean = R_ave.water.marine, sd = R.ave.water.marine.sd)]
 mat[, H_W_ratio.marine := rtruncnorm(.N, a = 0.0001, b= 1, mean = R_ave.water.marine, sd = R.ave.water.marine.sd)]
 mat[, R.ave.water.freshwater := rtruncnorm(.N, a = 0.0001, b= 1, mean = R_ave.water.freshwater, sd = R.ave.water.freshwater.sd)]
@@ -2587,11 +2407,9 @@ tic("Sensitivity Analysis Begins")
 sobol_results <- foreach(i = 1:n_row_sobol,
                                   .packages = c("tidyverse", "doParallel", "truncnorm", "sensobol", "ssdtools"),
                                   .options.snow = opts,
-                                  
                                   .export = c("model_wrapper",
                                               "aoc_aligned",
                                               "align_data",
-                                              # "ToMEx1.0fxn", "ToMEx2.0fxn",
                                    "filter_environment_data", "generate_structure_checks",
                                   "mux_polyfnx", "CFfnx",
                                   "process_environment_data",  "sensitivity_t1",
@@ -2600,7 +2418,6 @@ sobol_results <- foreach(i = 1:n_row_sobol,
                                   "volumefnx", "SAfnx", "massfnx", "SSA.inversefnx",
                                   "MC_results_parallel",
                                   "n_sim",
-                                  #"aoc", "tomex2.0", "bodysize_addons",
                                   "x1D_set", "x2D_set",
                                   "model_wrapper_sobol_parallel", "mat"),
                                   .combine = rbind) %dopar% {
@@ -2612,37 +2429,26 @@ sobol_results <- foreach(i = 1:n_row_sobol,
   a.sa.marine <- as.numeric(params$a.sa.marine[1])
   a.v.marine <- as.numeric(params$a.v.marine[1])
   a.m.marine <- as.numeric(params$a.m.marine[1])
-  a.ssa.marine <- as.numeric(params$a.ssa.marine[1])
+ # a.ssa.marine <- as.numeric(params$a.ssa.marine[1])
   alpha.freshwater <- as.numeric(params$alpha.freshwater[1])
   a.sa.freshwater <- as.numeric(params$a.sa.freshwater[1])
   a.v.freshwater <- as.numeric(params$a.v.freshwater[1])
   a.m.freshwater <- as.numeric(params$a.m.freshwater[1])
-  a.ssa.freshwater <- as.numeric(params$a.ssa.freshwater[1])
+#  a.ssa.freshwater <- as.numeric(params$a.ssa.freshwater[1])
   R_ave_water_marine <- as.numeric(params$R.ave.water.marine[1])
   R_ave_water_freshwater <- as.numeric(params$R.ave.water.freshwater[1])
-  R_ave_sediment_marine <- as.numeric(params$R.ave.sediment.marine[1])
-  R_ave_sediment_freshwater <- as.numeric(params$R.ave.sediment.freshwater[1])
+#  R_ave_sediment_marine <- as.numeric(params$R.ave.sediment.marine[1])
+#  R_ave_sediment_freshwater <- as.numeric(params$R.ave.sediment.freshwater[1])
   sim_beta_log10_body_length <- as.numeric(params$sim.beta.log10.body.length[1])
   sim_body_length_intercept <- as.numeric(params$sim.body.length.intercept[1])
   sim.upper.tissue.trans.size.um <- as.numeric(params$upper.tissue.trans.size.um[1])
   simulation_id <- as.character(params$simulation_id[1])
   
-  # Perform the model wrapping with error handling
+  # Perform the model wrapping
  # result <- tryCatch({
    sobol_results_parallel[[i]] <- model_wrapper_sobol_parallel(params, 
                                                                simulation_id = simulation_id)
-  #}, error = function(e) {
-   # cat(sprintf("Error at iteration %d: %s\n", i, e$message))
-  #  flush.console()
-  #  return(NULL)  # Return NULL on error to continue with other iterations
-  #})
-  
-  # Print progress and return the result for this iteration
-  #cat(sprintf("Processing iteration %d\n", i))
-  #flush.console()
-  
-  #return(result)
-}
+   }
 
 toc(log = T) #end timer and log output
 sobol_time <- unlist(tic.log(format = T))
@@ -2654,6 +2460,9 @@ stopCluster(cl)
 
 # Save the final results
 saveRDS(sobol_results, "output/sobol_results.rds")
+```
+```{r}
+sobol_time
 ```
 
 
@@ -2669,15 +2478,9 @@ n_row_sobol <- nrow(mat)
 n_sobol <- nrow(mat)
 ```
 
-
-
 ## Analysis
 ### Histograms
-
 ```{r}
-all_thresholds_marine_sobol <- map_dfr(sobol_results, ~ .x$marine, .id = "simulation_id")
-
-
 # Extract and combine marine and freshwater thresholds
 all_thresholds_marine_sobol <- map_dfr(sobol_results, ~ .x$marine, .id = "simulation_id")
 all_thresholds_freshwater_sobol <- map_dfr(sobol_results, ~ .x$freshwater, .id = "simulation_id")
@@ -2685,7 +2488,7 @@ all_thresholds_freshwater_sobol <- map_dfr(sobol_results, ~ .x$freshwater, .id =
 # Combine marine and freshwater data into one data frame with an additional "Environment" column
 all_thresholds_sobol_combined <- bind_rows(
   mutate(all_thresholds_marine_sobol, Environment = "Marine"),
-  mutate(all_thresholds_freshwater_sobol, Environment = "Freshwater"),  .id = "simulation_id")
+  mutate(all_thresholds_freshwater_sobol, Environment = "Freshwater"))
 
 # Pivot data longer if the data structure requires it
 # Assuming that your data might already be in a wide format and needs to be made long
@@ -2694,19 +2497,90 @@ all_thresholds_sobol_long <- all_thresholds_sobol_combined %>%
     cols = -c(Tier, simulation_id, Environment),
     names_to = "Metric",
     values_to = "Value"
-  )
+  ) %>% 
+  filter(Value > 0) #remove invalid values
 
+
+# Step 3: Filter for the metrics of interest
+metrics_of_interest <- c("Tissue Translocation (Default)", "Food Dilution (Default)")
+thresholds_filtered <- all_thresholds_sobol_long %>%
+  filter(Metric %in% metrics_of_interest)
+
+# Step 4: Define a function to calculate z-scores
+calculate_z_scores <- function(data) {
+  mean_value <- mean(data, na.rm = TRUE)
+  sd_value <- sd(data, na.rm = TRUE)
+  z_scores <- (data - mean_value) / sd_value
+  return(z_scores)
+}
+
+# Step 5: Calculate z-scores for each Tier, Metric, and Environment
+z_scores <- thresholds_filtered %>%
+  group_by(Tier, Metric, Environment) %>%
+  mutate(Z_Score = calculate_z_scores(Value)) %>%
+  ungroup() 
+
+# Step 6: Identify outliers based on z-scores (e.g., |z| > 3)
+outliers <- z_scores %>%
+  filter(abs(Z_Score) > 3)
+
+# Step 7: Get the simulation IDs of outliers
+outlier_simulation_ids <- outliers %>%
+  pull(simulation_id) %>%
+  unique()
+
+# Step 8: Remove outliers from `mat`, thresholds, and sobol results datasets
+mat_filtered <- mat %>%
+  filter(!simulation_id %in% paste0("sim",outlier_simulation_ids))
+
+all_thresholds_sobol_filtered <- all_thresholds_sobol_combined %>%
+  filter(!simulation_id %in% outlier_simulation_ids)
+
+all_thresholds_sobol_long_filtered <- all_thresholds_sobol_long %>% 
+  filter(!simulation_id %in% outlier_simulation_ids)
+
+sobol_results_filtered <- sobol_results %>%
+  keep(~ !(.x$simulation_id %in% outlier_simulation_ids))
+
+
+# Step 9: Calculate percentage of filtered data for each group
+z_scores_grouped <- z_scores %>% 
+  mutate(outlier = case_when(abs(Z_Score) >3 ~ "outlier",
+                             T ~ "not-outlier")) %>% 
+  group_by(Tier, Metric, Environment, outlier) %>% 
+  summarize(total_sim = n_distinct(simulation_id)) %>% 
+  pivot_wider(values_from = total_sim,
+              names_from = outlier) %>% 
+  mutate(percent_outliers = paste0( signif( ((outlier / (`not-outlier` + outlier)) * 100), 2), "%")) %>% 
+  distinct(Tier, Metric, Environment, percent_outliers) %>% 
+  pivot_wider(names_from = c(Environment, Metric),
+              values_from = percent_outliers)
+
+
+# Step 10: Save the filtered data and percentage summary
+saveRDS(mat_filtered, "output/mat_filtered.rds")
+saveRDS(all_thresholds_sobol_filtered, "output/all_thresholds_sobol_filtered.rds")
+write.csv(z_scores_grouped, "output/percent_filtered_summary.csv", row.names = FALSE)
+saveRDS(all_thresholds_sobol_long_filtered, "output/all_thresholds_sobol_long_filtered.rds")
+saveRDS(sobol_results_filtered, "output/sobol_results_filtered.rds")
+
+## report percentage of simulations filtered for each group based on z-scores
+z_scores_grouped
+```
+
+```{r}
 
 # 3. Extract the Output of Interest: Extract the relevant output from each model run (marine and freshwater thresholds).
 # Convert results to a numeric vector
-Y_marine_food_T3 <- as.numeric(all_thresholds_marine_sobol %>% filter(Tier == "Tier3") %>% 
+Y_marine_food_T3 <- as.numeric(all_thresholds_sobol_filtered %>% filter(Tier == "Tier3", Environment == "Marine") %>% 
                                  pull(`Food Dilution (Default)`))
-Y_freshwater_food_T3 <- as.numeric(all_thresholds_freshwater_sobol %>% filter(Tier == "Tier3") %>% 
+
+Y_freshwater_food_T3 <- as.numeric(all_thresholds_sobol_filtered %>% filter(Tier == "Tier3", Environment == "Freshwater") %>% 
                                      pull(`Food Dilution (Default)`))
 
-Y_marine_tissue_T3 <- as.numeric(all_thresholds_marine_sobol %>% filter(Tier == "Tier3") %>% 
+Y_marine_tissue_T3 <- as.numeric(all_thresholds_sobol_filtered %>% filter(Tier == "Tier3", Environment == "Marine") %>% 
                                    pull(`Tissue Translocation (Default)`))
-Y_freshwater_tissue_T3 <- as.numeric(all_thresholds_freshwater_sobol %>% filter(Tier == "Tier3") %>% 
+Y_freshwater_tissue_T3 <- as.numeric(all_thresholds_sobol_filtered %>% filter(Tier == "Tier3", Environment == "Freshwater")  %>% 
                                        pull(`Tissue Translocation (Default)`))
 
 
@@ -2719,8 +2593,8 @@ hist(Y_freshwater_food_T3)
 #### Summary Statistics
 
 ```{r}
-summary_stats_base_thresholds_sobol <- as.tibble(all_thresholds_sobol_long) %>% 
-  filter(grepl("5th|95th|Default|food_dilution|tissue_translocation", Metric)) %>% 
+summary_stats_base_thresholds_sobol <- as.tibble(all_thresholds_sobol_long_filtered) %>% 
+ # filter(grepl("5th|95th|Default|food_dilution|tissue_translocation", Metric)) %>% 
   group_by(Tier, Environment, Metric) %>%
   summarise(
     Mean = mean(Value, na.rm = TRUE),
@@ -2749,7 +2623,7 @@ summary_stats_base_thresholds_sobol %>% mutate(across(where(is.numeric), ~scales
 Get limits for plotting below
 
 ```{r}
-min_max_sobol <- all_thresholds_sobol_long %>%
+min_max_sobol <- all_thresholds_sobol_long_filtered %>%
   filter(str_detect(Metric, "Default")) %>%  
   group_by(#Environment, 
            Metric) %>%
@@ -2766,7 +2640,7 @@ min_max_sobol
 ##### Particles/L
 ```{r}
 ### Generate plots
-Marine_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long, 
+Marine_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long_filtered, 
                                              "Marine",
                                           n_bins = round(n_sobol * 0.5),
                                           units_input = "Particles/L",
@@ -2776,7 +2650,7 @@ Marine_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long,
                                           tissue_limits = c(signif((min_max_sobol$min[2] * 5), 1),
                                                             signif((min_max_sobol$max[2] * 0.5), 1)))
 
-Freshwater_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long,
+Freshwater_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long_filtered,
                                                  "Freshwater",
                                               n_bins = round(n_sobol *0.5),
                                               units_input = "Particles/L",
@@ -2821,7 +2695,7 @@ sobol_histograms
 
 ##### ug/L
 ```{r}
-min_max_sobol_mass <- all_thresholds_sobol_long %>%
+min_max_sobol_mass <- all_thresholds_sobol_long_filtered %>%
   filter(str_detect(Metric, "ug")) %>%  
   group_by(#Environment, 
            Metric) %>%
@@ -2835,7 +2709,7 @@ min_max_sobol_mass
 ```
 ```{r}
 ### Generate plots
-Marine_histograms_sobol_mass <- MC_histograms_fxn(all_thresholds_sobol_long, "Marine",
+Marine_histograms_sobol_mass <- MC_histograms_fxn(all_thresholds_sobol_long_filtered, "Marine",
                                           n_bins = round(n_sobol * 0.5),
                                           units_input = "ug/L",
                                           x_axis_input = element_blank(),
@@ -2844,7 +2718,7 @@ Marine_histograms_sobol_mass <- MC_histograms_fxn(all_thresholds_sobol_long, "Ma
                                           tissue_limits = c(signif((min_max_sobol_mass$min[2] * 5), 1),
                                                             signif((min_max_sobol_mass$max[2] * 0.5), 1)))
 
-Freshwater_histograms_sobol_mass <- MC_histograms_fxn(all_thresholds_sobol_long, "Freshwater",
+Freshwater_histograms_sobol_mass <- MC_histograms_fxn(all_thresholds_sobol_long_filtered, "Freshwater",
                                               n_bins = round(n_sobol *0.5),
                                               units_input = "ug/L",
                                               x_axis_input = element_text(),
@@ -2961,10 +2835,10 @@ simple_thresholds_MC_sobol_mass
 ```{r}
 # Assign specific colors based on Tier levels
 tier_colors <- setNames(c("#b8e897", "#f0f062", "#f0a95f", "#f0514b"),
-                        levels(as.factor(all_thresholds_sobol_long$Tier)))
+                        levels(as.factor(all_thresholds_sobol_long_filtered$Tier)))
 
 # Calculate the 99th percentile for each group to identify outliers
-outliers <- all_thresholds_sobol_long %>%
+outliers <- all_thresholds_sobol_long_filtered %>%
   filter(grepl("Default", Metric)) %>%
   group_by(Tier, Environment, Metric) %>%
   mutate(
@@ -2975,7 +2849,7 @@ outliers <- all_thresholds_sobol_long %>%
   ungroup()
 
 # Ggplot of Monte Carlo SSD thresholds
-all_thresholds_violin_sobol <- all_thresholds_sobol_long %>% 
+all_thresholds_violin_sobol <- all_thresholds_sobol_long_filtered %>% 
   filter(grepl("Default", Metric)) %>%
   mutate(ERM = case_when(
     grepl("Tissue", Metric) ~ "Tissue Translocation",
@@ -3016,7 +2890,7 @@ all_thresholds_violin_sobol
 ```{r}
 
 # Calculate the 99th percentile for each group to identify outliers
-outliers_mass <- all_thresholds_sobol_long %>%
+outliers_mass <- all_thresholds_sobol_long_filtered %>%
   filter(grepl("ug.L", Metric)) %>%
   group_by(Tier, Environment, Metric) %>%
   mutate(
@@ -3028,7 +2902,7 @@ outliers_mass <- all_thresholds_sobol_long %>%
 
 
 # Ggplot of Monte Carlo SSD thresholds
-all_thresholds_violin_sobol_mass <- all_thresholds_sobol_long %>% 
+all_thresholds_violin_sobol_mass <- all_thresholds_sobol_long_filtered %>% 
   filter(grepl("ug.L", Metric)) %>%
   mutate(ERM = case_when(
     grepl("Tissue", Metric, ignore.case = T) ~ "Tissue Translocation",
@@ -3067,7 +2941,7 @@ all_thresholds_violin_sobol_mass
 
 ```{r}
 # Separate individual toxicity values from Sims in MC_results #
-MC_results_tox_sobol <- sobol_results[1:nrow(mat)]
+MC_results_tox_sobol <- sobol_results_filtered[1:nrow(mat_filtered)] #sobol_results[1:nrow(mat_filtered)]
 
 ##### Determine Coefficient of Variation for each output ###
 ### Step 1: Create a dataframe from the list
@@ -3173,7 +3047,7 @@ results_df_sobol %>%
   left_join(aoc_aligned_test %>% mutate(unique_id = as.factor(unique_id)),
             by = "unique_id") %>% 
   filter(particles_L_ox_stress < 0) %>% 
-  select(particles_L_ox_stress, particles_L_food_dilution,
+  select(particles_L_ox_stress, particles_L_food_dilution, 
          species, Group, unique_id)
 ```
 
@@ -3361,7 +3235,7 @@ tissue_marine_params <- c("alpha.marine",
 
 
 # Subset 'mat2' to include only marine parameters
-mat2_tissue_marine <- mat[, tissue_marine_params] 
+mat2_tissue_marine <- mat_filtered[, tissue_marine_params] 
 
 
 # # Now create the scatter plot using sensobol::plot_scatter
@@ -3436,7 +3310,11 @@ scatter_marine_tissue_t3_filtered <- sensobol::plot_scatter(
   params = tissue_params,
   method = "bin"
 ) + 
-ggtitle("Tissue Trans.: Marine")
+  theme(strip.text = element_text(size = 10, face = "bold")) +
+  ylab("Tier 3 Threshold (Particles/L)") +
+ggtitle("Tissue Translocation: Marine") +
+  theme(plot.title =  element_text(size = 15, face = "bold", hjust = 0.5))
+  
 
 # Display the plot
 scatter_marine_tissue_t3_filtered
@@ -3467,7 +3345,7 @@ ggplot(data_long, aes(x = Value, y = Y)) +
   stat_binhex(bins = 30) +   # Binned hex plot to handle dense data points
   scale_fill_gradient(low = "blue", high = "red") +  # Color scale for density
   facet_wrap(~ Parameter, scales = "free_x") +  # Create a separate plot for each parameter
-  ggtitle("Tissue Trans.: Marine") +
+  ggtitle("Tissue Translocation: Marine") +
   scale_y_log10() +
   xlab("Parameter Values") +
   ylab("Y_marine_tissue_T3") +
@@ -3486,7 +3364,7 @@ food_marine_params <- c("alpha.marine",
                    
                    #"a.sa.marine",
                    "a.v.marine", 
-                   "a.m.marine",
+                 #  "a.m.marine",
                    #"a.ssa.marine",
                    #"alpha.freshwater",
                    #"a.sa.freshwater", "a.v.freshwater", "a.m.freshwater", 
@@ -3499,7 +3377,7 @@ food_marine_params <- c("alpha.marine",
 
 food_params <- c("Length Alpha",
                    "Volume Alpha",
-         "Mass Alpha",
+       #  "Mass Alpha",
          "Length-Width Ratio",
          "Body Length (Beta)",
          "Body Length (Intercept)"
@@ -3507,10 +3385,10 @@ food_params <- c("Length Alpha",
 
 
 # Subset 'mat2' to include only marine parameters
-mat2_food_marine <- mat[, food_marine_params] %>% 
+mat2_food_marine <- mat_filtered[, food_marine_params] %>% 
   rename("Length Alpha" = "alpha.marine",
          "Volume Alpha" = "a.v.marine",
-         "Mass Alpha" = "a.m.marine",
+        # "Mass Alpha" = "a.m.marine",
          "Length-Width Ratio" = "R.ave.water.marine",
          "Body Length (Beta)" = "sim.beta.log10.body.length",
          "Body Length (Intercept)" = "sim.body.length.intercept")
@@ -3522,8 +3400,12 @@ scatter_marine_food_t3 <- sensobol::plot_scatter(data = mat2_food_marine,
                                                    N = n_row_sobol, 
                                                    Y = Y_marine_food_T3,
                                                    params = food_params,
-                                                   method = "bin") + 
-                            ggtitle("Food Dilution: Marine")
+                                                   method = "bin") +
+  #scale_y_log10() +
+  ylab("Tier 3 Threshold (Particles/L)") +
+  theme(strip.text = element_text(size = 10, face = "bold")) +
+                            ggtitle("Food Dilution: Marine") +
+  theme(plot.title =  element_text(size = 15, face = "bold", hjust = 0.5))
 
 print(scatter_marine_food_t3)
 ```
@@ -3547,7 +3429,7 @@ tissue_params <- c("Length Alpha",
 
 
 # Subset 'mat2' to include only marine parameters
-mat2_tissue_freshwater <- mat[, tissue_freshwater_params] %>% 
+mat2_tissue_freshwater <- mat_filtered[, tissue_freshwater_params] %>% 
   rename("Length Alpha" = "alpha.freshwater",
          "Surface Area Alpha" = "a.sa.freshwater",
          "Length-Width Ratio" = "R.ave.water.freshwater",
@@ -3561,8 +3443,11 @@ scatter_freshwater_tissue_t3 <- sensobol::plot_scatter(data = mat2_tissue_freshw
                                                    N = n_row_sobol, 
                                                    Y = Y_freshwater_tissue_T3,
                                                    params = tissue_params,
-                                                   method = "bin") #+ 
-                           # ggtitle("Tissue Trans.: Freshwater")
+                                                   method = "bin") + 
+  ylab("Tier 3 Threshold (Particles/L)") +
+                            ggtitle("Tissue Translocation: Freshwater") +
+  theme(plot.title =  element_text(size = 15, face = "bold", hjust = 0.5),
+        strip.text = element_text(size = 10, face = "bold"))
 
 print(scatter_freshwater_tissue_t3)
 ```
@@ -3570,29 +3455,32 @@ print(scatter_freshwater_tissue_t3)
 ```{r}
 # Assuming 'params' is a vector of parameter names for the freshwater environment
 food_freshwater_params <- c("alpha.freshwater", 
-                   "R.ave.water.freshwater", 
-                   "a.v.freshwater", 
-                   "a.m.freshwater",
-                                    "sim.beta.log10.body.length", "sim.body.length.intercept" 
+                            "R.ave.water.freshwater", 
+                            "a.v.freshwater", 
+                            #   "a.m.freshwater",
+                            "sim.beta.log10.body.length", "sim.body.length.intercept" 
                    )
 
 
 # Subset 'mat2' to include only freshwater parameters
-mat2_food_freshwater <- mat[, food_freshwater_params] %>% 
+mat2_food_freshwater <- mat_filtered[, food_freshwater_params] %>% 
   rename("Length Alpha" = "alpha.freshwater",
          "Volume Alpha" = "a.v.freshwater",
-         "Mass Alpha" = "a.m.freshwater",
+        # "Mass Alpha" = "a.m.freshwater",
          "Length-Width Ratio" = "R.ave.water.freshwater",
          "Body Length (Beta)" = "sim.beta.log10.body.length",
          "Body Length (Intercept)" = "sim.body.length.intercept")
 
 # Now create the scatter plot using sensobol::plot_scatter
 scatter_freshwater_food_t3 <- sensobol::plot_scatter(data = mat2_food_freshwater,
-                                                   N = n_row_sobol, 
-                                                   Y = Y_freshwater_food_T3,
-                                                   params = food_params,
-                                                   method = "bin") #+ 
-                         #   ggtitle("Food Dilution: Freshwater")
+                                                     N = n_row_sobol, 
+                                                     Y = Y_freshwater_food_T3,
+                                                     params = food_params,
+                                                     method = "bin") + 
+  ylab("Tier 3 Threshold (Particles/L)") +
+                            ggtitle("Food Dilution: Freshwater") +
+  theme(plot.title =  element_text(size = 15, face = "bold", hjust = 0.5),
+        strip.text = element_text(size = 10, face = "bold"))
 
 print(scatter_freshwater_food_t3)
 ```
@@ -3642,7 +3530,7 @@ scatterplots
 #### Food Dilution
 
 ```{r}
-multi_food <- plot_multiscatter(data = mat, 
+multi_food <- plot_multiscatter(data = mat_filtered, 
                   N = n_row_sobol,
                   Y = Y_marine_food_T3, 
                   params = c("alpha.marine",
@@ -3656,7 +3544,7 @@ multi_food
 #### Tissue Translocation
 
 ```{r}
-multi_tissue <- plot_multiscatter(data = mat, 
+multi_tissue <- plot_multiscatter(data = mat_filtered, 
                                 N = n_row_sobol,
                                 Y = Y_freshwater_tissue_T3, 
                                 params = c("alpha.freshwater",
@@ -3672,7 +3560,7 @@ multi_tissue
 ```{r}
 #### checks ##
 # Check for NAs in parameter values
-any(is.na(mat))
+any(is.na(mat_filtered))
 
 # Check for NAs in model output
 any(is.na(Y_marine_food_T3))
@@ -3703,10 +3591,10 @@ Y_freshwater_food_T3_valid <- Y_freshwater_food_T3[valid_indices_freshwater_food
 Y_freshwater_tissue_T3_valid <- Y_freshwater_tissue_T3[valid_indices_freshwater_tissue]
 
 # Subset the mat for each outcome based on the valid indices
-mat_valid_marine_food <- mat[valid_indices_marine_food, ]
-mat_valid_marine_tissue <- mat[valid_indices_marine_tissue, ]
-mat_valid_freshwater_food <- mat[valid_indices_freshwater_food, ]
-mat_valid_freshwater_tissue <- mat[valid_indices_freshwater_tissue, ]
+mat_valid_marine_food <- mat_filtered[valid_indices_marine_food, ]
+mat_valid_marine_tissue <- mat_filtered[valid_indices_marine_tissue, ]
+mat_valid_freshwater_food <- mat_filtered[valid_indices_freshwater_food, ]
+mat_valid_freshwater_tissue <- mat_filtered[valid_indices_freshwater_tissue, ]
 
 # Update n_sobol to the number of valid samples for each outcome
 N_valid_marine_food <- as.numeric(nrow(mat_valid_marine_food))
@@ -3715,16 +3603,16 @@ N_valid_freshwater_food <- as.numeric(nrow(mat_valid_freshwater_food))
 N_valid_freshwater_tissue <- as.numeric(nrow(mat_valid_freshwater_tissue))
 
 # n_sobol must be an integer, with Y = 15 * n_sobol for each outcome
-n_row_sobol_marine_food <- as.integer(N_valid_marine_food / ncol(mat))
-n_row_sobol_marine_tissue <- as.integer(N_valid_marine_tissue / ncol(mat))
-n_row_sobol_freshwater_food <- as.integer(N_valid_freshwater_food / ncol(mat))
-n_row_sobol_freshwater_tissue <- as.integer(N_valid_freshwater_tissue / ncol(mat))
+n_row_sobol_marine_food <- as.integer(N_valid_marine_food / ncol(mat_filtered))
+n_row_sobol_marine_tissue <- as.integer(N_valid_marine_tissue / ncol(mat_filtered))
+n_row_sobol_freshwater_food <- as.integer(N_valid_freshwater_food / ncol(mat_filtered))
+n_row_sobol_freshwater_tissue <- as.integer(N_valid_freshwater_tissue / ncol(mat_filtered))
 
 # Calculate the length_y_rows for each outcome
-length_y_rows_marine_food <- n_row_sobol_marine_food * ncol(mat)
-length_y_rows_marine_tissue <- n_row_sobol_marine_tissue * ncol(mat)
-length_y_rows_freshwater_food <- n_row_sobol_freshwater_food * ncol(mat)
-length_y_rows_freshwater_tissue <- n_row_sobol_freshwater_tissue * ncol(mat)
+length_y_rows_marine_food <- n_row_sobol_marine_food * ncol(mat_filtered)
+length_y_rows_marine_tissue <- n_row_sobol_marine_tissue * ncol(mat_filtered)
+length_y_rows_freshwater_food <- n_row_sobol_freshwater_food * ncol(mat_filtered)
+length_y_rows_freshwater_tissue <- n_row_sobol_freshwater_tissue * ncol(mat_filtered)
 
 # Output the results for verification
 list(
@@ -3741,7 +3629,7 @@ list(
 
 ```{r eval=FALSE, include=FALSE}
 
-mat_valid <- mat[valid_indices, ]
+mat_valid <- mat_filtered[valid_indices, ]
 
 
 # Update n_sobol to the number of valid samples
@@ -3935,7 +3823,7 @@ tissue_params <- c("a sa", "alpha", "R ave", "tissue",
 food_params <- c("a m", "alpha", "a v", "R ave", "sim body length intercept", "sim beta log10 body length")
 
 # Define a function to clean parameter names and add environment/context labels, with filtering
-clean_and_label_results <- function(sobol_results, environment, context) {
+clean_and_label_results <- function(sobol_results_filtered, environment, context) {
   # Determine which parameters to keep based on the context
   relevant_params <- if (context == "Tissue Translocation") {
     tissue_params
@@ -3945,7 +3833,7 @@ clean_and_label_results <- function(sobol_results, environment, context) {
     stop("Invalid context. Please specify 'Tissue Translocation' or 'Food Dilution'.")
   }
   
-  sobol_results$results %>%
+  sobol_results_filtered$results %>%
     mutate(
       # Replace periods with spaces and remove "Marine" and "Freshwater"
       parameter_label = gsub("\\.", " ", parameters) %>%
