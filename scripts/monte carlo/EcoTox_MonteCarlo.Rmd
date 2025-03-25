@@ -2982,7 +2982,8 @@ results_df_sobol <- do.call(rbind, lapply(MC_results_tox_sobol, function(x) {
       T ~ translocatable)) %>% 
   # join with metadata
     left_join(aoc_aligned_test %>%
-              select(af.noec, af.time, unique_id, poly_f, shape_f, environment, effect.metric) %>% 
+              select(af.noec, af.time, unique_id, poly_f, shape_f, environment, effect.metric, bio_f, 
+                     risk.13, tier_zero_tech_f, tier_zero_risk_f) %>% 
                 rename(polymer = poly_f, shape = shape_f) %>% 
               mutate(unique_id = as.factor(unique_id)),
             by = "unique_id"
