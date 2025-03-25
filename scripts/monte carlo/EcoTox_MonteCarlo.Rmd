@@ -1293,7 +1293,8 @@ stopCluster(cl)
 
 
 # save results
-saveRDS(MC_results_parallel, "output/MC_results.rds")
+#saveRDS(MC_results_parallel, "output/MC_results.rds")
+# Uncomment if running. Otherwise, keep commented out to avoid overwriting
 ```
 
 
@@ -1696,7 +1697,15 @@ results_df <- do.call(rbind, lapply(MC_results_tox, function(x) {
     particles_L_food_dilution = x$particles_mL_food_dilution * 1000,
     species = x$species
   )
-}))
+})) %>% 
+  mutate(unique_id = as.factor(unique_id)) %>% 
+  #annotate metadata
+  left_join(aoc_aligned_test %>%
+              select(af.noec, af.time, unique_id) %>% 
+              mutate(unique_id = as.factor(unique_id)),
+            by = "unique_id"
+            )
+
 skimr::skim(results_df)
 ```
 
@@ -1724,9 +1733,12 @@ skimr::skim(cov_results)
 # Step 3: merge with full dataset and deterministic dataset
 aoc_MC <- merge(aoc_aligned_test, cov_results, by = "unique_id", all.x = TRUE)
 
+#annotate additional metadata
 aoc_MC <- left_join(aoc_MC, 
                     aoc_aligned_test %>% ungroup() %>%  
-                      select(c(unique_id, particles.mL.food.dilution, particles.mL.ox.stress)) %>%
+                      select(c(unique_id, particles.mL.food.dilution, particles.mL.ox.stress#,
+                               #Species, size.length.um.used.for.conversions
+                               )) %>%
                       mutate(particles_L_food_dilution_deterministic = particles.mL.food.dilution * 1000,
                              particles_L_ox_stress_deterministic = particles.mL.ox.stress * 1000),
                     by = "unique_id"
@@ -2459,7 +2471,8 @@ close(pb)
 stopCluster(cl)
 
 # Save the final results
-saveRDS(sobol_results, "output/sobol_results.rds")
+#saveRDS(sobol_results, "output/sobol_results.rds")
+# uncomment unless running script to save results!
 ```
 ```{r}
 sobol_time
@@ -2966,7 +2979,14 @@ results_df_sobol <- do.call(rbind, lapply(MC_results_tox_sobol, function(x) {
       T ~ ingestible),
     translocatable = case_when(
       !is.na(translocatable_poly) ~ translocatable_poly,
-      T ~ translocatable))
+      T ~ translocatable)) %>% 
+  # join with metadata
+    left_join(aoc_aligned_test %>%
+              select(af.noec, af.time, unique_id, poly_f, shape_f, environment, effect.metric) %>% 
+                rename(polymer = poly_f, shape = shape_f) %>% 
+              mutate(unique_id = as.factor(unique_id)),
+            by = "unique_id"
+            )
 
 
 
