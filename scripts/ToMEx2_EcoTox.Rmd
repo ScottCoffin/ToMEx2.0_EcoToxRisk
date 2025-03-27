@@ -28,7 +28,6 @@ knitr::opts_chunk$set(fig.width=10, fig.height=8, fig.path='output/figures',
 ```{r Libraries, include = FALSE}
 library(tidyverse)
 library(calecopal)
-library(ssdtools)
 library(DT)
 library(plotly)
 library(gridExtra)
@@ -50,8 +49,12 @@ library(Matrix)
 library(mc2d)
 library(trapezoid)
 library(reshape2)
-getwd()
 
+
+#check SSDtools package version is 0.3.7#
+source("../scripts/check_pckg.R")
+check_and_install_version("ssdtools", "0.3.7")
+library(ssdtools)
 ```
 
 ```{r Set Particle Size, include = FALSE}
@@ -4344,7 +4347,7 @@ prep_data <- function(data) {
   matrices
 }
 # #example usage
- tier1_2_food_matrices <- prep_data(results_df_food_t3_t4_marine)
+ #tier1_2_food_matrices <- prep_data(results_df_food_t3_t4_marine)
 ```
 
 ### Run PSSD
@@ -4381,16 +4384,16 @@ run_pSSD_analysis <- function(data_matrices, num_iterations, sim, cv_dp, cv_uf, 
 }
 
 # #example
-tier1_2_food_pssd <- run_pSSD_analysis(
-  data_matrices = tier1_2_food_matrices,
-  num_iterations = 10,
-  sim = SIM,
-  cv_dp = CV.DP,  # Example coefficient of variation for DP
-  cv_uf = CV.UF,  # Example coefficient of variation for UF
-  data_name = "tier1_2_food"
-)
-
-tier1_2_food_pssd$pSSD
+# tier1_2_food_pssd <- run_pSSD_analysis(
+#   data_matrices = tier1_2_food_matrices,
+#   num_iterations = 10,
+#   sim = SIM,
+#   cv_dp = CV.DP,  # Example coefficient of variation for DP
+#   cv_uf = CV.UF,  # Example coefficient of variation for UF
+#   data_name = "tier1_2_food"
+# )
+# 
+# tier1_2_food_pssd$pSSD
 ```
 
 ###Plotting
@@ -4457,10 +4460,10 @@ prepare_plot_data <- function(pSSD, data_matrices, species_data_source, quantile
 }
 
 # Example usage
-tier1_2_food_plot_prep <- prepare_plot_data(pSSD = tier1_2_food_pssd$pSSD,
-                                            data_matrices = tier1_2_food_matrices,
-                                            species_data_source = tier1_2_food)
-tier1_2_food_plot_prep
+# tier1_2_food_plot_prep <- prepare_plot_data(pSSD = tier1_2_food_pssd$pSSD,
+#                                             data_matrices = tier1_2_food_matrices,
+#                                             species_data_source = tier1_2_food)
+# tier1_2_food_plot_prep
 ```
 
 
@@ -4589,9 +4592,9 @@ PNEC_plot <- function(pssd_results, hcx, data_name,
 }
 
 #example
-PNEC_plot(pssd_results = tier1_2_food_pssd,
-           hcx = 0.05,
-          data_name = "Tier 2 (Food Dilution)")
+# PNEC_plot(pssd_results = tier1_2_food_pssd,
+#            hcx = 0.05,
+#           data_name = "Tier 2 (Food Dilution)")
 ```
 #### PNEC Data Summary
 ```{r}
@@ -5203,7 +5206,7 @@ erms <- c("Food Dilution", "Tissue Translocation")
 output_path <- "../output/Manuscript_Figs/"
 
 # Example coefficients and data sources
-sim <- 3 #number of simulations in pSSD. 3 is minimum. I've tried 1,000, but it creates a matrix too big for my RAM (112 GB). It appears that we need to keep this value less than 500 or so for most machines to be able to run (300 seems to be a sweet spot).
+sim <- 300 #number of simulations in pSSD. 3 is minimum. I've tried 1,000, but it creates a matrix too big for my RAM (112 GB). It appears that we need to keep this value less than 500 or so for most machines to be able to run (300 seems to be a sweet spot).
 num_iterations <- sim
 cv_uf <- 0.5 # Default value for uncertainty factors
 quantile_type = 8 # type 1 is actual data (doesn't work for small datasets),

@@ -171,7 +171,7 @@ do.pSSD_mod <- function(DP, DP.SD, UFt, UFdd, SIM, CV.DP, CV.UF) {
     sp.max <- max(0, corr.endpoints[ind.max, sp] * (1 + (sqrt(sum((CV.DP2 / 2.45)^2) + 2 * (CV.UF / 2.45)^2) * 2.45)))
     
     # Debugging: Print sp.min and sp.max to ensure they are non-negative
-    print(paste("Species:", sp, "sp.min:", sp.min, "sp.max:", sp.max))
+   # print(paste("Species:", sp, "sp.min:", sp.min, "sp.max:", sp.max))
     
     # Handle cases based on the number of unique endpoints
     if (length(unique(sort.endpoints[[sp]])) == 1) {
@@ -195,7 +195,7 @@ do.pSSD_mod <- function(DP, DP.SD, UFt, UFdd, SIM, CV.DP, CV.UF) {
       low <- 1/high
       
       # Debugging: Print low and high to ensure they are valid
-      print(paste("Species:", sp, "low:", low, "high:", high))
+    #  print(paste("Species:", sp, "low:", low, "high:", high))
       
       uncertainty_factor <- runif(min = low, max = high, n = SIM)
       
