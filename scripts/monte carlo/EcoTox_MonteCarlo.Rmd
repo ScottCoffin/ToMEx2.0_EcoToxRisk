@@ -1185,6 +1185,18 @@ aoc_MC_iter <- align_data(aoc_risk_paper,
       translocatable_poly = aoc_aligned$translocatable_poly,
       species = aoc_aligned$Species,
       group = aoc_aligned$Group,
+      environment = aoc_aligned$environment,
+      size.length.um.used.for.conversions = aoc_aligned$size.length.um.used.for.conversions,
+      polydispersity = aoc_aligned$polydispersity,
+      shape_f = aoc_aligned$shape_f,
+      poly_f = aoc_aligned$poly_f,
+      shape_f = aoc_aligned$shape_f,
+      doi = aoc_aligned$doi,
+      effect.metric = aoc_aligned$effect.metric,
+      af.noec = aoc_aligned$af.noec,
+      af.time = aoc_aligned$af.time,
+      bio_f = aoc_aligned$bio_f, 
+      risk.13 = aoc_aligned$risk.13,
       dose.particles.mL.master = aoc_aligned$dose.particles.mL.master,
       unique_id = aoc_aligned$unique_id), #row id that allows matching back to database
       base_thresholds = list(
@@ -1870,6 +1882,18 @@ aoc_MC_iter <- align_data(aoc_aligned,
       translocatable_poly = aoc_aligned$translocatable_poly,
       species = aoc_aligned$Species,
       group = aoc_aligned$Group,
+      environment = aoc_aligned$environment,
+      size.length.um.used.for.conversions = aoc_aligned$size.length.um.used.for.conversions,
+      polydispersity = aoc_aligned$polydispersity,
+      shape_f = aoc_aligned$shape_f,
+      poly_f = aoc_aligned$poly_f,
+      shape_f = aoc_aligned$shape_f,
+      doi = aoc_aligned$doi,
+      effect.metric = aoc_aligned$effect.metric,
+      af.noec = aoc_aligned$af.noec,
+      af.time = aoc_aligned$af.time,
+      bio_f = aoc_aligned$bio_f, 
+      risk.13 = aoc_aligned$risk.13,
       dose.particles.mL.master = aoc_aligned$dose.particles.mL.master,
       unique_id = aoc_aligned$unique_id), #row id that allows matching back to database
       base_thresholds = list(
@@ -1891,7 +1915,7 @@ aoc_MC_iter <- align_data(aoc_aligned,
 # Number of samples
 #n_sobol <- 1000
 
-n_sobol <- 589 #times 16 is 10,013
+n_sobol <- 3 #589 #times 16 is 10,013
 
 matrices <- c("A", "B", "AB", "BA")
 first <- total <- "azzini"
@@ -2471,7 +2495,7 @@ close(pb)
 stopCluster(cl)
 
 # Save the final results
-#saveRDS(sobol_results, "output/sobol_results.rds")
+saveRDS(sobol_results, "output/sobol_results.rds")
 # uncomment unless running script to save results!
 ```
 ```{r}
@@ -2967,6 +2991,14 @@ results_df_sobol <- do.call(rbind, lapply(MC_results_tox_sobol, function(x) {
     particles_L_food_dilution = x$particles_mL_food_dilution * 1000,
     species = x$species,
     group = x$group,
+    shape_f = x$shape_f,
+    poly_f = x$poly_f,
+    environment = x$environment,
+    effect.metric = x$effect.metric,
+    bio_f = x$bio_f,
+    risk.13 = x$risk.13,
+    af.time = x$af.time,
+    af.noec = x$af.noec,
     ingestible = factor(x$ingestible),
     ingestible_poly = x$ingestible_poly,
     translocatable = factor(x$translocatable),
@@ -2979,15 +3011,15 @@ results_df_sobol <- do.call(rbind, lapply(MC_results_tox_sobol, function(x) {
       T ~ ingestible),
     translocatable = case_when(
       !is.na(translocatable_poly) ~ translocatable_poly,
-      T ~ translocatable)) %>% 
+      T ~ translocatable)) #%>% 
   # join with metadata
-    left_join(aoc_aligned_test %>%
-              select(af.noec, af.time, unique_id, poly_f, shape_f, environment, effect.metric, bio_f, 
-                     risk.13, tier_zero_tech_f, tier_zero_risk_f) %>% 
-                rename(polymer = poly_f, shape = shape_f) %>% 
-              mutate(unique_id = as.factor(unique_id)),
-            by = "unique_id"
-            )
+    # left_join(aoc_aligned_test %>%
+    #           select(af.noec, af.time, unique_id, poly_f, shape_f, environment, effect.metric, bio_f, 
+    #                  risk.13, tier_zero_tech_f, tier_zero_risk_f) %>% 
+    #             rename(polymer = poly_f, shape = shape_f) %>% 
+    #           mutate(unique_id = as.factor(unique_id)),
+    #         by = "unique_id"
+    #         )
 
 
 

@@ -4179,7 +4179,7 @@ filtered.data.large.default_t3.4_MC <- filtered.data.large.default_t1.2_MC %>%
 
 # Probabilistic Species Sensitivity Distribution Plus
 
-```{r eval=TRUE, include=FALSE}
+```{r eval=FALSE, include=FALSE}
 #food dilution
 tier1_2_food <- filtered.data.large.default_t1.2_MC
 tier3_4_food <- filtered.data.large.default_t3.4_MC
@@ -4343,8 +4343,8 @@ prep_data <- function(data) {
   # Return the named list of matrices
   matrices
 }
-#example usage
-#tier1_2_food_matrices <- prep_data(tier1_2_food)
+# #example usage
+ tier1_2_food_matrices <- prep_data(results_df_food_t3_t4_marine)
 ```
 
 ### Run PSSD
@@ -4381,22 +4381,22 @@ run_pSSD_analysis <- function(data_matrices, num_iterations, sim, cv_dp, cv_uf, 
 }
 
 # #example
-# tier1_2_food_pssd <- run_pSSD_analysis(
-#   data_matrices = tier1_2_food_matrices,
-#   num_iterations = 10,
-#   sim = SIM,
-#   cv_dp = CV.DP,  # Example coefficient of variation for DP
-#   cv_uf = CV.UF,  # Example coefficient of variation for UF
-#   data_name = "tier1_2_food"
-# )
-# 
-# tier1_2_food_pssd$pSSD
+tier1_2_food_pssd <- run_pSSD_analysis(
+  data_matrices = tier1_2_food_matrices,
+  num_iterations = 10,
+  sim = SIM,
+  cv_dp = CV.DP,  # Example coefficient of variation for DP
+  cv_uf = CV.UF,  # Example coefficient of variation for UF
+  data_name = "tier1_2_food"
+)
+
+tier1_2_food_pssd$pSSD
 ```
 
 ###Plotting
 #### Preparation Function
 ```{r}
-prepare_plot_data <- function(pSSD, data_matrices, species_data_source) {
+prepare_plot_data <- function(pSSD, data_matrices, species_data_source, quantile_type = 7) {
   # Ensure that the required matrices are present and correctly formatted
   if (is.null(data_matrices[['DP']]) || is.null(data_matrices[['UFdd']]) || is.null(data_matrices[['UFt']])) {
     stop("Data matrices for DP, UFdd, or UFt are not available or incorrect.")
@@ -4423,10 +4423,10 @@ prepare_plot_data <- function(pSSD, data_matrices, species_data_source) {
     group_by(iv) %>%
     summarise(min = min(ecdf_value, na.rm = TRUE),
               max = max(ecdf_value, na.rm = TRUE),
-              q05 = quantile(ecdf_value, 0.05, na.rm = TRUE),
-              q95 = quantile(ecdf_value, 0.95, na.rm = TRUE),
-              q25 = quantile(ecdf_value, 0.25, na.rm = TRUE),
-              q75 = quantile(ecdf_value, 0.75, na.rm = TRUE),
+              q05 = quantile(ecdf_value, 0.05, na.rm = TRUE, type = quantile_type),
+              q95 = quantile(ecdf_value, 0.95, na.rm = TRUE, type = quantile_type),
+              q25 = quantile(ecdf_value, 0.25, na.rm = TRUE, type = quantile_type),
+              q75 = quantile(ecdf_value, 0.75, na.rm = TRUE, type = quantile_type),
               mean = mean(ecdf_value, na.rm = TRUE)) %>%
     ungroup()
 
@@ -4457,65 +4457,75 @@ prepare_plot_data <- function(pSSD, data_matrices, species_data_source) {
 }
 
 # Example usage
-# tier1_2_food_plot_prep <- prepare_plot_data(pSSD = tier1_2_food_pssd$pSSD, 
-#                                data_matrices = tier1_2_food_matrices, 
-#                                species_data_source = tier1_2_food)
-
+tier1_2_food_plot_prep <- prepare_plot_data(pSSD = tier1_2_food_pssd$pSSD,
+                                            data_matrices = tier1_2_food_matrices,
+                                            species_data_source = tier1_2_food)
+tier1_2_food_plot_prep
 ```
 
 
 #### PSSD ggplot Function
 ```{r}
 
-pSSD_plot <-  function(quantiles_df = quantiles_df, species_data = species_data, data_name = data_name,
-                       environment_name = environment_name, tier_name = tier_name, ERM_name = ERM_name
-                       ){
-  
+# Dynamically generate a color palette based on the levels of Group
+generate_color_palette <- function(data) {
+  unique_groups <- unique(data$Group) # Extract unique levels of Group
+  palette <- cols4all::c4a("seaborn.dark", n = length(unique_groups)) # Generate colors
+  names(palette) <- unique_groups # Assign names to the colors
+  return(palette)
+}
+
+
+pSSD_plot <- function(quantiles_df, species_data, data_name, environment_name, tier_name, 
+                      ERM_name, color_palette = color_palette) {
   # Calculate the dynamic x-axis limits
-max_species_value <- max(species_data$NOEC_log10, na.rm = TRUE)  # Find the maximum species value
-x_limits <- c(
-  min(c(quantiles_df$iv, species_data$NOEC_log10), na.rm = TRUE),  # Minimum value from data
-  max_species_value + 2  # Add two orders of magnitude to the maximum species value
-)
+  max_species_value <- max(species_data$NOEC_log10, na.rm = TRUE)  # Find the maximum species value
+
+  x_limits <- c(
+    min(c(quantiles_df$iv, species_data$NOEC_log10), na.rm = TRUE) + 2,  # Minimum value from data + 2 orders of magnitude
+    max_species_value + 3  # Add 3 orders of magnitude to the maximum species value
+  )
   
-ggplot() +
-  geom_ribbon(data = quantiles_df, aes(x = iv, ymin = min, ymax = max), fill = "coral", alpha = 0.1) +
-  geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q05, ymax = q95), fill = "coral", alpha = 0.3) +
-  geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q25, ymax = q75), fill = "coral", alpha = 0.8) +
-  geom_point(data = species_data, aes(x = NOEC_log10, y = Prop, color = Group)) +
-   # Add labels with a white background
-  geom_label_repel(
-    data = species_data, 
-    aes(x = NOEC_log10, y = Prop, label = Species, color = Group), 
-    fontface = "italic",  # Make labels bold
-    size = 3.5,  # Increase label size
-    fill = "white",  # Add a white background to labels
-    alpha = 0.8,
-    box.padding = 0.3,  # Add padding around the label box
-    point.padding = 0.5,  # Add padding between points and labels
-    segment.alpha = 0.5,  # Make connecting lines semi-transparent
-    nudge_x = 0.5,
-    max.overlaps = Inf  # Allow all labels to be displayed
-  ) +
-  geom_line(data = quantiles_df, aes(x = iv, y = mean), color = "firebrick4", size = 1) +
-    # Dynamic x-axis for log-transformed data
-  scale_x_continuous(
-    name = "NOEC (particles/L [1 to 5,000 μm])",
-    breaks = pretty(x_limits, n = 6),  # Dynamically generate breaks
-    labels = function(x) parse(text = paste0("10^", x)),  # Back-transform labels to powers of 10
-    limits = x_limits  # Dynamic limits with one order of magnitude added
-  ) +
-  scale_y_continuous(name = "Cumulative probability", limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
-  #cols4all::scale_color_discrete_c4a_cat("cols4all.area9d") +
-  cols4all::scale_color_discrete_c4a_cat("seaborn.dark", name = "Organism Group") +
-  labs(title = ("Microplastics Probabilistic Species Sensitivity Distribution"),
-       subtitle = paste0(ERM_name, " (", tier_name, ", ", environment_name, ")")) +
-    theme_minimal(base_size = 15)  +
+  ggplot() +
+    geom_ribbon(data = quantiles_df, aes(x = iv, ymin = min, ymax = max), fill = "coral", alpha = 0.1) +
+    geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q05, ymax = q95), fill = "coral", alpha = 0.3) +
+    geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q25, ymax = q75), fill = "coral", alpha = 0.8) +
+    geom_point(data = species_data, aes(x = NOEC_log10, y = Prop, color = Group)) +
+    geom_label_repel(
+      data = species_data, 
+      aes(x = NOEC_log10, y = Prop, label = Species, color = Group), 
+      fontface = "italic",  # Make labels bold
+      size = 3,  # Increase label size
+      fill = "white",  # Add a white background to labels
+      alpha = 0.8,
+      box.padding = 0.4,  # Add padding around the label box
+      point.padding = 0.8,  # Add padding between points and labels
+      segment.alpha = 0.6,  # Make connecting lines semi-transparent
+      nudge_x = -0.5,
+      max.overlaps = Inf,  # Allow all labels to be displayed
+      max.time = 5,  # Allow up to 5 seconds to resolve overlaps
+      max.iter = 10000,  # Allow up to 10,000 iterations
+      force = 2 #increase repulsion between labels
+    ) +
+    geom_line(data = quantiles_df, aes(x = iv, y = mean), color = "firebrick4", size = 1) +
+    scale_x_continuous(
+      breaks = pretty(x_limits, n = 6),  # Dynamically generate breaks
+      labels = function(x) parse(text = paste0("10^", x)),  # Back-transform labels to powers of 10
+      limits = x_limits  # Dynamic limits with one order of magnitude added
+    ) +
+    scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
+    ylab("Cumulative probability") +
+    xlab("NOEC (particles/L [1 to 5,000 μm])") +
+    scale_color_manual(values = color_palette, 
+                       name = "Organism Group") + # Apply consistent color mapping
+    labs(title = "Microplastics Probabilistic Species Sensitivity Distribution",
+         subtitle = paste0(ERM_name, " (", tier_name, ", ", environment_name, ")")) +
+    theme_minimal(base_size = 15) +
     theme(plot.title = element_text(face = "bold", hjust = 0.5),
           plot.subtitle = element_text(hjust = 0.5))
- }
+}
 
-# example usage
+# # example usage
 # pSSD_plot(quantiles_df = tier1_2_food_plot_prep$quantiles_df,
 #           species_data = tier1_2_food_plot_prep$species_data,
 #           data_name = "Tier 2 (Food Dilution)")
@@ -4525,25 +4535,31 @@ ggplot() +
 #### PNEC ggplot Function
 ```{r}
 # Calculate PNEC1 if not already calculated
-PNEC_plot <- function(pssd_results, hcx, data_name){
-  PNEC <- apply(pssd_results$pSSD, 2, function(x) quantile(x, probs = hcx, type = 1))
+PNEC_plot <- function(pssd_results, hcx, data_name, 
+                      quantile_type = 7 #Type 1 is no interpolation (default for pSSD), # type  7 inovlves interpolation (note that type 7 results in higher values for mean/median, but the mode is around the same as the median would be with type 1. It's necessary to use type 7 to get distinct values between HC5 and HC10 for freshwater bc there's so few species)
+                      ){
+  PNEC <- apply(pssd_results$pSSD, 2, function(x) quantile(x, 
+                                                           probs = hcx, #HC value
+                                                           type = quantile_type 
+                                                           )
+                )
   # Convert PNEC1 to a dataframe for ggplot
   PNEC_df <- data.frame(PNEC = PNEC)
   
  # Calculate specific percentiles
-  median_val <- quantile(PNEC, probs = 0.5, type = 1)
-  p001_val <- quantile(PNEC, probs = 0.01, type = 1)
-  p5_val <- quantile(PNEC, probs = 0.05, type = 1)
-  p95_val <- quantile(PNEC, probs = 0.95, type = 1)
-  p999_val <- quantile(PNEC, probs = 0.999999999999, type = 1)  # 99.9th percentile for x-axis limits
+  median_val <- quantile(PNEC, probs = 0.5, type = quantile_type)
+  p001_val <- quantile(PNEC, probs = 0.01, type = quantile_type)
+  p5_val <- quantile(PNEC, probs = 0.05, type = quantile_type)
+  p95_val <- quantile(PNEC, probs = 0.95, type = quantile_type)
+  p999_val <- quantile(PNEC, probs = 0.999999999999, type = quantile_type)  # 99.9th percentile for x-axis limits
   
   # Create a data frame for the percentile labels
   label_data <- data.frame(
     x = c(p5_val, median_val, p95_val),
   #  y = c(0.00001, 0.00001, 0.00001),  # Adjust y position for labels
-    label = c(paste0("**5th %** <br>", signif(p5_val, 2)),
-              paste0("**Median** <br>", signif(median_val, 2)),
-              paste0("**95th %** <br>", signif(p95_val, 2)))
+    label = c(paste0("**5th %** <br>", scales::comma(p5_val, 2)),
+              paste0("**Median** <br>", scales::comma(median_val, 2)),
+              paste0("**95th %** <br>", scales::comma(p95_val, 2)))
   )
   
   # Plotting
@@ -4587,21 +4603,29 @@ Mode_Y <- function(x) {
 }
 
 #PNEC Data summary function
-PNEC_data_summary <- function(pssd_results, hcx, data_name){
+PNEC_data_summary <- function(pssd_results, hcx, data_name,
+                              quantile_type = 7 #Type 1 is no interpolation (default for pSSD), # type  7 inovlves interpolation (note that type 7 results in higher values for mean/median, but the mode is around the same as the median would be with type 1. It's necessary to use type 7 to get distinct values between HC5 and HC10 for freshwater bc there's so few species)
+                              ){
 
-PNEC <- apply(pssd_results$pSSD, 2, function(x) quantile(x, probs = hcx, type = 1))
+PNEC <- apply(pssd_results$pSSD, 2, function(x) quantile(x,
+                                                         probs = hcx, #HC value
+                                                         type = quantile_type
+                                                         ))
+  
+#PNEC <- apply(pssd_results$pSSD, 2, function(x) quantile(x, probs = hcx, type = 1))
 PNEC_df <- data.frame(PNEC = PNEC)
   
 # Calculate statistics for PNEC1
 Stat_PNEC <- data.frame(
   Min = min(PNEC),
-  Q5 = quantile(PNEC, 0.05),
-  Q25 = quantile(PNEC, 0.25),
+  Q5 = quantile(PNEC, 0.05, type = quantile_type),
+  Q25 = quantile(PNEC, 0.25, type = quantile_type),
   Mean = mean(PNEC),
-  Median = median(PNEC),
+  #Median = median(PNEC),
+  Median = quantile(PNEC, 0.5, type = quantile_type),
   Mode = Mode_Y(PNEC),
-  Q75 = quantile(PNEC, 0.75),
-  Q95 = quantile(PNEC, 0.95),
+  Q75 = quantile(PNEC, 0.75, type = quantile_type),
+  Q95 = quantile(PNEC, 0.95, type = quantile_type),
   Max = max(PNEC)
 ) %>% 
   mutate_if(is.numeric, ~signif(., 3))
@@ -4615,7 +4639,7 @@ return(list("stats" = as.data.frame(Stat_PNEC_t),
 }
 
 
-## example
+# ## example
 # tier1_2_food_PNEC <- PNEC_data_summary(pssd_results = tier1_2_food_pssd,
 #                                        hcx = 0.05,
 #                                        data_name = "Tier 2 (Food Dilution)")
@@ -4626,7 +4650,7 @@ return(list("stats" = as.data.frame(Stat_PNEC_t),
 
 ## Application
 ### Tier 1_food
-```{r warning=FALSE, include=FALSE}
+```{r eval=FALSE, warning=FALSE, include=FALSE}
 #Step 1: prep data matrices
 tier1_2_food_matrices <- prep_data(tier1_2_food)
 
@@ -4661,19 +4685,19 @@ tier1_2_food_PNEC_summary <- PNEC_data_summary(pssd_results = tier1_2_food_pssd,
                                                data_name = "Tier 2 (Food Dilution)")
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 ggarrange(tier1_2_food_pssdPlot,tier1_2_food_PNECPlot,
           ncol = 1,
           heights = c(0.6,0.4))
 
 
 ```
-```{r}
+```{r eval=FALSE, include=FALSE}
 tier1_2_food_PNEC_summary$stats
 ```
 
 ### Tiers 3 and 4_food
-```{r warning=FALSE, include=FALSE}
+```{r eval=FALSE, warning=FALSE, include=FALSE}
 #Step 1: prep data matrices
 tier3_4_food_matrices <- prep_data(tier3_4_food)
 
@@ -4716,7 +4740,7 @@ tier4_food_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_food_pssd,
                                                data_name = "Tier 4 (Food Dilution)")
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 food_plots_light <- ggarrange(tier3_4_food_pssdPlot + theme.light + theme(legend.position = c(0.1, 0.6)),  
                         ggarrange(tier3_food_PNECPlot + theme.light,
                                   tier4_food_PNECPlot + theme.light,
@@ -4730,7 +4754,8 @@ ggsave(filename = "food_plots_light.jpg",
 
 food_plots_light
 ```
-```{r}
+
+```{r eval=FALSE, include=FALSE}
 food_plots_dark <- ggarrange(tier3_4_food_pssdPlot + theme.dark + theme(legend.position = c(0.1, 0.6)),  
                         ggarrange(tier3_food_PNECPlot + theme.dark,
                                   tier4_food_PNECPlot + theme.dark,
@@ -4745,12 +4770,12 @@ ggsave(filename = "food_plots_dark.jpg",
 food_plots_dark
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 cbind(tier3_food_PNEC_summary$stats, tier4_food_PNEC_summary$stats)
 ```
 
 ### Tier 3 and 4_tissue
-```{r warning=FALSE, include=FALSE}
+```{r eval=FALSE, warning=FALSE, include=FALSE}
 #Step 1: prep data matrices
 tier3_4_tissue_matrices <- prep_data(tier3_4_tissue)
 
@@ -4796,7 +4821,7 @@ tier4_tissue_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_tissue_pss
                                                data_name = "Tier 4 (Tissue Translocation)")
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 tissue_plots_light <- ggarrange(tier3_4_tissue_pssdPlot + theme.light + theme(legend.position = c(0.15, 0.6)),  
                         ggarrange(tier3_tissue_PNECPlot + theme.light,
                                   tier4_tissue_PNECPlot + theme.light,
@@ -4810,7 +4835,8 @@ ggsave(filename = "tissue_plots_light.jpg",
 
 tissue_plots_light
 ```
-```{r}
+
+```{r eval=FALSE, include=FALSE}
 tissue_plots_dark <- ggarrange(tier3_4_tissue_pssdPlot + theme.dark + theme(legend.position = c(0.15, 0.6)),  
                         ggarrange(tier3_tissue_PNECPlot + theme.dark,
                                   tier4_tissue_PNECPlot + theme.dark,
@@ -4825,13 +4851,13 @@ ggsave(filename = "tissue_plots_dark.jpg",
 tissue_plots_dark
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 cbind(tier3_tissue_PNEC_summary$stats, tier4_tissue_PNEC_summary$stats)
 ```
 
 ## Summary
 ### Table
-```{r}
+```{r eval=FALSE, include=FALSE}
 summary_table <- cbind(tier3_food_PNEC_summary$stats, tier4_food_PNEC_summary$stats,
                        tier3_tissue_PNEC_summary$stats, tier4_tissue_PNEC_summary$stats) %>% 
   mutate(across(where(is.numeric), round, digits = 3))
@@ -4859,7 +4885,7 @@ base_thresholds_df
 
 
 ### Plot Comparisons with Deterministic Approach
-```{r}
+```{r eval=FALSE, include=FALSE}
 #data prep
 t3f <- data.frame(ERM = "Food Dilution", Tier = "3",PNEC = tier3_food_PNEC_summary$df)
 t4f <- data.frame(ERM = "Food Dilution", Tier = "4",PNEC = tier4_food_PNEC_summary$df)
@@ -4897,7 +4923,7 @@ PNEC_pSSDvSSD <- ggplot() +
        fill = "Ecologically-Relevant Metric",
        color = "Ecologically-Relevant Metric"
        ) +
-  xlab("PNEC (Particles/L; 1 to 5,000 um)") +
+  xlab("PNEC (Particles/L; 1 to 5,000 μm)") +
   ylab("Threshold Tier")
 
 PNEC_pSSDvSSD_dark <- PNEC_pSSDvSSD + theme.dark
@@ -4929,8 +4955,8 @@ The MC Sim dataset prepared in EcoTox_MonteCarlo.Rmd contains aligned tox values
 #### Pre-process data for different ERM/Environments/Thresholds
 ```{r}
 results_df <- readRDS("monte carlo/output/results_df_sobol.rds") %>% 
-  rename(poly_f = polymer,
-         shape_f = shape,
+  rename(#poly_f = polymer,
+         #shape_f = shape,
          Group = group,
          Species = species
          ) %>% 
@@ -4939,8 +4965,10 @@ results_df <- readRDS("monte carlo/output/results_df_sobol.rds") %>%
           poly_f != "Not Reported",
            Group != "Bacterium",
            Group != "Plant",
-           effect.metric != "HONEC") #%>% 
-  #filter(simulation_id == "sim1") #BETA TESTING ONLY!!!
+           effect.metric != "HONEC") %>% 
+  mutate(sim_id_numeric  = as.numeric(str_replace(simulation_id, "sim", ""))) #%>% 
+ # filter(sim_id_numeric < 1001) #just get the first 1,000 sims
+#  filter(sim_id_numeric ==1 )
 
 ########## food dilution ################
 results_df_food <- results_df %>% 
@@ -5001,19 +5029,32 @@ results_df_tissue_t3_t4_freshwater <- results_df_tissue_t3_t4 %>%
 names(results_df)
 ```
 
+```{r}
+all_species <- results_df %>% 
+  distinct(Species, Group, environment) %>% 
+  arrange(environment, Group, Species)
+
+# Generate a consistent color palette
+color_palette <- generate_color_palette(all_species)
+
+color_palette
+```
+
+
 #### Preparation for each ERM/Environment/Threshold
 ##### Function to generate plots and summary df
 ```{r}
 # Define a function to handle the workflow
 generate_plots_and_summary <- function(tier,
-                                       hcx_input = 0.05, #change to 0.10 for Tier4
                                        environment,
                                        erm, 
                                        results_df,
-                                       sim = 1000, #
-                                       num_iterations = 1000,
+                                       quantile_type = 7,
+                                       color_palette = color_palette,
+                                       sim = 1000, # Default number of simulations
+                                       num_iterations = 1000, # Default number of iterations
                                        cv_dp = NULL, 
-                                       cv_uf = 0.5, #default value for coefficient of variation for uncertainty factors 
+                                       cv_uf = 0.5, # Default value for coefficient of variation for uncertainty factors 
                                        species_data_source,
                                        output_path
                                        ) {
@@ -5035,6 +5076,7 @@ generate_plots_and_summary <- function(tier,
   plot_prep <- prepare_plot_data(
     pSSD = pssd_results$pSSD,
     data_matrices = MCdf,
+    quantile_type = quantile_type,
     species_data_source = species_data_source
   )
   
@@ -5044,42 +5086,88 @@ generate_plots_and_summary <- function(tier,
     species_data = plot_prep$species_data,
     tier_name = paste("Tier", tier),
     environment_name = environment,
-    ERM_name = erm
+    ERM_name = erm,
+    color_palette = color_palette
   )
   
-  # Step 4b: Generate PNEC plot
-  PNEC_plot <- PNEC_plot(
+  # create df of the PNECs
+  PNEC_05 <- apply(pssd_results$pSSD, 2, 
+                   function(x) quantile(x,
+                                        probs = 0.05, #HC value for tier3
+                                        type = quantile_type
+                                        ))
+  PNEC_05_df <- data.frame(PNEC = PNEC_05)
+  
+  # Step 4b: Generate PNEC plots for both HCX values
+  PNEC_plot_05 <- PNEC_plot(
     pssd_results = pssd_results,
-    hcx = hcx_input,
-    data_name = paste("Tier", tier, "(", erm, ")")
+    hcx = 0.05,
+    quantile_type = quantile_type,
+    data_name = paste("Tier", tier, "(", erm, ") - HC5")
   )
   
-  # Step 5: Extract PNEC values for table
-  PNEC_summary <- PNEC_data_summary(
+  PNEC_plot_10 <- PNEC_plot(
     pssd_results = pssd_results,
-    hcx = hcx_input,
-    data_name = paste("Tier", tier, "(", erm, ")")
+    hcx = 0.10,
+    quantile_type = quantile_type,
+    data_name = paste("Tier", tier, "(", erm, ") - HC10")
   )
   
-  # Arrange plots
-  arranged_plot <- ggarrange(
-    pSSD_plot, PNEC_plot,
+  # Step 5: Extract PNEC values for both HCX values
+  PNEC_summary_05 <- PNEC_data_summary(
+    pssd_results = pssd_results,
+    hcx = 0.05,
+    quantile_type = quantile_type,
+    data_name = paste("Tier", tier, "(", erm, ") - HC5")
+  )
+  
+  PNEC_summary_10 <- PNEC_data_summary(
+    pssd_results = pssd_results,
+    hcx = 0.10,
+    quantile_type = quantile_type,
+    data_name = paste("Tier", tier, "(", erm, ") - HC10")
+  )
+  
+  # Arrange plots for HC5
+  arranged_plot_05 <- ggarrange(
+    pSSD_plot, PNEC_plot_05,
     ncol = 1, heights = c(0.6, 0.4)
   )
   
-  # Save the arranged plot
+  # Arrange plots for HC10
+  arranged_plot_10 <- ggarrange(
+    pSSD_plot, PNEC_plot_10,
+    ncol = 1, heights = c(0.6, 0.4)
+  )
+  
+  # Save the arranged plots
   ggsave(
-    filename = paste0("tier", tier, "_", erm, "_", environment, "_arranged.jpg"),
+    filename = paste0("tier", tier, "_", erm, "_", environment, "_arranged_HC5.jpg"),
     dpi = 300,
     path = output_path,
-    plot = arranged_plot,
+    plot = arranged_plot_05,
     width = 10, height = 8, units = "in"
   )
   
-  # Return the arranged plot and summary
+  ggsave(
+    filename = paste0("tier", tier, "_", erm, "_", environment, "_arranged_HC10.jpg"),
+    dpi = 300,
+    path = output_path,
+    plot = arranged_plot_10,
+    width = 10, height = 8, units = "in"
+  )
+  
+  # Return the plots and summaries for both HCX values
   return(list(
-    plot = arranged_plot,
-    summary = PNEC_summary
+    pSSD_plot = pSSD_plot,
+    PNEC_plot_05 = PNEC_plot_05,
+    PNEC_plot_10 = PNEC_plot_10,
+    arranged_plot_05 = arranged_plot_05,
+    arranged_plot_10 = arranged_plot_10,
+    summary_05 = PNEC_summary_05,
+    summary_10 = PNEC_summary_10,
+    quantiles = plot_prep$quantiles_df,
+    PNEC_df = PNEC_05_df
   ))
 }
 ```
@@ -5107,26 +5195,45 @@ get_results_df <- function(tier, environment, erm) {
 ```
 
 ##### For loop to apply function to each combo of ERM/Environment/Tier
-```{r}
+```{r warning=FALSE}
 # Define parameters
-tiers <- c(1, 2, 3, 4)  # Tiers 1/2, 3, and 4
+tiers <- c(3)  # It really only makes sense to make tier 3
 environments <- c("Freshwater", "Marine")
 erms <- c("Food Dilution", "Tissue Translocation")
 output_path <- "../output/Manuscript_Figs/"
 
 # Example coefficients and data sources
-sim <- 1000
-num_iterations <- 1000
+sim <- 3 #number of simulations in pSSD. 3 is minimum. I've tried 1,000, but it creates a matrix too big for my RAM (112 GB). It appears that we need to keep this value less than 500 or so for most machines to be able to run (300 seems to be a sweet spot).
+num_iterations <- sim
 cv_uf <- 0.5 # Default value for uncertainty factors
+quantile_type = 8 # type 1 is actual data (doesn't work for small datasets),
+# type 6 is mean-unbiased estimate (hybrid between discrete data picking and linear interpolatiuon),
+# ype 7 is linear interpolation (smooths data)
+# type 8 is linear interpolation for the median-unbiased esimate (i -1/3) / (n + 1/3)
+
+# provide mapping for species/group/environment
 species_data_source <- aoc_aligned
+
+# Calculate the total number of iterations
+total_iterations <- length(tiers) * length(environments) * length(erms)
+
+# Initialize variables for tracking time
+iteration_times <- numeric(total_iterations) # Store time for each iteration
+iteration_count <- 0 # Track the current iteration
+
+# Start timing
+tictoc::tic()
 
 # Loop through combinations
 results <- list()
 for (tier in tiers) {
   for (environment in environments) {
     for (erm in erms) {
-      # Adjust hcx_input based on tier
-      hcx_input <- ifelse(tier == 4, 0.10, 0.05)
+      # Increment iteration count
+      iteration_count <- iteration_count + 1
+      
+      # Start timing this iteration
+      iteration_start_time <- Sys.time()
       
       # Get the appropriate dataset
       results_df <- get_results_df(tier, environment, erm)
@@ -5134,12 +5241,13 @@ for (tier in tiers) {
       # Run the function
       result <- generate_plots_and_summary(
         tier = tier,
-        hcx_input = hcx_input,
         environment = environment,
         erm = erm,
+        color_palette = color_palette,
         results_df = results_df,
         sim = sim,
         num_iterations = num_iterations,
+        quantile_type = quantile_type,
         cv_dp = NULL, # Always NULL as per the updated requirements
         cv_uf = cv_uf,
         species_data_source = species_data_source,
@@ -5148,32 +5256,81 @@ for (tier in tiers) {
       
       # Store results
       results[[paste0("Tier", tier, "_", environment, "_", erm)]] <- result
+      
+      # End timing this iteration
+      iteration_end_time <- Sys.time()
+      iteration_time <- as.numeric(difftime(iteration_end_time, iteration_start_time, units = "secs"))
+      iteration_times[iteration_count] <- iteration_time # Store the time
+      
+      # Calculate the running average time
+      running_average_time <- mean(iteration_times[1:iteration_count])
+      
+      # Print progress every 100 iterations or at the end
+      if (iteration_count %% 1 == 0 || iteration_count == total_iterations) {
+        cat(crayon::yellow(sprintf(
+          "Iteration %d/%d complete. Running average time per iteration: %.2f seconds. Estimated time remaining: %.2f seconds.\n",
+          iteration_count, total_iterations, running_average_time,
+          running_average_time * (total_iterations - iteration_count)
+        )
+        ))
+      }
     }
   }
 }
 
-cat(crayon::blue("PSSD++ complete for all ERM/Tier/Environments!"))
+# Stop timing
+pSSD_time <- tictoc::toc()
+
+# Print completion message
+cat(crayon::blue(paste("PSSD++ complete for all ERM/Tier/Environments!", pSSD_time$callback_msg)))
 ```
+
+```{r}
+results$`Tier3_Marine_Food Dilution`$quantiles
+
+
+```
+
+
 
 #### Summary table
 ```{r}
+saveRDS(results, 
+        "../data/output/PSDDplusplusresults.rds")
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+
 # Initialize an empty list to store the standardized summaries
 PNEC_summaries <- list()
 
 # Loop through the results list to extract and standardize PNEC summaries
 for (combination in names(results)) {
-  # Extract the PNEC summary statistics
-  PNEC_stats <- results[[combination]]$summary$stats
-  
-  # Reshape the stats data frame into long format
-  PNEC_stats_long <- data.frame(
-    Statistic = rownames(PNEC_stats),
-    Value = as.numeric(PNEC_stats[, 1]) # Extract the first column (values)
+  # Extract the PNEC summary statistics for HC5 (hcx = 0.05)
+  PNEC_stats_05 <- results[[combination]]$summary_05$stats
+  PNEC_stats_05_long <- data.frame(
+    Statistic = rownames(PNEC_stats_05),
+    Value = as.numeric(PNEC_stats_05[, 1]), # Extract the first column (values)
+    HCX = "HC5", # Add a column to indicate HC5
+    Tier = "Tier3" # Assign Tier3 for HC5
   )
   
-  # Add the combination name and split it into tier, environment, and ERM
+  # Extract the PNEC summary statistics for HC10 (hcx = 0.10)
+  PNEC_stats_10 <- results[[combination]]$summary_10$stats
+  PNEC_stats_10_long <- data.frame(
+    Statistic = rownames(PNEC_stats_10),
+    Value = as.numeric(PNEC_stats_10[, 1]), # Extract the first column (values)
+    HCX = "HC10", # Add a column to indicate HC10
+    Tier = "Tier4" # Assign Tier4 for HC10
+  )
+  
+  # Combine HC5 and HC10 into a single data frame
+  PNEC_stats_long <- rbind(PNEC_stats_05_long, PNEC_stats_10_long)
+  
+  # Add the combination name and split it into environment and ERM
   PNEC_stats_long$Combination <- combination
-  PNEC_stats_long$Tier <- sub("_.*", "", combination) # Extract tier
   PNEC_stats_long$Environment <- sub(".*_(.*)_(.*)", "\\1", combination) # Extract environment
   PNEC_stats_long$ERM <- sub(".*_(.*)", "\\1", combination) # Extract ERM
   
@@ -5183,11 +5340,12 @@ for (combination in names(results)) {
 
 # Combine all standardized summaries into a single data frame
 PNEC_summary_table <- do.call(rbind, PNEC_summaries)
-# Reorder columns for clarity
-PNEC_summary_table <- PNEC_summary_table[, c("Tier", "Environment", "ERM", "Statistic", "Value")]
 
-# Sort the table by Tier, Environment, and ERM
-PNEC_summary_table <- PNEC_summary_table[order(PNEC_summary_table$Environment, PNEC_summary_table$ERM, PNEC_summary_table$Tier), ]
+# Reorder columns for clarity
+PNEC_summary_table <- PNEC_summary_table[, c("Tier", "Environment", "ERM", "HCX", "Statistic", "Value")]
+
+# Sort the table by Environment, ERM, Tier, and HCX
+PNEC_summary_table <- PNEC_summary_table[order(PNEC_summary_table$Environment, PNEC_summary_table$ERM, PNEC_summary_table$Tier, PNEC_summary_table$HCX), ]
 
 # Remove row names
 rownames(PNEC_summary_table) <- NULL
@@ -5195,80 +5353,310 @@ rownames(PNEC_summary_table) <- NULL
 # Pivot the table wider
 PNEC_summary_table_wide <- PNEC_summary_table %>%
   pivot_wider(
-    names_from = Statistic, # Use the Statistic column for new column names
-    values_from = Value     # Use the Value column for the values
-  )
+    names_from = c(Statistic), # Use both Statistic and HCX for new column names
+    values_from = Value             # Use the Value column for the values
+  ) %>% 
+  select(-HCX)
+
+# Save the table as an RDS file
+saveRDS(PNEC_summary_table_wide,
+        "../data/output/PNEC_summary_table_wide.rds"
+        )
 
 # Display the table in R
 print(PNEC_summary_table_wide)
 ```
 
 
+#### Arrange plots for publication
+##### pSSD Plots
+```{r}
+library(ggpubr)
+
+# Customize the plots
+plot_list <- list(
+  results$`Tier3_Marine_Tissue Translocation`$pSSD_plot +
+ labs(title = "Marine", y = "Tissue Translocation") + # Explicitly set y-axis label
+    theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
+          plot.subtitle = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size = 10)), # Keep y-axis text
+  
+  results$`Tier3_Freshwater_Tissue Translocation`$pSSD_plot +
+    labs(title = "Freshwater",
+         subtitle = "") +
+    theme(axis.title.y = element_text(size = 12), # Remove y-axis title
+          plot.subtitle = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size = 10)), # Keep y-axis text
+  
+  results$`Tier3_Marine_Food Dilution`$pSSD_plot +
+    ylab("Food Dilution") + # Add y-axis title
+    theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
+          plot.subtitle = element_blank(),
+          plot.title = element_blank(),
+          axis.title.x = element_text(size = 12),
+          axis.text.y = element_text(size = 10)), # Keep y-axis text
+  
+  results$`Tier3_Freshwater_Food Dilution`$pSSD_plot +
+    theme(axis.title.y = element_text(size = 12),
+          plot.subtitle = element_blank(),
+          plot.title = element_blank(),
+          axis.title.x = element_text(size = 12),
+          axis.text.y = element_text(size = 10)) # Keep y-axis text
+)
 
 
-<!-- ### Plot Comparisons with Deterministic Approach -->
-<!-- ```{r} -->
-<!-- #data prep -->
-<!-- t3f <- data.frame(ERM = "Food Dilution", Tier = "3",PNEC = tier3_food_PNEC_summary$df) -->
-<!-- t4f <- data.frame(ERM = "Food Dilution", Tier = "4",PNEC = tier4_food_PNEC_summary$df) -->
-<!-- t3t <- data.frame(ERM = "Tissue Translocation", Tier = "3",PNEC = tier3_tissue_PNEC_summary$df) -->
-<!-- t4t <- data.frame(ERM = "Tissue Translocation", Tier = "4",PNEC = tier4_tissue_PNEC_summary$df) -->
+library(ggpubr)
 
-<!-- ## join DFs -->
-<!-- PNEC_dfs <- rbind(t3f, t4f, t3t, t4t) %>%  -->
-<!--   mutate(y_position = (as.numeric(Tier) - 2) + (as.numeric(factor(ERM)) - 1.5) * 0.4)  # Adjust 0.1 or other value as needed -->
+# Arrange the plots
+arranged_plot <- ggarrange(
+  plotlist = plot_list,
+  #labels = c("A", "B", "C", "D"),
+  ncol = 2, nrow = 2, # Arrange in 2x2 grid
+  common.legend = TRUE, # Common legend for all plots
+  legend = "bottom" # Place legend at the bottom
+)
 
-<!-- #plot -->
-<!-- PNEC_pSSDvSSD <- ggplot() + -->
-<!--    geom_violin(data = PNEC_dfs, aes(x = PNEC, y = Tier, fill = ERM, color = ERM), -->
-<!--                draw_quantiles = c(0.05, 0.5, 0.95), color = "white", linewidth = 1.2, -->
-<!--                alpha = 0.75) + -->
-<!--    geom_jitter(data = PNEC_dfs, aes(x = PNEC, y = y_position, fill = ERM, color = ERM), -->
-<!--                height = 0.15, size = 1.5, alpha = 0.03) +  # Jittered points -->
-<!--    geom_point(data = base_thresholds_df %>% filter(Tier>2),  -->
-<!--               aes(x = PNEC, y = y_position, fill = ERM), -->
-<!--               size = 5, shape = 23,  -->
-<!--               color = "white", -->
-<!--               alpha = 0.95, -->
-<!--               stroke = 1.8 #thickness of outline -->
-<!--               ) + -->
-<!--    geom_errorbarh(data = base_thresholds_df %>% filter(Tier>2),  -->
-<!--                   aes(xmin = PNEClcl, xmax = PNECucl, y = y_position, fill = ERM, color = ERM), -->
-<!--                   height = 0.2, -->
-<!--                   alpha = 0.75, -->
-<!--                   linewidth = 1.2) + -->
-<!--    scale_x_log10(breaks = c(0.01, 0.1, 1, 10, 100, 1000, 10000, 1000000, 10000000), -->
-<!--                  #limits = c(0.001, 10000000), -->
-<!--                  labels = scales::label_comma()) + -->
-<!--   labs(title = "Comparison of pSSD and SSD Tier Thresholds", -->
-<!--        subtitle = "(Violin Plots/Points = pSSD; Diamonds/Error-Bars = SSD)", -->
-<!--        fill = "Ecologically-Relevant Metric", -->
-<!--        color = "Ecologically-Relevant Metric" -->
-<!--        ) + -->
-<!--   xlab("PNEC (Particles/L; 1 to 5,000 um)") + -->
-<!--   ylab("Threshold Tier") -->
+# Save the final plot
+ggsave(
+  filename = "../output/Manuscript_Figs/final_pSSD_plot.jpg",
+  plot = arranged_plot,
+  dpi = 500,
+  width = 10,
+  height = 8,
+  units = "in"
+)
 
-<!-- PNEC_pSSDvSSD_dark <- PNEC_pSSDvSSD + theme.dark -->
-<!-- PNEC_pSSDvSSD_light <- PNEC_pSSDvSSD + theme.light -->
+# Display the final plot
+print(arranged_plot)
+```
 
-<!-- # ggsave(filename = "PNEC_pSSDvSSD.tiff", -->
-<!-- #        path = "../output/presentation_Figs/",  -->
-<!-- #        plot = PNEC_pSSDvSSD_dark, width = 12, height = 10, units = "in") -->
+##### PNEC Plots
+```{r}
+# Customize the plots
+PNEC_plot_list <- list(
+  results$`Tier3_Marine_Tissue Translocation`$PNEC_plot_05 +
+ labs(title = "Marine", y = "Tissue Translocation") + # Explicitly set y-axis label
+    theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
+          plot.subtitle = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size = 10)), # Keep y-axis text
+  
+  results$`Tier3_Freshwater_Tissue Translocation`$PNEC_plot_05 +
+    labs(title = "Freshwater",
+         subtitle = "") +
+    theme(axis.title.y = element_text(size = 12), # Remove y-axis title
+          plot.subtitle = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size = 10)), # Keep y-axis text
+  
+  results$`Tier3_Marine_Food Dilution`$PNEC_plot_05 +
+    ylab("Food Dilution") + # Add y-axis title
+    theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
+          plot.subtitle = element_blank(),
+          plot.title = element_blank(),
+          axis.title.x = element_text(size = 12),
+          axis.text.y = element_text(size = 10)), # Keep y-axis text
+  
+  results$`Tier3_Freshwater_Food Dilution`$PNEC_plot_05 +
+    theme(axis.title.y = element_text(size = 12),
+          plot.subtitle = element_blank(),
+          plot.title = element_blank(),
+          axis.title.x = element_text(size = 12),
+          axis.text.y = element_text(size = 10)) # Keep y-axis text
+)
 
-<!-- ggsave(filename = "PNEC_pSSDvSSD.jpg", -->
-<!--        path = "../output/presentation_Figs/",  -->
-<!--        plot = PNEC_pSSDvSSD_dark, width = 12, height = 10, units = "in") -->
 
-<!-- ggsave(filename = "PNEC_pSSDvSSD.tiff", -->
-<!--        path = "../output/Manuscript_Figs/",  -->
-<!--        plot = PNEC_pSSDvSSD_light, width = 10, height = 8, units = "in") -->
+library(ggpubr)
 
-<!-- ggsave(filename = "PNEC_pSSDvSSD.jpg", -->
-<!--        path = "../output/Manuscript_Figs/",  -->
-<!--        plot = PNEC_pSSDvSSD_light, width = 10, height = 8, units = "in") -->
+# Arrange the plots
+PNEC_arranged_plot <- ggarrange(
+  plotlist = PNEC_plot_list,
+  #labels = c("A", "B", "C", "D"),
+  ncol = 2, nrow = 2, # Arrange in 2x2 grid
+  common.legend = TRUE, # Common legend for all plots
+  legend = "bottom" # Place legend at the bottom
+)
 
-<!-- PNEC_pSSDvSSD_dark -->
-<!-- ``` -->
+# Save the final plot
+ggsave(
+  filename = "../output/Manuscript_Figs/PNEC_final_plot.jpg",
+  plot = PNEC_arranged_plot,
+  dpi = 500,
+  width = 10,
+  height = 8,
+  units = "in"
+)
+
+# Display the final plot
+print(PNEC_arranged_plot)
+```
+
+##### Comparison of pSSD and SSD-MC Distributions
+```{r}
+# MC data
+marine_t3_tissue_MC <- all_tiers_data %>% 
+                   filter(Tier == "Tier3", Environment == "Marine", ERM == "Tissue Translocation")
+
+# pSSD data
+marine_t3_tissue_pSSD <- results$`Tier3_Marine_Tissue Translocation`$PNEC_df
+
+
+# Define dataset mapping for pSSD
+get_PNECs_df <- function(tier, environment, erm) {
+  if (environment == "Marine" && erm == "Tissue Translocation") {
+    if (tier == "Tier3") return(results$`Tier3_Marine_Tissue Translocation`$PNEC_df)
+    if (tier == "Tier4") return(results$`Tier4_Marine_Tissue Translocation`$PNEC_df)
+  } else if (environment == "Marine" && erm == "Food Dilution") {
+    if (tier == "Tier3") return(results$`Tier3_Marine_Food Dilution`$PNEC_df)
+    if (tier == "Tier4") return(results$`Tier4_Marine_Food Dilution`$PNEC_df)
+  } else if (environment == "Freshwater" && erm == "Tissue Translocation") {
+    if (tier == "Tier3") return(results$`Tier3_Freshwater_Tissue Translocation`$PNEC_df)
+    if (tier == "Tier4") return(results$`Tier4_Freshwater_Tissue Translocation`$PNEC_df)
+  } else if (environment == "Freshwater" && erm == "Food Dilution") {
+    if (tier == "Tier3") return(results$`Tier3_Freshwater_Food Dilution`$PNEC_df)
+    if (tier == "Tier4") return(results$`Tier4_Freshwater_Food Dilution`$PNEC_df)
+  } else {
+    stop("Invalid combination of tier, environment, and ERM")
+  }
+}
+
+
+#### FUNCTION TO MAKE COMPARISON PLOTS of PSSD and MC PNECs ####
+comparison_plot_function <- function(erm = "Tissue Translocation",
+                                     environment = "Marine",
+                                     tier = "Tier3",
+                                     pSSD_df = results,
+                                     MC_df = all_tiers_data){
+#prep MC data  
+MC_PNECs <- MC_df %>% 
+  filter(Tier == tier,
+         Environment == environment,
+         ERM == erm,
+         grepl("Default", Metric)
+         )
+
+pSSD_PNECs <- get_PNECs_df(tier = tier, environment = environment, erm = erm)
+
+  
+ggplot() +
+  # pSSD PNECs
+  geom_histogram(data = pSSD_PNECs, aes(x = PNEC, y = ..density.., fill = "pSDD++"), 
+                 color = "coral", bins = 350, alpha = 0.5) +
+  geom_density(data = pSSD_PNECs, aes(x = PNEC, color = "pSDD++"), lwd = 1) +  # Density line for pSDD++
+  
+  # MC-SSD PNECs
+  geom_histogram(data = MC_PNECs, aes(x = PNEC, y = ..density.., fill = "MC-SSD"), 
+                 color = "lightblue", bins = 350, alpha = 0.5) +
+  geom_density(data = MC_PNECs, aes(x = PNEC, color = "MC-SSD"), lwd = 1) +  # Density line for MC-SSD
+  
+  # Adjust x-axis limits and scale
+  xlim(quantile(MC_PNECs$PNEC, 0.001), quantile(MC_PNECs$PNEC, 0.999)) +
+  scale_x_log10() +
+  
+  # Define custom colors for the legend
+  scale_fill_manual(name = "Method", 
+                    values = c("pSDD++" = "coral", "MC-SSD" = "lightblue")) +
+  scale_color_manual(name = "Method", 
+                     values = c("pSDD++" = "coral", "MC-SSD" = "lightblue")) +
+  
+  # Theme and labels
+  theme_minimal(base_size = 15) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.title.y = element_text(size = 12),
+    axis.text.y = element_blank(),
+    axis.title.x = element_blank(),
+    plot.subtitle = element_blank()
+  ) +
+  labs(title = environment, y = "Relative Density", x = "PNEC (Tier 3; Particles/L [1 to 5,000 μm])")
+}
+
+
+### make ggplots for each combo
+
+PNECs_comparisons <- list()
+
+tiers <- c("Tier3")
+erms <- c("Tissue Translocation", "Food Dilution")
+environments = c("Marine", "Freshwater")
+
+for (tier in tiers) {
+  for (environment in environments) {
+    for (erm in erms) {
+      
+      # make plot    
+      PNEC_plot <- comparison_plot_function(erm = erm, environment = environment, tier = tier)
+      
+      #store results
+    PNECs_comparisons[[paste0("Tier", tier, "_", environment, "_", erm)]] <- PNEC_plot
+    }
+  }
+}
+      
+#PNECs_comparisons      
+
+#### arrange plots
+# Customize the plots
+PNEC_compare_plot_list <- list(
+  PNECs_comparisons$`TierTier3_Marine_Tissue Translocation` +
+ labs(title = "Marine", y = "Tissue Translocation") + # Explicitly set y-axis label
+    theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
+          plot.subtitle = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size = 10)), # Keep y-axis text
+  
+  PNECs_comparisons$`TierTier3_Freshwater_Tissue Translocation` +
+    labs(title = "Freshwater",
+         subtitle = "") +
+    theme(axis.title.y = element_text(size = 12), # Remove y-axis title
+          plot.subtitle = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size = 10)), # Keep y-axis text
+  
+  PNECs_comparisons$`TierTier3_Marine_Food Dilution` +
+    ylab("Food Dilution") + # Add y-axis title
+    theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
+          plot.subtitle = element_blank(),
+          plot.title = element_blank(),
+          axis.title.x = element_text(size = 12),
+          axis.text.y = element_text(size = 10)), # Keep y-axis text
+  
+  PNECs_comparisons$`TierTier3_Freshwater_Food Dilution` +
+    theme(axis.title.y = element_text(size = 12),
+          plot.subtitle = element_blank(),
+          plot.title = element_blank(),
+          axis.title.x = element_text(size = 12),
+          axis.text.y = element_text(size = 10)) # Keep y-axis text
+)
+
+
+library(ggpubr)
+
+# Arrange the plots
+PNEC_compare_arranged_plot <- ggarrange(
+  plotlist = PNEC_compare_plot_list,
+  #labels = c("A", "B", "C", "D"),
+  ncol = 2, nrow = 2, # Arrange in 2x2 grid
+  common.legend = TRUE, # Common legend for all plots
+  legend = "bottom" # Place legend at the bottom
+)
+
+# Save the final plot
+ggsave(
+  filename = "../output/Manuscript_Figs/PNEC_compare_arranged_plot.jpg",
+  plot = PNEC_compare_arranged_plot,
+  dpi = 500,
+  width = 10,
+  height = 8,
+  units = "in"
+)
+
+# Display the final plot
+print(PNEC_compare_arranged_plot)
+
+```
 
 
 # Export relevant data to Excel
