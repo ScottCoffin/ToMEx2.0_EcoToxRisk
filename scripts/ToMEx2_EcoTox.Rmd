@@ -134,7 +134,8 @@ getwd()
 
 aoc_z <- readRDS("../data/input/aoc_z_tomex2.RDS") %>%  #dataset is prepped in shiny repo
   rename(environment = env_f) %>% 
-  filter(!doi %in% c("10.1016/j.marpolbul.2021.112369", "10.3390/nano11030649")) %>%  #filter out Capolupo et al. (2021) and Richardson et al. (2021) because they were retracted
+  # Leah was testing how the thresholds would change if we removed these two key studies. Leave this commented out though.
+  #filter(!doi %in% c("10.1016/j.marpolbul.2021.112369", "10.3390/nano11030649")) %>%  #filter out Capolupo et al. (2021) and Richardson et al. (2021)
   mutate(AF.total = af.time * af.noec) #calculate composite AF
   #select(-rowid)# %>% #existing rowid is actually replicated (not sure how)
   #mutate(rowid = row_number())
@@ -5545,14 +5546,16 @@ pSSD_PNECs <- get_PNECs_df(tier = tier, environment = environment, erm = erm)
   
 ggplot() +
   # pSSD PNECs
-  geom_histogram(data = pSSD_PNECs, aes(x = PNEC, y = ..density.., fill = "pSDD++"), 
-                 color = "coral", bins = 350, alpha = 0.5) +
-  geom_density(data = pSSD_PNECs, aes(x = PNEC, color = "pSDD++"), lwd = 1) +  # Density line for pSDD++
+  # geom_histogram(data = pSSD_PNECs, aes(x = PNEC, y = ..density.., fill = "PSDD++", color = "PSSD++"), 
+  #                 bins = 350, alpha = 0.3) +
+  geom_density(data = pSSD_PNECs, aes(x = PNEC, color = "PSSD++", fill = "PSSD++"), lwd = 1, 
+               alpha = 0.5) +  # Density line for pSDD++
   
   # MC-SSD PNECs
-  geom_histogram(data = MC_PNECs, aes(x = PNEC, y = ..density.., fill = "MC-SSD"), 
-                 color = "lightblue", bins = 350, alpha = 0.5) +
-  geom_density(data = MC_PNECs, aes(x = PNEC, color = "MC-SSD"), lwd = 1) +  # Density line for MC-SSD
+  # geom_histogram(data = MC_PNECs, aes(x = PNEC, y = ..density.., fill = "MC-SSD", color = "MC-SSD"), 
+  #                 bins = 350, alpha = 0.3) +
+  geom_density(data = MC_PNECs, aes(x = PNEC, color = "MC-SSD", fill = "MC-SSD"), lwd = 1, alpha = 0.5
+               ) +  # Density line for MC-SSD
   
   # Adjust x-axis limits and scale
   xlim(quantile(MC_PNECs$PNEC, 0.001), quantile(MC_PNECs$PNEC, 0.999)) +
@@ -5560,9 +5563,9 @@ ggplot() +
   
   # Define custom colors for the legend
   scale_fill_manual(name = "Method", 
-                    values = c("pSDD++" = "coral", "MC-SSD" = "lightblue")) +
+                    values = c("PSSD++" = "coral", "MC-SSD" = "lightblue")) +
   scale_color_manual(name = "Method", 
-                     values = c("pSDD++" = "coral", "MC-SSD" = "lightblue")) +
+                     values = c("PSSD++" = "coral", "MC-SSD" = "lightblue")) +
   
   # Theme and labels
   theme_minimal(base_size = 15) +

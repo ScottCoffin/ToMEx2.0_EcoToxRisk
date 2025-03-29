@@ -542,7 +542,6 @@ param_values
 ```{r}
 aoc_risk_paper <- readRDS("../../data/input/aoc_z_tomex2.RDS") %>%  #dataset is prepped in shiny repo
   rename(environment = env_f) %>% 
-  filter(!doi %in% c("10.1016/j.marpolbul.2021.112369", "10.3390/nano11030649")) %>%  #filter out Capolupo et al. (2021) and Richardson et al. (2021) because they were retracted
   mutate(AF.total = af.time * af.noec) %>%  #calculate composite AF
   drop_na(effect.metric) %>% 
    filter(
@@ -564,7 +563,7 @@ aoc_risk_paper <- readRDS("../../data/input/aoc_z_tomex2.RDS") %>%  #dataset is 
 ### Alignment functions
 
 ```{r}
-align_data <- function(df,
+align_data <- function(df, #ToMEx database
                        x1M_set_input = 1, #um lower size for all alignments
                        x1D_set_input = 1, #um lower size for all alignments
                        x2D_set_input = 5000, #um
@@ -3705,7 +3704,7 @@ length_y_rows
 
 ### Calculate Sobol Indices
 
-```{r include=FALSE}
+```{r eval=FALSE, include=FALSE}
 R <- n_sobol/3# 4000 #bootstrap iterations
 
 ind.marine_food_T3 <- sobol_indices(Y = Y_marine_food_T3_valid[1:length_y_rows_marine_food], 
@@ -3723,7 +3722,7 @@ ind.freshwater_tissue_T3 <- sobol_indices(Y = Y_freshwater_tissue_T3_valid[1:len
 
 #### Display Indices
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 #The output of sobol_indices() is an S3 object of class sensobol, with the results stored in the component results. To improve the visualization of the object, we set the number of digits in each numerical column to 3:
 cols <- colnames(ind.marine_food_T3$results)[1:5]
 ind.marine_food_T3$results[,(cols):=round(.SD,3),.SDcols=(cols)]
@@ -3747,7 +3746,7 @@ plot(ind.marine_food_T3, dummy = ind.marine_food_T3_dummy)
 plot(ind.marine_tissue_T3, dummy = ind.marine_tissue_T3_dummy)
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 # 4. Calculate Sobol' Indices: Calculate the Sobol' indices using the results.
 # Function to plot Sobol' indices
 plot_indices <- function(indices, title) {
@@ -3768,7 +3767,7 @@ plot_indices <- function(indices, title) {
 }
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 # Plot Sobol' indices for marine thresholds
 sobol_plot_marine_food <-  plot_indices(ind.marine_food_T3, "Sobol' Indices for Marine Food Thresholds")
 
@@ -3849,7 +3848,7 @@ ggsave(filename = "sobol_indices_facet.jpg",
 sobol_combined_plot
 
 ```
-```{r}
+```{r eval=FALSE, include=FALSE}
 library(dplyr)
 library(ggplot2)
 
@@ -3906,7 +3905,7 @@ combined_sobol_results <- combined_sobol_results %>%
 
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 # Create the combined plot with side-by-side bars for each sensitivity index
 combined_sobol_plot <- combined_sobol_results %>%
   mutate(sensitivity = case_when(sensitivity == "Si" ~ "Second-Order",
