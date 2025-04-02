@@ -1323,7 +1323,7 @@ freshwater_only_thresholds <- derive_thresholds(aligned_data = freshwater_data)
 ```{r}
 formatted_marine_base <- marine_only_thresholds$base_thresholds %>% 
   mutate_if(is.numeric, ~signif(., 2)) %>% 
-  mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
+  mutate(across(where(is.numeric), ~signif(., 2))) %>% 
   mutate("Food (Marine)" = paste0(`Food Dilution (Default)`, " (", `Food Dilution (5th %)`, " to ", `Food Dilution (95th %)`,")"),
          "Tissue (Marine)" = paste0(`Tissue Translocation (Default)`, " (", `Tissue Translocation (5th %)`, " to ", `Tissue Translocation (95th %)`,")")) %>% 
   select(Tier, "Food (Marine)", "Tissue (Marine)")
@@ -1347,7 +1347,7 @@ formatted_freshwater_base
 
 ```{r}
 getwd()
-formatted_thresholds <- cbind(formatted_marine_base, formatted_freshwater_base)
+formatted_thresholds <- bind_cols(formatted_marine_base, formatted_freshwater_base)
 write.csv(formatted_thresholds, "../data/output/formatted_thresholds.csv")
 ```
 
@@ -4056,8 +4056,8 @@ plot_food_min <- create_ggplot(df_input = example.df,
                                metric = "particles_L_food_dilution",
                                metric_label = "Particles/L (Food Dilution)",
                                x_label = "Food Dilution (SD from Mean)", 
-                               annotation_x = 3.2E7,
-                               annotation_y = 21,
+                               annotation_x = 3.3E7,
+                               annotation_y = 20,
                                color = "#663399",
                                effect_metric = aoc_MC$particles_L_food_dilution_deterministic,
                                y_axis_label = TRUE,
@@ -4082,7 +4082,7 @@ plot_tissue_min <- create_ggplot(df_input = example.df,
                                metric = "particles_L_ox_stress",
                                metric_label = "Particles/L (Tissue Translocation)",
                                x_label = "Tissue Translocation (SD from Mean)", 
-                               annotation_x = 7.6e7,
+                               annotation_x = 7.72e7,
                                annotation_y = 100,
                                color = "forestgreen",
                                effect_metric = aoc_MC$particles_L_ox_stress_deterministic,
@@ -4499,17 +4499,16 @@ pSSD_plot <- function(quantiles_df, species_data, data_name, environment_name, t
       data = species_data, 
       aes(x = NOEC_log10, y = Prop, label = Species, color = Group), 
       fontface = "italic",  # Make labels bold
-      size = 3,  # Increase label size
+      size = 3.5,  # Increase label size
       fill = "white",  # Add a white background to labels
       alpha = 0.8,
-      box.padding = 0.4,  # Add padding around the label box
+      box.padding = 0.8,  # Add padding around the label box
       point.padding = 0.8,  # Add padding between points and labels
-      segment.alpha = 0.6,  # Make connecting lines semi-transparent
-      nudge_x = -0.5,
+      segment.alpha = 0.7,  # Make connecting lines semi-transparent
       max.overlaps = Inf,  # Allow all labels to be displayed
-      max.time = 5,  # Allow up to 5 seconds to resolve overlaps
+      max.time = 10,  # Allow up to 5 seconds to resolve overlaps
       max.iter = 10000,  # Allow up to 10,000 iterations
-      force = 2 #increase repulsion between labels
+      force = 5 #increase repulsion between labels
     ) +
     geom_line(data = quantiles_df, aes(x = iv, y = mean), color = "firebrick4", size = 1) +
     scale_x_continuous(
@@ -4522,24 +4521,36 @@ pSSD_plot <- function(quantiles_df, species_data, data_name, environment_name, t
     xlab("NOEC (particles/L [1 to 5,000 μm])") +
     scale_color_manual(values = color_palette, 
                        name = "Organism Group") + # Apply consistent color mapping
-    labs(title = "Microplastics Probabilistic Species Sensitivity Distribution",
-         subtitle = paste0(ERM_name, " (", tier_name, ", ", environment_name, ")")) +
+    labs(title = "Microplastics PSSD++",
+         subtitle = paste0(ERM_name, " (",environment_name, ")")) +
     theme_minimal(base_size = 15) +
     theme(plot.title = element_text(face = "bold", hjust = 0.5),
-          plot.subtitle = element_text(hjust = 0.5))
+          plot.subtitle = element_text(hjust = 0.5, size = 14))
 }
 
+
+
 # # example usage
+# all_species <- tier1_2_food_plot_prep$species_data %>%
+#   distinct(Species, Group, environment) %>%
+#   arrange(environment, Group, Species)
+# 
+# # Generate a consistent color palette
+# color_palette <- generate_color_palette(all_species)
+# 
+# 
 # pSSD_plot(quantiles_df = tier1_2_food_plot_prep$quantiles_df,
 #           species_data = tier1_2_food_plot_prep$species_data,
-#           data_name = "Tier 2 (Food Dilution)")
+#           ERM_name = "Food Dilution",
+#           environment_name = "Marine",
+#           color_palette = color_palette)
 
 ```
 
 #### PNEC ggplot Function
 ```{r}
 # Calculate PNEC1 if not already calculated
-PNEC_plot <- function(pssd_results, hcx, data_name, 
+make_PNEC_plot <- function(pssd_results, hcx, data_name, 
                       quantile_type = 7 #Type 1 is no interpolation (default for pSSD), # type  7 inovlves interpolation (note that type 7 results in higher values for mean/median, but the mode is around the same as the median would be with type 1. It's necessary to use type 7 to get distinct values between HC5 and HC10 for freshwater bc there's so few species)
                       ){
   PNEC <- apply(pssd_results$pSSD, 2, function(x) quantile(x, 
@@ -4557,13 +4568,19 @@ PNEC_plot <- function(pssd_results, hcx, data_name,
   p95_val <- quantile(PNEC, probs = 0.95, type = quantile_type)
   p999_val <- quantile(PNEC, probs = 0.999999999999, type = quantile_type)  # 99.9th percentile for x-axis limits
   
+  
+  # Define the x-axis range dynamically
+  x_range <- p999_val - p001_val  # Replace max_x and min_x with your actual x-axis limits
+  
   # Create a data frame for the percentile labels
   label_data <- data.frame(
-    x = c(p5_val, median_val, p95_val),
+    x = c(p5_val, 
+          median_val,
+          (p95_val - 0.001 * x_range)),
   #  y = c(0.00001, 0.00001, 0.00001),  # Adjust y position for labels
-    label = c(paste0("**5th %** <br>", scales::comma(p5_val, 2)),
-              paste0("**Median** <br>", scales::comma(median_val, 2)),
-              paste0("**95th %** <br>", scales::comma(p95_val, 2)))
+    label = c(paste0("**5th %** <br>", signif(p5_val, 2)),
+              paste0("**Median** <br>", signif(median_val, 2)),
+              paste0("**95th %** <br>", signif(p95_val, 2)))
   )
   
   # Plotting
@@ -4592,8 +4609,8 @@ PNEC_plot <- function(pssd_results, hcx, data_name,
           plot.subtitle = element_blank()) 
 }
 
-#example
-# PNEC_plot(pssd_results = tier1_2_food_pssd,
+# #example
+# make_PNEC_plot(pssd_results = tier1_2_food_pssd,
 #            hcx = 0.05,
 #           data_name = "Tier 2 (Food Dilution)")
 ```
@@ -4679,7 +4696,7 @@ tier1_2_food_pssdPlot <-  pSSD_plot(quantiles_df = tier1_2_food_plot_prep$quanti
                                     data_name = "Tier 2 (Food Dilution)")
 
 #Step 4b: generate ggplot (PNEC)
-tier1_2_food_PNECPlot <-  PNEC_plot(pssd_results = tier1_2_food_pssd,
+tier1_2_food_PNECPlot <-  make_PNEC_plot(pssd_results = tier1_2_food_pssd,
                                     hcx = 0.05,
                                     data_name = "Tier 2 (Food Dilution)")
 
@@ -4726,11 +4743,11 @@ tier3_4_food_pssdPlot <-  pSSD_plot(quantiles_df = tier3_4_food_plot_prep$quanti
                                     data_name = "Tier 3 (Food Dilution)")
 
 #Step 4b: generate ggplot (PNEC)
-tier3_food_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_food_pssd,
+tier3_food_PNECPlot <-  make_PNEC_plot(pssd_results = tier3_4_food_pssd,
                                     hcx = 0.05,
                                     data_name = "Tier 3 (Food Dilution)")
 
-tier4_food_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_food_pssd,
+tier4_food_PNECPlot <-  make_PNEC_plot(pssd_results = tier3_4_food_pssd,
                                     hcx = 0.10,
                                     data_name = "Tier 4 (Food Dilution)")
 
@@ -4807,11 +4824,11 @@ tier3_4_tissue_pssdPlot <-  pSSD_plot(quantiles_df = tier3_4_tissue_plot_prep$qu
                      limits = c(0, 10))
 
 #Step 4b: generate ggplot (PNEC)
-tier3_tissue_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_tissue_pssd,
+tier3_tissue_PNECPlot <-  make_PNEC_plot(pssd_results = tier3_4_tissue_pssd,
                                       hcx = 0.05,
                                       data_name = "Tier 3 (Tissue Translocation)")
 
-tier4_tissue_PNECPlot <-  PNEC_plot(pssd_results = tier3_4_tissue_pssd,
+tier4_tissue_PNECPlot <-  make_PNEC_plot(pssd_results = tier3_4_tissue_pssd,
                                       hcx = 0.10,
                                       data_name = "Tier 3 (Tissue Translocation)")
 
@@ -5055,8 +5072,8 @@ generate_plots_and_summary <- function(tier,
                                        results_df,
                                        quantile_type = 7,
                                        color_palette = color_palette,
-                                       sim = 1000, # Default number of simulations
-                                       num_iterations = 1000, # Default number of iterations
+                                       sim = 300, # Default number of simulations
+                                       num_iterations = 300, # Default number of iterations
                                        cv_dp = NULL, 
                                        cv_uf = 0.5, # Default value for coefficient of variation for uncertainty factors 
                                        species_data_source,
@@ -5103,19 +5120,26 @@ generate_plots_and_summary <- function(tier,
   PNEC_05_df <- data.frame(PNEC = PNEC_05)
   
   # Step 4b: Generate PNEC plots for both HCX values
-  PNEC_plot_05 <- PNEC_plot(
+  PNEC_plot_05 <- make_PNEC_plot(
     pssd_results = pssd_results,
     hcx = 0.05,
     quantile_type = quantile_type,
     data_name = paste("Tier", tier, "(", erm, ") - HC5")
-  )
+  ) + 
+    labs(title  = "Tier 3 (HC5)",
+         x = "PNEC (Particles/L [1 to 5,000 μm])") +
+    theme(axis.text.y = element_blank())
   
-  PNEC_plot_10 <- PNEC_plot(
+  PNEC_plot_10 <- make_PNEC_plot(
     pssd_results = pssd_results,
     hcx = 0.10,
     quantile_type = quantile_type,
     data_name = paste("Tier", tier, "(", erm, ") - HC10")
-  )
+  ) +
+    labs(title = "Tier 4 (HC10)",
+         x = "PNEC (Particles/L [1 to 5,000 μm])") +
+    theme(axis.title.y = element_blank(),
+          axis.text.y = element_blank())
   
   # Step 5: Extract PNEC values for both HCX values
   PNEC_summary_05 <- PNEC_data_summary(
@@ -5132,42 +5156,30 @@ generate_plots_and_summary <- function(tier,
     data_name = paste("Tier", tier, "(", erm, ") - HC10")
   )
   
-  # Arrange plots for HC5
-  arranged_plot_05 <- ggarrange(
-    pSSD_plot, PNEC_plot_05,
-    ncol = 1, heights = c(0.6, 0.4)
-  )
-  
-  # Arrange plots for HC10
-  arranged_plot_10 <- ggarrange(
-    pSSD_plot, PNEC_plot_10,
-    ncol = 1, heights = c(0.6, 0.4)
-  )
+  # Arrange plots for HC5/HC10
+  arranged_plot <- ggarrange(
+    pSSD_plot, 
+    ggarrange(PNEC_plot_05, PNEC_plot_10, ncol = 2, widths = c(0.5, 0.5)), 
+    nrow = 2, 
+    heights = c(0.6, 0.4)
+    )
   
   # Save the arranged plots
   ggsave(
-    filename = paste0("tier", tier, "_", erm, "_", environment, "_arranged_HC5.jpg"),
+    filename = paste0(erm, "_", environment, "_arranged_plot.jpg"),
     dpi = 300,
     path = output_path,
-    plot = arranged_plot_05,
+    plot = arranged_plot,
     width = 10, height = 8, units = "in"
   )
-  
-  ggsave(
-    filename = paste0("tier", tier, "_", erm, "_", environment, "_arranged_HC10.jpg"),
-    dpi = 300,
-    path = output_path,
-    plot = arranged_plot_10,
-    width = 10, height = 8, units = "in"
-  )
+
   
   # Return the plots and summaries for both HCX values
   return(list(
     pSSD_plot = pSSD_plot,
     PNEC_plot_05 = PNEC_plot_05,
     PNEC_plot_10 = PNEC_plot_10,
-    arranged_plot_05 = arranged_plot_05,
-    arranged_plot_10 = arranged_plot_10,
+    arranged_plot = arranged_plot,
     summary_05 = PNEC_summary_05,
     summary_10 = PNEC_summary_10,
     quantiles = plot_prep$quantiles_df,
@@ -5427,8 +5439,8 @@ ggsave(
   filename = "../output/Manuscript_Figs/final_pSSD_plot.jpg",
   plot = arranged_plot,
   dpi = 500,
-  width = 10,
-  height = 8,
+  width = 9,
+  height = 7,
   units = "in"
 )
 
@@ -5499,6 +5511,14 @@ print(PNEC_arranged_plot)
 
 ##### Comparison of pSSD and SSD-MC Distributions
 ```{r}
+SSD_base_thresholds <- base_thresholds_df %>% 
+  mutate(y_position_comparison = case_when(
+    Environment == "Marine" & ERM == "Tissue Translocation" ~ 1.7,
+    Environment == "Marine" & ERM == "Food Dilution" ~ 0.8,
+    Environment == "Freshwater" & ERM == "Tissue Translocation" ~ 4.1,
+    Environment == "Freshwater" & ERM == "Food Dilution" ~ 1.3
+  ))
+
 # MC data
 marine_t3_tissue_MC <- all_tiers_data %>% 
                    filter(Tier == "Tier3", Environment == "Marine", ERM == "Tissue Translocation")
@@ -5540,18 +5560,34 @@ MC_PNECs <- MC_df %>%
          ERM == erm,
          grepl("Default", Metric)
          )
-
+# prep pSSD data
 pSSD_PNECs <- get_PNECs_df(tier = tier, environment = environment, erm = erm)
+
+#prep SSD data
+SSD_PNECs <- SSD_base_thresholds %>% filter(Tier == 3, Environment == environment, ERM == erm)
 
   
 ggplot() +
-  # pSSD PNECs
+  ###### SSD PNECs ####
+  geom_point(data = SSD_PNECs, 
+              aes(x = PNEC, y = y_position_comparison, fill = "SSD", color = "SSD"),
+              size = 5, shape = 22, 
+              color = "white",
+              alpha = 0.95,
+              stroke = 1.8 #thickness of outline
+              ) +
+   geom_errorbarh(data = SSD_PNECs, 
+                  aes(xmin = PNEClcl, xmax = PNECucl, y = y_position_comparison, fill = "SSD", color = "SSD"),
+                  height = 0.2,
+                  alpha = 0.75,
+                  linewidth = 1.2) +
+  ###### pSSD PNECs #####
   # geom_histogram(data = pSSD_PNECs, aes(x = PNEC, y = ..density.., fill = "PSDD++", color = "PSSD++"), 
   #                 bins = 350, alpha = 0.3) +
   geom_density(data = pSSD_PNECs, aes(x = PNEC, color = "PSSD++", fill = "PSSD++"), lwd = 1, 
                alpha = 0.5) +  # Density line for pSDD++
   
-  # MC-SSD PNECs
+  ###### MC-SSD PNECs #####
   # geom_histogram(data = MC_PNECs, aes(x = PNEC, y = ..density.., fill = "MC-SSD", color = "MC-SSD"), 
   #                 bins = 350, alpha = 0.3) +
   geom_density(data = MC_PNECs, aes(x = PNEC, color = "MC-SSD", fill = "MC-SSD"), lwd = 1, alpha = 0.5
@@ -5563,10 +5599,13 @@ ggplot() +
   
   # Define custom colors for the legend
   scale_fill_manual(name = "Method", 
-                    values = c("PSSD++" = "coral", "MC-SSD" = "lightblue")) +
+                    values = c("MC-SSD" = "#1F77B4", "SSD" = "#117733", "PSSD++" = "#EE3377")) +
   scale_color_manual(name = "Method", 
-                     values = c("PSSD++" = "coral", "MC-SSD" = "lightblue")) +
+                     values = c("MC-SSD" = "#1F77B4", "SSD" = "#117733", "PSSD++" = "#EE3377")) +
+
   
+
+
   # Theme and labels
   theme_minimal(base_size = 15) +
   theme(
@@ -5610,31 +5649,35 @@ PNEC_compare_plot_list <- list(
  labs(title = "Marine", y = "Tissue Translocation") + # Explicitly set y-axis label
     theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
           plot.subtitle = element_blank(),
-          axis.title.x = element_blank(),
-          axis.text.y = element_text(size = 10)), # Keep y-axis text
+          axis.title.x = element_blank()#,
+          #axis.text.y = element_text(size = 10)
+          ), # Keep y-axis text
   
   PNECs_comparisons$`TierTier3_Freshwater_Tissue Translocation` +
     labs(title = "Freshwater",
          subtitle = "") +
     theme(axis.title.y = element_text(size = 12), # Remove y-axis title
           plot.subtitle = element_blank(),
-          axis.title.x = element_blank(),
-          axis.text.y = element_text(size = 10)), # Keep y-axis text
+          axis.title.x = element_blank()#,
+          #axis.text.y = element_text(size = 10)
+          ), # Keep y-axis text
   
   PNECs_comparisons$`TierTier3_Marine_Food Dilution` +
     ylab("Food Dilution") + # Add y-axis title
     theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
           plot.subtitle = element_blank(),
           plot.title = element_blank(),
-          axis.title.x = element_text(size = 12),
-          axis.text.y = element_text(size = 10)), # Keep y-axis text
+          axis.title.x = element_text(size = 12)#,
+          #axis.text.y = element_text(size = 10)
+          ), # Keep y-axis text
   
   PNECs_comparisons$`TierTier3_Freshwater_Food Dilution` +
     theme(axis.title.y = element_text(size = 12),
           plot.subtitle = element_blank(),
           plot.title = element_blank(),
-          axis.title.x = element_text(size = 12),
-          axis.text.y = element_text(size = 10)) # Keep y-axis text
+          axis.title.x = element_text(size = 12)#,
+          #axis.text.y = element_text(size = 10)
+          ) # Keep y-axis text
 )
 
 
@@ -5654,8 +5697,8 @@ ggsave(
   filename = "../output/Manuscript_Figs/PNEC_compare_arranged_plot.jpg",
   plot = PNEC_compare_arranged_plot,
   dpi = 500,
-  width = 10,
-  height = 8,
+  width = 7.5,
+  height = 5.5,
   units = "in"
 )
 
