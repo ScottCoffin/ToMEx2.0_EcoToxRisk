@@ -15,14 +15,12 @@ output:
 ---
 #Setup
 
-```{r, setup, include=FALSE}
-#knitr::opts_knit$set(root.dir = "G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk")
-```
-
 ```{r, include=FALSE}
 knitr::opts_chunk$set(fig.width=10, fig.height=8, fig.path='output/figures',
                       warning=FALSE, message=FALSE,time_it = TRUE) 
 ```
+
+This markdown script produces (nearly) all of the figures, tables, and data in the Coffin et al. (2025) publication. Before running this script, ensure that the EcoTox_MonteCarlo.Rmd script has first been run. That script produces the monte-carlo aligned dataset, which is used in the PSSD++ code below. I have separated these two scripts due to the massive amount of time that the other script takes to run. Due to the size of the dataset produced (>100 MB), it is not feasible to upload that to Github, so the user will need to run this locally  if they would like to recreate the analysis in the publication.
 
 ## Libraries
 ```{r Libraries, include = FALSE}
@@ -33,7 +31,7 @@ library(plotly)
 library(gridExtra)
 library(grid)
 library(wesanderson)
-library(ggdark)
+#library(ggdark)
 library(broom)
 library(knitr)
 library(kableExtra)
@@ -49,6 +47,8 @@ library(Matrix)
 library(mc2d)
 library(trapezoid)
 library(reshape2)
+#devtools::install_github("christyray/sciscales")
+library(sciscales)
 
 
 #check SSDtools package version is 0.3.7#
@@ -72,8 +72,8 @@ nboot = 10 #number of bootstrap iterations for the traditional SSD (keep at 10 f
 
 ```{r Aesthetics, include = FALSE}
 #Theme
-theme.type <- dark_theme_bw(base_size = 15) +
-  #theme_bw(base_size = 15) +
+theme.type <- #dark_theme_bw(base_size = 15) +
+  theme_bw(base_size = 15) +
               theme(plot.title = element_text(hjust = 0.5),
                     plot.subtitle = element_text(hjust = 0.5))
 
@@ -101,7 +101,8 @@ theme.light <- theme_minimal(base_size = 15) +
         axis.text = element_text(size = 16),
         axis.title.y = element_text(vjust = 0.5, size = 18))   # Center the y-axis title (vertically))   # Center the subtitle)
 
-theme.dark <- dark_theme_minimal(base_size = 15) +
+theme.dark <- theme_minimal(base_size = 15) +
+  #dark_theme_minimal(base_size = 15) +
   theme(legend.position = c(0.2, 0.85),
         legend.title = element_text(size = 16, face = "bold"),
         legend.text = element_text(size = 14),
@@ -3153,9 +3154,10 @@ MC_histograms_base <- ggplot(prepared_data, aes(x = Value)) +
   scale_fill_manual(values = tier_colors) +  # Apply manual colors for fill
   scale_color_manual(values = tier_colors)  # Apply manual colors for lines
 
-library(ggdark)
+#library(ggdark)
 MC_histograms_dark <- MC_histograms_base +
-  dark_theme_bw(base_size = 20) +
+  theme_bw(base_size = 20) +
+ # dark_theme_bw(base_size = 20) +
   theme(
     strip.background = element_blank(),
     strip.placement = "outside",
@@ -3232,7 +3234,7 @@ base_food_freshwater <- data.frame(Tier = c("1", "2", "3", "4"),
                         PNEClcl = freshwater_only_thresholds$base_thresholds$`Food Dilution (5th %)`,
                         PNECucl = freshwater_only_thresholds$base_thresholds$`Food Dilution (95th %)`)
 
-base_thresholds_df <- rbind(base_tissue_marine, base_food_marine, base_tissue_freshwater, base_food_freshwater) %>% 
+base_thresholds_df <- bind_rows(base_tissue_marine, base_food_marine, base_tissue_freshwater, base_food_freshwater) %>% 
     mutate(y_position = case_when(
     ERM == "Tissue Translocation" & Environment == "Freshwater" ~ 2,  # Offset for Tissue Translocation
     ERM == "Tissue Translocation" & Environment == "Marine" ~ 0.9,  # Offset for Tissue Translocation
@@ -4326,7 +4328,7 @@ prep_data <- function(data) {
       select(id, Species, poly_f) %>% 
       acast(id ~ Species, value.var = "poly_f") %>% 
       Matrix(sparse = T),
-    shape__matrix <- data %>% 
+    shape_matrix <- data %>% 
       mutate(id = row_number()) %>% 
       select(id, Species, shape_f) %>% 
       acast(id ~ Species, value.var = "shape_f") %>% 
@@ -4348,7 +4350,7 @@ prep_data <- function(data) {
   matrices
 }
 # #example usage
- #tier1_2_food_matrices <- prep_data(results_df_food_t3_t4_marine)
+tier1_2_food_matrices <- prep_data(results_df_food_marine)
 ```
 
 ### Run PSSD
@@ -4385,22 +4387,26 @@ run_pSSD_analysis <- function(data_matrices, num_iterations, sim, cv_dp, cv_uf, 
 }
 
 # #example
-# tier1_2_food_pssd <- run_pSSD_analysis(
-#   data_matrices = tier1_2_food_matrices,
-#   num_iterations = 10,
-#   sim = SIM,
-#   cv_dp = CV.DP,  # Example coefficient of variation for DP
-#   cv_uf = CV.UF,  # Example coefficient of variation for UF
-#   data_name = "tier1_2_food"
-# )
-# 
-# tier1_2_food_pssd$pSSD
+tier1_2_food_pssd <- run_pSSD_analysis(
+  data_matrices = tier1_2_food_matrices,
+  num_iterations = 10,
+  sim = SIM,
+  cv_dp = CV.DP,  # Example coefficient of variation for DP
+  cv_uf = CV.UF,  # Example coefficient of variation for UF
+  data_name = "tier1_2_food"
+)
+
+tier1_2_food_pssd$pSSD
 ```
 
 ###Plotting
 #### Preparation Function
 ```{r}
-prepare_plot_data <- function(pSSD, data_matrices, species_data_source, quantile_type = 7) {
+prepare_plot_data <- function(original_data = results_df_food_marine,
+                              pSSD = tier1_2_food_pssd$pSSD,
+                              data_matrices = tier1_2_food_matrices,
+                              species_data_source = tier1_2_food,
+                              quantile_type = 7) {
   # Ensure that the required matrices are present and correctly formatted
   if (is.null(data_matrices[['DP']]) || is.null(data_matrices[['UFdd']]) || is.null(data_matrices[['UFt']])) {
     stop("Data matrices for DP, UFdd, or UFt are not available or incorrect.")
@@ -4444,6 +4450,8 @@ prepare_plot_data <- function(pSSD, data_matrices, species_data_source, quantile
     stop("NOEC.det matrix is empty or not properly formatted.")
   }
   
+  
+  ###### GEOMEAN APPROACH - Create Single point for each species ####
   # Creating a dataframe for ggplot with species data
   species_data <- data.frame(
     Species = colnames(NOEC.det),
@@ -4456,15 +4464,37 @@ prepare_plot_data <- function(pSSD, data_matrices, species_data_source, quantile
   species_data <- species_data %>% 
     left_join(species_data_source %>% distinct(Group, Species), by = "Species") %>% 
     left_join(species_data_source %>% distinct(Species, environment), by = "Species")
+  
+  
+  #### Include all Points for each species ####
+    # Create a dataframe with all individual unique NOEC values (collapsing alignment df)
+ all_NOEC <- original_data %>% 
+    mutate(NOEC_log10 = log10(dose_new_particles_L / (af.noec * af.time))) %>% 
+    group_by(Species, Group, poly_f, shape_f, effect.metric, af.noec, af.time, bio_f) %>% 
+    # for each unique POD, get the 5th, 50th, and 95th percentile alignment value for plotting
+    summarize(NOEC_001th = quantile(NOEC_log10, 0.0001, type = 7),
+               NOEC_01th = quantile(NOEC_log10, 0.001, type = 7),
+              NOEC_1th = quantile(NOEC_log10, 0.01, type = 7),
+              NOEC_10th = quantile(NOEC_log10, 0.10, type = 7),
+              NOEC_mean = geometric.mean(NOEC_log10, na.rm = T),
+              NOEC_median = median(NOEC_log10),
+              NOEC_90th = quantile(NOEC_log10, 0.90, type = 7),
+              NOEC_99th = quantile(NOEC_log10, 0.99, type = 7),
+              NOEC_999th = quantile(NOEC_log10, 0.999, type = 7),
+              NOEC_9999th = quantile(NOEC_log10, 0.9999, type = 7)
+              ) %>% 
+    ungroup() %>% 
+    left_join(species_data %>% distinct(Species, Prop, NOEC_log10), by = "Species")
 
-  list(quantiles_df = quantiles_df, species_data = species_data)
+  list(quantiles_df = quantiles_df, species_data = species_data, all_NOEC = all_NOEC)
 }
 
 # Example usage
-# tier1_2_food_plot_prep <- prepare_plot_data(pSSD = tier1_2_food_pssd$pSSD,
-#                                             data_matrices = tier1_2_food_matrices,
-#                                             species_data_source = tier1_2_food)
-# tier1_2_food_plot_prep
+tier1_2_food_plot_prep <- prepare_plot_data(original_data = results_df_food_marine,
+                                            pSSD = tier1_2_food_pssd$pSSD,
+                                            data_matrices = tier1_2_food_matrices,
+                                            species_data_source = aoc_final)
+tier1_2_food_plot_prep
 ```
 
 
@@ -4480,37 +4510,89 @@ generate_color_palette <- function(data) {
 }
 
 
-pSSD_plot <- function(quantiles_df, species_data, data_name, environment_name, tier_name, 
+pSSD_plot <- function(quantiles_df, all_NOEC, species_data, data_name, environment_name, tier_name, 
                       ERM_name, color_palette = color_palette) {
   # Calculate the dynamic x-axis limits
   max_species_value <- max(species_data$NOEC_log10, na.rm = TRUE)  # Find the maximum species value
 
   x_limits <- c(
-    min(c(quantiles_df$iv, species_data$NOEC_log10), na.rm = TRUE) + 2,  # Minimum value from data + 2 orders of magnitude
-    max_species_value + 3  # Add 3 orders of magnitude to the maximum species value
+    min(c(quantiles_df$iv, species_data$NOEC_log10), na.rm = TRUE) - 1,  # Minimum value from data + 2 orders of magnitude
+    max_species_value + 6  # Add 5 orders of magnitude to the maximum species value
   )
   
   ggplot() +
-    geom_ribbon(data = quantiles_df, aes(x = iv, ymin = min, ymax = max), fill = "coral", alpha = 0.1) +
-    geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q05, ymax = q95), fill = "coral", alpha = 0.3) +
-    geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q25, ymax = q75), fill = "coral", alpha = 0.8) +
-    geom_point(data = species_data, aes(x = NOEC_log10, y = Prop, color = Group)) +
+    # this code would make a ribbon around the quantiles for each point in hte PSSD. This is the 'default' for these plots, but we've opted instead to show the distribution around each data point due to alignments. see geom_points below
+    # geom_ribbon(data = quantiles_df, aes(x = iv, ymin = min, ymax = max), fill = "coral", alpha = 0.05) +
+    # geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q05, ymax = q95), fill = "coral", alpha = 0.2) +
+    # geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q25, ymax = q75), fill = "coral", alpha = 0.6) +
+    
+    # display each individual study point's distribution (with size/alpha related to probability according to MC alignment)
+    geom_point(data = all_NOEC,
+               aes(x = NOEC_001th, y = Prop, color = Group, fill = Group),
+               size = 1, alpha = 0.03) +
+     geom_point(data = all_NOEC,
+               aes(x = NOEC_01th, y = Prop, color = Group, fill = Group),
+               size = 1.5, alpha = 0.07) +
+    geom_point(data = all_NOEC,
+               aes(x = NOEC_1th, y = Prop, color = Group, fill = Group),
+               size = 2, alpha = 0.1) +
+    geom_point(data = all_NOEC,
+               aes(x = NOEC_10th, y = Prop, color = Group, fill = Group),
+               size = 2.5, alpha = 0.2) +
+    geom_point(data = all_NOEC,
+               aes(x = NOEC_median, y = Prop, color = Group, fill = Group),
+               size = 3, alpha = 0.5) +
+    geom_point(data = all_NOEC,
+               aes(x = NOEC_90th, y = Prop, color = Group, fill = Group),
+               size = 2.5, alpha = 0.2) +
+    geom_point(data = all_NOEC,
+               aes(x = NOEC_99th, y = Prop, color = Group, fill = Group),
+               size = 2, alpha = 0.1) +
+    geom_point(data = all_NOEC,
+               aes(x = NOEC_999th, y = Prop, color = Group, fill = Group),
+               size = 1.5, alpha = 0.07) +
+    geom_point(data = all_NOEC,
+               aes(x = NOEC_9999th, y = Prop, color = Group, fill = Group),
+               size = 1, alpha = 0.03) +
+
+    # only add points for geomean (preferred to show all points as above)
+    # geom_point(data = species_data, aes(x = NOEC_log10, y = Prop, color = Group)) +
+    ### provide label for median value (lower 60% of points)
     geom_label_repel(
-      data = species_data, 
-      aes(x = NOEC_log10, y = Prop, label = Species, color = Group), 
+      data = species_data %>% filter(Prop <0.6),
+      aes(x = NOEC_log10, y = Prop, label = Species, color = Group),
+     direction = "y",
+     hjust = 0,
+     nudge_x =  7,
       fontface = "italic",  # Make labels bold
-      size = 3.5,  # Increase label size
+      size = 3,  # Increase label size
       fill = "white",  # Add a white background to labels
-      alpha = 0.8,
-      box.padding = 0.8,  # Add padding around the label box
-      point.padding = 0.8,  # Add padding between points and labels
-      segment.alpha = 0.7,  # Make connecting lines semi-transparent
+      alpha = 0.85,
+      segment.alpha = 0.4,  # Make connecting lines semi-transparent
       max.overlaps = Inf,  # Allow all labels to be displayed
-      max.time = 10,  # Allow up to 5 seconds to resolve overlaps
-      max.iter = 10000,  # Allow up to 10,000 iterations
-      force = 5 #increase repulsion between labels
+      max.time = 5,  # Allow up to 30 seconds to resolve overlaps
+      max.iter = 1e7#,  # Allow up to 1,000,000 iterations
+     # force = 4, #increase repulsion between labels
     ) +
-    geom_line(data = quantiles_df, aes(x = iv, y = mean), color = "firebrick4", size = 1) +
+### provide label for median value (upper 40% of points)
+    geom_label_repel(
+      data = species_data %>% filter(Prop >=0.6),
+      aes(x = NOEC_log10, y = Prop, label = Species, color = Group),
+     direction = "y",
+     hjust = 1,
+     nudge_x =  -7,
+      fontface = "italic",  # Make labels bold
+      size = 3,  # Increase label size
+      fill = "white",  # Add a white background to labels
+      alpha = 0.85,
+      segment.alpha = 0.4,  # Make connecting lines semi-transparent
+      max.overlaps = Inf,  # Allow all labels to be displayed
+      max.time = 5,  # Allow up to 30 seconds to resolve overlaps
+      max.iter = 1e7#,  # Allow up to 1,000,000 iterations
+     # force = 4, #increase repulsion between labels
+    ) +
+    
+    geom_line(data = quantiles_df, aes(x = iv, y = mean), color = "black", size = 1) +
     scale_x_continuous(
       breaks = pretty(x_limits, n = 6),  # Dynamically generate breaks
       labels = function(x) parse(text = paste0("10^", x)),  # Back-transform labels to powers of 10
@@ -4521,6 +4603,15 @@ pSSD_plot <- function(quantiles_df, species_data, data_name, environment_name, t
     xlab("NOEC (particles/L [1 to 5,000 μm])") +
     scale_color_manual(values = color_palette, 
                        name = "Organism Group") + # Apply consistent color mapping
+    scale_fill_manual(values = color_palette, 
+                       name = "Organism Group") + # Apply consistent color mapping
+    guides(
+      color = guide_legend(override.aes = list(label = "",
+                                              hjust = NULL)),
+      fill =  guide_legend(override.aes = list(label = "",
+                                              hjust = NULL))
+  ) +  # Combine color and fill legends
+    
     labs(title = "Microplastics PSSD++",
          subtitle = paste0(ERM_name, " (",environment_name, ")")) +
     theme_minimal(base_size = 15) +
@@ -4531,19 +4622,20 @@ pSSD_plot <- function(quantiles_df, species_data, data_name, environment_name, t
 
 
 # # example usage
-# all_species <- tier1_2_food_plot_prep$species_data %>%
-#   distinct(Species, Group, environment) %>%
-#   arrange(environment, Group, Species)
-# 
-# # Generate a consistent color palette
-# color_palette <- generate_color_palette(all_species)
-# 
-# 
-# pSSD_plot(quantiles_df = tier1_2_food_plot_prep$quantiles_df,
-#           species_data = tier1_2_food_plot_prep$species_data,
-#           ERM_name = "Food Dilution",
-#           environment_name = "Marine",
-#           color_palette = color_palette)
+all_species <- tier1_2_food_plot_prep$species_data %>%
+  distinct(Species, Group, environment) %>%
+  arrange(environment, Group, Species)
+
+# Generate a consistent color palette
+color_palette <- generate_color_palette(all_species)
+
+
+pSSD_plot(quantiles_df = tier1_2_food_plot_prep$quantiles_df,
+          species_data = tier1_2_food_plot_prep$species_data,
+          all_NOEC = tier1_2_food_plot_prep$all_NOEC,
+          ERM_name = "Food Dilution",
+          environment_name = "Marine",
+          color_palette = color_palette)
 
 ```
 
@@ -4885,6 +4977,7 @@ summary_table <- cbind(tier3_food_PNEC_summary$stats, tier4_food_PNEC_summary$st
 
 summary_table
 ```
+
 ```{r}
 base_tissue <- data.frame(Tier = c("1", "2", "3", "4"),
                           ERM = "Tissue Translocation", 
@@ -4898,10 +4991,10 @@ base_food <- data.frame(Tier = c("1", "2", "3", "4"),
                         PNEClcl = marine_only_thresholds$base_thresholds$`Food Dilution (5th %)`,
                         PNECucl = marine_only_thresholds$base_thresholds$`Food Dilution (95th %)`)
 
-base_thresholds_df <- rbind(base_tissue, base_food) %>% 
+base_thresholds_df_marine <- rbind(base_tissue, base_food) %>% 
    mutate(y_position = (as.numeric(Tier) - 2) + (as.numeric(factor(ERM)) - 1.5) * 0.9)  # Adjust 0.1 or other value as needed
 
-base_thresholds_df
+base_thresholds_df_marine
 ```
 
 
@@ -4924,14 +5017,14 @@ PNEC_pSSDvSSD <- ggplot() +
                alpha = 0.75) +
    geom_jitter(data = PNEC_dfs, aes(x = PNEC, y = y_position, fill = ERM, color = ERM),
                height = 0.15, size = 1.5, alpha = 0.03) +  # Jittered points
-   geom_point(data = base_thresholds_df %>% filter(Tier>2), 
+   geom_point(data = base_thresholds_df_marine %>% filter(Tier>2), 
               aes(x = PNEC, y = y_position, fill = ERM),
               size = 5, shape = 23, 
               color = "white",
               alpha = 0.95,
               stroke = 1.8 #thickness of outline
               ) +
-   geom_errorbarh(data = base_thresholds_df %>% filter(Tier>2), 
+   geom_errorbarh(data = base_thresholds_df_marine %>% filter(Tier>2), 
                   aes(xmin = PNEClcl, xmax = PNECucl, y = y_position, fill = ERM, color = ERM),
                   height = 0.2,
                   alpha = 0.75,
@@ -5096,6 +5189,7 @@ generate_plots_and_summary <- function(tier,
   # Step 3: Prepare data for ggplot
   plot_prep <- prepare_plot_data(
     pSSD = pssd_results$pSSD,
+    original_data = results_df,
     data_matrices = MCdf,
     quantile_type = quantile_type,
     species_data_source = species_data_source
@@ -5105,6 +5199,7 @@ generate_plots_and_summary <- function(tier,
   pSSD_plot <- pSSD_plot(
     quantiles_df = plot_prep$quantiles_df,
     species_data = plot_prep$species_data,
+    all_NOEC = plot_prep$all_NOEC,
     tier_name = paste("Tier", tier),
     environment_name = environment,
     ERM_name = erm,
@@ -5219,7 +5314,7 @@ erms <- c("Food Dilution", "Tissue Translocation")
 output_path <- "../output/Manuscript_Figs/"
 
 # Example coefficients and data sources
-sim <- 300 #number of simulations in pSSD. 3 is minimum. I've tried 1,000, but it creates a matrix too big for my RAM (112 GB). It appears that we need to keep this value less than 500 or so for most machines to be able to run (300 seems to be a sweet spot).
+sim <- 3 #number of simulations in pSSD. 3 is minimum. I've tried 1,000, but it creates a matrix too big for my RAM (112 GB). It appears that we need to keep this value less than 500 or so for most machines to be able to run (300 seems to be a sweet spot).
 num_iterations <- sim
 cv_uf <- 0.5 # Default value for uncertainty factors
 quantile_type = 8 # type 1 is actual data (doesn't work for small datasets),
@@ -5566,6 +5661,9 @@ pSSD_PNECs <- get_PNECs_df(tier = tier, environment = environment, erm = erm)
 #prep SSD data
 SSD_PNECs <- SSD_base_thresholds %>% filter(Tier == 3, Environment == environment, ERM == erm)
 
+#define xlimits
+xlimits <- c(quantile(pSSD_PNECs$PNEC, 0.001),
+             quantile(pSSD_PNECs$PNEC, 0.9999))
   
 ggplot() +
   ###### SSD PNECs ####
@@ -5595,7 +5693,8 @@ ggplot() +
   
   # Adjust x-axis limits and scale
   xlim(quantile(MC_PNECs$PNEC, 0.001), quantile(MC_PNECs$PNEC, 0.999)) +
-  scale_x_log10() +
+  scale_x_log10(limits = xlimits,
+                labels = label_sci(trailing = FALSE)) +
   
   # Define custom colors for the legend
   scale_fill_manual(name = "Method", 
