@@ -2426,6 +2426,8 @@ alpha_combined_plot
 ### Run Sobol (Parallel-Processing)
 
 ```{r message=FALSE, include=FALSE}
+library(doParallel)
+library(doSNOW)
 # Set up parallel processing
 num_cores <- min(12, detectCores())  # Adjust the number of cores as needed
 cl <- makeCluster(num_cores)

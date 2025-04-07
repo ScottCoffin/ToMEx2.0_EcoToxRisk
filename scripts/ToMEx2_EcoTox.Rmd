@@ -4057,7 +4057,7 @@ plot_food_min <- create_ggplot(df_input = example.df,
                                plot_type = "Food",
                                metric = "particles_L_food_dilution",
                                metric_label = "Particles/L (Food Dilution)",
-                               x_label = "Food Dilution (SD from Mean)", 
+                               x_label = "Particles/L (Food Dilution; 1 to 5,000 μm)", 
                                annotation_x = 3.3E7,
                                annotation_y = 20,
                                color = "#663399",
@@ -4071,7 +4071,7 @@ plot_food_max <- create_ggplot(df_input = example.df,
                                plot_type = "Food",
                                metric = "particles_L_food_dilution",
                                metric_label = "Particles/L (Food Dilution)",
-                               x_label = "Food Dilution (SD from Mean)", 
+                               x_label = "Particles/L (Food Dilution; 1 to 5,000 μm)", 
                               annotation_x = 5e-3,
                                annotation_y = 0.8,
                                color = "#663399",
@@ -4083,7 +4083,7 @@ plot_tissue_min <- create_ggplot(df_input = example.df,
                                plot_type = "Tissue",
                                metric = "particles_L_ox_stress",
                                metric_label = "Particles/L (Tissue Translocation)",
-                               x_label = "Tissue Translocation (SD from Mean)", 
+                               x_label = "Particles/L (Tissue Translocation; 1 to 5,000 μm)", 
                                annotation_x = 7.72e7,
                                annotation_y = 100,
                                color = "forestgreen",
@@ -4097,7 +4097,7 @@ plot_tissue_max <- create_ggplot(df_input = example.df,
                                plot_type = "Tissue",
                                metric = "particles_L_ox_stress",
                                metric_label = "Particles/L (Tissue Translocation)",
-                               x_label = "Tissue Translocation (SD from Mean)", 
+                               x_label = "Particles/L (Tissue Translocation; 1 to 5,000 μm)", 
                                annotation_x = 4e5,
                                annotation_y = 1.6,
                                color = "forestgreen",
@@ -4184,6 +4184,85 @@ filtered.data.large.default_t3.4_MC <- filtered.data.large.default_t1.2_MC %>%
 
 
 # Probabilistic Species Sensitivity Distribution Plus
+### Data preparatation
+The MC Sim dataset prepared in EcoTox_MonteCarlo.Rmd contains aligned tox values for each species/group in the dataset. We can pair these datapoints to their assessement factors for time and effect metric in order to propagate uncertainty associated with that step, as is done in the PSSD.
+#### Pre-process data for different ERM/Environments/Thresholds
+```{r}
+results_df <- readRDS("monte carlo/output/results_df_sobol.rds") %>% 
+  rename(#poly_f = polymer,
+         #shape_f = shape,
+         Group = group,
+         Species = species
+         ) %>% 
+# global filters for all thresholds
+  filter(shape_f != "Not Reported",
+          poly_f != "Not Reported",
+           Group != "Bacterium",
+           Group != "Plant",
+           effect.metric != "HONEC") %>% 
+  mutate(sim_id_numeric  = as.numeric(str_replace(simulation_id, "sim", ""))) #%>% 
+ # filter(sim_id_numeric < 1001) #just get the first 1,000 sims
+#  filter(sim_id_numeric ==1 )
+
+########## food dilution ################
+results_df_food <- results_df %>% 
+  filter(ingestible != "not ingestible",
+         particles_L_food_dilution > 0,
+         Group != "Algae") %>% 
+  mutate(dose_new_particles_L = particles_L_food_dilution)
+
+# Tier 3/4
+results_df_food_t3_t4 <- results_df_food %>% 
+  filter(risk.13 != 1, bio_f %in% c("Organism", "Population"))
+
+##### marine food ####
+# T1/2
+results_df_food_marine <- results_df_food %>% 
+  filter(environment == "Marine")
+# T3/4
+results_df_food_t3_t4_marine <- results_df_food_t3_t4 %>% 
+  filter(environment == "Marine")
+
+##### freshwater food ####
+# T1/2
+results_df_food_freshwater <- results_df_food %>% 
+  filter(environment == "Freshwater")
+
+# T3/4
+results_df_food_t3_t4_freshwater <- results_df_food_t3_t4 %>% 
+  filter(environment == "Freshwater")
+
+
+########## Tissue Translocation ################
+results_df_tissue <- results_df %>% 
+  filter(translocatable != "not translocatable",
+         particles_L_ox_stress > 0) %>% 
+  mutate(dose_new_particles_L = particles_L_ox_stress)
+
+# Tier 3/4
+results_df_tissue_t3_t4 <- results_df_tissue %>% 
+  filter(risk.13 != 1, bio_f %in% c("Organism", "Population"))
+
+##### marine tissue ####
+# T1/2
+results_df_tissue_marine <- results_df_tissue %>% 
+  filter(environment == "Marine")
+# T3/4
+results_df_tissue_t3_t4_marine <- results_df_tissue_t3_t4 %>% 
+  filter(environment == "Marine")
+
+##### freshwater tissue ####
+# T1/2
+results_df_tissue_freshwater <- results_df_tissue %>% 
+  filter(environment == "Freshwater")
+
+# T3/4
+results_df_tissue_t3_t4_freshwater <- results_df_tissue_t3_t4 %>% 
+  filter(environment == "Freshwater")
+
+names(results_df)
+```
+
 
 ```{r eval=FALSE, include=FALSE}
 #food dilution
@@ -4761,388 +4840,12 @@ return(list("stats" = as.data.frame(Stat_PNEC_t),
 # tier1_2_food_PNEC$stats
 ```
 
-## Application
-### Tier 1_food
-```{r eval=FALSE, warning=FALSE, include=FALSE}
-#Step 1: prep data matrices
-tier1_2_food_matrices <- prep_data(tier1_2_food)
 
-#Step 2: run pSSD
-tier1_2_food_pssd <- run_pSSD_analysis(
-  data_matrices = tier1_2_food_matrices,
-  num_iterations = 100,
-  sim = SIM,
-  cv_dp = CV.DP.food,  # Default coefficeint
-  cv_uf = CV.UF,  # Example coefficient of variation for UF
-  data_name = "tier1_2_food"
-)
-
-#Step 3: prep for ggplot
-tier1_2_food_plot_prep <- prepare_plot_data(pSSD = tier1_2_food_pssd$pSSD,
-                                            data_matrices = tier1_2_food_matrices,
-                                            species_data_source = tier1_2_food)
-
-#Step 4a: generate ggplot (pSSD)
-tier1_2_food_pssdPlot <-  pSSD_plot(quantiles_df = tier1_2_food_plot_prep$quantiles_df,
-                                    species_data = tier1_2_food_plot_prep$species_data,
-                                    data_name = "Tier 2 (Food Dilution)")
-
-#Step 4b: generate ggplot (PNEC)
-tier1_2_food_PNECPlot <-  make_PNEC_plot(pssd_results = tier1_2_food_pssd,
-                                    hcx = 0.05,
-                                    data_name = "Tier 2 (Food Dilution)")
-
-# Step 5: extract PNEC values for table
-tier1_2_food_PNEC_summary <- PNEC_data_summary(pssd_results = tier1_2_food_pssd,
-                                               hcx = 0.05,
-                                               data_name = "Tier 2 (Food Dilution)")
-```
-
-```{r eval=FALSE, include=FALSE}
-ggarrange(tier1_2_food_pssdPlot,tier1_2_food_PNECPlot,
-          ncol = 1,
-          heights = c(0.6,0.4))
-
-
-```
-```{r eval=FALSE, include=FALSE}
-tier1_2_food_PNEC_summary$stats
-```
-
-### Tiers 3 and 4_food
-```{r eval=FALSE, warning=FALSE, include=FALSE}
-#Step 1: prep data matrices
-tier3_4_food_matrices <- prep_data(tier3_4_food)
-
-#Step 2: run pSSD
-tier3_4_food_pssd <- run_pSSD_analysis(
-  data_matrices = tier3_4_food_matrices,
-  num_iterations = 10,
-  sim = SIM,
-  cv_dp = CV.DP.food, # Example coefficient of variation for DP
-  cv_uf = CV.UF,  # Example coefficient of variation for UF
-  data_name = "tier3_4_food"
-)
-
-#Step 3: prep for ggplot
-tier3_4_food_plot_prep <- prepare_plot_data(pSSD = tier3_4_food_pssd$pSSD,
-                                            data_matrices = tier3_4_food_matrices,
-                                            species_data_source = tier3_4_food)
-
-#Step 4a: generate ggplot (pSSD)
-tier3_4_food_pssdPlot <-  pSSD_plot(quantiles_df = tier3_4_food_plot_prep$quantiles_df,
-                                    species_data = tier3_4_food_plot_prep$species_data,
-                                    data_name = "Tier 3 (Food Dilution)")
-
-#Step 4b: generate ggplot (PNEC)
-tier3_food_PNECPlot <-  make_PNEC_plot(pssd_results = tier3_4_food_pssd,
-                                    hcx = 0.05,
-                                    data_name = "Tier 3 (Food Dilution)")
-
-tier4_food_PNECPlot <-  make_PNEC_plot(pssd_results = tier3_4_food_pssd,
-                                    hcx = 0.10,
-                                    data_name = "Tier 4 (Food Dilution)")
-
-# Step 5: extract PNEC values for table
-tier3_food_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_food_pssd,
-                                               hcx = 0.05,
-                                               data_name = "Tier 3 (Food Dilution)")
-
-tier4_food_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_food_pssd,
-                                               hcx = 0.10,
-                                               data_name = "Tier 4 (Food Dilution)")
-```
-
-```{r eval=FALSE, include=FALSE}
-food_plots_light <- ggarrange(tier3_4_food_pssdPlot + theme.light + theme(legend.position = c(0.1, 0.6)),  
-                        ggarrange(tier3_food_PNECPlot + theme.light,
-                                  tier4_food_PNECPlot + theme.light,
-                                  ncol = 2, nrow = 1, labels = c("B", "C")),
-                        ncol = 1, nrow = 2, labels = c("A"), heights = c(0.7,0.3))
-
-ggsave(filename = "food_plots_light.jpg",
-       dpi = 300,
-       path = "../output/Manuscript_Figs/", 
-       plot = food_plots_light, width = 10, height = 8, units = "in")
-
-food_plots_light
-```
-
-```{r eval=FALSE, include=FALSE}
-food_plots_dark <- ggarrange(tier3_4_food_pssdPlot + theme.dark + theme(legend.position = c(0.1, 0.6)),  
-                        ggarrange(tier3_food_PNECPlot + theme.dark,
-                                  tier4_food_PNECPlot + theme.dark,
-                                  ncol = 2, nrow = 1, labels = c("B", "C")),
-                        ncol = 1, nrow = 2, labels = c("A"))
-
-ggsave(filename = "food_plots_dark.jpg",
-       dpi = 300,
-       path = "../output/presentation_Figs/", 
-       plot = food_plots_dark, width = 10, height = 8, units = "in")
-
-food_plots_dark
-```
-
-```{r eval=FALSE, include=FALSE}
-cbind(tier3_food_PNEC_summary$stats, tier4_food_PNEC_summary$stats)
-```
-
-### Tier 3 and 4_tissue
-```{r eval=FALSE, warning=FALSE, include=FALSE}
-#Step 1: prep data matrices
-tier3_4_tissue_matrices <- prep_data(tier3_4_tissue)
-
-#Step 2: run pSSD
-tier3_4_tissue_pssd <- run_pSSD_analysis(
-  data_matrices = tier3_4_tissue_matrices,
-  num_iterations = 10,
-  sim = SIM,
-  cv_dp = CV.DP.ox,  # Example coefficient of variation for DP
-  cv_uf = CV.UF,  # Example coefficient of variation for UF
-  data_name = "tier3_4_tissue"
-)
-
-#Step 3: prep for ggplot
-tier3_4_tissue_plot_prep <- prepare_plot_data(pSSD = tier3_4_tissue_pssd$pSSD,
-                                            data_matrices = tier3_4_tissue_matrices,
-                                            species_data_source = tier3_4_tissue)
-
-#Step 4a: generate ggplot (pSSD)
-tier3_4_tissue_pssdPlot <-  pSSD_plot(quantiles_df = tier3_4_tissue_plot_prep$quantiles_df,
-                                    species_data = tier3_4_tissue_plot_prep$species_data,
-                                    data_name = "Tier 3 (Tissue Translocation)") +
-    scale_x_continuous(name = "NOEC (particles/L)", breaks = c(0, 2, 4, 6, 8,10),
-                     labels = expression(1, 10^2, 10^4, 10^6, 10^8, 10^10),
-                     limits = c(0, 10))
-
-#Step 4b: generate ggplot (PNEC)
-tier3_tissue_PNECPlot <-  make_PNEC_plot(pssd_results = tier3_4_tissue_pssd,
-                                      hcx = 0.05,
-                                      data_name = "Tier 3 (Tissue Translocation)")
-
-tier4_tissue_PNECPlot <-  make_PNEC_plot(pssd_results = tier3_4_tissue_pssd,
-                                      hcx = 0.10,
-                                      data_name = "Tier 3 (Tissue Translocation)")
-
-# Step 5: extract PNEC values for table
-tier3_tissue_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_tissue_pssd,
-                                               hcx = 0.05,
-                                               data_name = "Tier 3 (Tissue Translocation)")
-
-tier4_tissue_PNEC_summary <- PNEC_data_summary(pssd_results = tier3_4_tissue_pssd,
-                                               hcx = 0.10,
-                                               data_name = "Tier 4 (Tissue Translocation)")
-```
-
-```{r eval=FALSE, include=FALSE}
-tissue_plots_light <- ggarrange(tier3_4_tissue_pssdPlot + theme.light + theme(legend.position = c(0.15, 0.6)),  
-                        ggarrange(tier3_tissue_PNECPlot + theme.light,
-                                  tier4_tissue_PNECPlot + theme.light,
-                                  ncol = 2, nrow = 1, labels = c("B", "C")),
-                        ncol = 1, nrow = 2, labels = c("A"))
-
-ggsave(filename = "tissue_plots_light.jpg",
-       dpi = 300,
-       path = "../output/Manuscript_Figs/", 
-       plot = tissue_plots_light, width = 10, height = 8, units = "in")
-
-tissue_plots_light
-```
-
-```{r eval=FALSE, include=FALSE}
-tissue_plots_dark <- ggarrange(tier3_4_tissue_pssdPlot + theme.dark + theme(legend.position = c(0.15, 0.6)),  
-                        ggarrange(tier3_tissue_PNECPlot + theme.dark,
-                                  tier4_tissue_PNECPlot + theme.dark,
-                                  ncol = 2, nrow = 1, labels = c("B", "C")),
-                        ncol = 1, nrow = 2, labels = c("A"))
-
-ggsave(filename = "tissue_plots_dark.jpg",
-       dpi = 300,
-       path = "../output/Manuscript_Figs/", 
-       plot = tissue_plots_dark, width = 10, height = 8, units = "in")
-
-tissue_plots_dark
-```
-
-```{r eval=FALSE, include=FALSE}
-cbind(tier3_tissue_PNEC_summary$stats, tier4_tissue_PNEC_summary$stats)
-```
-
-## Summary
-### Table
-```{r eval=FALSE, include=FALSE}
-summary_table <- cbind(tier3_food_PNEC_summary$stats, tier4_food_PNEC_summary$stats,
-                       tier3_tissue_PNEC_summary$stats, tier4_tissue_PNEC_summary$stats) %>% 
-  mutate(across(where(is.numeric), round, digits = 3))
-
-summary_table
-```
-
-```{r}
-base_tissue <- data.frame(Tier = c("1", "2", "3", "4"),
-                          ERM = "Tissue Translocation", 
-                          PNEC = marine_only_thresholds$base_thresholds$`Tissue Translocation (Default)`,
-                          PNEClcl = marine_only_thresholds$base_thresholds$`Tissue Translocation (5th %)`,
-                          PNECucl = marine_only_thresholds$base_thresholds$`Tissue Translocation (95th %)`)
-
-base_food <- data.frame(Tier = c("1", "2", "3", "4"),
-                        ERM = "Food Dilution", 
-                        PNEC = marine_only_thresholds$base_thresholds$`Food Dilution (Default)`,
-                        PNEClcl = marine_only_thresholds$base_thresholds$`Food Dilution (5th %)`,
-                        PNECucl = marine_only_thresholds$base_thresholds$`Food Dilution (95th %)`)
-
-base_thresholds_df_marine <- rbind(base_tissue, base_food) %>% 
-   mutate(y_position = (as.numeric(Tier) - 2) + (as.numeric(factor(ERM)) - 1.5) * 0.9)  # Adjust 0.1 or other value as needed
-
-base_thresholds_df_marine
-```
-
-
-### Plot Comparisons with Deterministic Approach
-```{r eval=FALSE, include=FALSE}
-#data prep
-t3f <- data.frame(ERM = "Food Dilution", Tier = "3",PNEC = tier3_food_PNEC_summary$df)
-t4f <- data.frame(ERM = "Food Dilution", Tier = "4",PNEC = tier4_food_PNEC_summary$df)
-t3t <- data.frame(ERM = "Tissue Translocation", Tier = "3",PNEC = tier3_tissue_PNEC_summary$df)
-t4t <- data.frame(ERM = "Tissue Translocation", Tier = "4",PNEC = tier4_tissue_PNEC_summary$df)
-
-## join DFs
-PNEC_dfs <- rbind(t3f, t4f, t3t, t4t) %>% 
-  mutate(y_position = (as.numeric(Tier) - 2) + (as.numeric(factor(ERM)) - 1.5) * 0.4)  # Adjust 0.1 or other value as needed
-
-#plot
-PNEC_pSSDvSSD <- ggplot() +
-   geom_violin(data = PNEC_dfs, aes(x = PNEC, y = Tier, fill = ERM, color = ERM),
-               draw_quantiles = c(0.05, 0.5, 0.95), color = "white", linewidth = 1.2,
-               alpha = 0.75) +
-   geom_jitter(data = PNEC_dfs, aes(x = PNEC, y = y_position, fill = ERM, color = ERM),
-               height = 0.15, size = 1.5, alpha = 0.03) +  # Jittered points
-   geom_point(data = base_thresholds_df_marine %>% filter(Tier>2), 
-              aes(x = PNEC, y = y_position, fill = ERM),
-              size = 5, shape = 23, 
-              color = "white",
-              alpha = 0.95,
-              stroke = 1.8 #thickness of outline
-              ) +
-   geom_errorbarh(data = base_thresholds_df_marine %>% filter(Tier>2), 
-                  aes(xmin = PNEClcl, xmax = PNECucl, y = y_position, fill = ERM, color = ERM),
-                  height = 0.2,
-                  alpha = 0.75,
-                  linewidth = 1.2) +
-   scale_x_log10(breaks = c(0.01, 0.1, 1, 10, 100, 1000, 10000, 1000000, 10000000),
-                 #limits = c(0.001, 10000000),
-                 labels = scales::label_comma()) +
-  labs(title = "Comparison of pSSD and SSD Tier Thresholds",
-       subtitle = "(Violin Plots/Points = pSSD; Diamonds/Error-Bars = SSD)",
-       fill = "Ecologically-Relevant Metric",
-       color = "Ecologically-Relevant Metric"
-       ) +
-  xlab("PNEC (Particles/L; 1 to 5,000 μm)") +
-  ylab("Threshold Tier")
-
-PNEC_pSSDvSSD_dark <- PNEC_pSSDvSSD + theme.dark
-PNEC_pSSDvSSD_light <- PNEC_pSSDvSSD + theme.light
-
-# ggsave(filename = "PNEC_pSSDvSSD.tiff",
-#        path = "../output/presentation_Figs/", 
-#        plot = PNEC_pSSDvSSD_dark, width = 12, height = 10, units = "in")
-
-ggsave(filename = "PNEC_pSSDvSSD.jpg",
-       path = "../output/presentation_Figs/", 
-       plot = PNEC_pSSDvSSD_dark, width = 12, height = 10, units = "in")
-
-ggsave(filename = "PNEC_pSSDvSSD.tiff",
-       path = "../output/Manuscript_Figs/", 
-       plot = PNEC_pSSDvSSD_light, width = 10, height = 8, units = "in")
-
-ggsave(filename = "PNEC_pSSDvSSD.jpg",
-       path = "../output/Manuscript_Figs/", 
-       plot = PNEC_pSSDvSSD_light, width = 10, height = 8, units = "in")
-
-PNEC_pSSDvSSD_dark
-```
 ## PSSD++ (using every MC sim aligned tox value as a data point)
 The following code attempts to more accurately represent the uncertainty of the alignments through the PSSD by using a distribution of aligned tox values as the data matrix, instead of using a CoV value (which necessarily requires the assumption of a distribution).
 
-### Data preparatation
-The MC Sim dataset prepared in EcoTox_MonteCarlo.Rmd contains aligned tox values for each species/group in the dataset. We can pair these datapoints to their assessement factors for time and effect metric in order to propagate uncertainty associated with that step, as is done in the PSSD.
-#### Pre-process data for different ERM/Environments/Thresholds
-```{r}
-results_df <- readRDS("monte carlo/output/results_df_sobol.rds") %>% 
-  rename(#poly_f = polymer,
-         #shape_f = shape,
-         Group = group,
-         Species = species
-         ) %>% 
-# global filters for all thresholds
-  filter(shape_f != "Not Reported",
-          poly_f != "Not Reported",
-           Group != "Bacterium",
-           Group != "Plant",
-           effect.metric != "HONEC") %>% 
-  mutate(sim_id_numeric  = as.numeric(str_replace(simulation_id, "sim", ""))) #%>% 
- # filter(sim_id_numeric < 1001) #just get the first 1,000 sims
-#  filter(sim_id_numeric ==1 )
 
-########## food dilution ################
-results_df_food <- results_df %>% 
-  filter(ingestible != "not ingestible",
-         particles_L_food_dilution > 0,
-         Group != "Algae") %>% 
-  mutate(dose_new_particles_L = particles_L_food_dilution)
-
-# Tier 3/4
-results_df_food_t3_t4 <- results_df_food %>% 
-  filter(risk.13 != 1, bio_f %in% c("Organism", "Population"))
-
-##### marine food ####
-# T1/2
-results_df_food_marine <- results_df_food %>% 
-  filter(environment == "Marine")
-# T3/4
-results_df_food_t3_t4_marine <- results_df_food_t3_t4 %>% 
-  filter(environment == "Marine")
-
-##### freshwater food ####
-# T1/2
-results_df_food_freshwater <- results_df_food %>% 
-  filter(environment == "Freshwater")
-
-# T3/4
-results_df_food_t3_t4_freshwater <- results_df_food_t3_t4 %>% 
-  filter(environment == "Freshwater")
-
-
-########## Tissue Translocation ################
-results_df_tissue <- results_df %>% 
-  filter(translocatable != "not translocatable",
-         particles_L_ox_stress > 0) %>% 
-  mutate(dose_new_particles_L = particles_L_ox_stress)
-
-# Tier 3/4
-results_df_tissue_t3_t4 <- results_df_tissue %>% 
-  filter(risk.13 != 1, bio_f %in% c("Organism", "Population"))
-
-##### marine tissue ####
-# T1/2
-results_df_tissue_marine <- results_df_tissue %>% 
-  filter(environment == "Marine")
-# T3/4
-results_df_tissue_t3_t4_marine <- results_df_tissue_t3_t4 %>% 
-  filter(environment == "Marine")
-
-##### freshwater tissue ####
-# T1/2
-results_df_tissue_freshwater <- results_df_tissue %>% 
-  filter(environment == "Freshwater")
-
-# T3/4
-results_df_tissue_t3_t4_freshwater <- results_df_tissue_t3_t4 %>% 
-  filter(environment == "Freshwater")
-
-names(results_df)
-```
-
+Prepare color palette for species
 ```{r}
 all_species <- results_df %>% 
   distinct(Species, Group, environment) %>% 
@@ -5170,7 +4873,8 @@ generate_plots_and_summary <- function(tier,
                                        cv_dp = NULL, 
                                        cv_uf = 0.5, # Default value for coefficient of variation for uncertainty factors 
                                        species_data_source,
-                                       output_path
+                                       output_path,
+                                       presentation_path
                                        ) {
   
   # Step 1: Prepare data
@@ -5259,13 +4963,22 @@ generate_plots_and_summary <- function(tier,
     heights = c(0.6, 0.4)
     )
   
-  # Save the arranged plots
+  # Save the arranged plots for the manuscript
   ggsave(
     filename = paste0(erm, "_", environment, "_arranged_plot.jpg"),
     dpi = 300,
     path = output_path,
     plot = arranged_plot,
     width = 10, height = 8, units = "in"
+  )
+  
+  # Save the arranged plots for presentations (wide format)
+  ggsave(
+    filename = paste0(erm, "_", environment, "_arranged_plot.jpg"),
+    dpi = 450,
+    path = presentation_path,
+    plot = arranged_plot,
+    width = 12, height = 6, units = "in"
   )
 
   
@@ -5312,9 +5025,10 @@ tiers <- c(3)  # It really only makes sense to make tier 3
 environments <- c("Freshwater", "Marine")
 erms <- c("Food Dilution", "Tissue Translocation")
 output_path <- "../output/Manuscript_Figs/"
+presentation_path <- "../output/presentation_Figs/"
 
 # Example coefficients and data sources
-sim <- 3 #number of simulations in pSSD. 3 is minimum. I've tried 1,000, but it creates a matrix too big for my RAM (112 GB). It appears that we need to keep this value less than 500 or so for most machines to be able to run (300 seems to be a sweet spot).
+sim <- 300 #number of simulations in pSSD. 3 is minimum. I've tried 1,000, but it creates a matrix too big for my RAM (112 GB). It appears that we need to keep this value less than 500 or so for most machines to be able to run (300 seems to be a sweet spot).
 num_iterations <- sim
 cv_uf <- 0.5 # Default value for uncertainty factors
 quantile_type = 8 # type 1 is actual data (doesn't work for small datasets),
@@ -5333,7 +5047,7 @@ iteration_times <- numeric(total_iterations) # Store time for each iteration
 iteration_count <- 0 # Track the current iteration
 
 # Start timing
-tictoc::tic()
+tictoc::tic("PSSD++ For Loop Begins...")
 
 # Loop through combinations
 results <- list()
@@ -5362,7 +5076,8 @@ for (tier in tiers) {
         cv_dp = NULL, # Always NULL as per the updated requirements
         cv_uf = cv_uf,
         species_data_source = species_data_source,
-        output_path = output_path
+        output_path = output_path,
+        presentation_path = presentation_path
       )
       
       # Store results
@@ -5398,9 +5113,115 @@ cat(crayon::blue(paste("PSSD++ complete for all ERM/Tier/Environments!", pSSD_ti
 
 ```{r}
 results$`Tier3_Marine_Food Dilution`$quantiles
-
-
 ```
+
+
+Attempted to get this running on parallel but gave up....
+<!-- ##### Parallel Processing -->
+<!-- ```{r message=FALSE, include=FALSE} -->
+<!-- # Load necessary libraries -->
+<!-- library(doParallel) -->
+<!-- library(doSNOW) -->
+<!-- library(tictoc) -->
+
+<!-- # Define parameters -->
+<!-- tiers <- c(3) -->
+<!-- environments <- c("Freshwater", "Marine") -->
+<!-- erms <- c("Food Dilution", "Tissue Translocation") -->
+<!-- output_path <- "../output/Manuscript_Figs/" -->
+<!-- presentation_path <- "../output/presentation_Figs/" -->
+<!-- sim <- 3 -->
+<!-- num_iterations <- sim -->
+<!-- cv_uf <- 0.5 -->
+<!-- quantile_type <- 8 -->
+<!-- species_data_source <- aoc_aligned -->
+
+<!-- # Calculate the total number of iterations -->
+<!-- total_iterations <- length(tiers) * length(environments) * length(erms) -->
+
+<!-- # Create a list of all combinations of parameters -->
+<!-- param_combinations <- expand.grid( -->
+<!--   tier = tiers, -->
+<!--   environment = environments, -->
+<!--   erm = erms, -->
+<!--   stringsAsFactors = FALSE -->
+<!-- ) -->
+
+<!-- # Set up parallel processing -->
+<!-- num_cores <- min(4, detectCores())  # Adjust the number of cores as needed -->
+<!-- cl <- makeCluster(num_cores) -->
+<!-- registerDoSNOW(cl) -->
+
+<!-- # Set up a progress bar -->
+<!-- pb <- txtProgressBar(min = 0, max = total_iterations, style = 3) -->
+<!-- progress <- function(n) setTxtProgressBar(pb, n) -->
+<!-- opts <- list(progress = progress) -->
+
+<!-- # Start timing -->
+<!-- tictoc::tic("PSSD++ Parallel Processing Begins...") -->
+
+<!-- results_list<- list() -->
+
+<!-- # Run the parallel loop -->
+<!-- results_list <- foreach( -->
+<!--   i = 1:nrow(param_combinations), -->
+<!--   .packages = c("tictoc", "crayon", "tidyverse",  -->
+<!--                 "doParallel", "doSNOW", "ggrepel", "scales",  -->
+<!--                 "ggpubr", "psych", "Matrix", "mc2d", "trapezoid", "ggtext", -->
+<!--                 "reshape2", "sciscales"),  # Add any other required packages here -->
+<!--   .options.snow = opts, -->
+<!--   .export = c("run_pSSD_analysis", "rmore", "prepare_plot_data", "prepare_data", "prep_data", -->
+<!--               "pSSD_plot", -->
+<!--               "PNEC_data_summary", "Mode_Y", "make_PNEC_plot", "has_minimum_species", "get_results_df", -->
+<!--               "generate_structure_checks", "generate_plots_and_summary", "generate_color_palette", "do.pSSD", -->
+<!--               "do.pSSD_mod"), -->
+<!--   .combine = list -->
+<!-- ) %dopar% { -->
+<!--   # Extract parameters for this iteration -->
+<!--   tier <- param_combinations$tier[i] -->
+<!--   environment <- param_combinations$environment[i] -->
+<!--   erm <- param_combinations$erm[i] -->
+<!--  # Generate the combination name -->
+<!--   combination_name <- paste0("Tier", tier, "_", environment, "_", erm) -->
+
+<!--   # Get the appropriate dataset -->
+<!--   results_df <- get_results_df(tier, environment, erm) -->
+
+<!--   # Run the function -->
+<!--   result <- generate_plots_and_summary( -->
+<!--     tier = tier, -->
+<!--     environment = environment, -->
+<!--     erm = erm, -->
+<!--     color_palette = color_palette, -->
+<!--     results_df = results_df, -->
+<!--     sim = sim, -->
+<!--     num_iterations = num_iterations, -->
+<!--     quantile_type = quantile_type, -->
+<!--     cv_dp = NULL,  # Always NULL as per the updated requirements -->
+<!--     cv_uf = cv_uf, -->
+<!--     species_data_source = species_data_source, -->
+<!--     output_path = output_path, -->
+<!--     presentation_path = presentation_path -->
+<!--   ) -->
+
+<!--   # Store results -->
+<!--   results[[i]] <- result -->
+
+<!--   # Return a named list for this combination -->
+<!--   list(combination_name = result) -->
+<!-- } -->
+
+<!-- # Stop timing -->
+<!-- pSSD_time <- tictoc::toc() -->
+
+<!-- # Close progress bar and stop the cluster -->
+<!-- close(pb) -->
+<!-- stopCluster(cl) -->
+
+
+<!-- # Print completion message -->
+<!-- cat(crayon::blue(paste("PSSD++ complete for all ERM/Tier/Environments!", pSSD_time$callback_msg))) -->
+<!-- ``` -->
 
 
 
