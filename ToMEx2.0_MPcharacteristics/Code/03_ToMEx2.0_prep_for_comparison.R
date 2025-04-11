@@ -2,7 +2,7 @@
 library(dplyr)
 
 # import data
-dat = readRDS("Data/prepared_data.RDS")
+dat = readRDS("ToMEx2.0_MPcharacteristics/Data/prepared_data.RDS")
 
 # subset variables useful for this analysis
 dat = dat %>% select(environment, 

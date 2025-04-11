@@ -3496,7 +3496,7 @@ all_tiers_data <- bind_rows(
 ) %>%
   mutate(
     y_position = as.numeric(factor(Tier)) + 
-      (as.numeric(factor(Environment)) - 1.5) * 0.4
+      (as.numeric(factor(Environment)) - 0.5) * 1.5
   )
 
 # Create the plot
@@ -3514,7 +3514,7 @@ final_plot <- ggplot() +
   geom_point(
     data = base_thresholds_df,
     aes(x = PNEC, y = as.numeric(factor(Tier)) + 
-          (as.numeric(factor(Environment)) - 1.5) * 0.4, fill = Environment),
+          (as.numeric(factor(Environment)) - 1.2) * 0.4, fill = Environment),
     size = 5,
     shape = 22,
     color = "white",
@@ -3528,13 +3528,20 @@ final_plot <- ggplot() +
       xmin = PNEClcl,
       xmax = PNECucl,
       y = as.numeric(factor(Tier)) + 
-        (as.numeric(factor(Environment)) - 1.5) * 0.4,
+        (as.numeric(factor(Environment)) - 1.2) * 0.4,
       fill = Environment,
       color = Environment
     ),
     height = 0.2,
     alpha = 0.75,
     linewidth = 1.2
+  ) +
+    # Add horizontal lines between categories
+  geom_hline(
+    yintercept = seq(1.5, length(unique(all_tiers_data$Tier)) - 0.5, by = 1),
+    color = "gray70",
+    linetype = "dashed",
+    linewidth = 0.8
   ) +
   # Color scales
   scale_color_manual(values = c("Marine" = "navyblue", "Freshwater" = "seagreen")) +
@@ -3543,8 +3550,8 @@ final_plot <- ggplot() +
   scale_x_log10() +
   # Labels and titles
   labs(
-    title = "Comparison of Monte-Carlo [mcSSDs] and Deterministic [dSSD] Thresholds",
-    subtitle = "Violin Plots = mcSSDs; Diamonds/Error-Bars = dSSD; All Tiers",
+    title = "Comparison of Monte-Carlo and Deterministic Thresholds",
+    subtitle = "Violin Plots = Monte-Carlo; Points + Error-Bars = Deterministic; All Tiers",
     fill = "Environment",
     color = "Environment",
     x = "PNEC (Particles/L; 1 to 5,000 um)",
@@ -3553,13 +3560,14 @@ final_plot <- ggplot() +
   # Facet with free x-axis scales
   facet_wrap(~ERM, scales = "free_x") +
   # Themes
-  theme_minimal(base_size = 14) +
+  theme_minimal(base_size = 16) +
   theme(
-    plot.title = element_text(hjust = 0.5, size = 16),
-    plot.subtitle = element_text(hjust = 0.5, size = 12),
-    legend.position = "bottom",
-    strip.text = element_text(size = 14, face = "bold"), # Bold and larger facet titles
-    axis.title.y = element_text(size = 14, face = "bold") # Bold and larger y-axis title
+    plot.title = element_text(hjust = 0.5, size = 18),
+    plot.subtitle = element_text(hjust = 0.5, size = 14),
+    legend.position = "top",
+    strip.text = element_text(size = 18, face = "bold"), # Bold and larger facet titles
+    axis.title.y = element_text(size = 18, face = "bold"), # Bold and larger y-axis title
+    axis.title.x = element_text(size = 18, face = "bold") # Bold and larger y-axis title
   )
 
 # Save the plot

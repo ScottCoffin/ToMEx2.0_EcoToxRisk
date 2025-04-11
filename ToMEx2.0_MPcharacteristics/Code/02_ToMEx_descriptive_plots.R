@@ -1,9 +1,10 @@
 detach("package:plyr")
 library(dplyr)
 library(pals)
+getwd()
 
 # import data
-dat = readRDS("Data/prepared_data.RDS")
+dat = readRDS("ToMEx2.0_MPcharacteristics/Data/prepared_data.RDS")
 
 # prepare polymer groups: All polymer types with only one entry are considered as "others"
 # others.list = as.data.frame(table(dat$poly_f))$Var1[as.data.frame(table(dat$poly_f))$Freq == 1]
@@ -217,3 +218,208 @@ barplot(functbar, beside = TRUE, las = 2, col = c("lightskyblue", "royalblue3"),
 text("H - Functionalization", x = 1, y = 0.96, cex = 1, font = 1, pos = 4)
 
 dev.off()
+
+
+##### GGPLOT Approach ####
+# Load required libraries
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(patchwork)
+library(forcats) # For reordering factor levels
+
+# Import data
+dat <- readRDS("ToMEx2.0_MPcharacteristics/Data/prepared_data.RDS")
+
+# Prepare polymer groups
+others.list <- as.data.frame(table(dat$poly_f))$Var1[as.data.frame(table(dat$poly_f))$Freq == 1]
+dat$poly_group <- as.character(dat$poly_f)
+dat$poly_group[dat$poly_f %in% others.list] <- "Other"
+dat$poly_group[dat$poly_group == "Mix - See Original Study"] <- "Polymer mix"
+dat$poly_group <- as.factor(dat$poly_group)
+
+# Split freshwater and marine data
+fresh <- dat[dat$environment == "Freshwater", ]
+marine <- dat[dat$environment == "Marine", ]
+
+
+# Polymer ----
+polyfresh <- fresh %>% group_by(poly_group) %>% summarize(count = n()) %>% mutate(freq = count / sum(count))
+polymarine <- marine %>% group_by(poly_group) %>% summarize(count = n()) %>% mutate(freq = count / sum(count))
+polymerged <- merge(polyfresh, polymarine, by = "poly_group", sort = FALSE, all.x = TRUE)
+polymerged <- polymerged %>% arrange(desc(freq.x), .by_group = TRUE)
+
+# Reshape to long format
+polybar_long <- polymerged %>%
+  pivot_longer(cols = c(freq.x, freq.y), names_to = "Environment", values_to = "Proportion") %>%
+  mutate(Environment = ifelse(Environment == "freq.x", "Freshwater", "Marine"))
+
+# Reorder x-axis levels by mean proportion
+polybar_long <- polybar_long %>%
+  group_by(poly_group) %>%
+  mutate(mean_proportion = mean(Proportion, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(poly_group = fct_reorder(poly_group, mean_proportion))
+
+# Create the polymer plot
+plot_a <- ggplot(data = polybar_long, aes(x = poly_group, y = Proportion, fill = Environment)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(limits = c(0,1),
+                     n.breaks = 3) +
+  scale_fill_manual(values = c("lightskyblue", "royalblue3")) +
+  labs(y = "Proportion of particles", title = "A - Polymer type") +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(face = "bold", size = 14),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.x = element_blank())
+
+# Particle Shape ----
+shapefresh <- fresh %>% group_by(shape_f) %>% summarize(count = n()) %>% mutate(freq = count / sum(count))
+shapemarine <- marine %>% group_by(shape_f) %>% summarize(count = n()) %>% mutate(freq = count / sum(count))
+shapemerged <- merge(shapefresh, shapemarine, by = "shape_f", sort = FALSE)
+shapemerged <- shapemerged %>% arrange(desc(freq.x), .by_group = TRUE)
+
+# Reshape to long format
+shapebar_long <- shapemerged %>%
+  pivot_longer(cols = c(freq.x, freq.y), names_to = "Environment", values_to = "Proportion") %>%
+  mutate(Environment = ifelse(Environment == "freq.x", "Freshwater", "Marine"))
+
+# Reorder x-axis levels by mean proportion
+shapebar_long <- shapebar_long %>%
+  group_by(shape_f) %>%
+  mutate(mean_proportion = mean(Proportion, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(shape_f = fct_reorder(shape_f, mean_proportion))
+
+# Create the particle shape plot
+plot_b <- ggplot(data = shapebar_long, aes(x = shape_f, y = Proportion, fill = Environment)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("lightskyblue", "royalblue3")) +
+  scale_y_continuous(limits = c(0,1),
+                     n.breaks = 3) +
+  labs(y = "Proportion of particles", title = "B - Particle shape") +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(face = "bold", size = 14),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank())
+
+# Particle length ----
+plot_c <- ggplot(data = dat, aes(x = environment, y = size.length.um.used.for.conversions, fill = environment)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("lightskyblue", "royalblue3")) +
+  scale_y_log10(limits = c(0.001, 1000)) +
+  labs(y = "µm", title = "C - Particle length") +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(face = "bold", size = 14),
+        axis.title.x = element_blank(),
+        legend.position = "none")
+
+# Particle width ----
+plot_d <- ggplot(data = dat, aes(x = environment, y = size.width.um.used.for.conversions, fill = environment)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("lightskyblue", "royalblue3")) +
+  scale_y_log10(limits = c(0.001, 1000)) +
+  labs(y = "µm", title = "D - Particle width") +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(face = "bold", size = 14),
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = "none")
+
+# Sodium azide ----
+sodfresh <- fresh %>% group_by(sodium.azide) %>% summarize(count = n()) %>% mutate(freq = count / sum(count))
+sodmarine <- marine %>% group_by(sodium.azide) %>% summarize(count = n()) %>% mutate(freq = count / sum(count))
+sodmerged <- merge(sodfresh, sodmarine, by = "sodium.azide", sort = FALSE)
+
+sodbar_long <- sodmerged %>%
+  pivot_longer(cols = c(freq.x, freq.y), names_to = "Environment", values_to = "Proportion") %>%
+  mutate(Environment = ifelse(Environment == "freq.x", "Freshwater", "Marine"))
+
+plot_e <- ggplot(data = sodbar_long, aes(x = sodium.azide, y = Proportion, fill = Environment)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("lightskyblue", "royalblue3")) +
+  scale_y_continuous(limits = c(0,1),
+                     n.breaks = 3
+                      ) +
+  labs(y = "Proportion of particles", title = "E - Sodium azide") +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(face = "bold", size = 14),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1)
+        )
+
+# DOM ----
+domfresh <- fresh %>% group_by(DOM_present) %>% summarize(count = n()) %>% mutate(freq = count / sum(count))
+dommarine <- marine %>% group_by(DOM_present) %>% summarize(count = n()) %>% mutate(freq = count / sum(count))
+dommerged <- merge(domfresh, dommarine, by = "DOM_present", sort = FALSE)
+
+dombar_long <- dommerged %>%
+  pivot_longer(cols = c(freq.x, freq.y), names_to = "Environment", values_to = "Proportion") %>%
+  mutate(Environment = ifelse(Environment == "freq.x", "Freshwater", "Marine"))
+
+plot_f <- ggplot(data = dombar_long, aes(x = DOM_present, y = Proportion, fill = Environment)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("lightskyblue", "royalblue3")) +
+  scale_y_continuous(limits = c(0,1),
+                     n.breaks = 3) +
+  labs(y = "Proportion of particles", title = "F - DOM present") +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(face = "bold", size = 14),
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank())
+
+# Surface charge ----
+chargefresh <- fresh %>% group_by(charge) %>% summarize(count = n()) %>% mutate(freq = count / sum(count))
+chargemarine <- marine %>% group_by(charge) %>% summarize(count = n()) %>% mutate(freq = count / sum(count))
+chargemerged <- merge(chargefresh, chargemarine, by = "charge", sort = FALSE)
+
+chargebar_long <- chargemerged %>%
+  pivot_longer(cols = c(freq.x, freq.y), names_to = "Environment", values_to = "Proportion") %>%
+  mutate(Environment = ifelse(Environment == "freq.x", "Freshwater", "Marine"))
+
+plot_g <- ggplot(data = chargebar_long, aes(x = charge, y = Proportion, fill = Environment)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("lightskyblue", "royalblue3")) +
+  scale_y_continuous(limits = c(0,1),
+                     n.breaks = 3) +
+  labs(y = "Proportion of particles", title = "G - Surface charge") +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(face = "bold", size = 14),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank())
+
+# Functional group ----
+functfresh <- fresh %>% group_by(functional.group) %>% summarize(count = n()) %>% mutate(freq = count / sum(count))
+functmarine <- marine %>% group_by(functional.group) %>% summarize(count = n()) %>% mutate(freq = count / sum(count))
+functmerged <- merge(functfresh, functmarine, by = "functional.group", sort = FALSE)
+
+functbar_long <- functmerged %>%
+  pivot_longer(cols = c(freq.x, freq.y), names_to = "Environment", values_to = "Proportion") %>%
+  mutate(Environment = ifelse(Environment == "freq.x", "Freshwater", "Marine"))
+
+plot_h <- ggplot(data = functbar_long, aes(x = functional.group, y = Proportion, fill = Environment)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(limits = c(0,1),
+                     n.breaks = 3) +
+  scale_fill_manual(values = c("lightskyblue", "royalblue3")) +
+  labs(y = "Proportion of particles", title = "H - Functionalization") +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(face = "bold", size = 14),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank())
+
+
+# Combine all plots into a grid layout with a shared legend
+final_plot <- (plot_a | plot_b | plot_c | plot_d) /
+  (plot_e | plot_f | plot_g | plot_h) +
+  plot_layout(guides = "collect") & 
+  theme(legend.position = "bottom")
+
+final_plot
+# Save the final plot
+ggsave("ToMEx2.0_MPcharacteristics/Plots/descriptive_plots.png", plot = final_plot, width = 30, height = 20, units = "cm", dpi = 500)
+
+
