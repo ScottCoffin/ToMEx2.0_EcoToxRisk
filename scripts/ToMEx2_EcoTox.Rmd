@@ -189,64 +189,350 @@ aoc_simple_check %>%
 ```
 
 ## Summary Statistics
+First annotate key data regarding whether it is used in threshold derivation or not
 ```{r}
 ## how many studies/data points/species exist in starting and final databases?
-aoc_z %>%
+aoc_z_summary_start <- aoc_z %>%
+  mutate(poly_f = case_when(
+    poly_f == "Mix - See Original Study" ~ "Mixture",
+    poly_f == "Not Reported" ~ "Polymer Not Reported",
+    T ~ poly_f
+  )) %>% 
+  mutate(size_f = case_when(
+    is.na(size_f) ~ "Size Not Reported",
+    size_f == "Not Reported" ~ "Size Not Reported",
+    T ~ size_f
+  )) %>% 
+  mutate(shape_f = case_when(
+    shape_f == "Not Reported" ~ "Shape Not Reported",
+    T ~ shape_f
+  )) %>% 
+  mutate(Speices = case_when(
+    is.na(Species) ~ "Species Not Reported",
+    T ~ Species
+  )) %>% 
+  droplevels() %>% 
+  # Add a column to indicate if data is available based on polydispersity conditions
   mutate(
     data_available = case_when(
-      # Condition for polydisperse: particle.surface.area.um2.min and .max cannot be NA
-      polydispersity == "polydisperse" &
-        !is.na(particle.surface.area.um2.min) &
-        !is.na(particle.surface.area.um2.max) ~ TRUE,
-      # Condition for monodisperse: particle.surface.area.um2 cannot be NA
-      polydispersity == "monodisperse" &
-        !is.na(particle.surface.area.um2) ~ TRUE,
-      # Otherwise, data is not available according to the criteria
-      TRUE ~ FALSE
+      polydispersity == "polydisperse" & 
+        !is.na(particle.surface.area.um2.min) & 
+        !is.na(particle.surface.area.um2.max) ~ "Available",
+      polydispersity == "monodisperse" & 
+        !is.na(particle.surface.area.um2) ~ "Available",
+        #Remove 26C temperature treatment data from Jaimukar et al. 2018
+      article == 42 & media.temp == 26 ~ "Not Available", 
+      TRUE ~ "Not Available"
     )
   ) %>%
+  # Add thresholds1_2 column based on specific criteria
   mutate(
     thresholds1_2 = case_when(
-      data_available == TRUE &
+      data_available == "Available" &
+        !is.na(dose.particles.mL.master) &
         !environment %in% c("Terrestrial", "Not Reported") &
-        Group != "Bacterium" &
-        Group != "Plant" &
+        !Group %in% c("Bacterium", "Plant") &
         effect.metric != "HONEC" &
         !is.na(effect.metric) &
         exp_type_f == "Particle Only" &
         tier_zero_tech_f == "Red Criteria Passed" &
-        tier_zero_risk_f == "Red Criteria Passed" & # All thresholds must pass technical and risk red criteria
-        risk.13 != 0 ~ TRUE,
-      # Otherwise, do not meet thresholds1_2 criteria
-      TRUE ~ FALSE
+        tier_zero_risk_f == "Red Criteria Passed" &
+        size.length.um.used.for.conversions >= 1 & #1 um and up used
+        max.size.ingest.um >= size.length.um.used.for.conversions &
+        risk.13 != 0 ~ "Meets Criteria",
+      TRUE ~ "Does Not Meet Criteria"
     )
   ) %>%
+  # Add thresholds3_4 column based on additional criteria
   mutate(
     thresholds3_4 = case_when(
-      thresholds1_2 == TRUE &
+      thresholds1_2 == "Meets Criteria" &
         risk.13 != 1 &
-        bio_f %in% c("Organism", "Population") 
-    ~ TRUE,
-      # Otherwise, do not meet thresholds3_4 criteria
-      TRUE ~ FALSE
+        bio_f %in% c("Organism", "Population") ~ "Meets Criteria",
+      TRUE ~ "Does Not Meet Criteria"
     )
+  )
+
+```
+#### All studies 
+```{r}
+# effect metrics breakdown
+effect_metrics <- aoc_z_summary_start %>% 
+  group_by(environment, effect.metric) %>% 
+  summarize(n = n()) %>% 
+   pivot_wider(names_from = "environment", values_from = n) %>% 
+  arrange(desc(Marine)) %>% 
+  mutate(Freshwater = as.character(Freshwater),
+         Marine = as.character(Marine)) %>% 
+  mutate(effect.metric = case_when(
+    is.na(effect.metric) ~ "Intermediary exposure concentration",
+    T ~ effect.metric
+  )) %>% 
+  column_to_rownames("effect.metric")
+
+# particle shape breakdown
+particle_shapes <- aoc_z_summary_start %>% 
+  group_by(environment, shape_f) %>% 
+  summarize(n = n()) %>% 
+   pivot_wider(names_from = "environment", values_from = n) %>% 
+  arrange(desc(Marine)) %>% 
+  mutate(Freshwater = as.character(Freshwater),
+         Marine = as.character(Marine)) %>% 
+  column_to_rownames("shape_f")
+
+# polymer breakdown
+polymer_breakdown <- aoc_z_summary_start %>% 
+  group_by(environment, poly_f) %>% 
+  summarize(n = n()) %>% 
+   pivot_wider(names_from = "environment", values_from = n) %>% 
+  arrange(desc(Marine)) %>% 
+  mutate(Freshwater = as.character(Freshwater),
+         Marine = as.character(Marine)) %>% 
+  column_to_rownames("poly_f")
+
+# Define the custom order for size bins
+size_order <- c("1nm < 100nm", "100nm < 1µm", "1µm < 100µm", "100µm < 1mm", "1mm < 5mm", "Not Reported")
+
+# size breakdown
+size_breakdown <- aoc_z_summary_start %>% 
+  group_by(environment, size_f) %>% 
+  summarize(n = n()) %>% 
+   pivot_wider(names_from = "environment", values_from = n) %>% 
+  arrange(factor(size_f, levels = size_order)) %>%  # Arrange by custom order
+  mutate(Freshwater = as.character(Freshwater),
+         Marine = as.character(Marine)) %>% 
+  column_to_rownames("size_f")
+
+# species breakdown
+group_breakdown <- aoc_z_summary_start %>% 
+  group_by(environment, Group) %>% 
+  summarize(n = n()) %>% 
+   pivot_wider(names_from = "environment", values_from = n) %>% 
+  arrange(desc(Marine)) %>%  # Arrange by custom order
+  mutate(Freshwater = as.character(Freshwater),
+         Marine = as.character(Marine)) %>% 
+  column_to_rownames("Group")
+
+all_studies_summary <- aoc_z_summary_start %>% 
+  group_by(environment) %>%
+  # Summarize the data and calculate chronic percentage
+  summarise(
+       n_datapoint = n(),
+    n_studies = n_distinct(doi),
+ n_species = n_distinct(Species),
+    # Calculate percentage of chronic studies
+    chronic_percentage = paste0(
+      signif(
+        sum(acute.chronic_f == "Chronic") / n() * 100, 2
+        ),
+      "%"),
+       # calculate percentage of polydisperse studies
+    poly_percentage = paste0(
+      signif(
+        sum(polydispersity == "polydisperse") / n() * 100, 2
+        ),
+      "%"),
+    .groups = "drop" # Avoid unnecessary grouping in the final output
   ) %>%
+  rename("Environment" = environment,
+         "Number of Species" = n_species,
+         "Number of Studies" = n_studies,
+         "Number of Data Points" = n_datapoint,
+         "% Chronic" = chronic_percentage,
+         "% Polydisperse" = poly_percentage
+         ) %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  rename("Freshwater" = V1,
+         "Marine" = V2) %>% 
+  dplyr::slice(-1) %>% 
+  bind_rows(effect_metrics,
+            group_breakdown,
+            size_breakdown,
+            particle_shapes,
+            polymer_breakdown) %>% 
+  rownames_to_column("Factor") %>% 
+  mutate(across(everything(), ~replace(., is.na(.), 0))) 
+
+#write.csv(all_studies_summary, "../data/output/all_studies_summary.csv")
+
+all_studies_summary
+```
+
+
+#### Just studies used in Thresholdsd
+```{r}
+effect_metrics_used <- aoc_z_summary_start %>% 
    pivot_longer(
     cols = c(thresholds1_2, thresholds3_4),
     names_to = "threshold",
-    values_to = "value"
-  ) %>%
-  group_by(threshold, value
-           , environment
-           ) %>%
-  #group_by(thresholds1_2, thresholds3_4) %>%
+    values_to = "status"
+  ) %>% 
+   filter(status == "Meets Criteria") %>% 
+  group_by(threshold, environment, effect.metric) %>% 
+  summarize(n = n()) %>% 
+   pivot_wider(names_from = c("environment", "threshold"), values_from = n) %>% 
+  arrange(desc(Marine_thresholds1_2)) %>% 
+  mutate("Freshwater (Tier 1/2)" = as.character(Freshwater_thresholds1_2),
+         "Freshwater (Tier 3/4)" = as.character(Freshwater_thresholds3_4),
+         "Marine (Tier 1/2)" = as.character(Marine_thresholds1_2),
+         "Marine (Tier 3/4)" = as.character(Marine_thresholds3_4)) %>% 
+  select(-c(Freshwater_thresholds1_2, Freshwater_thresholds3_4,
+            Marine_thresholds1_2, Marine_thresholds3_4)) %>% 
+  mutate(effect.metric = case_when(
+    is.na(effect.metric) ~ "Intermediary exposure concentration",
+    T ~ effect.metric
+  )) %>% 
+  column_to_rownames("effect.metric")
+
+# particle shape breakdown
+particle_shapes_used <- aoc_z_summary_start %>% 
+    pivot_longer(
+    cols = c(thresholds1_2, thresholds3_4),
+    names_to = "threshold",
+    values_to = "status"
+  ) %>% 
+   filter(status == "Meets Criteria") %>% 
+  group_by(threshold, environment, shape_f) %>% 
+  summarize(n = n()) %>% 
+   pivot_wider(names_from = c("environment", "threshold"), values_from = n) %>% 
+  arrange(desc(Marine_thresholds1_2)) %>% 
+  mutate("Freshwater (Tier 1/2)" = as.character(Freshwater_thresholds1_2),
+         "Freshwater (Tier 3/4)" = as.character(Freshwater_thresholds3_4),
+         "Marine (Tier 1/2)" = as.character(Marine_thresholds1_2),
+         "Marine (Tier 3/4)" = as.character(Marine_thresholds3_4)) %>% 
+  select(-c(Freshwater_thresholds1_2, Freshwater_thresholds3_4,
+            Marine_thresholds1_2, Marine_thresholds3_4)) %>% 
+  column_to_rownames("shape_f")
+
+# polymer breakdown
+polymer_breakdown_used <- aoc_z_summary_start %>% 
+    pivot_longer(
+    cols = c(thresholds1_2, thresholds3_4),
+    names_to = "threshold",
+    values_to = "status"
+  ) %>% 
+   filter(status == "Meets Criteria") %>% 
+  group_by(threshold, environment, poly_f) %>% 
+  summarize(n = n()) %>% 
+   pivot_wider(names_from = c("environment", "threshold"), values_from = n) %>% 
+  arrange(desc(Marine_thresholds1_2)) %>% 
+  mutate("Freshwater (Tier 1/2)" = as.character(Freshwater_thresholds1_2),
+         "Freshwater (Tier 3/4)" = as.character(Freshwater_thresholds3_4),
+         "Marine (Tier 1/2)" = as.character(Marine_thresholds1_2),
+         "Marine (Tier 3/4)" = as.character(Marine_thresholds3_4)) %>% 
+  select(-c(Freshwater_thresholds1_2, Freshwater_thresholds3_4,
+            Marine_thresholds1_2, Marine_thresholds3_4)) %>% 
+  column_to_rownames("poly_f")
+
+# size breakdown
+size_breakdown_used <- aoc_z_summary_start %>% 
+   pivot_longer(
+    cols = c(thresholds1_2, thresholds3_4),
+    names_to = "threshold",
+    values_to = "status"
+  ) %>% 
+   filter(status == "Meets Criteria") %>% 
+  group_by(threshold, environment, size_f) %>% 
+  summarize(n = n()) %>% 
+   pivot_wider(names_from = c("environment", "threshold"), values_from = n) %>% 
+  arrange(factor(size_f, levels = size_order)) %>%  # Arrange by custom order
+  mutate("Freshwater (Tier 1/2)" = as.character(Freshwater_thresholds1_2),
+         "Freshwater (Tier 3/4)" = as.character(Freshwater_thresholds3_4),
+         "Marine (Tier 1/2)" = as.character(Marine_thresholds1_2),
+         "Marine (Tier 3/4)" = as.character(Marine_thresholds3_4)) %>% 
+  select(-c(Freshwater_thresholds1_2, Freshwater_thresholds3_4,
+            Marine_thresholds1_2, Marine_thresholds3_4)) %>% 
+  column_to_rownames("size_f")
+
+# group breakdown
+group_breakdown_used <- aoc_z_summary_start %>% 
+    pivot_longer(
+    cols = c(thresholds1_2, thresholds3_4),
+    names_to = "threshold",
+    values_to = "status"
+  ) %>% 
+   filter(status == "Meets Criteria") %>% 
+  group_by(threshold, environment, Group) %>% 
+  summarize(n = n()) %>% 
+   pivot_wider(names_from = c("environment", "threshold"), values_from = n) %>% 
+  arrange(desc(Marine_thresholds1_2)) %>% 
+  mutate("Freshwater (Tier 1/2)" = as.character(Freshwater_thresholds1_2),
+         "Freshwater (Tier 3/4)" = as.character(Freshwater_thresholds3_4),
+         "Marine (Tier 1/2)" = as.character(Marine_thresholds1_2),
+         "Marine (Tier 3/4)" = as.character(Marine_thresholds3_4)) %>% 
+  select(-c(Freshwater_thresholds1_2, Freshwater_thresholds3_4,
+            Marine_thresholds1_2, Marine_thresholds3_4)) %>% 
+  column_to_rownames("Group")
+
+  # Group by threshold, status, and environment
+data_used_thresholds_summary <- aoc_z_summary_start %>% 
+   # Reshape data to long format for thresholds
+  pivot_longer(
+    cols = c(thresholds1_2, thresholds3_4),
+    names_to = "threshold",
+    values_to = "status"
+  ) %>% 
+   filter(status == "Meets Criteria") %>% 
+  group_by(threshold, environment) %>%
+  # Summarize the data and calculate chronic percentage
   summarise(
-    n_species = n_distinct(Species),
+     n_datapoint = n(),
     n_studies = n_distinct(doi),
-    n_datapoint = n()
-  )
+    n_species = n_distinct(Species),
+     # Calculate percentage of chronic studies
+    chronic_percentage = paste0(
+      signif(
+        sum(acute.chronic_f == "Chronic") / n() * 100, 2
+        ),
+      "%"),
+       # calculate percentage of polydisperse studies
+    poly_percentage = paste0(
+      signif(
+        sum(polydispersity == "polydisperse") / n() * 100, 2
+        ),
+      "%"),
+    .groups = "drop" # Avoid unnecessary grouping in the final output
+  ) %>%
+  rename("Environment" = environment,
+         "Number of Species" = n_species,
+         "Number of Studies" = n_studies,
+         "Number of Data Points" = n_datapoint,
+         "% Chronic" = chronic_percentage,
+          "% Polydisperse" = poly_percentage
+         ) %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  rename("Freshwater (Tier 1/2)" = V1,
+         "Marine (Tier 1/2)" = V2,
+         "Freshwater (Tier 3/4)" = V3,
+         "Marine (Tier 3/4)" = V4
+         ) %>% 
+  dplyr::slice(-c(1,2)) %>% 
+  bind_rows(effect_metrics_used,
+            group_breakdown_used,
+            size_breakdown_used,
+            particle_shapes_used,
+            polymer_breakdown_used) %>% 
+  rownames_to_column("Factor") %>% 
+  relocate("Freshwater (Tier 3/4)", .after = "Freshwater (Tier 1/2)") %>% 
+  mutate_all(~replace(., is.na(.), 0))
 
+#write.csv(data_used_thresholds_summary, "../data/output/data_used_thresholds_summary.csv")
 
+data_used_thresholds_summary
+```
+Both combined
+```{r}
+full_summary <- left_join(all_studies_summary,
+          data_used_thresholds_summary,
+          by = "Factor") %>% 
+  mutate_all(~replace(., is.na(.), 0)) %>% 
+  relocate("Marine", .before = "Marine (Tier 1/2)")
+
+write.csv(full_summary, "../data/output/full_database_summary.csv")
+
+full_summary 
 ```
 
 
@@ -5645,13 +5931,14 @@ library(openxlsx)
 tomex2.0_aoc_z_final_utf8 <- stringi::stri_enc_toutf8(aoc_aligned_no_filters, validate = TRUE)
 
 # List of data frame names
-dataframe_names <- c("formatted_thresholds", "simple_thresholds_MC", "simple_thresholds_MC_mass", "MC_RSD",
+dataframe_names <- c("full_summary", "formatted_thresholds", "simple_thresholds_MC", "simple_thresholds_MC_mass", "MC_RSD",
                      "PNEC_summary_table_wide",
                      "freshwater_marine_params_species_sensitivity_analysis",
                      "unified_thresholds", "leave_one_out_df", "tomex2.0_aoc_z_final_utf8")
 
 # Corresponding custom sheet names
-sheet_names <- c("Deterministic_thresholds", "Monte_Carlo_thresholds", "Monte_Carlo_thresholds_mass", "Monte_Carlo_RSD", 
+sheet_names <- c("Database summary",
+                 "Deterministic_thresholds", "Monte_Carlo_thresholds", "Monte_Carlo_thresholds_mass", "Monte_Carlo_RSD", 
                  "PSSD++PNEC_summary",
                  "Fresh_Mar_Sp_Par_sensitivity", "Thrshlds_Tr_ERM_Env_Qulty", "Leave_one_out_studies", "Full ToMEx2.0 dataset")
 
