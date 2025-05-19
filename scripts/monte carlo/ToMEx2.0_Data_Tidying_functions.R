@@ -538,26 +538,43 @@ tomex2.0_aoc_setup <- tomex2.0 %>%
 
 #Create summary data frame from ToMEx 1.0
   bodysize_summary <- aoc_setup %>%
-    distinct(species_f, body.length.cm, body.size.source, max.size.ingest.mm, max.size.ingest.um) 
+    filter(!body.size.source == "reported") %>% #exclude the reported values
+    distinct(species_f, life_f, body.length.cm, body.size.source) %>%   
+    #remove values that are updated in the gape_size.csv
+    filter(!species_f %in% c("Carassius auratus", "Hediste diversicolor", "Lumbriculus variegatus", "Tubifex NA", 
+                             "Ostrea edulis", "Oryzias latipes", "Potamopyrgus antipodarum", "Sparus aurata"))
 
   # bodysize_addons <- read_csv("scripts/monte carlo/ref data/gape_size.csv",
   #                             show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder
+  #add life stage column
+  bodysize_addons$life_f <- as.factor("Adult")
     
   bodysize_addons_updated <- bodysize_addons %>% 
-    mutate(species_f = as.factor(species_f)) %>% 
-    #annotate whether max size ingest was estimated or reported (all estiamted here)
-    mutate(max.size.ingest.reported.estimated = "estimated",
-           #calculate maximum ingestible size (if not already in database)
-           max.size.ingest.mm = 10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept),#(Jâms, et al 2020 Nature paper)correction for cm to mm
-           max.size.ingest.um = 1000 * max.size.ingest.mm)
-
+    mutate(species_f = as.factor(species_f))
+  
   bodysize_summary_complete <- bind_rows(bodysize_summary, bodysize_addons_updated) %>% 
     drop_na(body.length.cm) %>% 
-    distinct(species_f, .keep_all = T)
-  
+    distinct(species_f,life_f, .keep_all = T)
+
+  #if there is a value for body size in the tomex2.0 database, mark it as "reported"
+tomex2.0_aoc_setup_final$body.size.source <- ifelse(!is.na(tomex2.0_aoc_setup_final$body.length.cm), "reported", NA)  
+    
 #Join summary to tidy ToMEx 2.0 data frame
 
-tomex2.0_aoc_setup <- left_join(tomex2.0_aoc_setup, bodysize_summary_complete, by = c("species_f"))
+tomex2.0_aoc_setup <- tomex2.0_aoc_setup %>% 
+  left_join(bodysize_summary_complete, by = c("species_f", "life_f")) %>% 
+  #if tomex2 already has a body length, keep that one, otherwise replace with an add-on value
+  mutate(body.length.cm = ifelse(is.na(body.length.cm.x), body.length.cm.y, body.length.cm.x)) %>% 
+  select(-c(body.length.cm.y, body.length.cm.x)) %>% 
+  #if tomex2 already has a body length source, keep that one, otherwise replace with an add-on value
+  mutate(body.size.source = ifelse(is.na(body.size.source.x), body.size.source.y, body.size.source.x)) %>% 
+  select(-c(body.size.source.y, body.size.source.x)) %>% 
+  #annotate whether max size ingest was estimated or reported (all estiamted here)
+  mutate(#max.size.ingest.reported.estimated = "estimated",
+         #calculate maximum ingestible size (if not already in database)
+         max.size.ingest.mm = 10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept),#(Jâms, et al 2020 Nature paper)correction for cm to mm
+         max.size.ingest.um = 1000 * max.size.ingest.mm)
+
 
 #Re-structure alternative dosing columns in aoc-setup
 aoc_setup <- aoc_setup %>% 
