@@ -3686,6 +3686,10 @@ list(
   length_y_rows_freshwater_tissue = length_y_rows_freshwater_tissue
 )
 ```
+```{r}
+cat(crayon::green("MC-Sim Script finished!"),
+    "Now make sure you run the ToMEx2_EcoTox.Rmd script now.")
+```
 
 ```{r eval=FALSE, include=FALSE}
 
@@ -3731,7 +3735,7 @@ ind.marine_food_T3$results[,(cols):=round(.SD,3),.SDcols=(cols)]
 
 ind.marine_food_T3
 ```
-\
+
 
 
 

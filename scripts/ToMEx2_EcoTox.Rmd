@@ -4159,6 +4159,8 @@ CoV_mouth_plotly <- subplot(plot1, plot2, nrows = 1, shareY = TRUE, titleX = TRU
 
 require(htmlwidgets)
 
+# delete existing plotly files
+# unlink("../output/Manuscript_Figs/CoV_mouth_plotly_files", recursive = TRUE)
 # Save the plot as an HTML file
 saveWidget(CoV_mouth_plotly, file = "../output/Manuscript_Figs/CoV_mouth_plotly.html")
 
@@ -5342,6 +5344,7 @@ iteration_count <- 0 # Track the current iteration
 
 # Start timing
 tictoc::tic("PSSD++ For Loop Begins...")
+beepr::beep(sound = 6)
 
 # Loop through combinations
 results <- list()
@@ -5387,7 +5390,8 @@ for (tier in tiers) {
       
       # Print progress every 100 iterations or at the end
       if (iteration_count %% 1 == 0 || iteration_count == total_iterations) {
-        cat(crayon::yellow(sprintf(
+        cat(Sys.time(),
+            crayon::yellow(sprintf(
           "Iteration %d/%d complete. Running average time per iteration: %.2f seconds. Estimated time remaining: %.2f seconds.\n",
           iteration_count, total_iterations, running_average_time,
           running_average_time * (total_iterations - iteration_count)
@@ -5400,6 +5404,10 @@ for (tier in tiers) {
 
 # Stop timing
 pSSD_time <- tictoc::toc()
+
+beepr::beep(sound = 4)
+
+beepr::beep(sound = 5)
 
 # Print completion message
 cat(crayon::blue(paste("PSSD++ complete for all ERM/Tier/Environments!", pSSD_time$callback_msg)))
@@ -5961,5 +5969,6 @@ for (i in seq_along(dataframe_names)) {
 saveWorkbook(wb, "../output/data/supplemental_information.xlsx", overwrite = TRUE)
 
 cat("Data frames have been written to ../output/data/supplemental_information.xlsx with custom sheet names\n")
+beepr::beep(sound = 7)
 ```
 
