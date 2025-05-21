@@ -145,14 +145,34 @@ aoc_z$rowid <- sapply(seq_len(nrow(aoc_z)), function(x) uuid::UUIDgenerate())
 
 # ToMEx 2.0 data file (no alignments)
 ## dataset prepared in RShiny repo and imported ##
-tomex2.0 <- read_rds("monte carlo/ref data/tomex2_input.rds")
+#tomex2.0 <- read_rds("monte carlo/ref data/tomex2_input.rds")
 
 # LEgacy file from May, 2024 for beta-testing
 #tomex2.0 <- read_rds("ref data/tomex2_input_May2024.rds")
 
 # auxiliary data necessary for ToMEX 2.0 data tidying
-bodysize_addons <- read_csv("monte carlo/ref data/gape_size.csv", show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder
+# bodysize_addons <- read_csv("monte carlo/ref data/gape_size.csv", show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder
+# 
+# bodysize_addons_ShinyUpdate <- readRDS("../data/input/gape_size_list.RDS") %>% 
+#   ungroup()
 ```
+
+Check to see if bodysize lists are identical
+```{r}
+bodysize_addons_ShinyUpdate %>% 
+  distinct(Species, life_f, body.length.cm) %>% 
+  arrange(Species)
+```
+```{r}
+aoc_z %>% 
+  left_join(bodysize_addons_ShinyUpdate, 
+            by = c("Species", "life_f", "doi"))
+```
+```{r}
+body_size_final <- aoc_z %>%  
+  distinct(doi, Species, life_f, body.length.cm, body.size.source)
+```
+
 
 ### Data Cleanup
 A large number of values is getting filtered out during alignments. This should not be the case. We can debug by looking at missing values for the parameters that are relevant to alignments.
@@ -1609,11 +1629,12 @@ freshwater_only_thresholds <- derive_thresholds(aligned_data = freshwater_data)
 ##### MARINE THRESHOLDS #####
 ```{r}
 formatted_marine_base <- marine_only_thresholds$base_thresholds %>% 
-  mutate_if(is.numeric, ~signif(., 2)) %>% 
-  mutate(across(where(is.numeric), ~signif(., 2))) %>% 
+  mutate_if(is.numeric, ~signif(., 3)) %>% 
+  #mutate(across(where(is.numeric), ~signif(., 2))) %>% 
   mutate("Food (Marine)" = paste0(`Food Dilution (Default)`, " (", `Food Dilution (5th %)`, " to ", `Food Dilution (95th %)`,")"),
          "Tissue (Marine)" = paste0(`Tissue Translocation (Default)`, " (", `Tissue Translocation (5th %)`, " to ", `Tissue Translocation (95th %)`,")")) %>% 
-  select(Tier, "Food (Marine)", "Tissue (Marine)")
+  select(Tier, "Food (Marine)", "Tissue (Marine)") %>% 
+    filter(Tier != "Tier1") #Tier 1 is just the 95% CI of Tier2, and Tier1 is printing incorrectly
 
 formatted_marine_base
 ```
@@ -1621,12 +1642,15 @@ formatted_marine_base
 
 ##### FRESHWATER THRESHOLDS #####
 ```{r}
-formatted_freshwater_base <-freshwater_only_thresholds$base_thresholds %>% 
-  mutate_if(is.numeric, ~signif(., 2)) %>% 
-  mutate(across(where(is.numeric), ~scales::comma(.))) %>% 
-  mutate("Food (Freshwater)" = paste0(`Food Dilution (Default)`, " (", `Food Dilution (5th %)`, " to ", `Food Dilution (95th %)`,")"),
-         "Tissue (Freshwater)" = paste0(`Tissue Translocation (Default)`, " (", `Tissue Translocation (5th %)`, " to ", `Tissue Translocation (95th %)`,")")) %>% 
-  select(Tier, "Food (Freshwater)", "Tissue (Freshwater)")
+formatted_freshwater_base <- freshwater_only_thresholds$base_thresholds %>% 
+  mutate_if(is.numeric, ~signif(., 3)) %>% 
+  #mutate(across(where(is.numeric), ~scales::label_comma(.))) %>% 
+  mutate("Food (Freshwater)" = paste0(`Food Dilution (Default)`, 
+                                      " (", `Food Dilution (5th %)`, " to ", `Food Dilution (95th %)`,")"),
+         "Tissue (Freshwater)" = paste0(`Tissue Translocation (Default)`, 
+                                        " (", `Tissue Translocation (5th %)`, " to ", `Tissue Translocation (95th %)`,")")) %>% 
+  select(Tier, "Food (Freshwater)", "Tissue (Freshwater)") %>% 
+  filter(Tier != "Tier1") #Tier 1 is just the 95% CI of Tier2, and Tier1 is printing incorrectly
 
 formatted_freshwater_base
 ```
