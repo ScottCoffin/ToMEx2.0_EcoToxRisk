@@ -5,13 +5,6 @@ library(pals)
 # import data
 dat = readRDS("Data/prepared_data.RDS")
 
-# prepare polymer groups: All polymer types with only one entry are considered as "others"
-# others.list = as.data.frame(table(dat$poly_f))$Var1[as.data.frame(table(dat$poly_f))$Freq == 1]
-# dat$poly_group = as.character(dat$poly_f)
-# dat$poly_group[dat$poly_f %in% others.list] = "Other"
-# dat$poly_group[dat$poly_group == "Mix - See Original Study"] = "Polymer mix"
-# dat$poly_group = as.factor(dat$poly_group)
-
 # split freshwater from marine
 fresh = dat[dat$environment == "Freshwater",]
 marine = dat[dat$environment == "Marine",]
@@ -74,8 +67,18 @@ summary(fresh$size.width.um.used.for.conversions)
 sd(fresh$size.width.um.used.for.conversions, na.rm = TRUE)
 summary(marine$size.width.um.used.for.conversions)
 sd(marine$size.width.um.used.for.conversions, na.rm = TRUE)
-# 
-# par(op)
+
+# Particle surface area -----
+summary(fresh$particle.surface.area.um2)
+summary(marine$particle.surface.area.um2)
+
+# Particle density -----
+summary(as.numeric(fresh$density.g.cm3))
+summary(as.numeric(marine$density.g.cm3))
+
+
+# Summary statistics entered manually to "Data/data_comp_to_env_compiled.csv" for NMDS comparison with environmental samples
+
 
 
 # Sodium.azide ----
