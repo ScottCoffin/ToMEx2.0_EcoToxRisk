@@ -26,7 +26,10 @@ SSD_function_t1 <- function(filtered.data, hcxlcl){
     )
   } else {
   #fit distributions
-  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
+  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("llogis",
+                                                             "lnorm",
+                                                             "gamma",
+                                                             "lgumbel"), computable = FALSE, silent = FALSE) 
   #use average distribution with weighthing based on AICC
   preds <- predict(dists, average = TRUE, 
                    #ic = "aicc",
@@ -76,7 +79,10 @@ SSD_function_t2 <- function(filtered.data, hcx){
     
   #fit distributions
   dists <- ssd_fit_dists(collapsed, left = "Conc", 
-                         dists = c( "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
+                         dists = c( "llogis",
+                                    "lnorm",
+                                    "gamma",
+                                    "lgumbel"), computable = FALSE, silent = FALSE) 
   #use average distribution with weighthing based on AICC
   preds <- predict(dists, average = TRUE,# ic = "aicc",
                    nboot = nboot, ci= TRUE) 
@@ -128,7 +134,10 @@ SSD_function_t3_4 <- function(filtered.data, hcx){
   } else {
     
   #fit distributions
-  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c( "llogis", "lnorm", "gamma", "lgumbel"), computable = FALSE, silent = FALSE) 
+  dists <- ssd_fit_dists(collapsed, left = "Conc", dists = c("llogis",
+                                                             "lnorm",
+                                                             "gamma",
+                                                             "lgumbel"), computable = FALSE, silent = FALSE) 
   #use average distribution with weighthing based on AICC
   preds <- predict(dists, average = TRUE, 
                    #ic = "aicc", 
@@ -155,6 +164,7 @@ filter_environment_data <- function(data, env_filter, upper.tissue.trans.size.um
     ungroup() %>% 
     mutate(dose_new = particles.mL.ox.stress / (af.time * af.noec)) %>%
     drop_na(dose_new) %>%
+    filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(between(size.length.um.used.for.conversions, x1D_set, upper.tissue.trans.size.um),
            shape_f != "Not Reported",
@@ -175,8 +185,10 @@ filter_environment_data <- function(data, env_filter, upper.tissue.trans.size.um
     filter(Group != "Algae") %>%
     mutate(dose_new = particles.mL.food.dilution / (af.time * af.noec)) %>%
     drop_na(dose_new) %>%
+    filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
+           shape_f != "Not Reported",
            poly_f != "Not Reported",
            environment %in% env_filter,
            Group != "Bacterium",
@@ -198,24 +210,43 @@ filter_environment_data <- function(data, env_filter, upper.tissue.trans.size.um
 
 
 ## function to generate threshold based on different environment filterings (Marine or Freshwater,etc.)
-process_environment_data <- function(data, env_filter, upper.tissue.trans.size.um, x1D_set, x2D_set) {
+## data should be aligned ##
+process_environment_data <- function(data, 
+                                     env_filter = "Marine",
+                                     upper.tissue.trans.size.um = 88, 
+                                     x1D_set = 1,
+                                     x2D_set = 5000
+                                     ) {
+  
+  
+  ###  only if it doesn't already exist (ensures compatibility with Shiny app) ##
+  if (!"particles.mL.ox.stress" %in% names(data)) {
+    data <- data %>% 
+      mutate(particles.mL.ox.stress = EC_env_sa.particles.mL_trans)
+  }
+  
+  if (!"particles.mL.food.dilution" %in% names(data)) {
+    data <- data %>% 
+      mutate(particles.mL.food.dilution = EC_env_v.particles.mL_ingest)
+  }
+
+  
   # Filter and process data for Tissue Translocation
   filtered_data_small_default_t1_2 <- data %>%
     ungroup() %>% 
     mutate(dose_new = particles.mL.ox.stress / (af.time * af.noec)) %>%
     drop_na(dose_new) %>%
+    filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(
           between(size.length.um.used.for.conversions, x1D_set, upper.tissue.trans.size.um),
-           shape_f != "Not Reported",
+          translocatable != "not translocatable",
+          shape_f != "Not Reported",
            poly_f != "Not Reported",
            environment %in% env_filter,
            Group != "Bacterium",
            Group != "Plant",
            effect.metric != "HONEC",
-          ingestible == "ingestible",
-           #only consider studies in which particles are below x2M_trans (translocation only!)
-           translocatable == "translocatable",
           dose_new > 0
     ) 
   
@@ -233,14 +264,16 @@ process_environment_data <- function(data, env_filter, upper.tissue.trans.size.u
     filter(Group != "Algae") %>%
     mutate(dose_new = particles.mL.food.dilution / (af.time * af.noec)) %>%
     drop_na(dose_new) %>%
+    filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
+           ingestible != "not ingestible",
            poly_f != "Not Reported",
+           shape_f != "Not Reported",
            environment %in% env_filter,
            Group != "Bacterium",
            Group != "Plant",
            effect.metric != "HONEC",
-           ingestible == "ingestible", #only consider studies in which particles are below x2M_ingest )
            dose_new > 0) 
   
   filtered_data_large_default_t3_4 <- filtered_data_large_default_t1_2 %>%

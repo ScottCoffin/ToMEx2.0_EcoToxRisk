@@ -389,23 +389,8 @@ tomex2.0_aoc_setup <- tomex2.0 %>%
                            env_f == "Freshwater" & `exposure.route` == "sediment" ~ R.ave.sediment.freshwater,
                            T ~ NA)) %>% # if doesn't meet these conditions, annotate as NA
   
-  #Calculate particle surface area
-  mutate(particle.surface.area.um2 = case_when(shape_f == "Sphere" ~ 4*pi*((size.length.um.used.for.conversions/2)^2),
-                                               shape_f == "Fiber" & is.na(size.width.um.used.for.conversions) ~ SAfnx_fiber(width = 15, length = size.length.um.used.for.conversions), #assum 15 um width (kooi et al 2021)
-                                               shape_f == "Fiber" & !is.na(size.width.um.used.for.conversions) ~ SAfnx_fiber(width = size.width.um.used.for.conversions, length = size.length.um.used.for.conversions), #if width is known
-                                               shape_f == "Fragment" ~ SAfnx(a = size.length.um.used.for.conversions,
-                                                                           b = R.ave * size.length.um.used.for.conversions,
-                                                                           c = R.ave * 0.67 * size.length.um.used.for.conversions))) %>%
-  relocate(particle.surface.area.um2, .after = size_f) %>% 
-  #Calculate particle volume
-  mutate(particle.volume.um3 = case_when(shape_f == "Sphere" ~ (4/3)*pi*((size.length.um.used.for.conversions/2)^3),
-                                         shape_f == "Fiber" & is.na(size.width.um.used.for.conversions) ~ volumefnx_fiber(width = 15, length = size.length.um.used.for.conversions), #assume 15 um as width (kooi et al 2021)
-                                         shape_f == "Fiber" & !is.na(size.width.um.used.for.conversions) ~ volumefnx_fiber(width = size.width.um.used.for.conversions, length = size.length.um.used.for.conversions), #if width reported
-                                         shape_f == "Fragment" ~ volumefnx(R = R.ave, L = size.length.um.used.for.conversions))) %>% 
-  relocate(particle.volume.um3, .after = particle.surface.area.um2) %>% 
-  #Calculate particle mass
-  mutate(mass.per.particle.mg = (particle.volume.um3*density.g.cm3)*0.000000001) %>% 
-  relocate(mass.per.particle.mg, .after = particle.volume.um3) %>%
+ 
+
   ####
   # #calculate dose metrics accordingly
   # mutate(dose.surface.area.um2.mL.master = particle.surface.area.um2 * dose.particles.mL.master) %>% 
@@ -445,26 +430,59 @@ tomex2.0_aoc_setup <- tomex2.0 %>%
     shape_f == "Not Reported" ~ R.ave * 0.67 * size.length.max.um.used.for.conversions, # average width to length ratio in the marine environment (kooi et al 2021)
     shape_f == "Fiber" ~ R.ave * size.length.max.um.used.for.conversions, #hieght same as width
     shape_f == "Fragment" ~ R.ave * 0.67 * size.length.max.um.used.for.conversions)) %>%  # average width to length ratio in the marine environment AND average height to width ratio (kooi et al 2021)
+  mutate(size.width.um.used.for.conversions = case_when(
+    is.na(size.width.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
+    is.na(size.width.um.used.for.conversions) & shape_f == "Sphere" ~ size.length.um.used.for.conversions, # W = L for spheres
+    is.na(size.width.um.used.for.conversions) & shape_f == "Fragment" ~ size.length.um.used.for.conversions * R.ave, #use average width:length ratio for fragments
+    T ~ size.width.um.used.for.conversions # if available, use as-is
+  )) %>% 
+  #estimate height based on shape (data doesn't exist in ToMEx for monodisperse, because never reported)
+  mutate(size.height.um.used.for.conversions = case_when(
+    shape_f == "Sphere" ~ size.length.um.used.for.conversions, # if spherical, height = length
+    shape_f != "Sphere" ~ size.width.um.used.for.conversions * H_W_ratio # if not spherical, height = width * H:W ratio
+  )) %>% 
   
-  #calculate minimum and maximum surface area for polydisperse particles
-  mutate(particle.surface.area.um2.min = SAfnx(a = size.length.min.um.used.for.conversions,
-                                               b = size.width.min.um.used.for.conversions,
-                                               c = size.height.min.um.used.for.conversions)) %>%
-  mutate(particle.surface.area.um2.max = SAfnx(a = size.length.max.um.used.for.conversions,
-                                               b = size.width.max.um.used.for.conversions,
-                                               c = size.height.max.um.used.for.conversions)) %>% 
-  #calculate minimum and maximum volume for polydisperse particles
-  mutate(particle.volume.um3.min = volumefnx_poly(length = size.length.min.um.used.for.conversions,
-                                                  width =  size.width.min.um.used.for.conversions)) %>% 
-  mutate(particle.volume.um3.max = volumefnx_poly(length = size.length.max.um.used.for.conversions,
-                                                  width = size.width.max.um.used.for.conversions)) %>% 
-  #calculate minimum and maximum volume for polydisperse particles
-  mutate(mass.per.particle.mg.min = massfnx_poly(length = size.length.min.um.used.for.conversions,
-                                                 width = size.width.min.um.used.for.conversions,
-                                                 p = density.g.cm3)) %>% #equation uses g/cm3
-  mutate(mass.per.particle.mg.max = massfnx_poly(length = size.length.max.um.used.for.conversions,
-                                                 width = size.width.max.um.used.for.conversions,
-                                                 p = density.g.cm3)) %>%   #equation uses g/cm3
+  # calculate volume for monodisperse particles #
+  mutate(particle.volume.um3 = volumefnx(R = R.ave,
+                                         length = size.length.um.used.for.conversions, 
+                                         width = size.width.um.used.for.conversions,
+                                         height = size.height.um.used.for.conversions
+  )) %>% 
+  # calculate min and max volume when polydisperse particles are used (being sure to use ingestion-restricted sizes)
+  mutate(particle.volume.um3.min = volumefnx(R = R.ave, 
+                                             length = size.length.min.um.used.for.conversions,
+                                             width = size.width.min.um.used.for.conversions, 
+                                             height = size.height.min.um.used.for.conversions),
+         particle.volume.um3.max = volumefnx(R = R.ave,
+                                             length = size.length.max.um.used.for.conversions,
+                                             width = size.width.max.um.used.for.conversions, 
+                                             height = size.height.max.um.used.for.conversions)) %>% 
+  # calculate surface are for monodisperse particles
+  mutate(particle.surface.area.um2 = SAfnx(length = size.length.um.used.for.conversions,
+                                           width = size.width.um.used.for.conversions,
+                                           height = size.height.um.used.for.conversions,
+                                           R = R.ave,
+                                           H_W_ratio = H_W_ratio)) %>% 
+  # calculate min/max SA for polydisperse mixtures (being sure to use translocation-restricted polydisperse upper sizes)
+  mutate(particle.surface.area.um2.min = SAfnx(length = size.length.min.um.used.for.conversions,
+                                               width = size.width.min.um.used.for.conversions,
+                                               height = size.height.min.um.used.for.conversions,
+                                               R = R.ave,
+                                               H_W_ratio = H_W_ratio),
+         particle.surface.area.um2.max = SAfnx(length = size.length.max.um.used.for.conversions,
+                                               width = size.width.max.um.used.for.conversions,
+                                               height = size.height.max.um.used.for.conversions,
+                                               R = R.ave,
+                                               H_W_ratio = H_W_ratio)) %>% 
+  #calculate minimum and maximum mass for polydisperse particles
+  mutate(mass.per.particle.mg.min = massfnx(v = particle.volume.um3.min, p = density.g.cm3) * 1e-3) %>% #equation uses g/cm3
+  mutate(mass.per.particle.mg.max = massfnx(v = particle.volume.um3.max, p = density.g.cm3) * 1e-3) %>%   #equation uses g/cm3
+  mutate(mass.per.particle.mg = massfnx(v = particle.volume.um3, p = density.g.cm3) * 1e-3) %>%   #equation uses g/cm3
+  
+  relocate(particle.volume.um3, .after = particle.surface.area.um2) %>% 
+  #Calculate particle mass
+  mutate(mass.per.particle.mg = (particle.volume.um3*density.g.cm3)*0.000000001) %>% 
+  relocate(mass.per.particle.mg, .after = particle.volume.um3) %>%
   
   #Mass (converted)
   mutate(dose.mg.L.master = ifelse(is.na(dose.mg.L.master), (dose.particles.mL.master*1000)*mass.per.particle.mg, dose.mg.L.master)) %>% 
@@ -520,26 +538,43 @@ tomex2.0_aoc_setup <- tomex2.0 %>%
 
 #Create summary data frame from ToMEx 1.0
   bodysize_summary <- aoc_setup %>%
-    group_by(species_f, body.length.cm, body.size.source, max.size.ingest.mm, max.size.ingest.um) %>%
-    summarise(.groups = "drop") 
+    filter(!body.size.source == "reported") %>% #exclude the reported values
+    distinct(species_f, life_f, body.length.cm, body.size.source) %>%   
+    #remove values that are updated in the gape_size.csv
+    filter(!species_f %in% c("Carassius auratus", "Hediste diversicolor", "Lumbriculus variegatus", "Tubifex NA", 
+                             "Ostrea edulis", "Oryzias latipes", "Potamopyrgus antipodarum", "Sparus aurata"))
 
   # bodysize_addons <- read_csv("scripts/monte carlo/ref data/gape_size.csv",
   #                             show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder
+  #add life stage column
+  bodysize_addons$life_f <- as.factor("Adult")
     
-  bodysize_addons <- bodysize_addons %>% 
-    mutate(species_f = as.factor(species_f)) %>% 
-    #annotate whether max size ingest was estimated or reported (all estiamted here)
-    mutate(max.size.ingest.reported.estimated = "estimated",
-           #calculate maximum ingestible size (if not already in database)
-           max.size.ingest.mm = 10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept),#(Jâms, et al 2020 Nature paper)correction for cm to mm
-           max.size.ingest.um = 1000 * max.size.ingest.mm)
-
-  bodysize_summary <- bind_rows(bodysize_summary,bodysize_addons)
+  bodysize_addons_updated <- bodysize_addons %>% 
+    mutate(species_f = as.factor(species_f))
   
+  bodysize_summary_complete <- bind_rows(bodysize_summary, bodysize_addons_updated) %>% 
+    drop_na(body.length.cm) %>% 
+    distinct(species_f,life_f, .keep_all = T)
+
+  #if there is a value for body size in the tomex2.0 database, mark it as "reported"
+tomex2.0_aoc_setup_final$body.size.source <- ifelse(!is.na(tomex2.0_aoc_setup_final$body.length.cm), "reported", NA)  
+    
 #Join summary to tidy ToMEx 2.0 data frame
 
-tomex2.0_aoc_setup <- left_join(tomex2.0_aoc_setup, bodysize_summary, by = c("species_f"),
-                                relationship = "many-to-many")
+tomex2.0_aoc_setup <- tomex2.0_aoc_setup %>% 
+  left_join(bodysize_summary_complete, by = c("species_f", "life_f")) %>% 
+  #if tomex2 already has a body length, keep that one, otherwise replace with an add-on value
+  mutate(body.length.cm = ifelse(is.na(body.length.cm.x), body.length.cm.y, body.length.cm.x)) %>% 
+  select(-c(body.length.cm.y, body.length.cm.x)) %>% 
+  #if tomex2 already has a body length source, keep that one, otherwise replace with an add-on value
+  mutate(body.size.source = ifelse(is.na(body.size.source.x), body.size.source.y, body.size.source.x)) %>% 
+  select(-c(body.size.source.y, body.size.source.x)) %>% 
+  #annotate whether max size ingest was estimated or reported (all estiamted here)
+  mutate(#max.size.ingest.reported.estimated = "estimated",
+         #calculate maximum ingestible size (if not already in database)
+         max.size.ingest.mm = 10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept),#(Jâms, et al 2020 Nature paper)correction for cm to mm
+         max.size.ingest.um = 1000 * max.size.ingest.mm)
+
 
 #Re-structure alternative dosing columns in aoc-setup
 aoc_setup <- aoc_setup %>% 
@@ -880,17 +915,18 @@ na_polymer = data.frame(poly_f = sort(as.character(na_polymer)))
 na_polymer # >>> check the density in the literature
 
 #
-tomex2.0_aoc_setup_final$density.g.cm3[tomex2.0_aoc_setup_final$poly_f == "High Density Polyethylene"] = "0.953"
-tomex2.0_aoc_setup_final$density.g.cm3[tomex2.0_aoc_setup_final$poly_f == "Poly(Styrene-co-acrylonitrile)"] = "1.08"
-tomex2.0_aoc_setup_final$density.g.cm3[tomex2.0_aoc_setup_final$poly_f == "polyethylene_vinyl_acetate"] = "0.953"
-tomex2.0_aoc_setup_final$density.g.cm3[tomex2.0_aoc_setup_final$poly_f == "Polyisoprene"] = "0.905"
-tomex2.0_aoc_setup_final$density.g.cm3[tomex2.0_aoc_setup_final$poly_f == "Polytetrafluoroethylene"] = "2.2"
-tomex2.0_aoc_setup_final$density.g.cm3[tomex2.0_aoc_setup_final$poly_f == "Polyurethane"] = "1.19"
-tomex2.0_aoc_setup_final$density.g.cm3[tomex2.0_aoc_setup_final$poly_f == "Polyvinyl Acetate"] = "1.19"
-tomex2.0_aoc_setup_final$density.g.cm3[tomex2.0_aoc_setup_final$poly_f == "Polyvinylchloride/vinylacetate co-polymer"] = "1.38"
-tomex2.0_aoc_setup_final$density.g.cm3[tomex2.0_aoc_setup_final$poly_f == "Sodium Polyacrylate"] = "1.32"
-tomex2.0_aoc_setup_final$density.g.cm3[tomex2.0_aoc_setup_final$poly_f == "Starch/Polybutylene Adipate Terephthalate/Polylactic Acid"] = "1.05"
-tomex2.0_aoc_setup_final$density.g.cm3[tomex2.0_aoc_setup_final$poly_f == "Tire Wear"] = "1.45"
+tomex2.0_aoc_setup$density.g.cm3[tomex2.0_aoc_setup$poly_f == "High Density Polyethylene"] = 0.953
+tomex2.0_aoc_setup$density.g.cm3[tomex2.0_aoc_setup$poly_f == "Poly(Styrene-co-acrylonitrile)"] = 1.08
+tomex2.0_aoc_setup$density.g.cm3[tomex2.0_aoc_setup$poly_f == "Polyethylene vinyl acetate"] = 0.953
+tomex2.0_aoc_setup$density.g.cm3[tomex2.0_aoc_setup$poly_f == "Polyisoprene"] = 0.905
+tomex2.0_aoc_setup$density.g.cm3[tomex2.0_aoc_setup$poly_f == "Polytetrafluoroethylene"] = 2.2
+tomex2.0_aoc_setup$density.g.cm3[tomex2.0_aoc_setup$poly_f == "Polyurethane"] = 1.19
+tomex2.0_aoc_setup$density.g.cm3[tomex2.0_aoc_setup$poly_f == "Polyvinyl Acetate"] = 1.19
+tomex2.0_aoc_setup$density.g.cm3[tomex2.0_aoc_setup$poly_f == "Polyvinylchloride/vinylacetate co-polymer"] = 1.38
+tomex2.0_aoc_setup$density.g.cm3[tomex2.0_aoc_setup$poly_f == "Sodium Polyacrylate"] = 1.32
+tomex2.0_aoc_setup$density.g.cm3[tomex2.0_aoc_setup$poly_f == "Starch/Polybutylene Adipate Terephthalate/Polylactic Acid"] = 1.05
+tomex2.0_aoc_setup$density.g.cm3[tomex2.0_aoc_setup$poly_f == "Tire Wear"] = 1.45
+tomex2.0_aoc_setup$density.g.cm3[tomex2.0_aoc_setup$poly_f == "Polyamidoamine"] = 1.22
 
 # Restructure temp column
 tomex2.0_aoc_setup_final$media.temp = as.numeric(tomex2.0_aoc_setup_final$media.temp)

@@ -3,7 +3,7 @@ library(vegan)
 
 # Import data ---
 
-dat = read.csv("Data/data_comp_to_env_compiled.csv", stringsAsFactors = TRUE)
+dat = read.csv("ToMEx2.0_MPcharacteristics/Data/data_comp_to_env_compiled.csv", stringsAsFactors = TRUE)
 # str(dat)
 # summary(dat)
 # levels(dat$doi)

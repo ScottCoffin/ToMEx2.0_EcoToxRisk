@@ -1,14 +1,14 @@
 
 library(dplyr)
 library(pals)
-source("Code/XX_Helper_boxplot_Kooi2021.R")
+source("ToMEx2.0_MPcharacteristics/Code/XX_Helper_boxplot_Kooi2021.R") # doesn't exist
 
 
 #dat = readRDS("Data/RDS/aoc_z_tomex2.RDS")
-dat = readRDS("../data/output/aoc_final.RDS")
+dat = readRDS("data/output/aoc_final.RDS")
 
 # import data from Kooi et al. 2021:
-dat.lengths = read.csv("Data/XX_KooiEtAl2021_particle_length.csv")
+dat.lengths = read.csv("ToMEx2.0_MPcharacteristics/Data/XX_KooiEtAl2021_particle_length.csv")
 
 str(dat)
 summary(dat)

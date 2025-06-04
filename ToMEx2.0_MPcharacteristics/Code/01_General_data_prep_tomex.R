@@ -1,8 +1,9 @@
 # load packages
 library(plyr)
+getwd()
 
 # import data
-dat = readRDS("../data/output/aoc_final.RDS")
+dat = readRDS("data/output/aoc_final.RDS")
 dat = droplevels(dat)
 str(dat)
 

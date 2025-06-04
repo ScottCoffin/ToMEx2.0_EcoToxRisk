@@ -19,6 +19,7 @@ library(ggeffects)
 #library(ggdark)
 ```
 # Setup
+Adding info here to show diff
 ```{r}
 getwd()
 #data cleanup
@@ -56,85 +57,6 @@ skim(df)
 aoc_z <- readRDS(file = "../../data/input/aoc_z_tomex2.RDS")
 ```
 
-<!-- ```{r} -->
-<!-- quality <- aoc_z %>%  -->
-<!--  select(c( -->
-<!--     doi:tier_zero_risk_f -->
-<!--   )) -->
-
-<!-- # joined <- left_join(Tissue_Translocation, quality, by = "doi") %>%  -->
-<!-- #   distinct() %>%  -->
-<!-- #      #Assign descriptions to each criteria -->
-<!-- #       rename("Test Medium Reported*" = "tech.a1", -->
-<!-- #     "Administration Route Reported*" = "tech.a2", -->
-<!-- #      "Test Species Reported*" = "tech.a3", -->
-<!-- #      "Sample Size Reported*" = "tech.a4", -->
-<!-- #     "Control Group Reported*" = "tech.a5", -->
-<!-- #     "Exposure Duration Reported*" = "tech.a6" , -->
-<!-- #     "Particle Size*" = "tech.1", -->
-<!-- #     "Particle Shape*" = "tech.2", -->
-<!-- #     "Polymer Type*" = "tech.3", -->
-<!-- #                                   "Source of Microplastics*" = "tech.4", -->
-<!-- #                                      "Data Reporting*" = "tech.5", -->
-<!-- #                                     "Chemical Purity" = "tech.6", -->
-<!-- #                                      "Laboratory Preparation" = "tech.7", -->
-<!-- #                                     "Background Contamination" = "tech.8", -->
-<!-- #                                     "Exposure Verification" = "tech.9", -->
-<!-- #                                      "Exposure Homogeneity" = "tech.10", -->
-<!-- #                                     "Exposure Assessment" = "tech.11", -->
-<!-- #                                     "Replication" = "tech.12", -->
-<!-- #                                     "Endpoints" = "risk.13", -->
-<!-- #                                     "Food Availability" = "risk.14", -->
-<!-- #                                     "Effect Thresholds" = "risk.15", -->
-<!-- #                                     "Dose Response" = "risk.16", -->
-<!-- #                                     "Concentration Range" = "risk.17", -->
-<!-- #                                     "Aging and Biofouling" = "risk.18", -->
-<!-- #                                     "Risk Assessment" = "risk.18", -->
-<!-- #                                     "Microplastic Diversity" = "risk.19", -->
-<!-- #                                     "Exposure Time" = "risk.20") -->
-<!-- #   -->
-<!-- # what studies are missing quality criteria? -->
-<!-- Tissue_Translocation %>%  -->
-<!-- #joined %>%  -->
-<!--   filter(is.na('Test Medium Reported*')) %>%  -->
-<!--   distinct(doi, .keep_all = TRUE) %>%  -->
-<!--   view() -->
-
-<!-- write.csv(joined, "translocation_scored_2.csv") -->
-
-<!-- # #re-assign descriptions to each criteria in normal format -->
-<!-- #       rename("tech.a1" = "Test Medium Reported*", -->
-<!-- #     "tech.a2" = "Administration Route Reported*", -->
-<!-- #      "tech.a3" = "Test Species Reported*", -->
-<!-- #      "tech.a4" = "Sample Size Reported*", -->
-<!-- #     "tech.a5" = "Control Group Reported*", -->
-<!-- #     "tech.a6" = "Exposure Duration Reported*", -->
-<!-- #     "tech.1" = "Particle Size*", -->
-<!-- #     "tech.2" = "Particle Shape*", -->
-<!-- #     "tech.3" = "Polymer Type*", -->
-<!-- #                                   "tech.4" = "Source of Microplastics*", -->
-<!-- #                                     "tech.5" = "Data Reporting*", -->
-<!-- #                                     "tech.6" = "Chemical Purity", -->
-<!-- #                                     "tech.7" = "Laboratory Preparation", -->
-<!-- #                                     "tech.8" = "Background Contamination", -->
-<!-- #                                     "tech.9" = "Exposure Verification", -->
-<!-- #                                     "tech.10" = "Exposure Homogeneity", -->
-<!-- #                                     "tech.11" = "Exposure Assessment", -->
-<!-- #                                     "tech.12" = "Replication", -->
-<!-- #                                     "risk.13" = "Endpoints", -->
-<!-- #                                     "risk.14" = "Food Availability", -->
-<!-- #                                     "risk.15" = "Effect Thresholds", -->
-<!-- #                                     "risk.16" = "Dose Response", -->
-<!-- #                                     "risk.17" = "Concentration Range", -->
-<!-- #                                     "risk.18" = "Aging and Biofouling", -->
-<!-- #                                     "risk.18" = "Risk Assessment", -->
-<!-- #                                     "risk.19" = "Microplastic Diversity", -->
-<!-- #                                     "risk.20" = "Exposure Time") -->
-<!-- ``` -->
-<!-- ```{r} -->
-<!-- getwd() -->
-<!-- joined <- read_excel("../../data/input/translocation_scored_2.xlsx") -->
-<!-- ``` -->
 
 
 ### Size
@@ -233,21 +155,54 @@ translocation_glm <- Tissue_Translocation %>%
 ggplot(aes(x = size.um, y = translocated_10)) +
   stat_smooth(method="glm", method.args=list(family="binomial"), se=TRUE,
               color = "black") +
+  geom_jitter(height = 0.1) +
   scale_x_log10(name = expression(paste("Particle Length (", mu, "m)")),
                 labels = scales::label_comma()
                 ) +#,
   #n.breaks = 10) +
   scale_y_continuous(name = "Particle Translocation Probability",
                      labels = scales::percent, limits = c(0,1)) +
-  theme_classic()
+  theme_classic(base_size = 16)
 translocation_glm
 ```
+```{r}
+translocation_glm <- Tissue_Translocation %>% 
+  ggplot(aes(x = size.um, y = translocated_10)) +
+  stat_smooth(method = "glm", method.args = list(family = "binomial"), se = TRUE,
+              color = "black") +
+ # Add rug for binary 0 at the bottom
+  geom_rug(
+    data = Tissue_Translocation %>% filter(translocated_10 == 0),
+    aes(x = size.um),
+    sides = "b", # Rug on the bottom
+    color = "darkblue", # Optional: color for binary 0
+    alpha = 0.9, # Transparency
+    length = unit(0.05, "npc") # Length of the rug marks
+  ) +
+  # Add rug for binary 1 at the top
+  geom_rug(
+    data = Tissue_Translocation %>% filter(translocated_10 == 1),
+    aes(x = size.um),
+    sides = "t", # Rug on the top
+    color = "darkred", # Optional: color for binary 1
+    alpha = 0.9, # Transparency
+    length = unit(0.05, "npc") # Length of the rug marks
+  ) +
+  scale_x_log10(name = expression(paste("Particle Length (", mu, "m)")),
+                labels = scales::label_comma()) +
+  scale_y_continuous(name = "Particle Translocation Probability",
+                     labels = scales::percent, limits = c(0, 1)) +
+  theme_classic(base_size = 16)
+translocation_glm
+```
+
+
 
 #### Manuscript Figure
 ```{r}
 ggsave(filename = "translocation_glm.jpeg",
        path = "../../output/Manuscript_Figs/translocation",
-       plot = translocation_glm, width = 5, height = 5, units = "in",
+       plot = translocation_glm, width = 6, height = 4, units = "in",
        bg = "white")
 ```
 
