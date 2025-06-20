@@ -33,11 +33,13 @@ envfitall <- envfit(NMDS, scaled)
 vectors = as_tibble(envfitall$vectors$arrows, rownames = "properties")
 vectors$vectornames = c("PE/PET/Polyester", "PP", "PS", "PA", "PU", "PVC/PVA", "PTFE", "Other",
                         "Fragments",    "Spheres", "Fibers", "Mean length", "Mean width")
+# get vector/arrow weights:
+weights = attr(envfitall$vectors$arrows,"parameters")$norm
 
 palette(c("lightskyblue", "royalblue3"))
 
-adjust.x = c(-1.3, 0.3, -0.3, 0, 0.3, 0.7, 0, 0.2, -0.5,   -0.6, 0.15, -0.8, -0.8)
-adjust.y = c(-0.1, 0, 0, -0.2, -0.1, 0.1, 0.2, -0.15, 0.2,       0, -0.3, -0.1, 0)
+adjust.x = c(0.55, 0.3, -0.3, 0, 0.1, 0.7, -0.2, 0.1, -0.5, -0.6, 0.5, -0.8, -0.8)
+adjust.y = c(-0.2, 0, 0, 0.3, 0.25, 0.1, -0.25, 0.2, -0.3, 0, 0, 0.2, 0)
 
 png("Plots/NMDS_environmental.png", width = 18, height = 15, units = "cm", res = 1000)
 
@@ -48,13 +50,19 @@ plot(x,y, bg = adjustcolor(as.numeric(dat$fresh_marine_binary), alpha.f = 0.9), 
      xlab = "NMDS1", ylab = "NMDS2", cex = 1.5, 
      ylim = c(-4,4), xlim = c(-8, 4))
 
+# for(i in 1:nrow(envfitall$vectors$arrows)){
+# arrows(0,0, envfitall$vectors$arrows[i,1]*2.5, envfitall$vectors$arrows[i,2]*2.5, 
+#        length = 0.1, col = "grey50")
+# text(envfitall$vectors$arrows[i,1]*2.5 + adjust.x[i], envfitall$vectors$arrows[i,2]*2.5 + adjust.y[i],
+#      vectors$vectornames[i], cex = 0.8, col = "grey50")
+# }  
 for(i in 1:nrow(envfitall$vectors$arrows)){
-arrows(0,0, envfitall$vectors$arrows[i,1]*2.5, envfitall$vectors$arrows[i,2]*2.5, 
-       length = 0.1, col = "grey50")
-text(envfitall$vectors$arrows[i,1]*2.5 + adjust.x[i], envfitall$vectors$arrows[i,2]*2.5 + adjust.y[i],
-     vectors$vectornames[i], cex = 0.8, col = "grey50")
-}          
-text("ToMEx 2.0", x = -6, y = -0.2, col = "red",
+  arrows(0,0, envfitall$vectors$arrows[i,1]*7*weights[i], envfitall$vectors$arrows[i,2]*7*weights[i], 
+         length = 0.1, col = "grey50")
+  text(envfitall$vectors$arrows[i,1]*7*weights[i] + adjust.x[i], envfitall$vectors$arrows[i,2]*7*weights[i] + adjust.y[i],
+       vectors$vectornames[i], cex = 0.8, col = "grey50")
+}  
+text("ToMEx 2.0", x = -5, y = -0.4, col = "red",
      cex = 0.8, pos = 4, font = 2)
 
 dev.off()

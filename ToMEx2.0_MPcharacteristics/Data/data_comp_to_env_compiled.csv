@@ -1,6 +1,6 @@
 ﻿ID,doi,sample.source,fresh_marine_binary,PE_PET_Polyester,PP_prop,PS_prop,PA_prop,PUR_prop,PVC,PTFE,other,fragments_prop,spheres_prop,fibers_prop,length_mean_um,length_median_um,width_mean_um,width_median_um,denstiy_mean,area_mean_um2,comment
-1,ToMEx2.0,ToMEx 2.0 freshwater,freshwater,0.359,0.012,0.438,0.023,0.008,0.012,0,0.149,0.285,0.599,0.045,38.2,5.5,19.3,1,1.073,493736,
-2,ToMEx2.0,ToMEx 2.0 marine,marine,0.137,0,0.827,0,0,0.022,0,0.013,0.075,0.892,0.004,22.0,10,15.1,8,1.065,16936,
+1,ToMEx2.0,ToMEx 2.0 freshwater,freshwater,0.359,0.012,0.438,0.023,0.008,0.012,0,0.149,0.285,0.599,0.045,64.1,20.8,36.6,2,1.065,51943,
+2,ToMEx2.0,ToMEx 2.0 marine,marine,0.137,0,0.827,0,0,0.022,0,0.013,0.075,0.892,0.004,28.8,1,8.5,0.2,1.063,35924,
 3,10.1016/j.watres.2021.117429,"Kooi et al. 2021, freshwater surface",freshwater,0.319,0.129,NA,0.087,0.003,0,NA,0.409,NA,NA,NA,91.17,42.43,44.95,20,1.04,45300,PU and acrylates not separated in dataset: divided by 2; proportions of polymer types extracted from Fig. 3 via metaDigitise
 4,10.1016/j.watres.2021.117429,"Kooi et al. 2021, marine surface",marine,0.25,0.116,NA,0.314,0.054,0.018,NA,0.36,NA,NA,NA,45.64,11.14,25.04,11.03,1.1,48300,PU and acrylates not separated in dataset: divided by 2; proportions of polymer types extracted from Fig. 3 via metaDigitise
 5,10.1016/j.watres.2021.117429,"Kooi et al. 2021, freshwater sediment",freshwater,0.1,0.054,NA,0,0.324,0.075,NA,1.101,NA,NA,NA,64.25,20,28.08,20,1.15,11500,PU and acrylates not separated in dataset: divided by 2; proportions of polymer types extracted from Fig. 3 via metaDigitise
