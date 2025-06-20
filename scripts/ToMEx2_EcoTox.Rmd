@@ -758,10 +758,11 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
                                                      width = size.width.max.um.trans, 
                                                      height = size.height.max.um.trans)) %>% 
    ### Ingest ### 
-      mutate(particle.surface.area.um2.max.ingest = volumefnx(R = R.ave,
-                                                   length = size.length.max.um.ingest,
-                                                   width = size.width.max.um.ingest, 
-                                                   height = size.height.max.um.ingest)) %>% 
+      mutate(particle.surface.area.um2.max.ingest =  SAfnx(R = R.ave,
+                                                     H_W_ratio = H_W_ratio,
+                                                     length = size.length.max.um.ingest,
+                                                     width = size.width.max.um.ingest, 
+                                                     height = size.height.max.um.ingest)) %>% 
   #calculate mass for monodisperse particles  
   mutate(mass.per.particle.mg = massfnx(v = particle.volume.um3, p = density.g.cm3) * 1e-3) %>%   #equation uses g/cm3    
   #calculate minimum and maximum mass or polydisperse particles
@@ -2505,12 +2506,47 @@ ggsave(plot = quality_tier2,
 
 quality_tier2
 ```
+#### Fold-change table
+Below we calculate the fold-change of thresholds for marine/freshwater with and without quality filters
+```{r}
+#all_thresholds_combined <- read.csv("../output/data/all_thresholds_combined_quality.csv")
+
+tissue_fold_change <- all_thresholds_combined %>% 
+  filter(label %in% c("risk and tech", "no quality filters"),
+         Environment %in% c("Marine", "Freshwater")) %>% 
+  select(Tissue.Translocation..Default., Tier, label, Environment) %>% 
+  pivot_wider(#cols = Tissue.Translocation..Default.,
+              names_from = label,
+              values_from = Tissue.Translocation..Default.) %>% 
+  mutate(tissue_fold_change = `no quality filters` / `risk and tech`) %>% 
+  select(Tier, Environment, tissue_fold_change)
+
+food_fold_change <- all_thresholds_combined %>% 
+  filter(label %in% c("risk and tech", "no quality filters"),
+         Environment %in% c("Marine", "Freshwater")) %>% 
+  select(Food.Dilution..Default., Tier, label, Environment) %>% 
+  pivot_wider(#cols = Tissue.Translocation..Default.,
+              names_from = label,
+              values_from = Food.Dilution..Default.) %>% 
+  mutate(food_fold_change = `no quality filters` / `risk and tech`) %>% 
+  select(Tier, Environment, food_fold_change)
+
+quality_fold_change <- left_join(food_fold_change, tissue_fold_change) %>% 
+  mutate_if(is.numeric, ~signif(.,2))
+
+write.csv(quality_fold_change, "../output/data/quality_fold_change.csv")
+
+quality_fold_change
+```
+
+
 
 ### Export quality threshold data to excel
 ```{r}
 getwd()
 write.csv(all_thresholds_combined, "../output/data/all_thresholds_combined_quality.csv")
 ```
+
 
 #### Maximize quality filters
 We need to perform an iterative approach to filter the dataset based on quality criteria and ensure that the filtered dataset contains at least 6 unique species. We will maximize the quality of studies used to derive thresholds by trying different combinations of quality criteria.

@@ -824,10 +824,11 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
                                                      width = size.width.max.um.trans, 
                                                      height = size.height.max.um.trans)) %>% 
    ### Ingest ### 
-      mutate(particle.surface.area.um2.max.ingest = volumefnx(R = R.ave,
-                                                   length = size.length.max.um.ingest,
-                                                   width = size.width.max.um.ingest, 
-                                                   height = size.height.max.um.ingest)) %>% 
+      mutate(particle.surface.area.um2.max.ingest = SAfnx(R = R.ave,
+                                                          H_W_ratio = H_W_ratio,
+                                                          length = size.length.max.um.ingest,
+                                                          width = size.width.max.um.ingest, 
+                                                          height = size.height.max.um.ingest)) %>% 
   #calculate mass for monodisperse particles  
   mutate(mass.per.particle.mg = massfnx(v = particle.volume.um3, p = density.g.cm3) * 1e-3) %>%   #equation uses g/cm3    
   #calculate minimum and maximum mass or polydisperse particles
