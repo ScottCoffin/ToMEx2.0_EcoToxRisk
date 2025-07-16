@@ -26,118 +26,10 @@
 # -------------------------------------------------------------------------------------------------
 
 
-
-do.pSSD <- function(DP,
-                    DP.SD,
-                    UFt,
-                    UFdd,
-                    SIM,
-                    CV.DP,
-                    CV.UF){
-  
-  # test if there is no data available for one species
-  if(any(apply(DP,2,function(x) length(which(!is.na(x)))) == 0)){
-    warning("No data is available for one or more species, it/they won't contribute to the PSSD calculation.")
-    # find which species has no data
-    ind.sp.rem <- which(apply(DP,2,function(x) length(which(!is.na(x)))) == 0)
-    # remove those columns
-    DP <- DP[,-ind.sp.rem]
-    DP.SD <- DP.SD[,-ind.sp.rem]
-    UFt <- UFt[,-ind.sp.rem]
-    UFdd <- UFdd[,-ind.sp.rem]
-  }
-  
-  # Create the step distributions (or triangular or trapezoidal) for each species
-  # Create an empty matrix in which step distributions will be compiled
-  NOEC_comb <- matrix(NA, ncol(DP), SIM,
-                      dimnames = list(colnames(DP), NULL))
-  
-  # Fill in the matrix. If there is only one data point, NOEC stays the same. If  there are
-  # 2 endpoints, a uniform distribution is produced. If  there are more than 2 endpoints, a step
-  # distribution is produced. One line is for one species.
-  require(trapezoid)
-  require(mc2d)
-  
-  # store the corrected endpoints
-  corr.endpoints <- DP/(UFdd*UFt)
-  
-  sort.endpoints <- apply(corr.endpoints, 2, sort)
-  
-  for (sp in colnames(DP)){
-    print(sp)
-    # store the indices of the minimal and maximal data point
-    ind.min <- which.min(corr.endpoints[,sp])
-    ind.max <- which.max(corr.endpoints[,sp])
-    
-    if(is.matrix(CV.DP)){
-      CV.DP2 <- CV.DP[,sp]
-    }
-    else{
-      CV.DP2 <- CV.DP
-    }
-    
-    # calculate the theoretical minimum and maximum of the distribution we are looking for
-    sp.min <- corr.endpoints[ind.min,sp]*(1-(sqrt(sum((CV.DP2/2.45)^2) + 2* (CV.UF/2.45)^2)*2.45))
-    sp.max <- corr.endpoints[ind.max,sp]*(1+(sqrt(sum((CV.DP2/2.45)^2) + 2*(CV.UF/2.45)^2)*2.45))
-    
-    #{Scott} - why is the CV.UF term included twice here?#
-    #{Substitute CVs with probabilistically-determined alignments based on Alpha value, etc.}
-    
-    # For species with one unique data point, NOEC stays the same:
-    if(length(unique(sort.endpoints[[sp]])) == 1){
-      NOEC_comb[sp,] <- rtrunc("rtriang", min = sp.min, 
-                               mode = sort.endpoints[[sp]][1],
-                               max = sp.max,
-                               n = SIM, linf = 0)
-      
-      
-      # For species with two endpoints:
-    } else if(length(sort.endpoints[[sp]]) == 2){
-      # Create a trapezoidal distribution including both endpoints
-      NOEC_comb[sp,] <- rtrunc("rtrapezoid", SIM,
-                               mode1 = sort.endpoints[[sp]][1],
-                               mode2 = sort.endpoints[[sp]][2],
-                               min = sp.min, max = sp.max,
-                               linf = 0)
-      
-      
-      # For species with three endpoints or more:
-    } else {
-      
-      #Use this in place of below to bootstrap. 
-      # The low end of the CV correction factors
-
-      low <- (1-(sqrt(sum(c(DP.SD[,sp], CV.DP2, CV.UF)^2, na.rm = T))))
-      # The high end of the CV correction factors
-      high <- (1+(sqrt(sum(c(DP.SD[,sp], CV.DP2, CV.UF)^2, na.rm = T))))
-      # Create a boostrap of the correction factors
-      uncertainty_factor <- runif(min = low, 
-                                  max = high, 
-                                  n = SIM)
-      
-      # Create a boostrap of the species data distributions
-      data <- rnorm(mean = mean(sort.endpoints[[sp]]), 
-                    sd = sd(sort.endpoints[[sp]]),  
-                    n = SIM)
-      
-      # Create the final simulation dataset
-      NOEC_comb[sp,] <- data * uncertainty_factor
-      
-      # Sample from this step distribution for each species
-      #NOEC_comb[sp,] <- rmore(values = sort.endpoints[[sp]], max = sp.max, min = sp.min, N = SIM, linf = 0)
-      
-    } 
-  }
-  # return the whole matrix
-  return(NOEC_comb)
-  
-}
-
-
 #################################################################
-#### Scott's attempt at fixing the negative number issues #####
+#### PSSD++ Function #####
 #################################################################
-do.pSSD_mod <- function(DP, DP.SD, UFt, UFdd, SIM, CV.DP, CV.UF) {
+do.pSSD_mod <- function(DP, DP.SD, UFt, UFdd, SIM, CV.DP, CV.UF, rmore_method = "step") {
   # Check for species with no data
   if (any(apply(DP, 2, function(x) length(which(!is.na(x)))) == 0)) {
     warning("No data is available for one or more species, it/they won't contribute to the PSSD calculation.")
@@ -170,9 +62,6 @@ do.pSSD_mod <- function(DP, DP.SD, UFt, UFdd, SIM, CV.DP, CV.UF) {
     sp.min <- max(0, corr.endpoints[ind.min, sp] * (1 - (sqrt(sum((CV.DP2 / 2.45)^2) + 2 * (CV.UF / 2.45)^2) * 2.45)))
     sp.max <- max(0, corr.endpoints[ind.max, sp] * (1 + (sqrt(sum((CV.DP2 / 2.45)^2) + 2 * (CV.UF / 2.45)^2) * 2.45)))
     
-    # Debugging: Print sp.min and sp.max to ensure they are non-negative
-   # print(paste("Species:", sp, "sp.min:", sp.min, "sp.max:", sp.max))
-    
     # Handle cases based on the number of unique endpoints
     if (length(unique(sort.endpoints[[sp]])) == 1) {
       # Single endpoint: Use truncated triangular distribution
@@ -188,24 +77,30 @@ do.pSSD_mod <- function(DP, DP.SD, UFt, UFdd, SIM, CV.DP, CV.UF) {
                                 mode2 = sort.endpoints[[sp]][2], 
                                 min = sp.min, max = sp.max, linf = 0)
       
-    } else {
-      # Three or more endpoints: Bootstrap with uncertainty factor
-      #Removing the DP.SD[, sp] from the groups to test
-      high <- (sqrt(sum(c(mean(DP.SD[, sp]/DP[, sp], na.rm = T), 1+CV.DP2, 1+CV.UF)^2, na.rm = T)))
-      low <- 1/high
+      ### Three endpoints: Use rmore function based on the specified method  ##
+      # (step-wise trapezoidal - i.e., original Wigger et al. (2020))
+    } else if (length(sort.endpoints[[sp]]) > 2 & rmore_method == "step") {
+      # Three or more endpoints: Use step distribution
+      NOEC_comb[sp,] <- rmore(values = sort.endpoints[[sp]], max = sp.max, min = sp.min, N = SIM, linf = 0)
       
-      # Debugging: Print low and high to ensure they are valid
-    #  print(paste("Species:", sp, "low:", low, "high:", high))
-      
-      uncertainty_factor <- runif(min = low, max = high, n = SIM)
-      
-      data <- 10^rnorm(mean = mean(log10(sort.endpoints[[sp]])), 
-                    sd = sd(log10(sort.endpoints[[sp]])),  
-                    n = SIM)
-      
-      # Ensure no negative values in the final result
-      NOEC_comb[sp, ] <- data * uncertainty_factor
-    }
+      # Log10 -> normal distribution bootstrapping shortcut method developed here
+    } else if (length(sort.endpoints[[sp]]) > 2 & rmore_method == "lognormal") {
+    
+    # Three or more endpoints: Log-Normal distribution bootstrapping with uncertainty factor
+    #Removing the DP.SD[, sp] from the groups to test
+    high <- (sqrt(sum(c(mean(DP.SD[, sp]/DP[, sp], na.rm = T), 1+CV.DP2, 1+CV.UF)^2, na.rm = T)))
+    low <- 1/high
+    
+    uncertainty_factor <- runif(min = low, max = high, n = SIM)
+    
+    data <- 10^rnorm(mean = mean(log10(sort.endpoints[[sp]])), 
+                     sd = sd(log10(sort.endpoints[[sp]])),  
+                     n = SIM)
+    
+    # Ensure no negative values in the final result
+    NOEC_comb[sp, ] <- data * uncertainty_factor
+    
+  }
   }
   
   # Return the final matrix

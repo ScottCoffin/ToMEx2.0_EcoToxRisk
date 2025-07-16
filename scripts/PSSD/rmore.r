@@ -27,6 +27,7 @@
 
 # -------------------------------------------------------------------------------------------------
 
+require(crayon)
 
 
 rmore <- function(values,
@@ -86,7 +87,6 @@ rmore <- function(values,
   
   
   ### LEFT TRIANGLE OF OVERALL SPECIES-SPECIFIC NOEC PROBABILITY DISTRIBUTION
-  
   if((length(unique(sort.values)) < length(sort.values)) &
      (val.min == sort.values[2])){ 
     
@@ -133,12 +133,26 @@ rmore <- function(values,
   
   ### DISTRIBUTIONS IN BETWEEN LEFT AND RIGHT TRIANGLES OF THE OVERALL SPECIES-SPECIFIC NOEC DISTRIBUTION 
   
-  # Create an empty list to store the distribution parts
+    # Create an empty list to store the distribution parts
   mid <- list()
   
   # Creates a distribution between each pair of consecutive unique values
+
+  # optional progress reporting
+  # cat(crayon::blue("📤 Starting RMore Calculation of distribution...\n"))
+  
+  
   for(i in 1:(length(uni.values)-1)){
-    print(i)
+  # optional progress reporting
+#     checkpoints <- floor(c(0.5, 1.0) * (length(uni.values) - 1))
+# 
+#     if (i %in% checkpoints) {
+#       pct_done <- round(100 * i / (length(uni.values) - 1))
+#       cat(crayon::yellow(sprintf("⏳ %.0f%% complete (%d of %d)\n",
+#                                  pct_done, i, length(uni.values) - 1)))
+#     }
+    
+    
     if(height.values[i] == 1 & height.values[i+1] == 1){
       # Calculate the uniform distributions in between
       
@@ -205,7 +219,7 @@ rmore <- function(values,
   
   
   ### RIGHT TRIANGLE OF THE OVERALL SPECIES-SPECIFIC NOEC PROBABILITY DISTRIBUTION
-  
+ 
   if((length(unique(sort.values)) < length(sort.values)) &
      (val.max == sort.values[length(sort.values)-1])){ 
     

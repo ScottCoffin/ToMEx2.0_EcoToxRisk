@@ -2514,20 +2514,20 @@ Below we calculate the fold-change of thresholds for marine/freshwater with and 
 tissue_fold_change <- all_thresholds_combined %>% 
   filter(label %in% c("risk and tech", "no quality filters"),
          Environment %in% c("Marine", "Freshwater")) %>% 
-  select(Tissue.Translocation..Default., Tier, label, Environment) %>% 
+  select(`Tissue Translocation (Default)`, Tier, label, Environment) %>% 
   pivot_wider(#cols = Tissue.Translocation..Default.,
               names_from = label,
-              values_from = Tissue.Translocation..Default.) %>% 
+              values_from = `Tissue Translocation (Default)`) %>% 
   mutate(tissue_fold_change = `no quality filters` / `risk and tech`) %>% 
   select(Tier, Environment, tissue_fold_change)
 
 food_fold_change <- all_thresholds_combined %>% 
   filter(label %in% c("risk and tech", "no quality filters"),
          Environment %in% c("Marine", "Freshwater")) %>% 
-  select(Food.Dilution..Default., Tier, label, Environment) %>% 
+  select(`Food Dilution (Default)`, Tier, label, Environment) %>% 
   pivot_wider(#cols = Tissue.Translocation..Default.,
               names_from = label,
-              values_from = Food.Dilution..Default.) %>% 
+              values_from = `Food Dilution (Default)`) %>% 
   mutate(food_fold_change = `no quality filters` / `risk and tech`) %>% 
   select(Tier, Environment, food_fold_change)
 
@@ -5169,36 +5169,56 @@ tier1_2_food_matrices <- prep_data(results_df_food_marine)
 
 ### Run PSSD
 ```{r include=FALSE}
-run_pSSD_analysis <- function(data_matrices, num_iterations, sim, cv_dp, cv_uf, data_name) {
+run_pSSD_analysis <- function(data_matrices, num_iterations, sim, cv_dp, cv_uf, data_name, rmore_method = "step") {
+  require(crayon)  # for colorized output
+  
   # Initialize an empty list to store the results
   pSSD_list <- vector("list", num_iterations)
   
+  # Define checkpoints for reporting
+  checkpoints <- floor(c(0.25, 0.5, 0.75, 1.0) * num_iterations)
+
+  cat(crayon::blue(sprintf("🚀 Starting PSSD analysis with %d sims each...\n", 
+                           num_iterations)))
+
   # Loop through each iteration
   for (i in 1:num_iterations) {
-   # pSSD_list[[i]] <-  do.pSSD(
-   pSSD_list[[i]] <- do.pSSD_mod(
-      DP = data_matrices[["DP"]],  # Correctly reference matrices with dynamic naming
+    
+    # Run the modified PSSD simulation
+    pSSD_list[[i]] <- do.pSSD_mod(
+      DP = data_matrices[["DP"]],
       DP.SD = data_matrices[["DP.SD"]],
       UFt = data_matrices[["UFt"]],
       UFdd = data_matrices[["UFdd"]],
       SIM = sim,
-      CV.DP =  cv_dp,
-      CV.UF = cv_uf
+      CV.DP = cv_dp,
+      CV.UF = cv_uf,
+      rmore_method = rmore_method #lognormal or step
     )
+
+    # Progress reporting at checkpoints
+    if (i %in% checkpoints) {
+      pct_done <- round(100 * i / num_iterations)
+      cat(crayon::yellow(sprintf("⏳ %.0f%% complete (%d of %d simulations done)\n", 
+                                 pct_done, i, num_iterations)))
+    }
   }
-  
+
   # Combine all the results into a single object
   pSSD <- do.call(cbind, pSSD_list)
-  
+
   # Save the combined results
-  save(pSSD, file = paste0("PSSD/updated/",data_name,".RData"))
+  save(pSSD, file = paste0("PSSD/updated/", data_name, ".RData"))
   
   # Calculate corrected endpoints
   corr_endpoints <- data_matrices[["DP"]] / (data_matrices[["UFt"]] * data_matrices[["UFdd"]])
 
-  # Optionally return the corrected endpoints or any other result
+  cat(crayon::green(sprintf("✅ PSSD analysis for %s complete and saved.\n", data_name)))
+
+
   return(list(pSSD = pSSD, corr_endpoints = corr_endpoints))
 }
+
 
 # #example
 tier1_2_food_pssd <- run_pSSD_analysis(
@@ -5443,6 +5463,7 @@ all_species <- tier1_2_food_plot_prep$species_data %>%
 # Generate a consistent color palette
 color_palette <- generate_color_palette(all_species)
 
+beepr::beep(2)
 
 pSSD_plot(quantiles_df = tier1_2_food_plot_prep$quantiles_df,
           species_data = tier1_2_food_plot_prep$species_data,
@@ -5451,13 +5472,14 @@ pSSD_plot(quantiles_df = tier1_2_food_plot_prep$quantiles_df,
           environment_name = "Marine",
           color_palette = color_palette)
 
+
 ```
 
 #### PNEC ggplot Function
 ```{r}
 # Calculate PNEC1 if not already calculated
 make_PNEC_plot <- function(pssd_results, hcx, data_name, 
-                      quantile_type = 7 #Type 1 is no interpolation (default for pSSD), # type  7 inovlves interpolation (note that type 7 results in higher values for mean/median, but the mode is around the same as the median would be with type 1. It's necessary to use type 7 to get distinct values between HC5 and HC10 for freshwater bc there's so few species)
+                      quantile_type = 7#Type 1 is no interpolation (default for pSSD), # type  7 inovlves interpolation (note that type 7 results in higher values for mean/median, but the mode is around the same as the median would be with type 1. It's necessary to use type 7 to get distinct values between HC5 and HC10 for freshwater bc there's so few species)
                       ){
   PNEC <- apply(pssd_results$pSSD, 2, function(x) quantile(x, 
                                                            probs = hcx, #HC value
@@ -5468,11 +5490,11 @@ make_PNEC_plot <- function(pssd_results, hcx, data_name,
   PNEC_df <- data.frame(PNEC = PNEC)
   
  # Calculate specific percentiles
-  median_val <- quantile(PNEC, probs = 0.5, type = quantile_type)
-  p001_val <- quantile(PNEC, probs = 0.01, type = quantile_type)
-  p5_val <- quantile(PNEC, probs = 0.05, type = quantile_type)
-  p95_val <- quantile(PNEC, probs = 0.95, type = quantile_type)
-  p999_val <- quantile(PNEC, probs = 0.999999999999, type = quantile_type)  # 99.9th percentile for x-axis limits
+  median_val <- quantile(PNEC, probs = 0.5, type = quantile_type, na.rm = TRUE)
+  p001_val <- quantile(PNEC, probs = 0.01, type = quantile_type, na.rm = TRUE)
+  p5_val <- quantile(PNEC, probs = 0.05, type = quantile_type, na.rm = TRUE)
+  p95_val <- quantile(PNEC, probs = 0.95, type = quantile_type, na.rm = TRUE)
+  p999_val <- quantile(PNEC, probs = 0.999999999999, type = quantile_type, na.rm = TRUE)  # 99.9th percentile for x-axis limits
   
   
   # Define the x-axis range dynamically
@@ -5607,6 +5629,7 @@ generate_plots_and_summary <- function(tier,
                                        num_iterations = 300, # Default number of iterations
                                        cv_dp = NULL, 
                                        cv_uf = 0.5, # Default value for coefficient of variation for uncertainty factors 
+                                       rmore_method = "step", # step or lognormal
                                        species_data_source,
                                        output_path,
                                        presentation_path
@@ -5622,6 +5645,7 @@ generate_plots_and_summary <- function(tier,
     sim = sim,
     cv_dp = cv_dp,
     cv_uf = cv_uf,
+    rmore_method = rmore_method,
     data_name = paste0("tier", tier, "_", erm)
   )
   
@@ -5754,102 +5778,149 @@ get_results_df <- function(tier, environment, erm) {
 ```
 
 ##### For loop to apply function to each combo of ERM/Environment/Tier
+```{r}
+# save copy
+results_df_OG <- results_df
+```
+
+```{r}
+#### BETA TESTING ### 
+### COMMENT WHEN RUNNING FULL SIM!!! ####
+# results_df contains 10,000 simulations. This will cause an extremely long runtime for the PSSD. We need to subsample to beta test. sample by simulation_id to n = 10
+
+# print max simulation_id in results_df_OG
+cat("Max simulation_id in results_df_OG:", max(results_df_OG$simulation_id), "\n")
+
+# subset 100 random sims for beta-testing
+results_df_test <- results_df_OG %>%
+  group_by(simulation_id) %>%
+  #sample_n(3) %>%
+  ungroup()
+
+# print size of results_df before and after sampling
+cat("Size of results_df before sampling:", comma(nrow(results_df_OG)), "\n")
+cat("Size of results_df after sampling:", comma(nrow(results_df_test)), "\n")
+
+
+# overwrite results_df with test set to avoid having to alter downstream code
+results_df <- results_df_test
+# this set is 173 times smaller
+```
+
+*For Loop PSSD+ with Caching*
+
+* Each simulation result is saved to disk immediately after it's run, rather than only saving the full object at the end.
+
+* When the function starts, it checks if cached results already exist.
+
+* It loads any cached results and only runs simulations for the missing iterations.
+
+* After the loop is complete, it combines the cached pieces and saves the final result as usual.
+
 ```{r warning=FALSE}
+library(crayon)
+library(tictoc)
+library(beepr)
+
 # Define parameters
-tiers <- c(3)  # It really only makes sense to make tier 3
+tiers <- c(3)
 environments <- c("Freshwater", "Marine")
 erms <- c("Food Dilution", "Tissue Translocation")
 output_path <- "../output/Manuscript_Figs/"
 presentation_path <- "../output/presentation_Figs/"
-
-# Example coefficients and data sources
-sim <- 300 #number of simulations in pSSD. 3 is minimum. I've tried 1,000, but it creates a matrix too big for my RAM (112 GB). It appears that we need to keep this value less than 500 or so for most machines to be able to run (300 seems to be a sweet spot).
+cache_dir <- "../output/cache_pssd_results_300sim_trapezoidal"  # directory to store cache
+sim <- 300 # Number of simulations to run
 num_iterations <- sim
-cv_uf <- 0.5 # Default value for uncertainty factors
-quantile_type = 8 # type 1 is actual data (doesn't work for small datasets),
-# type 6 is mean-unbiased estimate (hybrid between discrete data picking and linear interpolatiuon),
-# ype 7 is linear interpolation (smooths data)
-# type 8 is linear interpolation for the median-unbiased esimate (i -1/3) / (n + 1/3)
-
-# provide mapping for species/group/environment
+cv_uf <- 0.5
+rmore_method <- "step" #step (original Wigger Trapezoidal) or lognormal (shortcut developed here)
+quantile_type <- 8
 species_data_source <- aoc_aligned
 
-# Calculate the total number of iterations
+# Create cache directory if it doesn't exist
+if (!dir.exists(cache_dir)) dir.create(cache_dir)
+
+# Initialize tracking
 total_iterations <- length(tiers) * length(environments) * length(erms)
+iteration_times <- numeric(total_iterations)
+iteration_count <- 0
 
-# Initialize variables for tracking time
-iteration_times <- numeric(total_iterations) # Store time for each iteration
-iteration_count <- 0 # Track the current iteration
-
-# Start timing
 tictoc::tic("PSSD++ For Loop Begins...")
 beepr::beep(sound = 6)
 
-# Loop through combinations
+# Start loop
 results <- list()
 for (tier in tiers) {
   for (environment in environments) {
     for (erm in erms) {
-      # Increment iteration count
-      iteration_count <- iteration_count + 1
       
-      # Start timing this iteration
+      iteration_count <- iteration_count + 1
       iteration_start_time <- Sys.time()
       
-      # Get the appropriate dataset
-      results_df <- get_results_df(tier, environment, erm)
-      
-      # Run the function
-      result <- generate_plots_and_summary(
-        tier = tier,
-        environment = environment,
-        erm = erm,
-        color_palette = color_palette,
-        results_df = results_df,
-        sim = sim,
-        num_iterations = num_iterations,
-        quantile_type = quantile_type,
-        cv_dp = NULL, # Always NULL as per the updated requirements
-        cv_uf = cv_uf,
-        species_data_source = species_data_source,
-        output_path = output_path,
-        presentation_path = presentation_path
-      )
-      
-      # Store results
-      results[[paste0("Tier", tier, "_", environment, "_", erm)]] <- result
-      
-      # End timing this iteration
-      iteration_end_time <- Sys.time()
-      iteration_time <- as.numeric(difftime(iteration_end_time, iteration_start_time, units = "secs"))
-      iteration_times[iteration_count] <- iteration_time # Store the time
-      
-      # Calculate the running average time
-      running_average_time <- mean(iteration_times[1:iteration_count])
-      
-      # Print progress every 100 iterations or at the end
-      if (iteration_count %% 1 == 0 || iteration_count == total_iterations) {
-        cat(Sys.time(),
-            crayon::yellow(sprintf(
-          "Iteration %d/%d complete. Running average time per iteration: %.2f seconds. Estimated time remaining: %.2f seconds.\n",
-          iteration_count, total_iterations, running_average_time,
-          running_average_time * (total_iterations - iteration_count)
-        )
-        ))
+      combo_id <- paste0("Tier", tier, "_", environment, "_", erm)
+      cache_file <- file.path(cache_dir, paste0(combo_id, ".rds"))
+
+      if (file.exists(cache_file)) {
+        cat(blue(sprintf("\n🔁 [%s] Skipping (cached): %s\n", format(iteration_start_time, "%H:%M:%S"), combo_id)))
+        results[[combo_id]] <- readRDS(cache_file)
+        next
       }
+
+      cat(green(sprintf("\n⏳ [%s] Starting: Tier %d | Environment: %s | ERM: %s\n", 
+                        format(iteration_start_time, "%H:%M:%S"), tier, environment, erm)))
+
+      # Wrap in tryCatch for error handling
+      tryCatch({
+        results_df <- get_results_df(tier, environment, erm)
+        
+        result <- generate_plots_and_summary(
+          tier = tier,
+          environment = environment,
+          erm = erm,
+          color_palette = color_palette,
+          results_df = results_df,
+          sim = sim,
+          num_iterations = num_iterations,
+          quantile_type = quantile_type,
+          cv_dp = NULL,
+          cv_uf = cv_uf,
+          rmore_method = rmore_method,
+          species_data_source = species_data_source,
+          output_path = output_path,
+          presentation_path = presentation_path
+        )
+        
+        saveRDS(result, cache_file)
+        results[[combo_id]] <- result
+        
+        iteration_end_time <- Sys.time()
+        iteration_time_sec <- as.numeric(difftime(iteration_end_time, iteration_start_time, units = "secs"))
+        iteration_times[iteration_count] <- iteration_time_sec
+        
+        running_average_sec <- mean(iteration_times[1:iteration_count])
+        est_time_remaining_sec <- running_average_sec * (total_iterations - iteration_count)
+
+        cat(yellow(sprintf(
+          "✅ Completed: %s in %.2f hr | Est. remaining: %.2f hr\n", 
+          combo_id, iteration_time_sec / 3600, est_time_remaining_sec / 3600
+        )))
+        
+      }, error = function(e) {
+        beepr::beep(sound = 7)  # ⚠️ Distinct error sound
+        cat(red(sprintf("❌ ERROR in %s: %s\n", combo_id, e$message)))
+      })
     }
   }
 }
 
-# Stop timing
+
+# Wrap up
 pSSD_time <- tictoc::toc()
-
 beepr::beep(sound = 4)
-
 beepr::beep(sound = 5)
 
-# Print completion message
-cat(crayon::blue(paste("PSSD++ complete for all ERM/Tier/Environments!", pSSD_time$callback_msg)))
+total_runtime_sec <- pSSD_time$toc - pSSD_time$tic
+cat(blue(sprintf("\n🎉 PSSD++ complete for all combinations! Total time: %.2f hours\n", total_runtime_sec / 3600)))
+
 ```
 
 ```{r}
