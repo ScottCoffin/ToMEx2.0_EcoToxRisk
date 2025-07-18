@@ -3279,8 +3279,6 @@ leave_one_out_df <- read.csv("../output/data/leave_one_out.csv")
 ```{r}
 library(ggallin)
 
-
-
 # Assign specific colors based on Tier levels
 tier_colors <- setNames(c("#006f3c", "#EEB500", "#EB8907", "#f0514b"),
                         levels(leave_one_out_df$tier))
@@ -3303,6 +3301,7 @@ summary_diff_df <- leave_one_out_df %>%
   )
 
 leave_one_out_df_trim <- leave_one_out_df %>% 
+  mutate(environment = factor(environment, levels = c("Marine", "Freshwater"))) %>% 
   drop_na() %>% 
   mutate(fold_change = fold_change)
 
@@ -3339,31 +3338,10 @@ leave_one_out_ggplot <- ggplot() +
             vjust = +2.5) +
   
     scale_color_manual(values = tier_colors) +  # Apply manual colors for lines
-#  geom_point(alpha = 0.7) +
-#  geom_histogram() +
- # geom_boxplot() +
-   # geom_text_repel(aes(label = species_multiple),
-   #                size = 3,
-   #                nudge_x = 0.25,
-   #                force = 4,
-   #                color = "black",
-   #                direction = "y",
-   #                # Jitter on the y-axis
-   #                max.overlaps = Inf,
-   #                label.padding = 1,
-   #                fontface = "italic") +
- # geom_line() +
-  #geom_vline(xintercept = 0.00001, alpha = 0.5, color = "grey60") +
   scale_x_continuous(
     trans = pseudo_log_trans(base = 2),
                        breaks = c(0.01, 1, 2, 4, 8, 16, 40)
   ) + 
-                    # breaks = c(-1, 0, 1, 10, 100), 
-                   #   limits = c(min_fold_change, max_fold_change), 
-                     #labels = scales::percent_format(accuracy = 1, big.mark = ",")) +
-#  scale_x_log10() +
-   # Add dotted lines to bisect the grid
-
   xlab("Fold Change") +
   coord_cartesian(clip = "off") +
   theme_minimal(base_size = 13) +
@@ -3379,8 +3357,9 @@ leave_one_out_ggplot <- ggplot() +
   theme(legend.position = "none",
         axis.title.y = element_blank()) +
 
-  facet_grid(environment ~ ERM)
-  #facet_wrap(~environment + ERM)
+  facet_grid(ERM ~ environment,
+             switch = "y") +
+  scale_y_discrete(position = "right")
 
 ggsave(plot = leave_one_out_ggplot,
        filename = "../output/Manuscript_Figs/leave_one_out.jpg",
@@ -4944,7 +4923,8 @@ results_df_food <- results_df %>%
   filter(ingestible != "not ingestible",
          particles_L_food_dilution > 0,
          Group != "Algae") %>% 
-  mutate(dose_new_particles_L = particles_L_food_dilution)
+  mutate(dose_new_particles_L = particles_L_food_dilution) %>% 
+  drop_na(particles_L_food_dilution)
 
 # Tier 3/4
 results_df_food_t3_t4 <- results_df_food %>% 
@@ -4972,7 +4952,8 @@ results_df_food_t3_t4_freshwater <- results_df_food_t3_t4 %>%
 results_df_tissue <- results_df %>% 
   filter(translocatable != "not translocatable",
          particles_L_ox_stress > 0) %>% 
-  mutate(dose_new_particles_L = particles_L_ox_stress)
+  mutate(dose_new_particles_L = particles_L_ox_stress) %>% 
+  drop_na(particles_L_ox_stress)
 
 # Tier 3/4
 results_df_tissue_t3_t4 <- results_df_tissue %>% 
@@ -5926,115 +5907,6 @@ cat(blue(sprintf("\n🎉 PSSD++ complete for all combinations! Total time: %.2f 
 ```{r}
 results$`Tier3_Marine_Food Dilution`$quantiles
 ```
-
-
-Attempted to get this running on parallel but gave up....
-<!-- ##### Parallel Processing -->
-<!-- ```{r message=FALSE, include=FALSE} -->
-<!-- # Load necessary libraries -->
-<!-- library(doParallel) -->
-<!-- library(doSNOW) -->
-<!-- library(tictoc) -->
-
-<!-- # Define parameters -->
-<!-- tiers <- c(3) -->
-<!-- environments <- c("Freshwater", "Marine") -->
-<!-- erms <- c("Food Dilution", "Tissue Translocation") -->
-<!-- output_path <- "../output/Manuscript_Figs/" -->
-<!-- presentation_path <- "../output/presentation_Figs/" -->
-<!-- sim <- 3 -->
-<!-- num_iterations <- sim -->
-<!-- cv_uf <- 0.5 -->
-<!-- quantile_type <- 8 -->
-<!-- species_data_source <- aoc_aligned -->
-
-<!-- # Calculate the total number of iterations -->
-<!-- total_iterations <- length(tiers) * length(environments) * length(erms) -->
-
-<!-- # Create a list of all combinations of parameters -->
-<!-- param_combinations <- expand.grid( -->
-<!--   tier = tiers, -->
-<!--   environment = environments, -->
-<!--   erm = erms, -->
-<!--   stringsAsFactors = FALSE -->
-<!-- ) -->
-
-<!-- # Set up parallel processing -->
-<!-- num_cores <- min(4, detectCores())  # Adjust the number of cores as needed -->
-<!-- cl <- makeCluster(num_cores) -->
-<!-- registerDoSNOW(cl) -->
-
-<!-- # Set up a progress bar -->
-<!-- pb <- txtProgressBar(min = 0, max = total_iterations, style = 3) -->
-<!-- progress <- function(n) setTxtProgressBar(pb, n) -->
-<!-- opts <- list(progress = progress) -->
-
-<!-- # Start timing -->
-<!-- tictoc::tic("PSSD++ Parallel Processing Begins...") -->
-
-<!-- results_list<- list() -->
-
-<!-- # Run the parallel loop -->
-<!-- results_list <- foreach( -->
-<!--   i = 1:nrow(param_combinations), -->
-<!--   .packages = c("tictoc", "crayon", "tidyverse",  -->
-<!--                 "doParallel", "doSNOW", "ggrepel", "scales",  -->
-<!--                 "ggpubr", "psych", "Matrix", "mc2d", "trapezoid", "ggtext", -->
-<!--                 "reshape2", "sciscales"),  # Add any other required packages here -->
-<!--   .options.snow = opts, -->
-<!--   .export = c("run_pSSD_analysis", "rmore", "prepare_plot_data", "prepare_data", "prep_data", -->
-<!--               "pSSD_plot", -->
-<!--               "PNEC_data_summary", "Mode_Y", "make_PNEC_plot", "has_minimum_species", "get_results_df", -->
-<!--               "generate_structure_checks", "generate_plots_and_summary", "generate_color_palette", "do.pSSD", -->
-<!--               "do.pSSD_mod"), -->
-<!--   .combine = list -->
-<!-- ) %dopar% { -->
-<!--   # Extract parameters for this iteration -->
-<!--   tier <- param_combinations$tier[i] -->
-<!--   environment <- param_combinations$environment[i] -->
-<!--   erm <- param_combinations$erm[i] -->
-<!--  # Generate the combination name -->
-<!--   combination_name <- paste0("Tier", tier, "_", environment, "_", erm) -->
-
-<!--   # Get the appropriate dataset -->
-<!--   results_df <- get_results_df(tier, environment, erm) -->
-
-<!--   # Run the function -->
-<!--   result <- generate_plots_and_summary( -->
-<!--     tier = tier, -->
-<!--     environment = environment, -->
-<!--     erm = erm, -->
-<!--     color_palette = color_palette, -->
-<!--     results_df = results_df, -->
-<!--     sim = sim, -->
-<!--     num_iterations = num_iterations, -->
-<!--     quantile_type = quantile_type, -->
-<!--     cv_dp = NULL,  # Always NULL as per the updated requirements -->
-<!--     cv_uf = cv_uf, -->
-<!--     species_data_source = species_data_source, -->
-<!--     output_path = output_path, -->
-<!--     presentation_path = presentation_path -->
-<!--   ) -->
-
-<!--   # Store results -->
-<!--   results[[i]] <- result -->
-
-<!--   # Return a named list for this combination -->
-<!--   list(combination_name = result) -->
-<!-- } -->
-
-<!-- # Stop timing -->
-<!-- pSSD_time <- tictoc::toc() -->
-
-<!-- # Close progress bar and stop the cluster -->
-<!-- close(pb) -->
-<!-- stopCluster(cl) -->
-
-
-<!-- # Print completion message -->
-<!-- cat(crayon::blue(paste("PSSD++ complete for all ERM/Tier/Environments!", pSSD_time$callback_msg))) -->
-<!-- ``` -->
-
 
 
 #### Summary table

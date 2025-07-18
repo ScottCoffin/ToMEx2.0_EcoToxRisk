@@ -43,6 +43,8 @@ do.pSSD_mod <- function(DP, DP.SD, UFt, UFdd, SIM, CV.DP, CV.UF, rmore_method = 
   require(trapezoid)
   require(mc2d)
   
+  
+  
   # Calculate corrected endpoints
   corr.endpoints <- DP / (UFdd * UFt)
   sort.endpoints <- apply(corr.endpoints, 2, sort)

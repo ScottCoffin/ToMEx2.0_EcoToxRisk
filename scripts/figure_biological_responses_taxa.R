@@ -52,6 +52,7 @@ Freshwater = "#a6cee3"  # Light Blue
 
 # Create the plot
 Figure <- CleanFile %>%
+  mutate(env_f = factor(env_f, levels = c("Marine", "Freshwater"))) %>% # Marine in top
   # Drop empty levels within each facet
   group_by(env_f, bio_f) %>%
   filter(n() > 0) %>%
@@ -60,12 +61,14 @@ Figure <- CleanFile %>%
   geom_bar(stat = "count", #need to add 1 to shown 1's
            position = position_stack()) +
   facet_grid(env_f ~ bio_f, 
+             switch = "y", # Switch y-axis to the right
              labeller = labeller(bio_f = label_value),
              scales = "free_y") +  # Allow y-axis to vary by facet
   labs(x = "Data Points", 
        y = NULL, 
        title = NULL) +
     scale_x_log10(labels = comma_format()) +
+  scale_y_discrete(position = "right") +
    scale_fill_manual(values = c("Freshwater" = Freshwater, "Marine" = Marine)) +
   theme_bw(base_size = 15) + 
   theme(
