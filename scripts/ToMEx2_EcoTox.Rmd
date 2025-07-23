@@ -3280,7 +3280,7 @@ leave_one_out_df <- read.csv("../output/data/leave_one_out.csv")
 library(ggallin)
 
 # Assign specific colors based on Tier levels
-tier_colors <- setNames(c("#006f3c", "#EEB500", "#EB8907", "#f0514b"),
+tier_colors <- setNames(c("#006f3c", "#b0a704", "#EB8907", "#f0514b"),
                         levels(leave_one_out_df$tier))
 
 # Calculate min and max limits for `diff` column
@@ -3298,7 +3298,8 @@ summary_diff_df <- leave_one_out_df %>%
     max_hcx = max(hcx, na.rm = TRUE),
     median_hcx = median(hcx, na.rm = TRUE),
     .groups = 'drop'
-  )
+  ) %>% 
+  mutate(environment = factor(environment, levels = c("Marine", "Freshwater")))
 
 leave_one_out_df_trim <- leave_one_out_df %>% 
   mutate(environment = factor(environment, levels = c("Marine", "Freshwater"))) %>% 
@@ -3338,19 +3339,33 @@ leave_one_out_ggplot <- ggplot() +
             vjust = +2.5) +
   
     scale_color_manual(values = tier_colors) +  # Apply manual colors for lines
-  scale_x_continuous(
-    trans = pseudo_log_trans(base = 2),
-                       breaks = c(0.01, 1, 2, 4, 8, 16, 40)
-  ) + 
+scale_x_continuous(
+  trans = pseudo_log_trans(base = 2),
+  breaks = c(0.01, 1, 2, 4, 8, 16, 32, 64, 128),
+  limits = c(0.01, 130),  # slightly higher than 128 to ensure it appears
+  labels = function(x) {
+    sapply(x, function(v) {
+      if (is.na(v)) {
+        NA
+      } else if (isTRUE(all.equal(v, 0.01))) {
+        "0.01"
+      } else {
+        as.character(as.integer(v))
+      }
+    })
+  }
+) + 
   xlab("Fold Change") +
   coord_cartesian(clip = "off") +
   theme_minimal(base_size = 13) +
   
  theme( plot.title = element_text(hjust = 0.5, size = 14),     # Center the main title
-        strip.text = element_text(size = 14, face = "bold"),
+        strip.text = element_text(size = 18, face = "bold"),
+        panel.grid.major = element_line(size = 1),  # Thicker major grid lines
+        panel.grid.minor = element_line(size = 0.02),
         plot.subtitle = element_text(hjust = 0.5),
         plot.caption = element_text(hjust = 0.5),   # Center the caption
-        axis.title.x = element_text(hjust = 0.5, size = 14),  # Center the x-axis title
+        axis.title.x = element_text(hjust = 0.5, size = 18),  # Center the x-axis title
         axis.text.x =  element_text(size = 11),
         axis.text.y = element_text(size = 14),
         axis.title.y = element_text(vjust = 0.5, size = 18)) +   # Center the y-axis title (vertically))   # Center the subtitle)
@@ -5208,7 +5223,8 @@ tier1_2_food_pssd <- run_pSSD_analysis(
   sim = SIM,
   cv_dp = CV.DP,  # Example coefficient of variation for DP
   cv_uf = CV.UF,  # Example coefficient of variation for UF
-  data_name = "tier1_2_food"
+  data_name = "tier1_2_food",
+  rmore_method = "lognormal"
 )
 
 tier1_2_food_pssd$pSSD
@@ -5319,14 +5335,22 @@ tier1_2_food_plot_prep
 # Dynamically generate a color palette based on the levels of Group
 generate_color_palette <- function(data) {
   unique_groups <- unique(data$Group) # Extract unique levels of Group
-  palette <- cols4all::c4a("seaborn.dark", n = length(unique_groups)) # Generate colors
+  #palette <- cols4all::c4a("seaborn.dark", n = length(unique_groups)) # Generate colors
+  palette <- cols4all::c4a("powerbi.high_contrast", n = length(unique_groups)) # Generate colors
   names(palette) <- unique_groups # Assign names to the colors
   return(palette)
 }
 
 
+
 pSSD_plot <- function(quantiles_df, all_NOEC, species_data, data_name, environment_name, tier_name, 
                       ERM_name, color_palette = color_palette) {
+
+legend_labels <- setNames(
+  paste0("<span style='color:", color_palette, "'>", names(color_palette), "</span>"),
+  names(color_palette)
+)
+
   # Calculate the dynamic x-axis limits
   max_species_value <- max(species_data$NOEC_log10, na.rm = TRUE)  # Find the maximum species value
 
@@ -5417,21 +5441,23 @@ pSSD_plot <- function(quantiles_df, all_NOEC, species_data, data_name, environme
     ylab("Cumulative probability") +
     xlab("NOEC (particles/L [1 to 5,000 μm])") +
     scale_color_manual(values = color_palette, 
+                       labels = legend_labels,
                        name = "Organism Group") + # Apply consistent color mapping
     scale_fill_manual(values = color_palette, 
+                      labels = legend_labels,
                        name = "Organism Group") + # Apply consistent color mapping
-    guides(
-      color = guide_legend(override.aes = list(label = "",
-                                              hjust = NULL)),
-      fill =  guide_legend(override.aes = list(label = "",
-                                              hjust = NULL))
-  ) +  # Combine color and fill legends
+    guides(color = guide_legend(override.aes = list(shape = 21, size = 3, label = "", hjust = NULL, color = NA, alpha = 1)),
+           fill =  guide_legend(override.aes = list(shape = 21, size = 3, label = "",  hjust = NULL, color = NA, alpha = 1,
+                                                    fill = unname(color_palette)))
+           ) +  # Combine color and fill legends
     
     labs(title = "Microplastics PSSD++",
          subtitle = paste0(ERM_name, " (",environment_name, ")")) +
     theme_minimal(base_size = 15) +
     theme(plot.title = element_text(face = "bold", hjust = 0.5),
-          plot.subtitle = element_text(hjust = 0.5, size = 14))
+          plot.subtitle = element_text(hjust = 0.5, size = 14),
+          legend.text = element_markdown(size = 12)
+          )
 }
 
 
@@ -5444,7 +5470,7 @@ all_species <- tier1_2_food_plot_prep$species_data %>%
 # Generate a consistent color palette
 color_palette <- generate_color_palette(all_species)
 
-beepr::beep(2)
+#beepr::beep(2)
 
 pSSD_plot(quantiles_df = tier1_2_food_plot_prep$quantiles_df,
           species_data = tier1_2_food_plot_prep$species_data,
@@ -5586,11 +5612,18 @@ The following code attempts to more accurately represent the uncertainty of the 
 Prepare color palette for species
 ```{r}
 all_species <- results_df %>% 
+  drop_na(particles_L_ox_stress) %>% 
   distinct(Species, Group, environment) %>% 
+  droplevels() %>% 
   arrange(environment, Group, Species)
 
 # Generate a consistent color palette
 color_palette <- generate_color_palette(all_species)
+
+legend_labels <- setNames(
+  paste0("<span style='color:", color_palette, "'>", names(color_palette), "</span>"),
+  names(color_palette)
+)
 
 color_palette
 ```
@@ -5809,8 +5842,11 @@ environments <- c("Freshwater", "Marine")
 erms <- c("Food Dilution", "Tissue Translocation")
 output_path <- "../output/Manuscript_Figs/"
 presentation_path <- "../output/presentation_Figs/"
+#### two different calculation methods:
 cache_dir <- "../output/cache_pssd_results_300sim_trapezoidal"  # directory to store cache
-sim <- 300 # Number of simulations to run
+#cache_dir <- "../output/cache_pssd_results_300sim_lognormal"
+
+sim <- 300 # Number of simulations to run (tried higher values - but takes extremely long time!!)
 num_iterations <- sim
 cv_uf <- 0.5
 rmore_method <- "step" #step (original Wigger Trapezoidal) or lognormal (shortcut developed here)
@@ -5991,35 +6027,72 @@ library(ggpubr)
 
 # Customize the plots
 plot_list <- list(
+    results$`Tier3_Marine_Food Dilution`$pSSD_plot +
+      labs(title = "Marine", y = "Food Dilution") + # Explicitly set y-axis label
+    scale_color_manual(values = color_palette, 
+                       labels = legend_labels,
+                       drop = FALSE,
+                       name = "Organism Group") + # Apply consistent color mapping
+    scale_fill_manual(values = color_palette, 
+                      labels = legend_labels,
+                      drop = FALSE,
+                       name = "Organism Group") + # Apply consistent color mapping
+    theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
+          plot.subtitle = element_blank(),
+          axis.title.x = element_text(size = 12),
+          axis.text.y = element_text(size = 10),
+          legend.text = element_markdown(size = 12)), # Keep y-axis text
+  
+  results$`Tier3_Freshwater_Food Dilution`$pSSD_plot +
+    scale_y_continuous(position = "right") +
+    scale_color_manual(values = color_palette, 
+                       labels = legend_labels,
+                       drop = FALSE,
+                       name = "Organism Group") + # Apply consistent color mapping
+    scale_fill_manual(values = color_palette, 
+                      labels = legend_labels,
+                      drop = FALSE,
+                       name = "Organism Group") + # Apply consistent color mapping
+    labs(title = "Freshwater") +
+    theme(axis.title.y = element_text(size = 12),
+          plot.subtitle = element_blank(),
+          axis.title.x = element_text(size = 12),
+          axis.text.y = element_text(size = 10),
+          legend.text = element_markdown(size = 12)), # Keep y-axis text
+  
   results$`Tier3_Marine_Tissue Translocation`$pSSD_plot +
- labs(title = "Marine", y = "Tissue Translocation") + # Explicitly set y-axis label
+    labs(y = "Tissue Translocation") +
+    scale_color_manual(values = color_palette, 
+                       labels = legend_labels,
+                       drop = FALSE,
+                       name = "Organism Group") + # Apply consistent color mapping
+    scale_fill_manual(values = color_palette, 
+                      labels = legend_labels,
+                      drop = FALSE,
+                       name = "Organism Group") + # Apply consistent color mapping
     theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
           plot.subtitle = element_blank(),
           axis.title.x = element_blank(),
-          axis.text.y = element_text(size = 10)), # Keep y-axis text
+          plot.title = element_blank(),
+          axis.text.y = element_text(size = 10),
+          legend.text = element_markdown(size = 12)), # Keep y-axis text
   
   results$`Tier3_Freshwater_Tissue Translocation`$pSSD_plot +
-    labs(title = "Freshwater",
-         subtitle = "") +
+    scale_y_continuous(position = "right") +
+    scale_color_manual(values = color_palette, 
+                       labels = legend_labels,
+                       drop = FALSE,
+                       name = "Organism Group") + # Apply consistent color mapping
+    scale_fill_manual(values = color_palette, 
+                      labels = legend_labels,
+                      drop = FALSE,
+                       name = "Organism Group") + # Apply consistent color mapping
     theme(axis.title.y = element_text(size = 12), # Remove y-axis title
           plot.subtitle = element_blank(),
           axis.title.x = element_blank(),
-          axis.text.y = element_text(size = 10)), # Keep y-axis text
-  
-  results$`Tier3_Marine_Food Dilution`$pSSD_plot +
-    ylab("Food Dilution") + # Add y-axis title
-    theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
-          plot.subtitle = element_blank(),
           plot.title = element_blank(),
-          axis.title.x = element_text(size = 12),
-          axis.text.y = element_text(size = 10)), # Keep y-axis text
-  
-  results$`Tier3_Freshwater_Food Dilution`$pSSD_plot +
-    theme(axis.title.y = element_text(size = 12),
-          plot.subtitle = element_blank(),
-          plot.title = element_blank(),
-          axis.title.x = element_text(size = 12),
-          axis.text.y = element_text(size = 10)) # Keep y-axis text
+          axis.text.y = element_text(size = 10),
+          legend.text = element_markdown(size = 12)) # Keep y-axis text
 )
 
 
@@ -6028,11 +6101,15 @@ library(ggpubr)
 # Arrange the plots
 arranged_plot <- ggarrange(
   plotlist = plot_list,
-  #labels = c("A", "B", "C", "D"),
   ncol = 2, nrow = 2, # Arrange in 2x2 grid
   common.legend = TRUE, # Common legend for all plots
   legend = "bottom" # Place legend at the bottom
-)
+) +
+   guides(color = guide_legend(override.aes = list(shape = 21, size = 3,  hjust = NULL, color = NA, alpha = 1,
+                                                   fill = unname(color_palette))),
+            fill =  guide_legend(override.aes = list(shape = 21, size = 3,  hjust = NULL, color = NA, alpha = 1,
+                                                     fill = unname(color_palette)))
+          )   # Combine color and fill legends
 
 # Save the final plot
 ggsave(
@@ -6052,34 +6129,36 @@ print(arranged_plot)
 ```{r}
 # Customize the plots
 PNEC_plot_list <- list(
-  results$`Tier3_Marine_Tissue Translocation`$PNEC_plot_05 +
- labs(title = "Marine", y = "Tissue Translocation") + # Explicitly set y-axis label
-    theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
-          plot.subtitle = element_blank(),
-          axis.title.x = element_blank(),
-          axis.text.y = element_text(size = 10)), # Keep y-axis text
-  
-  results$`Tier3_Freshwater_Tissue Translocation`$PNEC_plot_05 +
-    labs(title = "Freshwater",
-         subtitle = "") +
-    theme(axis.title.y = element_text(size = 12), # Remove y-axis title
-          plot.subtitle = element_blank(),
-          axis.title.x = element_blank(),
-          axis.text.y = element_text(size = 10)), # Keep y-axis text
-  
+ 
   results$`Tier3_Marine_Food Dilution`$PNEC_plot_05 +
-    ylab("Food Dilution") + # Add y-axis title
+   labs(title = "Marine", y = "Food Dilution") + # Explicitly set y-axis label
     theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
           plot.subtitle = element_blank(),
-          plot.title = element_blank(),
           axis.title.x = element_text(size = 12),
           axis.text.y = element_text(size = 10)), # Keep y-axis text
   
   results$`Tier3_Freshwater_Food Dilution`$PNEC_plot_05 +
+    labs(title = "Freshwater",
+         subtitle = "") +
     theme(axis.title.y = element_text(size = 12),
           plot.subtitle = element_blank(),
-          plot.title = element_blank(),
           axis.title.x = element_text(size = 12),
+          axis.text.y = element_text(size = 10)), # Keep y-axis text
+  
+   results$`Tier3_Marine_Tissue Translocation`$PNEC_plot_05 +
+    labs(y = "Tissue Translocatiion") +
+    theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
+          plot.subtitle = element_blank(),
+          plot.title = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size = 10)), # Keep y-axis text
+  
+  results$`Tier3_Freshwater_Tissue Translocation`$PNEC_plot_05 +
+    theme(axis.title.y = element_text(size = 12), # Remove y-axis title
+          plot.title = element_blank(),
+          plot.subtitle = element_blank(),
+          axis.title.x = element_blank(),
+          
           axis.text.y = element_text(size = 10)) # Keep y-axis text
 )
 
@@ -6113,10 +6192,10 @@ print(PNEC_arranged_plot)
 ```{r}
 SSD_base_thresholds <- base_thresholds_df %>% 
   mutate(y_position_comparison = case_when(
-    Environment == "Marine" & ERM == "Tissue Translocation" ~ 1.7,
+    Environment == "Marine" & ERM == "Tissue Translocation" ~ 1.9,
     Environment == "Marine" & ERM == "Food Dilution" ~ 0.8,
     Environment == "Freshwater" & ERM == "Tissue Translocation" ~ 4.1,
-    Environment == "Freshwater" & ERM == "Food Dilution" ~ 1.3
+    Environment == "Freshwater" & ERM == "Food Dilution" ~ 0.8
   ))
 
 # MC data
@@ -6126,6 +6205,35 @@ marine_t3_tissue_MC <- all_tiers_data %>%
 # pSSD data
 marine_t3_tissue_pSSD <- results$`Tier3_Marine_Tissue Translocation`$PNEC_df
 
+# custom labels fuinction
+labels_function = function(x) {
+  superscript <- c(
+    "0" = "\u2070", "1" = "\u00B9", "2" = "\u00B2", "3" = "\u00B3",
+    "4" = "\u2074", "5" = "\u2075", "6" = "\u2076", "7" = "\u2077",
+    "8" = "\u2078", "9" = "\u2079", "-" = "\u207B"
+  )
+  
+  sapply(x, function(v) {
+    if (is.na(v)) return(NA)
+    
+    if (v < 0.01 || v > 100) {
+      # Format like "1e+05"
+      sci <- sprintf("%.0e", v)
+      parts <- strsplit(sci, "e", fixed = TRUE)[[1]]
+      if (length(parts) != 2) return(as.character(v))
+      
+      coeff <- parts[1]
+      exponent <- gsub("^\\+?(-?)0*", "\\1", parts[2])  # Remove leading 0s and optional +
+      exp_chars <- strsplit(exponent, "")[[1]]
+      
+      # Build superscript string
+      exp_sup <- paste0(superscript[exp_chars], collapse = "")
+      paste0(coeff, "\u00D7", "10", exp_sup)  # × = \u00D7
+    } else {
+      formatC(v, format = "fg", digits = 2, drop0trailing = TRUE)
+    }
+  })
+}
 
 # Define dataset mapping for pSSD
 get_PNECs_df <- function(tier, environment, erm) {
@@ -6167,49 +6275,56 @@ pSSD_PNECs <- get_PNECs_df(tier = tier, environment = environment, erm = erm)
 SSD_PNECs <- SSD_base_thresholds %>% filter(Tier == 3, Environment == environment, ERM == erm)
 
 #define xlimits
-xlimits <- c(quantile(pSSD_PNECs$PNEC, 0.001),
-             quantile(pSSD_PNECs$PNEC, 0.9999))
+xlimits <- c(quantile(pSSD_PNECs$PNEC, 0.00001),
+             quantile(pSSD_PNECs$PNEC, 0.99999))
   
 ggplot() +
   ###### SSD PNECs ####
   geom_point(data = SSD_PNECs, 
-              aes(x = PNEC, y = y_position_comparison, fill = "SSD", color = "SSD"),
-              size = 5, shape = 22, 
-              color = "white",
-              alpha = 0.95,
-              stroke = 1.8 #thickness of outline
-              ) +
+             aes(x = PNEC, y = y_position_comparison,
+                 fill = factor("SSD", levels = c("SSD", "MC-SSD", "PSSD++")), 
+                 color = factor("SSD", levels = c("SSD", "MC-SSD", "PSSD++"))),
+                 size = 5, shape = 22, 
+                 #color = "white",
+                 alpha = 0.95,
+                 stroke = 1.8 #thickness of outline
+                 ) +
    geom_errorbarh(data = SSD_PNECs, 
-                  aes(xmin = PNEClcl, xmax = PNECucl, y = y_position_comparison, fill = "SSD", color = "SSD"),
+                  aes(xmin = PNEClcl, xmax = PNECucl, y = y_position_comparison,
+                      fill = factor("SSD", levels = c("SSD", "MC-SSD", "PSSD++")),
+                      color = factor("SSD", levels = c("SSD", "MC-SSD", "PSSD++"))
+                      ),
                   height = 0.2,
                   alpha = 0.75,
                   linewidth = 1.2) +
-  ###### pSSD PNECs #####
-  # geom_histogram(data = pSSD_PNECs, aes(x = PNEC, y = ..density.., fill = "PSDD++", color = "PSSD++"), 
-  #                 bins = 350, alpha = 0.3) +
-  geom_density(data = pSSD_PNECs, aes(x = PNEC, color = "PSSD++", fill = "PSSD++"), lwd = 1, 
-               alpha = 0.5) +  # Density line for pSDD++
-  
   ###### MC-SSD PNECs #####
-  # geom_histogram(data = MC_PNECs, aes(x = PNEC, y = ..density.., fill = "MC-SSD", color = "MC-SSD"), 
-  #                 bins = 350, alpha = 0.3) +
-  geom_density(data = MC_PNECs, aes(x = PNEC, color = "MC-SSD", fill = "MC-SSD"), lwd = 1, alpha = 0.5
-               ) +  # Density line for MC-SSD
-  
+  geom_density(data = MC_PNECs, 
+             aes(x = PNEC, 
+                 color = factor("MC-SSD", levels = c("SSD", "MC-SSD", "PSSD++")), 
+                 fill = factor("MC-SSD", levels = c("SSD", "MC-SSD", "PSSD++"))), 
+             lwd = 1, alpha = 0.5) +
+
+  ###### pSSD PNECs #####
+  geom_density(data = pSSD_PNECs, 
+             aes(x = PNEC, 
+                 color = factor("PSSD++", levels = c("SSD", "MC-SSD", "PSSD++")), 
+                 fill = factor("PSSD++", levels = c("SSD", "MC-SSD", "PSSD++"))), 
+             lwd = 1, alpha = 0.5) +
+
   # Adjust x-axis limits and scale
-  xlim(quantile(MC_PNECs$PNEC, 0.001), quantile(MC_PNECs$PNEC, 0.999)) +
-  scale_x_log10(limits = xlimits,
-                labels = label_sci(trailing = FALSE)) +
-  
+scale_x_log10(
+  limits = xlimits,
+  breaks = c(0.001, 0.01, 0.1, 1, 10, 100, 1000, 1e4, 1e5),
+  labels = labels_function) +
+
+
   # Define custom colors for the legend
   scale_fill_manual(name = "Method", 
                     values = c("MC-SSD" = "#1F77B4", "SSD" = "#117733", "PSSD++" = "#EE3377")) +
   scale_color_manual(name = "Method", 
                      values = c("MC-SSD" = "#1F77B4", "SSD" = "#117733", "PSSD++" = "#EE3377")) +
-
+  scale_shape_binned() +
   
-
-
   # Theme and labels
   theme_minimal(base_size = 15) +
   theme(
@@ -6220,15 +6335,15 @@ ggplot() +
     plot.subtitle = element_blank()
   ) +
   labs(title = environment, y = "Relative Density", x = "PNEC (Tier 3; Particles/L [1 to 5,000 μm])")
-}
 
+}
 
 ### make ggplots for each combo
 
 PNECs_comparisons <- list()
 
 tiers <- c("Tier3")
-erms <- c("Tissue Translocation", "Food Dilution")
+erms <- c("Food Dilution", "Tissue Translocation")
 environments = c("Marine", "Freshwater")
 
 for (tier in tiers) {
@@ -6249,25 +6364,36 @@ for (tier in tiers) {
 #### arrange plots
 # Customize the plots
 PNEC_compare_plot_list <- list(
-  PNECs_comparisons$`TierTier3_Marine_Tissue Translocation` +
- labs(title = "Marine", y = "Tissue Translocation") + # Explicitly set y-axis label
+  PNECs_comparisons$`TierTier3_Marine_Food Dilution` +
+    labs(title = "Marine") +
+    ylab("Food Dilution") + # Add y-axis title
     theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
           plot.subtitle = element_blank(),
-          axis.title.x = element_blank()#,
+          axis.title.x = element_blank()
           #axis.text.y = element_text(size = 10)
           ), # Keep y-axis text
   
-  PNECs_comparisons$`TierTier3_Freshwater_Tissue Translocation` +
-    labs(title = "Freshwater",
-         subtitle = "") +
-    theme(axis.title.y = element_text(size = 12), # Remove y-axis title
+  PNECs_comparisons$`TierTier3_Freshwater_Food Dilution` +
+    labs(title = "Freshwater") +
+    scale_x_log10(
+    limits = c(0.01, 1e4),
+    breaks = c(0.01, 1, 100, 1e4),
+    labels = labels_function  # The function we just wrote
+  ) +
+    scale_y_continuous(position = "right") +
+    theme(axis.title.y = element_text(size = 12),
           plot.subtitle = element_blank(),
-          axis.title.x = element_blank()#,
+          axis.title.x = element_blank()
           #axis.text.y = element_text(size = 10)
           ), # Keep y-axis text
   
-  PNECs_comparisons$`TierTier3_Marine_Food Dilution` +
-    ylab("Food Dilution") + # Add y-axis title
+   PNECs_comparisons$`TierTier3_Marine_Tissue Translocation` +
+    scale_x_log10(
+    limits = c(10, 1e4),
+    breaks = c(10, 100, 1000, 1e4),
+    labels = labels_function  # The function we just wrote
+  ) +
+ labs(y = "Tissue Translocation") + # Explicitly set y-axis label
     theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
           plot.subtitle = element_blank(),
           plot.title = element_blank(),
@@ -6275,10 +6401,17 @@ PNEC_compare_plot_list <- list(
           #axis.text.y = element_text(size = 10)
           ), # Keep y-axis text
   
-  PNECs_comparisons$`TierTier3_Freshwater_Food Dilution` +
-    theme(axis.title.y = element_text(size = 12),
-          plot.subtitle = element_blank(),
+  PNECs_comparisons$`TierTier3_Freshwater_Tissue Translocation` +
+    labs(subtitle = "") +
+    scale_y_continuous(position = "right") +
+    scale_x_log10(
+    limits = c(100, 1e5),
+    breaks = c(100, 1000, 10000, 100000),
+    labels = labels_function  # The function we just wrote
+  ) +
+    theme(axis.title.y = element_text(size = 12), # Remove y-axis title
           plot.title = element_blank(),
+          plot.subtitle = element_blank(),
           axis.title.x = element_text(size = 12)#,
           #axis.text.y = element_text(size = 10)
           ) # Keep y-axis text
@@ -6290,7 +6423,6 @@ library(ggpubr)
 # Arrange the plots
 PNEC_compare_arranged_plot <- ggarrange(
   plotlist = PNEC_compare_plot_list,
-  #labels = c("A", "B", "C", "D"),
   ncol = 2, nrow = 2, # Arrange in 2x2 grid
   common.legend = TRUE, # Common legend for all plots
   legend = "bottom" # Place legend at the bottom

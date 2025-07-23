@@ -29,7 +29,7 @@
 #################################################################
 #### PSSD++ Function #####
 #################################################################
-do.pSSD_mod <- function(DP, DP.SD, UFt, UFdd, SIM, CV.DP, CV.UF, rmore_method = "step") {
+do.pSSD_mod <- function(DP, DP.SD, UFt, UFdd, SIM, CV.DP, CV.UF, rmore_method = "step") { #step (slow) or lognormal (fast)
   # Check for species with no data
   if (any(apply(DP, 2, function(x) length(which(!is.na(x)))) == 0)) {
     warning("No data is available for one or more species, it/they won't contribute to the PSSD calculation.")
