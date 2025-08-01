@@ -5335,8 +5335,7 @@ tier1_2_food_plot_prep
 # Dynamically generate a color palette based on the levels of Group
 generate_color_palette <- function(data) {
   unique_groups <- unique(data$Group) # Extract unique levels of Group
-  #palette <- cols4all::c4a("seaborn.dark", n = length(unique_groups)) # Generate colors
-  palette <- cols4all::c4a("powerbi.high_contrast", n = length(unique_groups)) # Generate colors
+  palette <- cols4all::c4a("seaborn.dark", n = length(unique_groups)) # Generate colors
   names(palette) <- unique_groups # Assign names to the colors
   return(palette)
 }
@@ -5612,7 +5611,7 @@ The following code attempts to more accurately represent the uncertainty of the 
 Prepare color palette for species
 ```{r}
 all_species <- results_df %>% 
-  drop_na(particles_L_ox_stress) %>% 
+  drop
   distinct(Species, Group, environment) %>% 
   droplevels() %>% 
   arrange(environment, Group, Species)
@@ -5842,11 +5841,8 @@ environments <- c("Freshwater", "Marine")
 erms <- c("Food Dilution", "Tissue Translocation")
 output_path <- "../output/Manuscript_Figs/"
 presentation_path <- "../output/presentation_Figs/"
-#### two different calculation methods:
 cache_dir <- "../output/cache_pssd_results_300sim_trapezoidal"  # directory to store cache
-#cache_dir <- "../output/cache_pssd_results_300sim_lognormal"
-
-sim <- 300 # Number of simulations to run (tried higher values - but takes extremely long time!!)
+sim <- 300 # Number of simulations to run
 num_iterations <- sim
 cv_uf <- 0.5
 rmore_method <- "step" #step (original Wigger Trapezoidal) or lognormal (shortcut developed here)
@@ -6146,10 +6142,9 @@ PNEC_plot_list <- list(
           axis.text.y = element_text(size = 10)), # Keep y-axis text
   
    results$`Tier3_Marine_Tissue Translocation`$PNEC_plot_05 +
-    labs(y = "Tissue Translocatiion") +
+    labs(title = "Tissue Translocatiion") +
     theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
           plot.subtitle = element_blank(),
-          plot.title = element_blank(),
           axis.title.x = element_blank(),
           axis.text.y = element_text(size = 10)), # Keep y-axis text
   
@@ -6158,7 +6153,6 @@ PNEC_plot_list <- list(
           plot.title = element_blank(),
           plot.subtitle = element_blank(),
           axis.title.x = element_blank(),
-          
           axis.text.y = element_text(size = 10)) # Keep y-axis text
 )
 
