@@ -127,10 +127,8 @@ colnames(dombar) = dommerged$DOM_present
    mutate(freq = count/sum(count))) 
 (chargemarine = marine %>%  group_by(charge) %>% summarize(count = n()) %>% 
     mutate(freq = count/sum(count)))
-chargemerged = merge(chargefresh, chargemarine, by = "charge", sort = FALSE, all = TRUE)
+chargemerged = merge(chargefresh, chargemarine, by = "charge", sort = FALSE)
 (chargemerged = chargemerged %>% arrange(desc(freq.x), .by_group = TRUE))
-chargemerged$freq.y[is.na(chargemerged$freq.y)] = 0
-
 
 chargebar = cbind(chargemerged$freq.x, chargemerged$freq.y)
 chargebar= as.matrix(t(chargebar))
@@ -149,13 +147,12 @@ colnames(chargebar) = chargemerged$charge
    mutate(freq = count/sum(count))) 
 (functmarine = marine %>%  group_by(functional.group) %>% summarize(count = n()) %>% 
     mutate(freq = count/sum(count)))
-## none of the particles is functionalized! Remove from plots
-# functmerged = merge(functfresh, functmarine, by = "functional.group", sort = FALSE)
-# (functmerged = functmerged %>% arrange(desc(freq.x), .by_group = TRUE))
-# 
-# functbar = cbind(functmerged$freq.x, functmerged$freq.y)
-# functbar= as.matrix(t(functbar))
-# colnames(functbar) = functmerged$funct
+functmerged = merge(functfresh, functmarine, by = "functional.group", sort = FALSE)
+(functmerged = functmerged %>% arrange(desc(freq.x), .by_group = TRUE))
+
+functbar = cbind(functmerged$freq.x, functmerged$freq.y)
+functbar= as.matrix(t(functbar))
+colnames(functbar) = functmerged$funct
 
 #op = par(mar = c(12,3,1,1))
 # barplot(functbar, beside = TRUE, las = 2, col = c("lightskyblue", "royalblue3"),
@@ -165,7 +162,6 @@ colnames(chargebar) = chargemerged$charge
 # par(op)
 
 ## combined descriptive figure
-## the arrangement is not adkjusted to the "new" dataset
 
 png("ToMEx2.0_MPcharacteristics/Plots/descriptive_plots.png", width = 17, height = 15, units = "cm", res = 1000)
 
@@ -217,12 +213,12 @@ text("F - DOM present", x = 2, y = 0.96, cex = 1, font = 1, pos = 4)
 # G - Surface charge
 barplot(chargebar, beside = TRUE, las = 2, col = c("lightskyblue", "royalblue3"),
         ylim = c(0,1), ylab = "Proportion of particles")
-text("G - Surface charge", x = 4, y = 0.96, cex = 1, font = 1, pos = 4)
+text("G - Surface charge", x = 1, y = 0.96, cex = 1, font = 1, pos = 4)
 
-# # H - Surface functionalization
-# barplot(functbar, beside = TRUE, las = 2, col = c("lightskyblue", "royalblue3"),
-#         ylim = c(0,1), ylab = "Proportion of particles")
-# text("H - Functionalization", x = 1, y = 0.96, cex = 1, font = 1, pos = 4)
+# H - Surface functionalization
+barplot(functbar, beside = TRUE, las = 2, col = c("lightskyblue", "royalblue3"),
+        ylim = c(0,1), ylab = "Proportion of particles")
+text("H - Functionalization", x = 1, y = 0.96, cex = 1, font = 1, pos = 4)
 
 dev.off()
 

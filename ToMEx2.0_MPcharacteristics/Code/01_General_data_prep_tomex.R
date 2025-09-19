@@ -38,6 +38,6 @@ dat$charge[is.na(dat$charge)] = "Unknown"
 dat$functional.group[is.na(dat$functional.group)] = "None"
 
 # save data
-saveRDS(dat, "Data/prepared_data.RDS")
+saveRDS(dat, "ToMEx2.0_MPcharacteristics/Data/prepared_data.RDS")
 
 ### END ###
