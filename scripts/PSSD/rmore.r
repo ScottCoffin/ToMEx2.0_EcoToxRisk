@@ -27,7 +27,27 @@
 
 # -------------------------------------------------------------------------------------------------
 
+require(crayon)
 
+# Helper function for parameter validation
+validate_rtrunc_args <- function(dist, minv, maxv, mode = NULL, lsup, linf) {
+  # Check for NA, NaN, or non-numeric
+  vals <- c(minv, maxv, lsup, linf)
+  if (!is.numeric(vals) || any(is.na(vals) | is.nan(vals))) {
+    stop("All rtrunc arguments must be numeric and not NA/NaN.")
+  }
+  if (lsup <= linf) stop("lsup must be greater than linf.")
+  if (lsup < minv) stop("lsup must be >= min.")
+  if (linf > maxv) stop("linf must be <= max.")
+  if (dist == "rtriang") {
+    if (is.null(mode)) stop("mode must be provided for rtriang.")
+    if (!is.numeric(mode) || is.na(mode) || is.nan(mode)) stop("mode must be numeric and not NA/NaN.")
+    if (minv > mode || mode > maxv) stop("min <= mode <= max must hold for rtriang.")
+    if (minv >= maxv) stop("min < max must hold for rtriang.")
+  } else if (dist == "runif") {
+    if (minv >= maxv) stop("min < max must hold for runif.")
+  }
+}
 
 rmore <- function(values,
                   coef = NULL,
@@ -35,76 +55,56 @@ rmore <- function(values,
                   min = NULL,
                   N,
                   linf = -Inf,
-                  lsup = Inf){
-  
-  # Test input
+                  lsup = Inf) {
+  # Input checks
   stopifnot(any(!is.null(max), !is.null(min), !is.null(coef)))
-  
-  if(!is.null(max) | !is.null(min)){
+  if (!is.null(max) | !is.null(min)) {
     stopifnot(!is.null(max),
               !is.null(min),
               !any(values > max),
               !any(values < min))
   }
-  
   require(trapezoid)
   require(mc2d)
   
-  # calculate the minimum and maximum of the distribution we are looking for
-  if(!is.null(coef)){
-    dist.min <- values[which.min(values)]*(1-coef[which.min(values)])
-    dist.max <- values[which.max(values)]*(1+coef[which.max(values)])
+  # Calculate min/max
+  if (!is.null(coef)) {
+    dist.min <- values[which.min(values)] * (1 - coef[which.min(values)])
+    dist.max <- values[which.max(values)] * (1 + coef[which.max(values)])
   } else {
     dist.min <- min
     dist.max <- max
   }
   
-  # store sorted values
   sort.values <- sort(values)
-  # store frequency of unique values
   freq.uni.values <- table(sort.values)
-  # store unique values
-  uni.values <- names(freq.uni.values) |> as.numeric()
-  # smallest value
+  uni.values <- as.numeric(names(freq.uni.values))
   val.min <- sort.values[1]
-  # largest value
   val.max <- sort.values[length(sort.values)]
   
-  
-  # calculate the heights of the probability distribution of each segment around each unique value
+  # Heights
   height.values <- rep(NA, length(uni.values))
-  for(i in 2:(length(uni.values)-1)){
-    height.values[i] <- max( freq.uni.values[i]*N/(uni.values[i+1]-uni.values[i]),
-                             freq.uni.values[i]*N/(uni.values[i]-uni.values[i-1]) )
+  for (i in 2:(length(uni.values)-1)) {
+    height.values[i] <- max(freq.uni.values[i]*N/(uni.values[i+1]-uni.values[i]),
+                            freq.uni.values[i]*N/(uni.values[i]-uni.values[i-1]))
   }
-  # first
   height.values[1] <- freq.uni.values[1]*N/(uni.values[2]-uni.values[1])
-  # last
   height.values[length(height.values)] <-
-    freq.uni.values[length(height.values)]*N/( uni.values[length(height.values)]-
-                                                 uni.values[length(height.values)-1] )
+    freq.uni.values[length(height.values)]*N/(uni.values[length(height.values)]-
+                                                uni.values[length(height.values)-1])
   
-  
-  ### LEFT TRIANGLE OF OVERALL SPECIES-SPECIFIC NOEC PROBABILITY DISTRIBUTION
-  
-  if((length(unique(sort.values)) < length(sort.values)) &
-     (val.min == sort.values[2])){ 
-    
-    # how many values are identical
+  # LEFT TRIANGLE
+  if ((length(unique(sort.values)) < length(sort.values)) &
+      (val.min == sort.values[2])) {
     n <- length(which(sort.values == val.min))
-    # first value that is not identical to the previous one
     val.minP1 <- sort.values[n+1]
-    # Height of the first value that is not identical to the previous ones
     h <- height.values[1]
-    # Area of the triangular distribution, the first on the left-hand side
     A <- (val.min - dist.min)*h/2
-    
-    # Triangular distribution on the left-hand side
-    # if the smallest value is smaller than the truncation limit, do nothing
-    if(dist.min < linf){
+    if (dist.min < linf) {
       left <- NULL
-      
     } else {
+      # Validation
+      validate_rtrunc_args("rtriang", dist.min, val.min, val.min, lsup, linf)
       left <- rtrunc("rtriang",
                      n = N,
                      min = dist.min,
@@ -113,13 +113,9 @@ rmore <- function(values,
                      lsup = lsup,
                      linf = linf)
     }
-    
-    # else if unique value
   } else {
-    
-    # Area of the triangular distribution, the first on the left-hand side
     A <- N*(val.min-dist.min)/(2*(sort.values[2]-val.min))
-    
+    validate_rtrunc_args("rtriang", dist.min, val.min, val.min, lsup, linf)
     left <- rtrunc("rtriang",
                    n = N,
                    min = dist.min,
@@ -129,102 +125,65 @@ rmore <- function(values,
                    linf = linf)
   }
   
-  
-  
-  ### DISTRIBUTIONS IN BETWEEN LEFT AND RIGHT TRIANGLES OF THE OVERALL SPECIES-SPECIFIC NOEC DISTRIBUTION 
-  
-  # Create an empty list to store the distribution parts
+  # MID SEGMENTS
   mid <- list()
-  
-  # Creates a distribution between each pair of consecutive unique values
-  for(i in 1:(length(uni.values)-1)){
-    print(i)
-    if(height.values[i] == 1 & height.values[i+1] == 1){
-      # Calculate the uniform distributions in between
-      
+  for (i in 1:(length(uni.values)-1)) {
+    if (height.values[i] == 1 & height.values[i+1] == 1) {
+      validate_rtrunc_args("runif", uni.values[i], uni.values[i+1], lsup = lsup, linf = linf)
       mid[[i]] <- rtrunc("runif",
                          n = N,
                          min = uni.values[i],
                          max = uni.values[i+1],
                          lsup = lsup,
                          linf = linf)
-      
-      
-    } else if(isTRUE(all.equal(height.values[i], height.values[i+1]))){
+    } else if (isTRUE(all.equal(height.values[i], height.values[i+1]))) {
+      validate_rtrunc_args("runif", uni.values[i], uni.values[i+1], lsup = lsup, linf = linf)
       mid[[i]] <- rtrunc("runif",
                          n = N*freq.uni.values[i],
                          min = uni.values[i],
                          max = uni.values[i+1],
                          lsup = lsup,
                          linf = linf)
-      
-    }else if(height.values[i] > height.values[i+1]){
-      
-      # height of shape
+    } else if (height.values[i] > height.values[i+1]) {
       h1 <- height.values[i]
       h2 <- height.values[i+1]
-      # extreme edge of triangle
       max.trunc.distr <- (h1*uni.values[i+1]-h2*uni.values[i])/(h1-h2)
-      # area of the triangle
-      # When this gets really big, the number of simulations gets really big. ----
       A <- ((max.trunc.distr - uni.values[i])*h1 - (max.trunc.distr - uni.values[i+1])*h2)/2
-      
+      validate_rtrunc_args("rtriang", uni.values[i], max.trunc.distr, uni.values[i], lsup = min(uni.values[i+1], lsup), linf = linf)
       mid[[i]] <- rtrunc("rtriang",
                          n = N,
                          min = uni.values[i],
                          mode = uni.values[i],
                          max = max.trunc.distr,
-                         lsup = min(uni.values[i+1],lsup),
+                         lsup = min(uni.values[i+1], lsup),
                          linf = linf)
-      
-      
-      
-    } else if(height.values[i] < height.values[i+1]){
-      
-      # height of shape
+    } else if (height.values[i] < height.values[i+1]) {
       h1 <- height.values[i]
       h2 <- height.values[i+1]
-      # extreme edge of triangle
       min.trunc.distr <- (h2*uni.values[i] - h1*uni.values[i+1])/(h2 - h1)
-      # area of the triangle
-      A <- ((uni.values[i+1] - min.trunc.distr)*h2 - ( uni.values[i] - min.trunc.distr )*h1)/2
-      
+      A <- ((uni.values[i+1] - min.trunc.distr)*h2 - (uni.values[i] - min.trunc.distr)*h1)/2
+      validate_rtrunc_args("rtriang", min.trunc.distr, uni.values[i+1], uni.values[i+1], lsup = lsup, linf = max(uni.values[i], linf))
       mid[[i]] <- rtrunc("rtriang",
                          n = N,
                          min = min.trunc.distr,
                          mode = uni.values[i+1],
                          max = uni.values[i+1],
                          lsup = lsup,
-                         linf = max(uni.values[i],linf))
-      
-    } 
-    
-    
+                         linf = max(uni.values[i], linf))
+    }
   }
   
-  
-  
-  ### RIGHT TRIANGLE OF THE OVERALL SPECIES-SPECIFIC NOEC PROBABILITY DISTRIBUTION
-  
-  if((length(unique(sort.values)) < length(sort.values)) &
-     (val.max == sort.values[length(sort.values)-1])){ 
-    
-    # how many values are identical
+  # RIGHT TRIANGLE
+  if ((length(unique(sort.values)) < length(sort.values)) &
+      (val.max == sort.values[length(sort.values)-1])) {
     n <- length(which(sort.values == val.max))
-    
-    # first endpoint from the right that is not identical to the later one
     val.maxM1 <- sort.values[length(sort.values)-n]
-    # Height of the last endpoint that is not similar to the next ones
     h <- height.values[length(height.values)]
-    # Area of the triangular distribution, the last on the right-hand side
     A <- (dist.max - val.max)*h /2
-    
-    # Triangular distribution on the right-hand side
-    # if the largest value is larger than the truncation limit, do nothing
-    if(dist.max > lsup){
+    if (dist.max > lsup) {
       right <- NULL
-      
     } else {
+      validate_rtrunc_args("rtriang", val.max, dist.max, val.max, lsup, linf)
       right <- rtrunc("rtriang",
                       n = N,
                       min = val.max,
@@ -233,13 +192,9 @@ rmore <- function(values,
                       lsup = lsup,
                       linf = linf)
     }
-    
-    # else if unique value
   } else {
-    
-    # Area of the triangular distribution, the first on the right-hand side
     A <- N*(dist.max-val.max)/(2*(val.max-sort.values[length(sort.values)-1]))
-    
+    validate_rtrunc_args("rtriang", sort.values[length(sort.values)], dist.max, sort.values[length(sort.values)], lsup, linf)
     right <- rtrunc("rtriang",
                     n = N, 
                     min = sort.values[length(sort.values)], 
@@ -249,10 +204,8 @@ rmore <- function(values,
                     linf = linf)
   }
   
-  # Combine left handside, middle and right handside distributions.
-  # Each distribution has the same weight (length(mid)=nb EP * N).
-  step_distr <- c(left,do.call("c", mid),right)
-  
+  # Combine
+  step_distr <- c(left, do.call("c", mid), right)
   return(sample(step_distr, N))
-  
 }
+

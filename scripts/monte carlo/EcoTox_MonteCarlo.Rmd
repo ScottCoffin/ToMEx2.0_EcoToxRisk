@@ -972,12 +972,7 @@ aoc_aligned_test <- align_data(aoc_risk_paper) %>%
 
   ##### Base Thresholds
   #filter out risk criteria (not done above)#
-  aoc_aligned <- aoc_aligned_test #%>%
-      # ensure particles are within valid range
- #   filter(size.length.um.used.for.conversions >= x1D_set)  %>% 
-  #  drop_na(effect.metric) %>%
-  #  filter(tier_zero_tech_f == ("Red Criteria Passed")) 
-    # ensure no negative numbers are included and that all values are realistic (also done in functions, but doing here so that no confusion occurs anywhere else)
+  aoc_aligned <- aoc_aligned_test 
     
   
   # calculate thresholds for different environments
@@ -1117,332 +1112,6 @@ marine_alpha_thresholds$data$filtered.data.large.default_t1.2 %>%
 ```
 
 
-<!-- ### Model Wrapper -->
-
-<!-- ```{r} -->
-<!-- #### Define Model Wrapper -->
-<!-- model_wrapper <- function(params, iteration, MC_results_name, simulation_id){ -->
-
-<!--    # Print the structure of params for debugging -->
-<!--  # print(str(params)) -->
-
-<!--   # Print the current iteration -->
-<!--   print(paste("Iteration:", iteration, "of", n_sim)) -->
-
-
-<!--   ### perform alignments -->
-
-<!-- aoc_MC_iter <- align_data(aoc_risk_paper, -->
-<!--                           upper.tissue.trans.size.um_input = params$upper.tissue.trans.size.um[1], -->
-<!--                           body_length_intercept_input = params$sim_body_length_intercept[1], -->
-<!--                           beta_log10_body_length_input = params$sim_beta_log10_body_length[1], -->
-<!--                           R.ave.marine_input = params$R.ave.water.marine[1], -->
-<!--                           H_W_ratio.marine_input = params$H_W_ratio.marine[1], -->
-<!--                           alpha.marine_input = params$alpha.marine[1], -->
-<!--                           a.sa.marine_input = params$a.sa.marine[1], -->
-<!--                           a.v.marine_input = params$a.v.marine[1], -->
-<!--                           a.m.marine_input = params$a.m.marine[1], -->
-<!--                           R.ave.freshwater_input = params$R.ave.water.freshwater[1], -->
-<!--                           H_W_ratio.freshwater_input = params$H_W_ratio.freshwater[1], -->
-<!--                           alpha.freshwater_input = params$alpha.freshwater[1], -->
-<!--                           a.sa.freshwater_input = params$a.sa.freshwater[1], -->
-<!--                           a.v.freshwater_input = params$a.v.freshwater[1], -->
-<!--                           a.m.freshwater_input = params$a.m.freshwater[1] -->
-<!--                           ) -->
-
-
-
-
-<!--   # Filter out risk criteria and calculate thresholds for different environments -->
-<!--   aoc_aligned <- aoc_MC_iter %>%  -->
-<!--      drop_na(effect.metric) %>% -->
-<!--     filter(tier_zero_tech_f == "Red Criteria Passed") -->
-
-
-<!--   # Calculate thresholds for marine and freshwater -->
-<!--   marine_thresholds <- process_environment_data(aoc_aligned, -->
-<!--                                                 "Marine", -->
-<!--                                                 upper.tissue.trans.size.um = sim.upper.tissue.trans.size.um, -->
-<!--                                                 x1D_set = x1D_set,  -->
-<!--                                                 x2D_set = x2D_set) %>%  -->
-<!--     ## convert particles/L thresholds to volume, mass, surface area (ERM-dependent) -->
-<!--     convert_units_fxn(environment = "Marine", params = params[1,]) -->
-
-<!--   freshwater_thresholds <- process_environment_data(aoc_aligned, -->
-<!--                                                     "Freshwater", -->
-<!--                                                     upper.tissue.trans.size.um = sim.upper.tissue.trans.size.um, -->
-<!--                                                     x1D_set = x1D_set,  -->
-<!--                                                     x2D_set = x2D_set) %>%  -->
-<!--     ## convert particles/L thresholds to volume, mass, surface area (ERM-dependent) -->
-<!--     convert_units_fxn(environment = "Freshwater", params = params[1,]) -->
-
-
-
-<!--    # Store results in list -->
-<!--     MC_results_name[[i]] <- list( -->
-<!--       tox_vals = list( -->
-<!--         simulation_id = simulation_id, -->
-<!--         iteration = as.numeric(i), -->
-<!--       particles_mL_ox_stress = aoc_aligned$particles.mL.ox.stress, -->
-<!--       particles_mL_food_dilution = aoc_aligned$particles.mL.food.dilution, -->
-<!--       ingestible = aoc_aligned$ingestible, -->
-<!--       ingestible_poly = aoc_aligned$ingestible_poly, -->
-<!--       translocatable = aoc_aligned$translocatable, -->
-<!--       translocatable_poly = aoc_aligned$translocatable_poly, -->
-<!--       species = aoc_aligned$Species, -->
-<!--       group = aoc_aligned$Group, -->
-<!--       environment = aoc_aligned$environment, -->
-<!--       size.length.um.used.for.conversions = aoc_aligned$size.length.um.used.for.conversions, -->
-<!--       polydispersity = aoc_aligned$polydispersity, -->
-<!--       shape_f = aoc_aligned$shape_f, -->
-<!--       poly_f = aoc_aligned$poly_f, -->
-<!--       shape_f = aoc_aligned$shape_f, -->
-<!--       doi = aoc_aligned$doi, -->
-<!--       effect.metric = aoc_aligned$effect.metric, -->
-<!--       af.noec = aoc_aligned$af.noec, -->
-<!--       af.time = aoc_aligned$af.time, -->
-<!--       bio_f = aoc_aligned$bio_f,  -->
-<!--       risk.13 = aoc_aligned$risk.13, -->
-<!--       dose.particles.mL.master = aoc_aligned$dose.particles.mL.master, -->
-<!--       unique_id = aoc_aligned$unique_id), #row id that allows matching back to database -->
-<!--       base_thresholds = list( -->
-<!--         simulation_id = simulation_id, -->
-<!--         marine = marine_thresholds, -->
-<!--         freshwater = freshwater_thresholds#, -->
-<!--      #   freshwater_marine = freshwater_marine_thresholds -->
-<!--         ) -->
-<!--       ) -->
-<!--   #print a sample of base thresholds for debugging -->
-<!-- #  cat(MC_results[[1]]$base_thresholds$marine[1,3]) -->
-<!-- } #close model_wrapper function -->
-<!-- ``` -->
-
-<!-- ## Run Function -->
-
-<!-- ### Parallel Computing  -->
-
-<!-- ```{r} -->
-<!-- n_sim <- 10 #10 for beta-testing, 1000 for full  -->
-<!-- saveRDS(n_sim, "output/n_sim.rds") -->
-<!-- ``` -->
-
-<!-- ```{r include=FALSE} -->
-
-<!-- detectCores() -->
-
-<!-- num_cores <- min(12, detectCores())  # Try using 6 cores, or adjust as needed -->
-
-<!-- # Create a parallel backend -->
-<!-- cl <- makeCluster(num_cores) -->
-<!-- #registerDoParallel(cl) -->
-<!-- registerDoSNOW(cl) -->
-
-<!-- # Set up a progress bar -->
-<!-- pb <- txtProgressBar(min = 0, max = n_sim, style = 3) -->
-<!-- progress <- function(n) setTxtProgressBar(pb, n) -->
-<!-- opts <- list(progress = progress) -->
-
-<!-- # intialize dataframe to store MC results -->
-<!-- MC_results_parallel <- vector("list", n_sim) -->
-
-<!-- tic("Simulation Begins") -->
-<!-- # Run the Monte Carlo simulations in parallel using foreach -->
-<!-- MC_results_parallel <- foreach(i = 1:n_sim, -->
-<!--                       .packages = c("tidyverse", "ssdtools", "doParallel", "truncnorm"),  -->
-<!--                       .options.snow = opts, -->
-<!--                       .combine = rbind, -->
-<!--                       .export = c("model_wrapper", "aoc_aligned", #"ToMEx1.0fxn", "ToMEx2.0fxn", -->
-<!--                                   "align_data", -->
-<!--                                    "filter_environment_data", "generate_structure_checks", -->
-<!--                                   "process_environment_data",  "sensitivity_t1", -->
-<!--                                   "SSA.inversefnx", "SSD_function_t1", "SSD_function_t2", -->
-<!--                                   "SSD_function_t3_4", "summarize_and_print", "update_particle_length", -->
-<!--                                   "volumefnx", "SAfnx", "massfnx",  "mux_polyfnx", "CFfnx", -->
-<!--                                   "MC_results_parallel", -->
-<!--                                   "n_sim", -->
-<!--                                   #"aoc", "tomex2.0", "bodysize_addons", -->
-<!--                                   "x1D_set", "x2D_set") -->
-<!--                       ) %dopar% { -->
-
-<!--                         #generate data -->
-<!--                         params <- generate_data(n_sim = n_sim) %>%  -->
-<!--                           mutate(simulation_id = paste0("sim",row_number())) -->
-
-<!--                          #unpack parameters -->
-<!--   # Ensure all extracted parameters are correctly coerced to numeric -->
-<!--   # Coerce to numeric directly while accessing the first element of potential list -->
-<!--   alpha.marine <- as.numeric(params$alpha.marine[1]) -->
-<!--   a.sa.marine <- as.numeric(params$a.sa.marine[1]) -->
-<!--   a.v.marine <- as.numeric(params$a.v.marine[1]) -->
-<!--   a.m.marine <- as.numeric(params$a.m.marine[1]) -->
-<!--   #a.ssa.marine <- as.numeric(params$a.ssa.marine[1]) -->
-<!--   alpha.freshwater <- as.numeric(params$alpha.freshwater[1]) -->
-<!--   a.sa.freshwater <- as.numeric(params$a.sa.freshwater[1]) -->
-<!--   a.v.freshwater <- as.numeric(params$a.v.freshwater[1]) -->
-<!--   a.m.freshwater <- as.numeric(params$a.m.freshwater[1]) -->
-<!--   #a.ssa.freshwater <- as.numeric(params$a.ssa.freshwater[1]) -->
-<!--   R_ave_water_marine <- as.numeric(params$R.ave.water.marine[1]) -->
-<!--   H_W_ratio_marine <- as.numeric(params$H_W_ratio.marine[1]) -->
-<!--   R_ave_water_freshwater <- as.numeric(params$R.ave.water.freshwater[1]) -->
-<!--   H_W_ratio_freshwater <- as.numeric(params$H_W_ratio.freshwater[1]) -->
-<!--   #R_ave_sediment_marine <- as.numeric(params$R.ave.sediment.marine[1]) -->
-<!--   #R_ave_sediment_freshwater <- as.numeric(params$R.ave.sediment.freshwater[1]) -->
-<!--   sim_beta_log10_body_length <- as.numeric(params$sim.beta.log10.body.length[1]) -->
-<!--   sim_body_length_intercept <- as.numeric(params$sim.body.length.intercept[1]) -->
-<!--   upper.tissue.trans.size.um <- as.numeric(params$upper.tissue.trans.size.um[1]) -->
-<!--   simulation_id <- as.character(params$simulation_id[1]) -->
-
-<!--                         # -->
-<!--                         # Run the model function -->
-<!--                         MC_results_parallel[[i]] <- model_wrapper(params, -->
-<!--                                                                   i, -->
-<!--                                                                   MC_results_name = MC_results_parallel, -->
-<!--                                                                   simulation_id = simulation_id) -->
-
-
-<!--                         } -->
-
-<!-- toc() -->
-
-<!-- close(pb)  # Close progress bar when done -->
-
-<!-- # Stop the cluster after processing -->
-<!-- stopCluster(cl) -->
-
-
-<!-- # save results -->
-<!-- #saveRDS(MC_results_parallel, "output/MC_results.rds") -->
-<!-- # Uncomment if running. Otherwise, keep commented out to avoid overwriting -->
-<!-- ``` -->
-
-
-
-<!-- ### Preparation (Parallel only) -->
-<!-- #### Read in previous run -->
-<!-- ```{r} -->
-<!-- # save results -->
-<!-- MC_results_parallel <- readRDS("output/MC_results.rds") -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- # just use the nested dataframes -->
-<!-- first_subtract <- n_sim -->
-<!-- starting_dataframe <- first_subtract + 1 -->
-<!-- final_dataframe <- starting_dataframe + n_sim - 1 -->
-
-<!-- # save truncated MC result -->
-<!-- MC_results_p <- MC_results_parallel[starting_dataframe:final_dataframe] -->
-
-<!-- # Extract and combine base_thresholds for each environment -->
-<!-- all_thresholds_marine <- map(MC_results_p, ~ .x$marine) %>%  -->
-<!--   bind_rows(.id = "simulation_id") -->
-
-<!-- all_thresholds_freshwater <- map(MC_results_p, ~ .x$freshwater) %>%  -->
-<!--   bind_rows(.id = "simulation_id") -->
-
-<!-- # all_thresholds_freshwater_marine <- map(MC_results, ~ .x$base_thresholds$freshwater_marine) %>%  -->
-<!-- #   bind_rows(.id = "simulation_id") -->
-
-<!-- # Combine marine and freshwater data into one data frame with an additional "Environment" column -->
-<!-- all_thresholds_combined <- bind_rows( -->
-<!--   mutate(all_thresholds_marine, Environment = "Marine"), -->
-<!--   mutate(all_thresholds_freshwater, Environment = "Freshwater"), -->
-<!--  # mutate(all_thresholds_freshwater_marine, Environment = "freshwater_marine"), -->
-<!--   .id = "simulation_id" -->
-<!-- ) -->
-
-<!-- # Pivot data longer if the data structure requires it -->
-<!-- # Assuming that your data might already be in a wide format and needs to be made long -->
-<!-- all_thresholds_long <- all_thresholds_combined %>% -->
-<!--   pivot_longer( -->
-<!--     cols = -c(Tier, simulation_id, Environment), -->
-<!--     names_to = "Metric", -->
-<!--     values_to = "Value" -->
-<!--   ) -->
-
-<!-- ``` -->
-
-<!-- ### Summary -->
-
-<!-- ```{r} -->
-<!-- # Calculate summary statistics -->
-<!-- summary_stats_base_thresholds <- all_thresholds_long %>% -->
-<!--   group_by(Tier, Environment, Metric) %>% -->
-<!--   summarise( -->
-<!--     Mean = mean(Value, na.rm = TRUE), -->
-<!--     Median = median(Value, na.rm = TRUE), -->
-<!--     Std_Dev = sd(Value, na.rm = TRUE), -->
-<!--     Percentile_5th = quantile(Value, 0.05, na.rm = TRUE), -->
-<!--     Percentile_95th = quantile(Value, 0.95, na.rm = TRUE), -->
-<!--     N_sim = n(), -->
-<!--     .groups = 'drop' -->
-<!--   ) %>%  -->
-<!--   mutate_if(is.numeric, ~signif(., 3)) -->
-
-<!-- summary_stats_base_thresholds -->
-
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- #save output -->
-<!-- saveRDS(summary_stats_base_thresholds, -->
-<!--         "output/summary_stats_base_thresholds.rds") -->
-
-<!-- # Output the summary statistics -->
-<!-- print(summary_stats_base_thresholds) -->
-<!-- ``` -->
-
-<!-- #### Simple summary table -->
-
-<!-- ```{r} -->
-<!-- library(scales) -->
-
-<!-- ## Freshwater MC -->
-<!-- Freshwater_MC <- summary_stats_base_thresholds %>%  -->
-<!--   filter(str_detect(Metric, "Default"), -->
-<!--          Environment == "Freshwater") %>%  -->
-<!--   select(Tier, Metric, Median, contains("Percentile")) %>%  -->
-<!--   mutate(Threshold = paste0(comma(Median), " (", comma(Percentile_5th), -->
-<!--                             " to ", comma(Percentile_95th), ")")) %>%  -->
-<!--   select(-c(Median, Percentile_5th, Percentile_95th)) %>%  -->
-<!--   pivot_wider(names_from = Metric, values_from = Threshold) %>%  -->
-<!--   rename_with(~ gsub("(Default)", "Freshwater", .x), everything()) -->
-
-<!-- # Marine MC -->
-<!-- Marine_MC <- summary_stats_base_thresholds %>%  -->
-<!--   filter(str_detect(Metric, "Default"), -->
-<!--          Environment == "Marine") %>%  -->
-<!--   select(Tier, Metric, Median, contains("Percentile")) %>%  -->
-<!--   mutate(Threshold = paste0(comma(Median), " (", comma(Percentile_5th), -->
-<!--                             " to ", comma(Percentile_95th), ")")) %>%  -->
-<!--   select(-c(Median, Percentile_5th, Percentile_95th)) %>%  -->
-<!--   pivot_wider(names_from = Metric, values_from = Threshold) %>%  -->
-<!--   rename_with(~ gsub("(Default)", "Marine", .x), everything()) -->
-
-<!-- simple_thresholds_MC <- left_join(Freshwater_MC, Marine_MC) -->
-
-<!-- write.csv(simple_thresholds_MC, -->
-<!--           "output/simple_thresholds_table.csv") -->
-
-<!-- simple_thresholds_MC -->
-<!-- ``` -->
-
-<!-- Get limits for plotting below -->
-
-<!-- ```{r} -->
-<!-- min_max <- all_thresholds_long %>% -->
-<!--   filter(str_detect(Metric, "Default")) %>%   -->
-<!--   group_by(Environment, Metric) %>% -->
-<!--   summarise( -->
-<!--     min = min(Value, na.rm = T), -->
-<!--     max = max(Value, na.rm = T), -->
-<!--     .groups = 'drop' -->
-<!--   ) -->
-
-<!-- min_max -->
-<!-- ``` -->
-
-<!-- ### Plots -->
 
 #### Function
 
@@ -1618,209 +1287,6 @@ return(list(MC_histograms_light, MC_histograms_dark))
 }
 ```
 
-<!-- #### Generate Histograms -->
-
-<!-- ```{r include=FALSE} -->
-<!-- ### Generate plots -->
-<!-- MC_histograms_marine <- MC_histograms_fxn(all_thresholds_long,  -->
-<!--                                           "Marine", -->
-<!--                                           n_bins = round(n_sim *0.8), -->
-<!--                                         #  units_input = "ug/L", -->
-<!--                                           food_limits = c(signif((min_max$min[3] * 0.5),1), -->
-<!--                                                           signif((min_max$max[3] * 2), 1)), -->
-<!--                                           tissue_limits = c(signif((min_max$min[4] * 0.5), 1), -->
-<!--                                                             signif((min_max$max[4] * 2), 1)), -->
-<!--                                           x_axis_input = element_blank() -->
-<!--                                           ) -->
-
-<!-- MC_histograms_freshwater <- MC_histograms_fxn(all_thresholds_long, "Freshwater", -->
-<!--                                               n_bins = round(n_sim *0.8), -->
-<!--                                               food_limits = c(signif((min_max$min[1] * 0.5),1), -->
-<!--                                                           signif((min_max$max[1] * 2),1)), -->
-<!--                                           tissue_limits = c(signif((min_max$min[2] * 0.5), 1), -->
-<!--                                                             signif((min_max$max[2] * 2), 1)), -->
-<!--                                           x_axis_input = element_text()) -->
-
-<!-- ### Save plots -->
-<!-- ggsave("output/MC_histograms_freshwater.png", -->
-<!--        MC_histograms_freshwater[[1]],  -->
-<!--       dpi = 300, -->
-<!--       width = 12, height = 9, units = "in") -->
-
-<!-- ggsave("output/MC_histograms_marine.png", -->
-<!--        MC_histograms_marine[[1]],  -->
-<!--        dpi = 300, -->
-<!--        width = 12, height = 9, units = "in") -->
-
-
-<!-- ggsave("output/presentation_Figs/MC_histograms.png", -->
-<!--        MC_histograms_marine[[2]],  -->
-<!--        dpi = 300, -->
-<!--        width = 10, height = 5, -->
-<!--        units = "in") -->
-
-<!-- ### Display plots -->
-<!-- ggarrange(MC_histograms_marine[[1]], -->
-<!--           MC_histograms_freshwater[[1]], -->
-<!--           ncol = 1, -->
-<!--           labels = c("Marine", "Freshwater")) -->
-<!-- ``` -->
-
-<!-- ### Violin Plots -->
-
-<!-- ```{r} -->
-<!-- ### Ggplot of monte carlo SSD thresholds -->
-<!-- all_thresholds_violin <- all_thresholds_long %>%  -->
-<!--   filter(grepl("Default", Metric)) %>% -->
-<!--   mutate(ERM = case_when( -->
-<!--     grepl("Tissue", Metric) ~ "Tissue Translocation", -->
-<!--     grepl("Food", Metric) ~ "Food Dilution")) %>%  -->
-<!--   ggplot(aes(x = Value, y = Tier, color = Environment, fill = Environment)) + -->
-<!--   #geom_boxplot(alpha = 0.5) + -->
-<!--   geom_violin(alpha = 0.9, -->
-<!--               draw_quantiles = c(0.05, 0.5, 0.95), -->
-<!--               color = "black") + -->
-<!--   cols4all::scale_fill_discrete_c4a_cat("carto.bold") + -->
-<!--   cols4all::scale_color_discrete_c4a_cat("carto.bold") + -->
-<!--   #geom_jitter() + -->
-<!--   scale_x_log10(name = "Particles/L (1 - 5000 um)", -->
-<!--                 labels = scales::comma) + -->
-<!--   facet_grid(rows = vars(Environment), cols = vars(ERM), -->
-<!--              scales = "free") + -->
-<!--   theme_bw(base_size = 16) + -->
-<!--   theme(legend.position = "none") -->
-
-<!-- ggsave("output/all_thresholds_violin.jpg", -->
-<!--        all_thresholds_violin,  -->
-<!--        dpi = 300, -->
-<!--        width = 10, height = 5, -->
-<!--        units = "in") -->
-
-<!-- all_thresholds_violin -->
-<!-- ``` -->
-
-<!-- ### Determine Coefficient of Variation -->
-
-<!-- ```{r} -->
-<!-- # Separate individual toxicity values from Sims in MC_results # -->
-<!-- MC_results_tox <- MC_results_parallel[1:n_sim] -->
-
-<!-- ##### Determine Coefficient of Variation for each output ### -->
-<!-- ### Step 1: Create a dataframe from the list -->
-<!-- results_df <- do.call(rbind, lapply(MC_results_tox, function(x) { -->
-<!--   data.frame( -->
-<!--     iteration = x$iteration, -->
-<!--     unique_id = x$unique_id, -->
-<!--     particles_L_ox_stress = x$particles_mL_ox_stress *1000, -->
-<!--     particles_L_food_dilution = x$particles_mL_food_dilution * 1000, -->
-<!--     species = x$species -->
-<!--   ) -->
-<!-- })) %>%  -->
-<!--   mutate(unique_id = as.factor(unique_id)) %>%  -->
-<!--   #annotate metadata -->
-<!--   left_join(aoc_aligned_test %>% -->
-<!--               select(af.noec, af.time, unique_id) %>%  -->
-<!--               mutate(unique_id = as.factor(unique_id)), -->
-<!--             by = "unique_id" -->
-<!--             ) -->
-
-<!-- skimr::skim(results_df) -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- ## Step 2: -->
-<!-- # Calculate CoV -->
-<!-- cov_results <- results_df %>% -->
-<!--   group_by(unique_id) %>% -->
-<!--   summarise(sd_particles_L_ox_stress = sd(particles_L_ox_stress, na.rm = TRUE), -->
-<!--             mean_particles_L_ox_stress = mean(particles_L_ox_stress, na.rm = TRUE), -->
-<!--             median_particles_L_ox_stress = median(particles_L_ox_stress, na.rm = TRUE), -->
-<!--             CoV_ox_stress = sd_particles_L_ox_stress / mean_particles_L_ox_stress, -->
-<!--             #food dilution -->
-<!--             sd_particles_L_food_dilution = sd(particles_L_food_dilution, na.rm = TRUE), -->
-<!--             mean_particles_L_food_dilution = mean(particles_L_food_dilution, na.rm = TRUE), -->
-<!--             median_particles_L_food_dilution = median(particles_L_food_dilution, na.rm = TRUE), -->
-<!--             CoV_food_dilution = sd_particles_L_food_dilution / mean_particles_L_food_dilution -->
-<!--   ) -->
-
-<!-- # View the results -->
-<!-- skimr::skim(cov_results) -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- # Step 3: merge with full dataset and deterministic dataset -->
-<!-- aoc_MC <- merge(aoc_aligned_test, cov_results, by = "unique_id", all.x = TRUE) -->
-
-<!-- #annotate additional metadata -->
-<!-- aoc_MC <- left_join(aoc_MC,  -->
-<!--                     aoc_aligned_test %>% ungroup() %>%   -->
-<!--                       select(c(unique_id, particles.mL.food.dilution, particles.mL.ox.stress#, -->
-<!--                                #Species, size.length.um.used.for.conversions -->
-<!--                                )) %>% -->
-<!--                       mutate(particles_L_food_dilution_deterministic = particles.mL.food.dilution * 1000, -->
-<!--                              particles_L_ox_stress_deterministic = particles.mL.ox.stress * 1000), -->
-<!--                     by = "unique_id" -->
-<!-- ) %>%  -->
-<!--   mutate(n_sim = n_sim) -->
-<!-- #filter(size.length.um.used.for.conversions >= x1M_set) %>% #alignments not valid below 1 um, so filter them before they become problems later -->
-
-<!-- #Save file for EcoTox Project -->
-<!-- saveRDS(aoc_MC, "output/aoc_MC.rds") -->
-<!-- ``` -->
-
-<!-- ### Quality Checks -->
-
-<!-- ```{r} -->
-<!-- # summary stats to ensure MC was succesful  -->
-<!-- aoc_MC %>%  -->
-<!--   select(c(particles_L_ox_stress_deterministic, median_particles_L_ox_stress, -->
-<!--            particles_L_food_dilution_deterministic, median_particles_L_food_dilution)) %>%  -->
-<!--   mutate(ox_stress_ratio = particles_L_ox_stress_deterministic / median_particles_L_ox_stress, -->
-<!--          food_dilution_ratio = particles_L_food_dilution_deterministic / median_particles_L_food_dilution) -->
-
-<!-- #define limits -->
-<!-- min_val <- min(aoc_MC$CoV_food_dilution, na.rm = TRUE) -->
-<!-- max_val <- max(aoc_MC$CoV_food_dilution, na.rm = TRUE) -->
-
-<!-- # You may want to add some padding around the min and max -->
-<!-- pad <- (max_val - min_val) * 0.05 -->
-<!-- xlims <- c(min_val - pad, max_val + pad) -->
-
-<!-- hist_cv_food <- aoc_MC %>%  -->
-<!--   ggplot(aes(x = CoV_food_dilution, fill = polydispersity)) + -->
-<!--   geom_histogram(position = "identity", alpha = 0.5) + -->
-<!--   xlim(xlims) +  # Set x limits -->
-<!--   scale_x_log10() + -->
-<!--   xlab("Coefficient of Variation (unitless)") + -->
-<!--   ylab("Toxicity Data Points")# + -->
-<!-- #fill.type + -->
-<!-- #  theme.light #+ -->
-<!-- #theme(axis.title.x = element_blank()) -->
-
-<!-- hist_cv_ox <- aoc_MC %>%  -->
-<!--   ggplot(aes(x = CoV_ox_stress, fill = polydispersity)) + -->
-<!--   geom_histogram(position = "identity", alpha = 0.5) + -->
-<!--   #fill.type + -->
-<!--   scale_x_log10() + -->
-<!--   # xlim(xlims) +  # Set x limits -->
-<!--   xlab("Coefficient of Variation (unitless)") + -->
-<!--   ylab("Toxicity Data Points") + -->
-<!--   # theme.light + -->
-<!--   theme(legend.position = "none", -->
-<!--         axis.title.y = element_blank()) -->
-
-<!-- CoV_plots <-  ggpubr::ggarrange(hist_cv_food, hist_cv_ox, -->
-<!--                                 labels = c("A", "B"), -->
-<!--                                 ncol = 2, -->
-<!--                                 common.legend = TRUE, legend = "top") -->
-
-<!-- ggsave(filename = "CoV_plots.jpg", -->
-<!--        dpi = 300, -->
-<!--        path = "../../output/Manuscript_Figs/",  -->
-<!--        plot = CoV_plots, width = 10, height = 8, units = "in") -->
-
-<!-- CoV_plots -->
-<!-- ``` -->
 
 # Sensitivity Analysis (Sobol)
 
@@ -2614,6 +2080,9 @@ z_scores_grouped
 ```
 
 ```{r}
+sobol_results_filtered <- readRDS("output/sobol_results_filtered.rds")
+all_thresholds_sobol_filtered <- readRDS("output/all_thresholds_sobol_filtered.rds")
+all_thresholds_sobol_long_filtered <- readRDS("output/all_thresholds_sobol_long_filtered.rds")
 
 # 3. Extract the Output of Interest: Extract the relevant output from each model run (marine and freshwater thresholds).
 # Convert results to a numeric vector
@@ -3096,6 +2565,7 @@ saveRDS(aoc_MC_sobol, "output/aoc_MC_sobol.rds")
 ##### Start here to read in
 ```{r}
 aoc_MC_sobol <- readRDS("output/aoc_MC_sobol.rds")
+mat_filtered <- readRDS("output/mat_filtered.rds")
 ```
 
 
@@ -3547,41 +3017,23 @@ print(scatter_freshwater_food_t3)
 ```
 
 ```{r}
-# #stopped MC at iteration = 2037, so need to subset mat to that value
-# #mat2 <- mat[1:2037,]
-# mat2 <- mat
-# 
-# #scatter plot of parameter interactions
-# scatter_marine_food_t3 <- sensobol::plot_scatter(data = mat2, N = n_row_sobol, Y = Y_marine_food_T3, params = params, method = "bin") + ggtitle("Scatter Plot: Marine Food")
-# 
-# scatter_freshwater_food_t3 <- sensobol::plot_scatter(data = mat2, N = n_row_sobol, Y = Y_freshwater_food_T3,
-#                                                      params = params, method = "bin") + ggtitle("Scatter Plot: Freshwater Food")
-# 
-# scatter_marine_tissue_t3 <- sensobol::plot_scatter(data = mat2,
-#                                                    N = n_row_sobol, Y = Y_marine_tissue_T3, 
-#                                                    params = params, method = "bin") + 
-#   ggtitle("Scatter Plot: Marine Tissue")
-# 
-# scatter_freshwater_tissue_t3 <- sensobol::plot_scatter(data = mat2 %>% select(-(contains("Marine"))), 
-#                                                        N = n_row_sobol, 
-#                                                        Y = Y_freshwater_tissue_T3, 
-#                                                        params = params,
-#                                                        method = "bin") +
-#   ggtitle("Scatter Plot: Freshwater Tissue")
- 
+# Arrange the plots into a 2x2 matrix with a common legend
 # Arrange the plots into a 2x2 matrix with a common legend
 scatterplots <- combined_plot <- ggpubr::ggarrange(
-  scatter_marine_food_t3, scatter_marine_tissue_t3_filtered,
-  #scatter_marine_tissue_t3, 
-  scatter_freshwater_food_t3,
-  scatter_freshwater_tissue_t3,
+  scatter_marine_food_t3 + ggtitle("Marine") + ylab("Food Dilution") + theme(axis.title.y = element_text(size = 25, face = "bold"),
+                                                                             plot.title = element_text(size = 25, face = "bold")), 
+  scatter_freshwater_food_t3 + ggtitle("Freshwater") + theme(plot.title = element_text(size = 25, face = "bold")),
+  scatter_marine_tissue_t3_filtered + ylab("Tissue Translocation") + theme(axis.title.y = element_text(size = 25, face = "bold"),
+                                                                           plot.title = element_blank()) ,
+  scatter_freshwater_tissue_t3 + theme(plot.title = element_blank()),
   ncol = 2, nrow = 2, common.legend = TRUE, legend = "bottom"
-)
+) 
+
 
 ggsave(filename = "sobol_scatterplots.jpg",
        dpi = 300,
-       path = "output", 
-       plot = scatterplots, width = 11, height = 8, units = "in")
+       path = "../../output/Manuscript_Figs/", 
+       plot = scatterplots, width = 11.8, height = 8, units = "in")
 
 scatterplots
 ```
