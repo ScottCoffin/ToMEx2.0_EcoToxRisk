@@ -270,3 +270,21 @@ output/Manuscript_Figs_all_thresholds_violin_sobol.jpg
 output/cache_pssd_results_300sim_lognormal/Tier3_Freshwater_Food Dilution.rds
 scripts/monte carlo/output/sobol_results_filtered.rds
 scripts/monte carlo/output/sobol_results.rds
+output/Manuscript_Figs/all_thresholds_violin_sobol_mass.jpg
+output/Manuscript_Figs/alpha_combined_plot.jpg
+output/Manuscript_Figs/body_length_plot.jpg
+output/Manuscript_Figs/CoV_mouth_plotly.html
+output/Manuscript_Figs/CoV_plots_sobol_manual.png
+output/Manuscript_Figs/leave_one_out_ggplotly.html
+output/data/aligned_data.rds
+output/.DS_Store
+output/combined_histograms.jpg
+output/MC_param_histograms_combined.png
+output/tier1_2_large.csv
+output/tier1_2_large.rds
+data/output/PNEC_summary_table_wide.rds
+data/output/PSDDplusplusresults.rds
+data/output/tier1_2_food.RDS
+data/output/tier1_2_tissue.RDS
+data/output/tier3_4_food.RDS
+data/output/tier3_4_tissue.RDS
