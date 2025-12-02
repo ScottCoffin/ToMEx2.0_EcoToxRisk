@@ -268,3 +268,5 @@ data/output/all_studies_summary.csv
 output/all_thresholds_violin_sobol.jpg
 output/Manuscript_Figs_all_thresholds_violin_sobol.jpg
 output/cache_pssd_results_300sim_lognormal/Tier3_Freshwater_Food Dilution.rds
+scripts/monte carlo/output/sobol_results_filtered.rds
+scripts/monte carlo/output/sobol_results.rds

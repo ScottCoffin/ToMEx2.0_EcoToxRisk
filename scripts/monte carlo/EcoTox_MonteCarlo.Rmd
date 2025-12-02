@@ -1,7 +1,7 @@
 ---
 title: "EcoTox_MonteCarlo"
 output: html_document
-date: "2024-07-19"
+date: "2025-06-19"
 output:
   html_document:
     code_folding: hide
@@ -34,7 +34,7 @@ library(doSNOW)
 library(tictoc)
 
 #check SSDtools package version is 0.3.7#
-source("../../scripts/check_pckg.R")
+source("../utils/check_pckg.R")
 check_and_install_version("ssdtools", "0.3.7")
 library(ssdtools)
 ```
@@ -43,8 +43,9 @@ library(ssdtools)
 
 ```{r}
 #rm(list = ls())
-source("ssd_functions.R")
-source("../../scripts/functions.R")
+# load custom SSD and alignment functions
+source("../utils/ssd_functions.R")
+source("../utils/functions.R")
 
 
 # List all objects in the global environment
@@ -58,8 +59,8 @@ print(function_names)
 
 set.seed(123456789) 
 # each script is now a function. Source files to load functions #
-source("RDAmaker_functions.R") #functionalized data tidying script for ToMEx 1.0 data
-source("ToMEx2.0_Data_Tidying_functions.R") #functionalized data tidying script for ToMEx 2.0 data
+source("../utils/RDAmaker_functions.R") #functionalized data tidying script for ToMEx 1.0 data
+source("../utils/ToMEx2.0_Data_Tidying_functions.R") #functionalized data tidying script for ToMEx 2.0 data
 ```
 
 #### Define function for presenting thresholds in alternative units (volume, mass, etc.)
@@ -125,25 +126,15 @@ thresholds_df %>%
 
 ```{r}
 #### read in input data necessary for functionalized data tidying 
-# ToMEx 1.0 data file (no alignments)
-# aoc <- read_csv("ref data/AquaticOrganisms_Clean_final.csv", 
-#                 guess_max = 10000, show_col_types = FALSE) %>% rowid_to_column()
-
-# TomEx 1.0 data file prepped in ToMEx2.0_AquaticOrganisms repo (main folder)
+# TomEx 1.0 data file prepped in ToMEx2.0_AquaticOrganisms repo (main folder) (https://github.com/SCCWRP/ToMEx_AquaticOrganisms/blob/master/aoc_setup.RDS)
 aoc <- read_rds("../../data/input/aoc_setup.RDS")
   
 # ToMEx 2.0 data file (no alignments)
 #### tomex2_input.rds generated in ToMEx2.0_AquaticOrganisms/monte carlo/Master_Data_Tidying_Monte_Carlo and stored in ref data/ folder
 tomex2.0 <- read_rds("ref data/tomex2_input.rds")
 
-# tomex2.0 <- read_rds("../../data/input/aoc_z_tomex2.rds") %>% 
-#   filter(source == "ToMEx 2.0") 
-
-# LEgacy file from May, 2024 for beta-testing
-#tomex2.0 <- read_rds("ref data/tomex2_input_May2024.rds")
-
 # auxiliary data necessary for ToMEX 2.0 data tidying
-bodysize_addons <- read_csv("ref data/gape_size.csv", show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder
+bodysize_addons <- read_csv("ref data/gape_size.csv", show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder (https://github.com/SCCWRP/ToMEx_AquaticOrganisms/blob/master/gape_size.csv)
 ```
 
 ## Parameters and Distributions
@@ -209,7 +200,7 @@ se_beta_1 = 0.006657993
 ```
 
 ```{r}
-## Distribution values
+## Distribution values from https://doi.org/10.1016/j.watres.2021.117429
 # particle properties
 R.ave.water.marine <- 0.77 # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
 R_ave.water.marine <- 0.77 # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
@@ -466,7 +457,9 @@ skimr::skim(param_values)
 MC_param_histograms_base <- param_values %>% 
   select(-simulation_id) %>% 
   pivot_longer(cols = everything()) %>% 
-  mutate(name = factor(name, levels = c("alpha.marine", "a.sa.marine", "a.v.marine",
+  mutate(
+    name = as.character(name),
+    name = factor(name, levels = c("alpha.marine", "a.sa.marine", "a.v.marine",
                                         "a.m.marine", "a.ssa.marine", "R.ave.water.marine",
                                         "H_W_ratio.marine", "H_W_ratio.freshwater",
                                         "alpha.freshwater", "a.sa.freshwater", "a.v.freshwater",
@@ -475,7 +468,6 @@ MC_param_histograms_base <- param_values %>%
   ggplot(aes(x = value, fill = name)) +
   geom_histogram(bins = 350, linewidth = 0.10) +
   scale_x_log10()+
-#  xlim(c(1,1000))+
   labs(#title = "Distribution of Simulated X50 Values",
        x = "Value",
        y = "Relative Frequency") +
@@ -494,29 +486,13 @@ MC_param_histograms <- MC_param_histograms_base + theme_minimal(base_size = 12) 
         axis.title.y = element_text(vjust = 0.5, size = 16, face = "bold"),
        strip.text = element_text(size = 16, face = "bold", family = "serif")  # Customize facet title size
        )  # Center the y-axis title
-  
-MC_param_histograms_dark <- MC_param_histograms_base + dark_theme_minimal(base_size = 12) +
-  theme(legend.position = "none",
-        plot.title = element_blank(),
-        plot.subtitle = element_text(hjust = 0.5),
-        plot.caption = element_text(hjust = 0.5),   # Center the caption
-        axis.title.x = element_text(hjust = 0.5, size = 16, face = "bold"),  # Center the x-axis title
-        axis.text.x = element_text(size = 11),
-        axis.text.y = element_blank(),
-       # axis.text = element_text(size = 16),
-        axis.title.y = element_text(vjust = 0.5, size = 16, face = "bold"),
-       strip.text = element_text(size = 12, face = "bold", family = "serif")  # Customize facet title size
-       )   # Center the y-axis title
 
-ggsave(filename = "MC_param_histograms.jpg",
-       dpi = 300,
-       path = "../../output/Manuscript_Figs/", 
-       plot = MC_param_histograms, width = 9, height = 8, units = "in")
+# 
+# ggsave(filename = "MC_param_histograms.jpg",
+#        dpi = 300,
+#        path = "../../output/Manuscript_Figs/", 
+#        plot = MC_param_histograms, width = 9, height = 8, units = "in")
 
-ggsave(filename = "MC_param_histograms_dark.jpg",
-       dpi = 300,
-       path = "../../output/presentation_Figs/", 
-       plot = MC_param_histograms_dark, width = 12, height = 6.5, units = "in")
 
 MC_param_histograms
 ```
@@ -530,18 +506,16 @@ skimr::skim(param_values)
 ### Export Dataframe of distribution parameters
 
 ```{r}
-write.csv(param_values, "output/parameter_values.csv")
+write.csv(param_values, "../../data/output/parameter_values.csv")
 param_values
 ```
 
 
 
 ## Generate Base dataframes
-
-
 ```{r}
 aoc_risk_paper <- readRDS("../../data/input/aoc_z_tomex2.RDS") %>%  #dataset is prepped in shiny repo
-  rename(environment = env_f) %>% 
+  dplyr::rename(environment = env_f) %>% 
   mutate(AF.total = af.time * af.noec) %>%  #calculate composite AF
   drop_na(effect.metric) %>% 
    filter(
@@ -557,11 +531,8 @@ aoc_risk_paper <- readRDS("../../data/input/aoc_z_tomex2.RDS") %>%  #dataset is 
 
 
 # Monte Carlo
-
 ## Functions
-
 ### Alignment functions
-
 ```{r}
 align_data <- function(df, #ToMEx database
                        x1M_set_input = 1, #um lower size for all alignments
@@ -1011,7 +982,7 @@ formatted_thresholds_montecarlo
 
 Deterministic thresholds derived in ToMEx2_EcoTox.Rmd
 ```{r}
-formatted_thresholds <- read.csv("../../data/output/formatted_thresholds.csv")
+formatted_thresholds <- read_csv("../../data/output/formatted_thresholds.csv", )
 formatted_thresholds
 ```
 
@@ -1131,7 +1102,8 @@ MC_histograms_fxn <- function(long_data = all_thresholds_long,
 
 ### Ggplot of SSD Tier Thresholds
 # Prepare the data by calculating ERM and filtering
-prepared_data <- long_data %>%  #all_thresholds_long %>%
+prepared_data <- long_data %>%
+  mutate(Tier = as.character(Tier)) %>% 
   mutate(ERM = case_when(
     grepl("Tissue", Metric, ignore.case = T) ~ "Tissue Translocation",
     grepl("Food", Metric, ignore.case = T) ~ "Food Dilution"
@@ -1181,23 +1153,23 @@ MC_histograms_base_food <- ggplot(prepared_data %>% filter(ERM == "Food Dilution
   facet_wrap(~ Tier, scales = "free_y", ncol = 1) +
   scale_fill_manual(values = tier_colors) +  # Apply manual colors for fill
   scale_color_manual(values = tier_colors)  # Apply manual colors for lines
-
-library(ggdark)
-MC_histograms_dark_food <- MC_histograms_base_food +
-  dark_theme_bw(base_size = 20) +
-  theme(
-    strip.background = element_blank(),
-    strip.placement = "outside",
-    legend.position = "none",
-    strip.text = element_blank(),  # This hides the facet wrap titles
-    #  strip.text = element_text(face = "bold", size = 16, margin = margin(t = 1, b = 1)),
-    panel.spacing = unit(0.1, "lines"),
-    axis.text.y = element_blank(),
-    axis.title.y = element_blank(),
-    axis.ticks.y = element_blank(),
-    axis.title.x = x_axis_input,
-    axis.text.x = x_axis_input
-  )
+# 
+# library(ggdark)
+# MC_histograms_dark_food <- MC_histograms_base_food +
+#   dark_theme_bw(base_size = 20) +
+#   theme(
+#     strip.background = element_blank(),
+#     strip.placement = "outside",
+#     legend.position = "none",
+#     strip.text = element_blank(),  # This hides the facet wrap titles
+#     #  strip.text = element_text(face = "bold", size = 16, margin = margin(t = 1, b = 1)),
+#     panel.spacing = unit(0.1, "lines"),
+#     axis.text.y = element_blank(),
+#     axis.title.y = element_blank(),
+#     axis.ticks.y = element_blank(),
+#     axis.title.x = x_axis_input,
+#     axis.text.x = x_axis_input
+#   )
 
 MC_histograms_light_food <- MC_histograms_base_food +
   theme_bw(base_size = 20) +
@@ -1245,22 +1217,22 @@ MC_histograms_base_tissue <- ggplot(prepared_data %>% filter(ERM == "Tissue Tran
   scale_fill_manual(values = tier_colors) +  # Apply manual colors for fill
   scale_color_manual(values = tier_colors)  # Apply manual colors for lines
 
-library(ggdark)
-MC_histograms_dark_tissue <- MC_histograms_base_tissue +
-  dark_theme_bw(base_size = 20) +
-  theme(
-    strip.background = element_blank(),
-    strip.placement = "outside",
-    legend.position = "none",
-    strip.text = element_blank(),  # This hides the facet wrap titles
-    #  strip.text = element_text(face = "bold", size = 16, margin = margin(t = 1, b = 1)),
-    panel.spacing = unit(0.1, "lines"),
-    axis.text.y = element_blank(),
-    axis.title.y = element_blank(),
-    axis.ticks.y = element_blank(),
-     axis.title.x = x_axis_input,
-    axis.text.x = x_axis_input
-  )
+# library(ggdark)
+# MC_histograms_dark_tissue <- MC_histograms_base_tissue +
+#   dark_theme_bw(base_size = 20) +
+#   theme(
+#     strip.background = element_blank(),
+#     strip.placement = "outside",
+#     legend.position = "none",
+#     strip.text = element_blank(),  # This hides the facet wrap titles
+#     #  strip.text = element_text(face = "bold", size = 16, margin = margin(t = 1, b = 1)),
+#     panel.spacing = unit(0.1, "lines"),
+#     axis.text.y = element_blank(),
+#     axis.title.y = element_blank(),
+#     axis.ticks.y = element_blank(),
+#      axis.title.x = x_axis_input,
+#     axis.text.x = x_axis_input
+#   )
 
 MC_histograms_light_tissue <- MC_histograms_base_tissue +
   theme_bw(base_size = 20) +
@@ -1281,9 +1253,11 @@ MC_histograms_light_tissue <- MC_histograms_base_tissue +
 
 #### COMBINE ####
 MC_histograms_light <- ggarrange(MC_histograms_light_food, MC_histograms_light_tissue)
-MC_histograms_dark <- ggarrange(MC_histograms_dark_food, MC_histograms_dark_tissue)
+#MC_histograms_dark <- ggarrange(MC_histograms_dark_food, MC_histograms_dark_tissue)
 
-return(list(MC_histograms_light, MC_histograms_dark))
+return(list(MC_histograms_light#,
+            #MC_histograms_dark
+            ))
 }
 ```
 
@@ -1519,28 +1493,16 @@ MC_param_histograms <- MC_param_histograms_base + theme_minimal(base_size = 12) 
        strip.text = element_text(size = 16, face = "bold", family = "serif")  # Customize facet title size
        )  # Center the y-axis title
   
-MC_param_histograms_dark <- MC_param_histograms_base + dark_theme_minimal(base_size = 12) +
-  theme(legend.position = "none",
-        plot.title = element_blank(),
-        plot.subtitle = element_text(hjust = 0.5),
-        plot.caption = element_text(hjust = 0.5),   # Center the caption
-        axis.title.x = element_text(hjust = 0.5, size = 16, face = "bold"),  # Center the x-axis title
-        axis.text.x = element_text(size = 11),
-        axis.text.y = element_blank(),
-       # axis.text = element_text(size = 16),
-        axis.title.y = element_text(vjust = 0.5, size = 16, face = "bold"),
-       strip.text = element_text(size = 12, face = "bold", family = "serif")  # Customize facet title size
-       )   # Center the y-axis title
+### not used as these are produced in ToMEx2_EcoTox.Rmd at journal quality
+# ggsave(filename = "MC_param_histograms.jpg",
+#        dpi = 300,
+#        path = "../../output/Manuscript_Figs/", 
+#        plot = MC_param_histograms, width = 20, height = 8, units = "in")
 
-ggsave(filename = "MC_param_histograms.jpg",
-       dpi = 300,
-       path = "../../output/Manuscript_Figs/", 
-       plot = MC_param_histograms, width = 20, height = 8, units = "in")
-
-ggsave(filename = "MC_param_histograms_dark.jpg",
-       dpi = 300,
-       path = "../../output/presentation_Figs/", 
-       plot = MC_param_histograms_dark, width = 12, height = 6.5, units = "in")
+# ggsave(filename = "MC_param_histograms_dark.jpg",
+#        dpi = 300,
+#        path = "../../output/presentation_Figs/", 
+#        plot = MC_param_histograms_dark, width = 12, height = 6.5, units = "in")
 
 MC_param_histograms
 ```
@@ -1860,26 +1822,26 @@ tissue_body <- ggarrange(body_length_plot,
                         tissue_trans_plot, 
                         ncol = 2)
 
-
-ggsave(filename = "alpha_combined_plot.jpg",
+#### manuscript quality figures
+ggsave(filename = "figure1_a_alpha_combined_plot.jpg",
        dpi = 300,
        path = "../../output/Manuscript_Figs/", 
        plot = alpha_combined_plot, width = 9, height = 5, units = "in")
 
-ggsave(filename = "tissue_body.jpg",
+ggsave(filename = "figure1_b_tissue_body.jpg",
        dpi = 300,
        path = "../../output/Manuscript_Figs/", 
        plot = tissue_body, width = 9, height = 5/2, units = "in")
 
-ggsave(filename = "body_length_plot.jpg",
-         dpi = 300,
-       path = "../../output/Manuscript_Figs/", 
-       plot = body_length_plot, width = 9/2, height = 5/2, units = "in")
+# ggsave(filename = "body_length_plot.jpg",
+#          dpi = 300,
+#        path = "../../output/Manuscript_Figs/", 
+#        plot = body_length_plot, width = 9/2, height = 5/2, units = "in")
 
-ggsave(filename = "tissue_trans_plot.jpg",
-                dpi = 300,
-       path = "../../output/Manuscript_Figs/", 
-       plot = tissue_trans_plot, width = 4.5, height = 5/2, units = "in")
+# ggsave(filename = "tissue_trans_plot.jpg",
+#                 dpi = 300,
+#        path = "../../output/Manuscript_Figs/", 
+#        plot = tissue_trans_plot, width = 4.5, height = 5/2, units = "in")
 
 ```
 ```{r}
@@ -1891,8 +1853,18 @@ alpha_combined_plot
 
 
 ### Run Sobol (Parallel-Processing)
+```{r message=FALSE}
 
-```{r message=FALSE, include=FALSE}
+# check if sobol_results already exists to skip running
+if (file.exists("output/sobol_results.rds")){
+  sobol_results <- readRDS("output/sobol_results.rds")
+}
+
+if (file.exists("output/sobol_results.rds")) {
+  cat(crayon::green("sobol_results already exists. Skipping Sobol analysis."))
+} else {
+  cat(crayon::yellow("Running Sobol analysis..."))
+
 library(doParallel)
 library(doSNOW)
 # Set up parallel processing
@@ -1920,18 +1892,17 @@ sobol_results <- foreach(i = 1:n_row_sobol,
                                   .export = c("model_wrapper_sobol_parallel",
                                               "aoc_aligned",
                                               "align_data",
-                                   "filter_environment_data", "generate_structure_checks",
-                                  "mux_polyfnx", "CFfnx",
-                                  "process_environment_data",  "sensitivity_t1",
-                                  "SSD_function_t1", "SSD_function_t2",
-                                  "SSD_function_t3_4", "summarize_and_print", "update_particle_length",
-                                  "volumefnx", "SAfnx", "massfnx", "SSA.inversefnx",
-                                  #"MC_results_parallel",
-                                  "n_sim",
-                                  "x1D_set", "x2D_set",
-                                   "mat"),
-                                  .combine = rbind) %dopar% {
-  params <- mat[i, ]
+                                              "filter_environment_data", "generate_structure_checks",
+                                              "mux_polyfnx", "CFfnx",
+                                              "process_environment_data",  "sensitivity_t1",
+                                              "SSD_function_t1", "SSD_function_t2",
+                                              "SSD_function_t3_4", "summarize_and_print", "update_particle_length",
+                                              "volumefnx", "SAfnx", "massfnx", "SSA.inversefnx",
+                                              "n_sim",
+                                              "x1D_set", "x2D_set",
+                                              "mat"),
+                         .combine = rbind) %dopar% {
+                           params <- mat[i, ]
   
   # Ensure all extracted parameters are correctly coerced to numeric
   # Coerce to numeric directly while accessing the first element of potential list
@@ -1962,6 +1933,8 @@ sobol_results <- foreach(i = 1:n_row_sobol,
 
 toc(log = T) #end timer and log output
 sobol_time <- unlist(tic.log(format = T))
+cat(crayon::green(paste0("Sobol analysis completed in ", sobol_time)))
+
 writeLines(sobol_time, "output/sobol_time.txt")
 
 # Close progress bar and stop the cluster
@@ -1970,23 +1943,8 @@ stopCluster(cl)
 
 # Save the final results
 saveRDS(sobol_results, "output/sobol_results.rds")
-# uncomment unless running script to save results!
-```
-```{r}
-sobol_time
-```
-
-
-
-### Read in previously run Sobol
- (START HERE)
-```{r}
-#### start here from saved file ###
-sobol_results <- readRDS("output/sobol_results.rds")
-# save mat (necessary for stats later)
-mat <- readRDS("output/mat.rds")
-n_row_sobol <- nrow(mat)
-n_sobol <- nrow(mat)
+cat(crayon::green("Sobol analysis completed and results saved to 'output/sobol_results.rds'"))
+}
 ```
 
 ## Analysis
@@ -2156,53 +2114,47 @@ min_max_sobol
 ### Generate plots
 Marine_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long_filtered, 
                                              "Marine",
-                                          n_bins = round(n_sobol * 0.5),
-                                          units_input = "Particles/L",
-                                          x_axis_input = element_blank(),
-                                          food_limits = c(signif((min_max_sobol$min[1] * 1),1),
-                                                          signif((min_max_sobol$max[1] * 2), 1)),
-                                          tissue_limits = c(signif((min_max_sobol$min[2] * 5), 1),
-                                                            signif((min_max_sobol$max[2] * 0.5), 1)))
+                                             n_bins = round(n_sobol * 0.5),
+                                             units_input = "Particles/L",
+                                             x_axis_input = element_blank(),
+                                             food_limits = c(signif((min_max_sobol$min[1] * 1),1),
+                                                             signif((min_max_sobol$max[1] * 2), 1)),
+                                             tissue_limits = c(signif((min_max_sobol$min[2] * 5), 1),
+                                                               signif((min_max_sobol$max[2] * 0.5), 1)))
 
 Freshwater_histograms_sobol <- MC_histograms_fxn(all_thresholds_sobol_long_filtered,
                                                  "Freshwater",
-                                              n_bins = round(n_sobol *0.5),
-                                              units_input = "Particles/L",
-                                              x_axis_input = element_text(),
-                                              food_limits = c(signif((min_max_sobol$min[1] * 1),1),
-                                                          signif((min_max_sobol$max[1] * 2),1)),
-                                          tissue_limits = c(signif((min_max_sobol$min[2] * 5), 1),
-                                                            signif((min_max_sobol$max[2] * 0.5), 1)))
+                                                 n_bins = round(n_sobol *0.5),
+                                                 units_input = "Particles/L",
+                                                 x_axis_input = element_text(),
+                                                 food_limits = c(signif((min_max_sobol$min[1] * 1),1),
+                                                                 signif((min_max_sobol$max[1] * 2),1)),
+                                                 tissue_limits = c(signif((min_max_sobol$min[2] * 5), 1),
+                                                                   signif((min_max_sobol$max[2] * 0.5), 1)))
 
 ### Save plots
-ggsave("output/MC_histograms_freshwater_sobol.png",
-      Freshwater_histograms_sobol[[1]], 
-      dpi = 300,
-      width = 12, height = 8, units = "in")
-
-ggsave("output/MC_histograms_marine_sobol.png",
-       Marine_histograms_sobol[[1]], 
-       dpi = 300,
-       width = 12, height = 8, units = "in")
-
-
-# ggsave("output/presentation_Figs/MC_histograms_sobol.png",
-#        Marine_histograms_sobol[[2]], 
+# ggsave("output/MC_histograms_freshwater_sobol.png",
+#       Freshwater_histograms_sobol[[1]], 
+#       dpi = 300,
+#       width = 12, height = 8, units = "in")
+# 
+# ggsave("output/MC_histograms_marine_sobol.png",
+#        Marine_histograms_sobol[[1]], 
 #        dpi = 300,
-#        width = 13, height = 6,
-#        units = "in")
+#        width = 12, height = 8, units = "in")
+
 
 ### Display plots
 sobol_histograms <- ggarrange(Marine_histograms_sobol[[1]], 
                               Freshwater_histograms_sobol[[1]],
                               nrow = 2,
                               labels = c("", ""))
-
-ggsave("output/presentation_Figs/sobol_histograms.png",
-       sobol_histograms, 
-       dpi = 300,
-       width = 13, height = 6,
-       units = "in")
+# 
+# ggsave("output/presentation_Figs/sobol_histograms.png",
+#        sobol_histograms, 
+#        dpi = 300,
+#        width = 13, height = 6,
+#        units = "in")
 
 sobol_histograms
 ```
@@ -2242,15 +2194,15 @@ Freshwater_histograms_sobol_mass <- MC_histograms_fxn(all_thresholds_sobol_long_
                                                             signif((min_max_sobol_mass$max[2] * 0.5), 1)))
 
 ### Save plots
-ggsave("output/MC_histograms_freshwater_sobol_mass.png",
-      Freshwater_histograms_sobol_mass[[1]], 
-      dpi = 300,
-      width = 12, height = 8, units = "in")
-
-ggsave("output/MC_histograms_marine_sobol_mass.png",
-       Marine_histograms_sobol_mass[[1]], 
-       dpi = 300,
-       width = 12, height = 8, units = "in")
+# ggsave("output/MC_histograms_freshwater_sobol_mass.png",
+#       Freshwater_histograms_sobol_mass[[1]], 
+#       dpi = 300,
+#       width = 12, height = 8, units = "in")
+# 
+# ggsave("output/MC_histograms_marine_sobol_mass.png",
+#        Marine_histograms_sobol_mass[[1]], 
+#        dpi = 300,
+#        width = 12, height = 8, units = "in")
 
 
 # ggsave("output/presentation_Figs/MC_histograms_sobol.png",
@@ -2265,11 +2217,11 @@ sobol_histograms_mass <- ggarrange(Marine_histograms_sobol_mass[[1]],
                               nrow = 2,
                               labels = c("", ""))
 
-ggsave("output/presentation_Figs/sobol_histograms_mass.png",
-       sobol_histograms_mass, 
-       dpi = 300,
-       width = 13, height = 6,
-       units = "in")
+# ggsave("output/presentation_Figs/sobol_histograms_mass.png",
+#        sobol_histograms_mass, 
+#        dpi = 300,
+#        width = 13, height = 6,
+#        units = "in")
 
 sobol_histograms_mass
 ```
@@ -2488,16 +2440,7 @@ results_df_sobol <- do.call(rbind, lapply(MC_results_tox_sobol, function(x) {
       T ~ ingestible),
     translocatable = case_when(
       !is.na(translocatable_poly) ~ translocatable_poly,
-      T ~ translocatable)) #%>% 
-  # join with metadata
-    # left_join(aoc_aligned_test %>%
-    #           select(af.noec, af.time, unique_id, poly_f, shape_f, environment, effect.metric, bio_f, 
-    #                  risk.13, tier_zero_tech_f, tier_zero_risk_f) %>% 
-    #             rename(polymer = poly_f, shape = shape_f) %>% 
-    #           mutate(unique_id = as.factor(unique_id)),
-    #         by = "unique_id"
-    #         )
-
+      T ~ translocatable)) 
 
 
 #Save file for EcoTox Project
@@ -3139,9 +3082,10 @@ list(
   length_y_rows_freshwater_tissue = length_y_rows_freshwater_tissue
 )
 ```
+
 ```{r}
 cat(crayon::green("MC-Sim Script finished!"),
-    "Now make sure you run the ToMEx2_EcoTox.Rmd script now.")
+    "Now make sure you run the ToMEx2_EcoTox.Rmd script now to reproduce results in the manuscript.")
 ```
 
 ```{r eval=FALSE, include=FALSE}
