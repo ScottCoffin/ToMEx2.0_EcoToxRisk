@@ -1,15 +1,14 @@
 library(dplyr)
 
-env = read.csv(
-  "ToMEx2.0_MPcharacteristics/Data/data_comp_to_env_compiled.csv",
-  stringsAsFactors = TRUE
-)
+env = read.csv("ToMEx2.0_MPcharacteristics/Data/data_comp_to_env_compiled.csv", stringsAsFactors = TRUE)
 # remove ToMEx datapoints
-env = env[-c(1:2), ]
+env = env[-c(1:4),]
 tomex = readRDS("ToMEx2.0_MPcharacteristics/Data/prepared_data.RDS")
 
 str(dat)
 str(tomex)
+
+summary(env)
 
 ## Percent PS, PTFE and PE/PET/Polyester etc.
 median(env$PE_PET_Polyester, na.rm = TRUE)
