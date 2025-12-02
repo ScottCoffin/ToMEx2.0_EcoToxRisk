@@ -288,3 +288,15 @@ data/output/tier1_2_food.RDS
 data/output/tier1_2_tissue.RDS
 data/output/tier3_4_food.RDS
 data/output/tier3_4_tissue.RDS
+scripts/monte carlo/output/all_thresholds_sobol_filtered.rds
+scripts/monte carlo/output/all_thresholds_sobol_long_filtered.rds
+scripts/monte carlo/output/mat_filtered.rds
+scripts/monte carlo/output/mat.rds
+scripts/monte carlo/output/sobol_results_filtered.rds
+scripts/monte carlo/output/sobol_results.rds
+data/output/marine_alpha_thresholds.rds
+data/output/parameter_values.csv
+data/output/tier1_2_food.RDS
+data/output/tier1_2_tissue.RDS
+data/output/tier3_4_food.RDS
+data/output/tier3_4_tissue.RDS

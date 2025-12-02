@@ -1,110 +1,238 @@
-# Function for generating NOEC distributions for each species
-# 
-# Yields a matrix with dimensions number of species * number of iterations in the simulation
-# 
-# Arguments:   - DP : matrix of data points
-#              - DP.SD: matrix of data point-level standard deviations based on alignments. 
+# -------------------------------------------------------------------------------------------------
+# New PSSD++ Function from Coffin et al. (2025), "A Probabilistic Risk Framework for Microplastics Integrating
+# Uncertainty Across Toxicological and Environmental Variability: Development and Application to Marine and Freshwater Ecosystems"
+# # Arguments:   - DP : matrix of data points
+#              - DP.SD: matrix of data point-level standard deviations based on alignments.
 #              - UFt : matrix of uncertainty factors for the exposure time
 #              - UFdd : matrix of uncertainty factors for the dose-descriptor
 #              - SIM : number of iterations in the simulation
 #              - CV.DP : coefficient of variation for the interlaboratory variation
 #              - CV.UF : coefficient of variation for the use of non-substance-specific
-#                uncertainty factors 
-# 
-# Date of last modification: 03.07.2019
-# 
-# Associated publication: Systematic consideration of parameter uncertainty and variability in
-#                         probabilistic species sensitivity distributions
-# 
-# Authors: Henning Wigger, Delphine Kawecki, Bernd Nowack and Vronique Adam
-# 
-# Institute: Empa, Swiss Federal Laboratories for Materials Science and Technology,
-#            Technology and Society Laboratory, Lerchenfeldstrasse 5, 9014 St. Gallen, Switzerland
-# 
-# submitted to Integrated Environmental Assessment and Management in July 2019
-
-# -------------------------------------------------------------------------------------------------
-
+#                uncertainty factors
+#              - rmore_method: method for generating random samples ("step" i.e., trapezoidal; or "lognormal" i.e., short-cut method)
+#              - rmore() function is trapezoidal distribution function in rmore.r from the original Wigger et al. (2019) publication
 
 #################################################################
 #### PSSD++ Function #####
 #################################################################
-do.pSSD_mod <- function(DP, DP.SD, UFt, UFdd, SIM, CV.DP, CV.UF, rmore_method = "step") { #step (slow) or lognormal (fast)
+do.pSSD_mod <- function(
+  DP,
+  DP.SD,
+  UFt,
+  UFdd,
+  SIM,
+  CV.DP,
+  CV.UF,
+  rmore_method = "step"
+) {
+  #step (slow) or lognormal (fast)
   # Check for species with no data
   if (any(apply(DP, 2, function(x) length(which(!is.na(x)))) == 0)) {
-    warning("No data is available for one or more species, it/they won't contribute to the PSSD calculation.")
+    warning(
+      "No data is available for one or more species, it/they won't contribute to the PSSD calculation."
+    )
     ind.sp.rem <- which(apply(DP, 2, function(x) length(which(!is.na(x)))) == 0)
     DP <- DP[, -ind.sp.rem]
     DP.SD <- DP.SD[, -ind.sp.rem]
     UFt <- UFt[, -ind.sp.rem]
     UFdd <- UFdd[, -ind.sp.rem]
   }
-  
+
   require(trapezoid)
   require(mc2d)
-  
-  
-  
+
   # Calculate corrected endpoints
   corr.endpoints <- DP / (UFdd * UFt)
   sort.endpoints <- apply(corr.endpoints, 2, sort)
-  
+
   # Initialize matrix for results
   NOEC_comb <- matrix(NA, ncol(DP), SIM, dimnames = list(colnames(DP), NULL))
-  
+
   for (sp in colnames(DP)) {
     # Identify min and max indices
     ind.min <- which.min(corr.endpoints[, sp])
     ind.max <- which.max(corr.endpoints[, sp])
-    
+
     # Handle CV.DP as a matrix or scalar
     CV.DP2 <- if (is.matrix(CV.DP)) CV.DP[, sp] else CV.DP
-    
+
     # Calculate sp.min and sp.max with explicit non-negative checks
-    sp.min <- max(0, corr.endpoints[ind.min, sp] * (1 - (sqrt(sum((CV.DP2 / 2.45)^2) + 2 * (CV.UF / 2.45)^2) * 2.45)))
-    sp.max <- max(0, corr.endpoints[ind.max, sp] * (1 + (sqrt(sum((CV.DP2 / 2.45)^2) + 2 * (CV.UF / 2.45)^2) * 2.45)))
-    
+    sp.min <- max(
+      0,
+      corr.endpoints[ind.min, sp] *
+        (1 - (sqrt(sum((CV.DP2 / 2.45)^2) + 2 * (CV.UF / 2.45)^2) * 2.45))
+    )
+    sp.max <- max(
+      0,
+      corr.endpoints[ind.max, sp] *
+        (1 + (sqrt(sum((CV.DP2 / 2.45)^2) + 2 * (CV.UF / 2.45)^2) * 2.45))
+    )
+
     # Handle cases based on the number of unique endpoints
     if (length(unique(sort.endpoints[[sp]])) == 1) {
       # Single endpoint: Use truncated triangular distribution
-      NOEC_comb[sp, ] <- rtrunc("rtriang", min = sp.min, 
-                                mode = sort.endpoints[[sp]][1], 
-                                max = sp.max, 
-                                n = SIM, linf = 0)
-      
+      NOEC_comb[sp, ] <- rtrunc(
+        "rtriang",
+        min = sp.min,
+        mode = sort.endpoints[[sp]][1],
+        max = sp.max,
+        n = SIM,
+        linf = 0
+      )
     } else if (length(sort.endpoints[[sp]]) == 2) {
       # Two endpoints: Use truncated trapezoidal distribution
-      NOEC_comb[sp, ] <- rtrunc("rtrapezoid", SIM, 
-                                mode1 = sort.endpoints[[sp]][1], 
-                                mode2 = sort.endpoints[[sp]][2], 
-                                min = sp.min, max = sp.max, linf = 0)
-      
+      NOEC_comb[sp, ] <- rtrunc(
+        "rtrapezoid",
+        SIM,
+        mode1 = sort.endpoints[[sp]][1],
+        mode2 = sort.endpoints[[sp]][2],
+        min = sp.min,
+        max = sp.max,
+        linf = 0
+      )
+
       ### Three endpoints: Use rmore function based on the specified method  ##
       # (step-wise trapezoidal - i.e., original Wigger et al. (2020))
     } else if (length(sort.endpoints[[sp]]) > 2 & rmore_method == "step") {
       # Three or more endpoints: Use step distribution
-      NOEC_comb[sp,] <- rmore(values = sort.endpoints[[sp]], max = sp.max, min = sp.min, N = SIM, linf = 0)
-      
+      NOEC_comb[sp, ] <- rmore(
+        values = sort.endpoints[[sp]],
+        max = sp.max,
+        min = sp.min,
+        N = SIM,
+        linf = 0
+      )
+
       # Log10 -> normal distribution bootstrapping shortcut method developed here
     } else if (length(sort.endpoints[[sp]]) > 2 & rmore_method == "lognormal") {
-    
-    # Three or more endpoints: Log-Normal distribution bootstrapping with uncertainty factor
-    #Removing the DP.SD[, sp] from the groups to test
-    high <- (sqrt(sum(c(mean(DP.SD[, sp]/DP[, sp], na.rm = T), 1+CV.DP2, 1+CV.UF)^2, na.rm = T)))
-    low <- 1/high
-    
-    uncertainty_factor <- runif(min = low, max = high, n = SIM)
-    
-    data <- 10^rnorm(mean = mean(log10(sort.endpoints[[sp]])), 
-                     sd = sd(log10(sort.endpoints[[sp]])),  
-                     n = SIM)
-    
-    # Ensure no negative values in the final result
-    NOEC_comb[sp, ] <- data * uncertainty_factor
-    
+      # Three or more endpoints: Log-Normal distribution bootstrapping with uncertainty factor
+      #Removing the DP.SD[, sp] from the groups to test
+      high <- (sqrt(sum(
+        c(mean(DP.SD[, sp] / DP[, sp], na.rm = T), 1 + CV.DP2, 1 + CV.UF)^2,
+        na.rm = T
+      )))
+      low <- 1 / high
+
+      uncertainty_factor <- runif(min = low, max = high, n = SIM)
+
+      data <- 10^rnorm(
+        mean = mean(log10(sort.endpoints[[sp]])),
+        sd = sd(log10(sort.endpoints[[sp]])),
+        n = SIM
+      )
+
+      # Ensure no negative values in the final result
+      NOEC_comb[sp, ] <- data * uncertainty_factor
+    }
   }
-  }
-  
+
   # Return the final matrix
+  return(NOEC_comb)
+}
+
+
+########################## Original Function from https://zenodo.org/records/3267194 #########
+# Function for generating NOEC distributions for each species
+#
+# Yields a matrix with dimensions number of species * number of iterations in the simulation
+#
+# Arguments:   - DP : matrix of data points
+#              - DP.SD: matrix of data point-level standard deviations based on alignments.
+#              - UFt : matrix of uncertainty factors for the exposure time
+#              - UFdd : matrix of uncertainty factors for the dose-descriptor
+#              - SIM : number of iterations in the simulation
+#              - CV.DP : coefficient of variation for the interlaboratory variation
+#              - CV.UF : coefficient of variation for the use of non-substance-specific
+#                uncertainty factors
+#
+# Date of last modification: 03.07.2019
+#
+# Associated publication: Systematic consideration of parameter uncertainty and variability in
+#                         probabilistic species sensitivity distributions
+#
+# Authors: Henning Wigger, Delphine Kawecki, Bernd Nowack and Vronique Adam
+#
+# Institute: Empa, Swiss Federal Laboratories for Materials Science and Technology,
+#            Technology and Society Laboratory, Lerchenfeldstrasse 5, 9014 St. Gallen, Switzerland
+#
+# submitted to Integrated Environmental Assessment and Management in July 2019
+do.pSSD <- function(DP, UFt, UFdd, SIM, CV.DP, CV.UF) {
+  # test if there is no data available for one species
+  if (any(apply(DP, 2, function(x) length(which(!is.na(x)))) == 0)) {
+    warning(
+      "No data is available for one or more species, it/they won't contribute to the PSSD calculation."
+    )
+    # find which species has no data
+    ind.sp.rem <- which(apply(DP, 2, function(x) length(which(!is.na(x)))) == 0)
+    # remove those columns
+    DP <- DP[, -ind.sp.rem]
+    UFt <- UFt[, -ind.sp.rem]
+    UFdd <- UFdd[, -ind.sp.rem]
+  }
+
+  # Create the step distributions (or triangular or trapezoidal) for each species
+  # Create an empty matrix in which step distributions will be compiled
+  NOEC_comb <- matrix(NA, ncol(DP), SIM, dimnames = list(colnames(DP), NULL))
+
+  # Fill in the matrix. If there is only one data point, NOEC stays the same. If  there are
+  # 2 endpoints, a uniform distribution is produced. If  there are more than 2 endpoints, a step
+  # distribution is produced. One line is for one species.
+  require(trapezoid)
+  require(mc2d)
+
+  # store the corrected endpoints
+  corr.endpoints <- DP / (UFdd * UFt)
+  sort.endpoints <- apply(corr.endpoints, 2, sort)
+
+  for (sp in colnames(DP)) {
+    # store the indices of the minimal and maximal data point
+    ind.min <- which.min(corr.endpoints[, sp])
+    ind.max <- which.max(corr.endpoints[, sp])
+
+    # calculate the theoretical minimum and maximum of the distribution we are looking for
+    sp.min <- corr.endpoints[ind.min, sp] *
+      (1 -
+        (sqrt((CV.DP / 2.45)^2 + (CV.UF / 2.45)^2 + (CV.UF / 2.45)^2) * 2.45))
+    sp.max <- corr.endpoints[ind.max, sp] *
+      (1 +
+        (sqrt((CV.DP / 2.45)^2 + (CV.UF / 2.45)^2 + (CV.UF / 2.45)^2) * 2.45))
+
+    # For species with one unique data point, NOEC stays the same:
+    if (length(unique(sort.endpoints[[sp]])) == 1) {
+      NOEC_comb[sp, ] <- rtrunc(
+        "rtriang",
+        min = sp.min,
+        mode = sort.endpoints[[sp]][1],
+        max = sp.max,
+        n = SIM,
+        linf = 0
+      )
+
+      # For species with two endpoints:
+    } else if (length(sort.endpoints[[sp]]) == 2) {
+      # Create a trapezoidal distribution including both endpoints
+      NOEC_comb[sp, ] <- rtrunc(
+        "rtrapezoid",
+        SIM,
+        mode1 = sort.endpoints[[sp]][1],
+        mode2 = sort.endpoints[[sp]][2],
+        min = sp.min,
+        max = sp.max,
+        linf = 0
+      )
+
+      # For species with three endpoints or more:
+    } else {
+      # Sample from this step distribution for each species
+      NOEC_comb[sp, ] <- rmore(
+        values = sort.endpoints[[sp]],
+        max = sp.max,
+        min = sp.min,
+        N = SIM,
+        linf = 0
+      )
+    }
+  }
+  # return the whole matrix
   return(NOEC_comb)
 }
