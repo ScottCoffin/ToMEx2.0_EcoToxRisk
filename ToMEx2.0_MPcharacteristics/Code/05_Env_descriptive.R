@@ -1,9 +1,12 @@
 library(dplyr)
 
-env = read.csv("Data/data_comp_to_env_compiled.csv", stringsAsFactors = TRUE)
+env = read.csv(
+  "ToMEx2.0_MPcharacteristics/Data/data_comp_to_env_compiled.csv",
+  stringsAsFactors = TRUE
+)
 # remove ToMEx datapoints
-env = env[-c(1:2),]
-tomex = readRDS("Data/prepared_data.RDS")
+env = env[-c(1:2), ]
+tomex = readRDS("ToMEx2.0_MPcharacteristics/Data/prepared_data.RDS")
 
 str(dat)
 str(tomex)
@@ -27,8 +30,10 @@ mean(env$PTFE, na.rm = TRUE)
 
 
 # TomEx2.0
-tomex %>%  group_by(poly_group) %>% summarize(count = n()) %>% 
-    mutate(freq = count/sum(count))
+tomex %>%
+  group_by(poly_group) %>%
+  dplyr::summarize(count = n()) %>%
+  mutate(freq = count / sum(count))
 
 ## Percent spheres
 # Environment
@@ -37,8 +42,10 @@ range(env$spheres_prop, na.rm = TRUE)
 # only freshwater environmental samples
 median(env$spheres_prop[env$fresh_marine_binary == "freshwater"], na.rm = TRUE)
 # TomEx2.0
-tomex %>%  group_by(shape_f) %>% summarize(count = n()) %>% 
-  mutate(freq = count/sum(count))
+tomex %>%
+  group_by(shape_f) %>%
+  dplyr::summarize(count = n()) %>%
+  mutate(freq = count / sum(count))
 
 ## Percent fibers
 # Environment
@@ -49,8 +56,10 @@ median(env$fibers_prop[env$fresh_marine_binary == "freshwater"], na.rm = TRUE)
 # only marine environmental samples
 median(env$fibers_prop[env$fresh_marine_binary == "marine"], na.rm = TRUE)
 # TomEx2.0
-tomex %>%  group_by(shape_f) %>% summarize(count = n()) %>% 
-  mutate(freq = count/sum(count))
+tomex %>%
+  group_by(shape_f) %>%
+  dplyr::summarize(count = n()) %>%
+  mutate(freq = count / sum(count))
 
 
 ## Particle length
@@ -71,9 +80,9 @@ sd(env$width_mean_um, na.rm = TRUE)
 summary(tomex$size.width.um.used.for.conversions)
 sd(tomex$size.width.um.used.for.conversions, na.rm = TRUE)
 # only freshwater Tomex
-summary(tomex$size.width.um.used.for.conversions[tomex$environment=="Freshwater"])
+summary(tomex$size.width.um.used.for.conversions[
+  tomex$environment == "Freshwater"
+])
 
 # plot
 boxplot(env$width_mean_um, tomex$size.width.um.used.for.conversions)
-
-

@@ -163,7 +163,7 @@ colnames(functbar) = functmerged$funct
 
 ## combined descriptive figure
 
-png("Plots/descriptive_plots.png", width = 17, height = 15, units = "cm", res = 1000)
+png("ToMEx2.0_MPcharacteristics/Plots/descriptive_plots.png", width = 17, height = 15, units = "cm", res = 1000)
 
 layout(matrix(1:8, ncol = 4, byrow = TRUE))
 

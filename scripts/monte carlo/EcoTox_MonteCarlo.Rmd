@@ -1387,7 +1387,7 @@ aoc_MC_iter <- align_data(aoc_aligned,
 # Number of samples
 #n_sobol <- 1000
 
-n_sobol <- 589 #times 16 is 10,013
+n_sobol <- 589 #times 16 is 9,424
 
 matrices <- c("A", "B", "AB", "BA")
 first <- total <- "azzini"
@@ -1448,8 +1448,8 @@ sim_X50 <- -sim_beta_0 / sim_beta_1
 upper.tissue.trans.size.um_samples <- sim_X50 %>% 
   data.frame() %>% 
   # filter invalid values
-  filter(. > x1M_set & . < x2D_set) %>% 
-  filter(. < 500) %>% 
+  filter(. > x1M_set & . < x2D_set) %>% # truncate distribution between default sizes (1 and 5,000 um)
+  filter(. < 500) %>% #truncate distribution below biologically plausible limit
   slice(1:nrow(mat))
 
 upper.tissue.trans.size.um_samples <- as.numeric(upper.tissue.trans.size.um_samples$.)

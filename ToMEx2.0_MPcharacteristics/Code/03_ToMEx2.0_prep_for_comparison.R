@@ -1,7 +1,7 @@
 # load packages
 library(dplyr)
 
-# import data
+# import data prepared in 01_General_data_prep_tomex.R
 dat = readRDS("ToMEx2.0_MPcharacteristics/Data/prepared_data.RDS")
 
 # subset variables useful for this analysis

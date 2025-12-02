@@ -2,7 +2,9 @@
 title: "Translocation"
 author: "Scott Coffin"
 date: "5/07/2024"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -200,9 +202,10 @@ translocation_glm
 
 #### Manuscript Figure
 ```{r}
-ggsave(filename = "translocation_glm.jpeg",
+ggsave(filename = "translocation_glm.png",
        path = "../../output/Manuscript_Figs/translocation",
        plot = translocation_glm, width = 6, height = 4, units = "in",
+       dpi = 800,
        bg = "white")
 ```
 

@@ -1,5 +1,4 @@
 #### General comparisons (summary tables, etc.) between environmental and toxicity datasets ###
-
 library(tidyverse)
 # read in compiled environmental/toxicity summary data
 dat = read.csv("ToMEx2.0_MPcharacteristics/Data/data_comp_to_env_compiled.csv", stringsAsFactors = TRUE) %>% 
@@ -11,7 +10,7 @@ dat = read.csv("ToMEx2.0_MPcharacteristics/Data/data_comp_to_env_compiled.csv", 
 # compare relative proportions of polymers in ToMEx 2.0 vs. environment
 poly_compare <- dat %>% 
   group_by(fresh_marine_binary, env_tox) %>% 
-  summarize(PP = median(PP_prop, na.rm = T),
+  dplyr::summarize(PP = median(PP_prop, na.rm = T),
             PE_PET_Polyester = median(PE_PET_Polyester, na.rm = T),
             PS_min = min(PS_prop, na.rm = T),
             PS_max = max(PS_prop, na.rm = T),
@@ -33,12 +32,12 @@ poly_compare %>%
 #### Shape Compare
 shape_compare <- dat %>% 
   group_by(fresh_marine_binary, env_tox) %>% 
-  summarize(fiber_min = min(fibers_prop, na.rm = T),
+  dplyr::summarize(fiber_min = min(fibers_prop, na.rm = T),
             fiber_max = max(fibers_prop, na.rm = T),
             fiber_median = median(fibers_prop, na.rm = T))
 
 # compare average particle lengths in ToMEx vs. environment grouped by environment
 dat %>% 
   group_by(fresh_marine_binary, env_tox) %>% 
-  summarize(min = min(length_median_um, na.rm = T),
+  dplyr::summarize(min = min(length_median_um, na.rm = T),
             max = max(length_median_um, na.rm = T))

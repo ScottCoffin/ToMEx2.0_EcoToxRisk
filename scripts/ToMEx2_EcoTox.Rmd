@@ -47,11 +47,11 @@ library(Matrix)
 library(mc2d)
 library(trapezoid)
 library(reshape2)
-#devtools::install_github("christyray/sciscales")
+devtools::install_github("christyray/sciscales")
 library(sciscales)
 
 
-#check SSDtools package version is 0.3.7#
+#check SSDtools package version is 0.3.7 (and reinstall if necessary)
 source("../scripts/check_pckg.R")
 check_and_install_version("ssdtools", "0.3.7")
 library(ssdtools)
@@ -909,6 +909,11 @@ aoc_final <- aoc_intermediate_alphas %>%
 
 # save dataset for quality score hypothesis testing below
 aoc_aligned_no_filters <- align_data(aoc_final)
+
+#write to csv
+write.csv(aoc_aligned_no_filters,
+          "../data/output/aoc_aligned_no_filters.csv",
+          row.names = FALSE)
 
 saveRDS(aoc_aligned_no_filters,
         "../data/output/aoc_aligned_no_filters.RDS")
@@ -3394,9 +3399,6 @@ saveWidget(leave_one_out_ggplotly , file = "../output/Manuscript_Figs/leave_one_
 ```
 
 
-
-
-
 ## Monte Carlo Alignments
 ### Parameter histograms
 ```{r}
@@ -5237,11 +5239,32 @@ prepare_plot_data <- function(original_data = results_df_food_marine,
                               pSSD = tier1_2_food_pssd$pSSD,
                               data_matrices = tier1_2_food_matrices,
                               species_data_source = tier1_2_food,
-                              quantile_type = 7) {
+                              quantile_type = 7,
+                              debug = FALSE
+                              ) {
   # Ensure that the required matrices are present and correctly formatted
   if (is.null(data_matrices[['DP']]) || is.null(data_matrices[['UFdd']]) || is.null(data_matrices[['UFt']])) {
     stop("Data matrices for DP, UFdd, or UFt are not available or incorrect.")
   }
+
+  # Optional Debugging
+  if(debug){  
+  cat("\n🔧 DEBUG: prepare_plot_data() input checks...\n")
+  cat("  DP dimensions:", dim(data_matrices[['DP']]), "\n")
+  cat("  UFdd dimensions:", dim(data_matrices[['UFdd']]), "\n")
+  cat("  UFt dimensions:", dim(data_matrices[['UFt']]), "\n")
+  cat("  pSSD matrix dimensions:", dim(pSSD), "\n")
+  cat("  original_data rows:", nrow(original_data), "\n")
+  
+  bad1 <- sum(is.na(original_data$dose_new_particles_L))
+  bad2 <- sum(original_data$af.noec == 0)
+  bad3 <- sum(original_data$af.time == 0)
+  
+  cat("  Missing dose values:", bad1, "\n")
+  cat("  Zero af.noec:", bad2, "\n")
+  cat("  Zero af.time:", bad3, "\n")
+  }
+
 
   # Define interpolation values
   iv <- seq(-5, 10, 0.001)
@@ -5299,6 +5322,30 @@ prepare_plot_data <- function(original_data = results_df_food_marine,
   
   #### Include all Points for each species ####
     # Create a dataframe with all individual unique NOEC values (collapsing alignment df)
+   
+  # Optional Debugging
+  if(debug){  
+    ### debugging
+    cat("\n🧪 DEBUG: Calculating all_NOEC...\n")
+    
+    tmp <- original_data %>%
+      mutate(NOEC_raw = dose_new_particles_L / (af.noec * af.time),
+             NOEC_log10 = log10(NOEC_raw))
+    
+    cat("  N NOEC_raw <= 0:", sum(tmp$NOEC_raw <= 0, na.rm=TRUE), "\n")
+    cat("  N NaN NOEC_log10:", sum(is.nan(tmp$NOEC_log10)), "\n")
+    cat("  N Inf NOEC_log10:", sum(is.infinite(tmp$NOEC_log10)), "\n")
+    
+    bad_rows <- tmp %>%
+      filter(is.nan(NOEC_log10) | is.infinite(NOEC_log10) | NOEC_raw <= 0)
+    
+    if (nrow(bad_rows) > 0) {
+      cat("  ❗ BAD ROW EXAMPLE:\n")
+      print(head(bad_rows, 3))
+    }
+  }
+  
+ ### perform data summarization 
  all_NOEC <- original_data %>% 
     mutate(NOEC_log10 = log10(dose_new_particles_L / (af.noec * af.time))) %>% 
     group_by(Species, Group, poly_f, shape_f, effect.metric, af.noec, af.time, bio_f) %>% 
@@ -5324,139 +5371,285 @@ prepare_plot_data <- function(original_data = results_df_food_marine,
 tier1_2_food_plot_prep <- prepare_plot_data(original_data = results_df_food_marine,
                                             pSSD = tier1_2_food_pssd$pSSD,
                                             data_matrices = tier1_2_food_matrices,
-                                            species_data_source = aoc_final)
+                                            species_data_source = aoc_final,
+                                            debug = FALSE
+                                            )
 tier1_2_food_plot_prep
 ```
 
 
 #### PSSD ggplot Function
 ```{r}
-
 # Dynamically generate a color palette based on the levels of Group
 generate_color_palette <- function(data) {
   unique_groups <- unique(data$Group) # Extract unique levels of Group
-  palette <- cols4all::c4a("seaborn.dark", n = length(unique_groups)) # Generate colors
+  #palette <- cols4all::c4a("seaborn.dark", n = length(unique_groups)) # Generate colors
+  palette <- cols4all::c4a("cols4all.area9d", n = length(unique_groups)) # Generate colors
   names(palette) <- unique_groups # Assign names to the colors
   return(palette)
 }
 
 
+pSSD_plot_fnx <- function(quantiles_df,
+                          all_NOEC,
+                          species_data,
+                          data_name = NULL,
+                          environment_name,
+                          tier_name,
+                          ERM_name,
+                          color_palette = color_palette,
+                          debug = FALSE,
+                          debug_dir = "../output/pssd_debug",
+                          combo_id = "UNKNOWN") {
 
-pSSD_plot <- function(quantiles_df, all_NOEC, species_data, data_name, environment_name, tier_name, 
-                      ERM_name, color_palette = color_palette) {
+  # ========== DEBUG SETUP =====================================================
+  if (debug) {
+    if (!dir.exists(debug_dir)) dir.create(debug_dir, recursive = TRUE)
+    cat("\n📊 DEBUG: pSSD_plot_fnx() for", combo_id, "\n")
+    cat("  Species_data rows:", nrow(species_data), "\n")
+    cat("  all_NOEC rows:", nrow(all_NOEC), "\n")
+    cat("  N NA NOEC values:", sum(is.na(all_NOEC$NOEC_median)), "\n")
+    cat("  N Inf NOEC values:", sum(is.infinite(all_NOEC$NOEC_median)), "\n")
+    cat("  Range median NOEC:",
+        paste(range(all_NOEC$NOEC_median, na.rm = TRUE), collapse = " to "), "\n")
 
-legend_labels <- setNames(
-  paste0("<span style='color:", color_palette, "'>", names(color_palette), "</span>"),
-  names(color_palette)
-)
+    saveRDS(
+      list(
+        quantiles_df = quantiles_df,
+        all_NOEC = all_NOEC,
+        species_data = species_data
+      ),
+      file = file.path(debug_dir, paste0("pSSD_plot_inputs_", combo_id, ".rds"))
+    )
+  }
 
-  # Calculate the dynamic x-axis limits
-  max_species_value <- max(species_data$NOEC_log10, na.rm = TRUE)  # Find the maximum species value
-
+  # ========== X LIMITS =========================================================
+  max_species_value <- max(species_data$NOEC_log10, na.rm = TRUE)
   x_limits <- c(
-    min(c(quantiles_df$iv, species_data$NOEC_log10), na.rm = TRUE) - 1,  # Minimum value from data + 2 orders of magnitude
-    max_species_value + 6  # Add 5 orders of magnitude to the maximum species value
+    min(c(quantiles_df$iv, species_data$NOEC_log10), na.rm = TRUE) - 1,
+    max_species_value + 6
   )
-  
-  ggplot() +
-    # this code would make a ribbon around the quantiles for each point in hte PSSD. This is the 'default' for these plots, but we've opted instead to show the distribution around each data point due to alignments. see geom_points below
-    # geom_ribbon(data = quantiles_df, aes(x = iv, ymin = min, ymax = max), fill = "coral", alpha = 0.05) +
-    # geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q05, ymax = q95), fill = "coral", alpha = 0.2) +
-    # geom_ribbon(data = quantiles_df, aes(x = iv, ymin = q25, ymax = q75), fill = "coral", alpha = 0.6) +
-    
-    # display each individual study point's distribution (with size/alpha related to probability according to MC alignment)
-    geom_point(data = all_NOEC,
-               aes(x = NOEC_001th, y = Prop, color = Group, fill = Group),
-               size = 1, alpha = 0.03) +
-     geom_point(data = all_NOEC,
-               aes(x = NOEC_01th, y = Prop, color = Group, fill = Group),
-               size = 1.5, alpha = 0.07) +
-    geom_point(data = all_NOEC,
-               aes(x = NOEC_1th, y = Prop, color = Group, fill = Group),
-               size = 2, alpha = 0.1) +
-    geom_point(data = all_NOEC,
-               aes(x = NOEC_10th, y = Prop, color = Group, fill = Group),
-               size = 2.5, alpha = 0.2) +
-    geom_point(data = all_NOEC,
-               aes(x = NOEC_median, y = Prop, color = Group, fill = Group),
-               size = 3, alpha = 0.5) +
-    geom_point(data = all_NOEC,
-               aes(x = NOEC_90th, y = Prop, color = Group, fill = Group),
-               size = 2.5, alpha = 0.2) +
-    geom_point(data = all_NOEC,
-               aes(x = NOEC_99th, y = Prop, color = Group, fill = Group),
-               size = 2, alpha = 0.1) +
-    geom_point(data = all_NOEC,
-               aes(x = NOEC_999th, y = Prop, color = Group, fill = Group),
-               size = 1.5, alpha = 0.07) +
-    geom_point(data = all_NOEC,
-               aes(x = NOEC_9999th, y = Prop, color = Group, fill = Group),
-               size = 1, alpha = 0.03) +
 
-    # only add points for geomean (preferred to show all points as above)
-    # geom_point(data = species_data, aes(x = NOEC_log10, y = Prop, color = Group)) +
-    ### provide label for median value (lower 60% of points)
-    geom_label_repel(
-      data = species_data %>% filter(Prop <0.6),
-      aes(x = NOEC_log10, y = Prop, label = Species, color = Group),
-     direction = "y",
-     hjust = 0,
-     nudge_x =  7,
-      fontface = "italic",  # Make labels bold
-      size = 3,  # Increase label size
-      fill = "white",  # Add a white background to labels
-      alpha = 0.85,
-      segment.alpha = 0.4,  # Make connecting lines semi-transparent
-      max.overlaps = Inf,  # Allow all labels to be displayed
-      max.time = 5,  # Allow up to 30 seconds to resolve overlaps
-      max.iter = 1e7#,  # Allow up to 1,000,000 iterations
-     # force = 4, #increase repulsion between labels
+  if (debug) {
+    cat("  x_limits:", paste(x_limits, collapse = " to "), "\n")
+    below <- species_data %>% dplyr::filter(NOEC_log10 < x_limits[1])
+    above <- species_data %>% dplyr::filter(NOEC_log10 > x_limits[2])
+    cat("  N labels < x_min:", nrow(below), "\n")
+    cat("  N labels > x_max:", nrow(above), "\n")
+    saveRDS(
+      list(below = below, above = above),
+      file = file.path(debug_dir, paste0("pSSD_label_x_checks_", combo_id, ".rds"))
+    )
+  }
+
+  # ========== LEGEND LABELS + GROUPS ==========================================
+  legend_labels <- setNames(
+    paste0("<span style='color:", color_palette, "'>", names(color_palette), "</span>"),
+    names(color_palette)
+  )
+
+  # only groups that actually appear in the data AND exist in the palette
+  groups_present <- sort(unique(na.omit(all_NOEC$Group)))
+  groups_present <- intersect(groups_present, names(color_palette))
+
+  legend_labels_present <- legend_labels[groups_present]
+
+  if (debug) {
+    cat("  Groups present:", paste(groups_present, collapse = ", "), "\n")
+  }
+
+  # ========== SAFE STAGE WRAPPER ==============================================
+  safe_stage <- function(plot_obj, stage_label) {
+    if (!debug) return(plot_obj)
+    cat("    🧱 Building stage:", stage_label, "...\n")
+    tryCatch({
+      ggplot_build(plot_obj)
+      saveRDS(
+        plot_obj,
+        file = file.path(debug_dir,
+                         paste0("pSSD_plot_stage_", stage_label, "_", combo_id, ".rds"))
+      )
+      cat("    ✅ Stage OK:", stage_label, "\n")
+      plot_obj
+    }, error = function(e) {
+      saveRDS(
+        list(error = e, plot = plot_obj),
+        file = file.path(debug_dir,
+                         paste0("ERROR_pSSD_plot_stage_", stage_label, "_", combo_id, ".rds"))
+      )
+      cat("    ❌ ERROR in stage", stage_label, ":", e$message, "\n")
+      stop(e)
+    })
+  }
+
+  # ========== BASE =============================================================
+  p <- ggplot()
+  p <- safe_stage(p, "base")
+
+  # ========== POINTS ===========================================================
+  p <- p +
+    geom_point(
+      data = all_NOEC,
+      aes(x = NOEC_001th, y = Prop, color = Group, fill = Group),
+      size = 1, alpha = 0.03
     ) +
-### provide label for median value (upper 40% of points)
-    geom_label_repel(
-      data = species_data %>% filter(Prop >=0.6),
-      aes(x = NOEC_log10, y = Prop, label = Species, color = Group),
-     direction = "y",
-     hjust = 1,
-     nudge_x =  -7,
-      fontface = "italic",  # Make labels bold
-      size = 3,  # Increase label size
-      fill = "white",  # Add a white background to labels
-      alpha = 0.85,
-      segment.alpha = 0.4,  # Make connecting lines semi-transparent
-      max.overlaps = Inf,  # Allow all labels to be displayed
-      max.time = 5,  # Allow up to 30 seconds to resolve overlaps
-      max.iter = 1e7#,  # Allow up to 1,000,000 iterations
-     # force = 4, #increase repulsion between labels
+    geom_point(
+      data = all_NOEC,
+      aes(x = NOEC_01th, y = Prop, color = Group, fill = Group),
+      size = 1.5, alpha = 0.07
     ) +
-    
-    geom_line(data = quantiles_df, aes(x = iv, y = mean), color = "black", size = 1) +
+    geom_point(
+      data = all_NOEC,
+      aes(x = NOEC_1th, y = Prop, color = Group, fill = Group),
+      size = 2, alpha = 0.1
+    ) +
+    geom_point(
+      data = all_NOEC,
+      aes(x = NOEC_10th, y = Prop, color = Group, fill = Group),
+      size = 2.5, alpha = 0.2
+    ) +
+    geom_point(
+      data = all_NOEC,
+      aes(x = NOEC_median, y = Prop, color = Group, fill = Group),
+      size = 3, alpha = 0.5
+    ) +
+    geom_point(
+      data = all_NOEC,
+      aes(x = NOEC_90th, y = Prop, color = Group, fill = Group),
+      size = 2.5, alpha = 0.2
+    ) +
+    geom_point(
+      data = all_NOEC,
+      aes(x = NOEC_99th, y = Prop, color = Group, fill = Group),
+      size = 2, alpha = 0.1
+    ) +
+    geom_point(
+      data = all_NOEC,
+      aes(x = NOEC_999th, y = Prop, color = Group, fill = Group),
+      size = 1.5, alpha = 0.07
+    ) +
+    geom_point(
+      data = all_NOEC,
+      aes(x = NOEC_9999th, y = Prop, color = Group, fill = Group),
+      size = 1, alpha = 0.03
+    )
+
+  p <- safe_stage(p, "points")
+
+  # ========== LABELS LOWER =====================================================
+  p <- p +
+    ggrepel::geom_label_repel(
+      data = species_data %>% dplyr::filter(Prop < 0.6),
+      aes(x = NOEC_log10, y = Prop, label = Species, color = Group),
+      direction = "y",
+      hjust = 0,
+      nudge_x = 7,
+      fontface = "italic",
+      size = 3,
+      fill = "white",
+      alpha = 0.85,
+      segment.alpha = 0.4,
+      max.overlaps = Inf,
+      max.time = 5,
+      max.iter = 1e7,
+      na.rm = TRUE
+    )
+
+  p <- safe_stage(p, "labels_lower")
+
+  # ========== LABELS UPPER =====================================================
+  p <- p +
+    ggrepel::geom_label_repel(
+      data = species_data %>% dplyr::filter(Prop >= 0.6),
+      aes(x = NOEC_log10, y = Prop, label = Species, color = Group),
+      direction = "y",
+      hjust = 1,
+      nudge_x = -7,
+      fontface = "italic",
+      size = 3,
+      fill = "white",
+      alpha = 0.85,
+      segment.alpha = 0.4,
+      max.overlaps = Inf,
+      max.time = 5,
+      max.iter = 1e7,
+      na.rm = TRUE
+    )
+
+  p <- safe_stage(p, "labels_upper")
+
+  # ========== MEAN ECDF LINE ===================================================
+  p <- p +
+    geom_line(
+      data = quantiles_df,
+      aes(x = iv, y = mean),
+      color = "black",
+      linewidth = 1
+    )
+
+  p <- safe_stage(p, "meanline")
+
+  # ========== SCALES + THEME (NO VECTOR override.aes) ==========================
+  p <- p +
     scale_x_continuous(
-      breaks = pretty(x_limits, n = 6),  # Dynamically generate breaks
-      labels = function(x) parse(text = paste0("10^", x)),  # Back-transform labels to powers of 10
-      limits = x_limits  # Dynamic limits with one order of magnitude added
+      breaks = pretty(x_limits, n = 6),
+      labels = scales::math_format(10^.x),
+      limits = x_limits
     ) +
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
     ylab("Cumulative probability") +
-    xlab("NOEC (particles/L [1 to 5,000 μm])") +
-    scale_color_manual(values = color_palette, 
-                       labels = legend_labels,
-                       name = "Organism Group") + # Apply consistent color mapping
-    scale_fill_manual(values = color_palette, 
-                      labels = legend_labels,
-                       name = "Organism Group") + # Apply consistent color mapping
-    guides(color = guide_legend(override.aes = list(shape = 21, size = 3, label = "", hjust = NULL, color = NA, alpha = 1)),
-           fill =  guide_legend(override.aes = list(shape = 21, size = 3, label = "",  hjust = NULL, color = NA, alpha = 1,
-                                                    fill = unname(color_palette)))
-           ) +  # Combine color and fill legends
-    
-    labs(title = "Microplastics PSSD++",
-         subtitle = paste0(ERM_name, " (",environment_name, ")")) +
+    xlab("NOEC (particles/L; 1 to 5,000 μm)") +
+
+    # Global palette, but legend only includes groups_present
+    scale_color_manual(
+      values = color_palette,
+      breaks = groups_present,
+      labels = legend_labels_present,
+      drop = FALSE,
+      name = "Organism Group"
+    ) +
+    scale_fill_manual(
+      values = color_palette,
+      breaks = groups_present,
+      labels = legend_labels_present,
+      drop = FALSE,
+      name = "Organism Group"
+    ) +
+
+    # IMPORTANT: override.aes does NOT contain per-key vectors anymore
+    guides(
+      color = guide_legend(
+        override.aes = list(
+          shape = 21,
+          size  = 3,
+          alpha = 1
+        )
+      ),
+      fill = guide_legend(
+        override.aes = list(
+          shape = 21,
+          size  = 3,
+          alpha = 1
+        )
+      )
+    ) +
+
+    labs(
+      title = "Microplastics PSSD++",
+      subtitle = paste0(ERM_name, " (", environment_name, ")")
+    ) +
     theme_minimal(base_size = 15) +
-    theme(plot.title = element_text(face = "bold", hjust = 0.5),
-          plot.subtitle = element_text(hjust = 0.5, size = 14),
-          legend.text = element_markdown(size = 12)
-          )
+    theme(
+      plot.title = element_text(face = "bold", hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5, size = 14),
+      legend.text = ggtext::element_markdown(size = 12)
+    )
+
+  p <- safe_stage(p, "scales_theme")
+
+  if (debug) cat("✅ pSSD_plot_fnx() finished for", combo_id, "\n")
+
+  return(p)
 }
 
 
@@ -5467,18 +5660,18 @@ all_species <- tier1_2_food_plot_prep$species_data %>%
   arrange(environment, Group, Species)
 
 # Generate a consistent color palette
-color_palette <- generate_color_palette(all_species)
+test_color_palette <- generate_color_palette(all_species)
 
 #beepr::beep(2)
 
-pSSD_plot(quantiles_df = tier1_2_food_plot_prep$quantiles_df,
+pSSD_plot_fnx(quantiles_df = tier1_2_food_plot_prep$quantiles_df,
           species_data = tier1_2_food_plot_prep$species_data,
           all_NOEC = tier1_2_food_plot_prep$all_NOEC,
           ERM_name = "Food Dilution",
           environment_name = "Marine",
-          color_palette = color_palette)
-
-
+          color_palette = test_color_palette,
+          debug = TRUE #optional debugging
+          )
 ```
 
 #### PNEC ggplot Function
@@ -5611,33 +5804,34 @@ The following code attempts to more accurately represent the uncertainty of the 
 Prepare color palette for species
 ```{r}
 all_species <- results_df %>% 
-  drop
+  filter(environment %in% c("Freshwater", "Marine"),
+         !Group %in% c("Insect", "Annelida") #not used in this analysis
+         ) %>%
   distinct(Species, Group, environment) %>% 
   droplevels() %>% 
   arrange(environment, Group, Species)
 
 # Generate a consistent color palette
-color_palette <- generate_color_palette(all_species)
+global_color_palette <- generate_color_palette(all_species)
 
 legend_labels <- setNames(
-  paste0("<span style='color:", color_palette, "'>", names(color_palette), "</span>"),
-  names(color_palette)
+  paste0("<span style='color:", global_color_palette, "'>", names(global_color_palette), "</span>"),
+  names(global_color_palette)
 )
 
-color_palette
+global_color_palette
 ```
 
 
 #### Preparation for each ERM/Environment/Threshold
 ##### Function to generate plots and summary df
 ```{r}
-# Define a function to handle the workflow
 generate_plots_and_summary <- function(tier,
                                        environment,
                                        erm, 
                                        results_df,
                                        quantile_type = 7,
-                                       color_palette = color_palette,
+                                       color_palette = global_color_palette,
                                        sim = 300, # Default number of simulations
                                        num_iterations = 300, # Default number of iterations
                                        cv_dp = NULL, 
@@ -5645,125 +5839,293 @@ generate_plots_and_summary <- function(tier,
                                        rmore_method = "step", # step or lognormal
                                        species_data_source,
                                        output_path,
-                                       presentation_path
+                                       presentation_path,
+                                       debug = FALSE,
+                                       debug_dir = "../output/pssd_debug"  # <— new
                                        ) {
-  
-  # Step 1: Prepare data
-  MCdf <- prep_data(results_df)
-  
-  # Step 2: Run pSSD analysis
-  pssd_results <- run_pSSD_analysis(
-    data_matrices = MCdf,
-    num_iterations = num_iterations,
-    sim = sim,
-    cv_dp = cv_dp,
-    cv_uf = cv_uf,
-    rmore_method = rmore_method,
-    data_name = paste0("tier", tier, "_", erm)
+  combo_id <- paste0("Tier", tier, "_", environment, "_", erm)
+
+  if (debug) {
+    if (!dir.exists(debug_dir)) dir.create(debug_dir, recursive = TRUE)
+    cat("\n🐞 DEBUG MODE ON for:", combo_id, "\n")
+  }
+
+  # ---------- STEP 0: Save raw input ----------
+  if (debug) {
+    saveRDS(list(
+      tier = tier,
+      environment = environment,
+      erm = erm,
+      results_df = results_df,
+      species_data_source = species_data_source,
+      quantile_type = quantile_type,
+      color_palette = color_palette,
+      sim = sim,
+      num_iterations = num_iterations,
+      cv_dp = cv_dp,
+      cv_uf = cv_uf,
+      rmore_method = rmore_method
+    ), file = file.path(debug_dir, paste0("step0_inputs_", combo_id, ".rds")))
+  }
+
+  # ---------- STEP 1: Prepare data ----------
+  MCdf <- tryCatch({
+    if (debug) cat("🔧 STEP 1: prep_data()...\n")
+    x <- prep_data(results_df)
+    if (debug) {
+      cat("  MCdf names:", paste(names(x), collapse = ", "), "\n")
+      saveRDS(x, file = file.path(debug_dir, paste0("step1_MCdf_", combo_id, ".rds")))
+    }
+    x
+  }, error = function(e) {
+    if (debug) {
+      saveRDS(list(
+        error = e,
+        results_df = results_df
+      ), file = file.path(debug_dir, paste0("ERROR_step1_prep_data_", combo_id, ".rds")))
+      cat("❌ ERROR @ STEP 1 (prep_data):", e$message, "\n")
+    }
+    stop(e)
+  })
+
+  # ---------- STEP 2: Run PSSD analysis ----------
+  pssd_results <- tryCatch({
+    if (debug) cat("🔧 STEP 2: run_pSSD_analysis()...\n")
+    x <- run_pSSD_analysis(
+      data_matrices = MCdf,
+      num_iterations = num_iterations,
+      sim = sim,
+      cv_dp = cv_dp,
+      cv_uf = cv_uf,
+      rmore_method = rmore_method,
+      data_name = paste0("tier", tier, "_", erm)
+    )
+    if (debug) {
+      cat("  pSSD dims:", dim(x$pSSD), "\n")
+      saveRDS(x, file = file.path(debug_dir, paste0("step2_pssd_results_", combo_id, ".rds")))
+    }
+    x
+  }, error = function(e) {
+    if (debug) {
+      saveRDS(list(
+        error = e,
+        MCdf = MCdf
+      ), file = file.path(debug_dir, paste0("ERROR_step2_pssd_", combo_id, ".rds")))
+      cat("❌ ERROR @ STEP 2 (run_pSSD_analysis):", e$message, "\n")
+    }
+    stop(e)
+  })
+
+
+  # ---------- STEP 3: Prepare data for ggplot ----------
+  plot_prep <- tryCatch({
+    if (debug) cat("🔧 STEP 3: prepare_plot_data()...\n")
+    x <- prepare_plot_data(
+      pSSD = pssd_results$pSSD,
+      original_data = results_df,
+      data_matrices = MCdf,
+      quantile_type = quantile_type,
+      species_data_source = species_data_source,
+      debug = debug
+    )
+    if (debug) {
+      cat("  quantiles_df rows:", nrow(x$quantiles_df), "\n")
+      cat("  species_data rows:", nrow(x$species_data), "\n")
+      cat("  all_NOEC rows:", nrow(x$all_NOEC), "\n")
+      saveRDS(x, file = file.path(debug_dir, paste0("step3_plot_prep_", combo_id, ".rds")))
+    }
+    x
+  }, error = function(e) {
+    if (debug) {
+      saveRDS(list(
+        error = e,
+        pSSD = pssd_results$pSSD,
+        MCdf = MCdf,
+        results_df = results_df
+      ), file = file.path(debug_dir, paste0("ERROR_step3_prepare_plot_data_", combo_id, ".rds")))
+      cat("❌ ERROR @ STEP 3 (prepare_plot_data):", e$message, "\n")
+    }
+    stop(e)
+  })
+
+  # ---------- STEP 4a: Generate PSSD plot ----------
+  pSSD_plot <- tryCatch({
+    if (debug) cat("🔧 STEP 4a: pSSD_plot_fnx()...\n")
+    x <- pSSD_plot_fnx(
+      quantiles_df    = plot_prep$quantiles_df,
+      species_data    = plot_prep$species_data,
+      all_NOEC        = plot_prep$all_NOEC,
+      tier_name       = paste("Tier", tier),
+      environment_name = environment,
+      ERM_name        = erm,
+      color_palette   = color_palette,
+      debug           = debug,
+      debug_dir       = debug_dir,
+      combo_id        = combo_id
+    )
+    if (debug) {
+      saveRDS(x, file = file.path(debug_dir, paste0("step4a_pSSD_plot_", combo_id, ".rds")))
+    }
+    x
+  }, error = function(e) {
+    if (debug) {
+      saveRDS(list(
+        error = e,
+        quantiles_df = plot_prep$quantiles_df,
+        species_data = plot_prep$species_data,
+        all_NOEC = plot_prep$all_NOEC
+      ), file = file.path(debug_dir, paste0("ERROR_step4a_pSSD_plot_", combo_id, ".rds")))
+      cat("❌ ERROR @ STEP 4a (pSSD_plot_fnx):", e$message, "\n")
+    }
+    stop(e)
+  })
+
+  # ---------- STEP 4b: PNEC plots ----------
+  PNEC_05 <- apply(pssd_results$pSSD, 2, function(x) 
+    quantile(x, probs = 0.05, type = quantile_type)
   )
-  
-  # Step 3: Prepare data for ggplot
-  plot_prep <- prepare_plot_data(
-    pSSD = pssd_results$pSSD,
-    original_data = results_df,
-    data_matrices = MCdf,
-    quantile_type = quantile_type,
-    species_data_source = species_data_source
-  )
-  
-  # Step 4a: Generate pSSD plot
-  pSSD_plot <- pSSD_plot(
-    quantiles_df = plot_prep$quantiles_df,
-    species_data = plot_prep$species_data,
-    all_NOEC = plot_prep$all_NOEC,
-    tier_name = paste("Tier", tier),
-    environment_name = environment,
-    ERM_name = erm,
-    color_palette = color_palette
-  )
-  
-  # create df of the PNECs
-  PNEC_05 <- apply(pssd_results$pSSD, 2, 
-                   function(x) quantile(x,
-                                        probs = 0.05, #HC value for tier3
-                                        type = quantile_type
-                                        ))
   PNEC_05_df <- data.frame(PNEC = PNEC_05)
-  
-  # Step 4b: Generate PNEC plots for both HCX values
-  PNEC_plot_05 <- make_PNEC_plot(
-    pssd_results = pssd_results,
-    hcx = 0.05,
-    quantile_type = quantile_type,
-    data_name = paste("Tier", tier, "(", erm, ") - HC5")
-  ) + 
-    labs(title  = "Tier 3 (HC5)",
-         x = "PNEC (Particles/L [1 to 5,000 μm])") +
-    theme(axis.text.y = element_blank())
-  
-  PNEC_plot_10 <- make_PNEC_plot(
-    pssd_results = pssd_results,
-    hcx = 0.10,
-    quantile_type = quantile_type,
-    data_name = paste("Tier", tier, "(", erm, ") - HC10")
-  ) +
-    labs(title = "Tier 4 (HC10)",
-         x = "PNEC (Particles/L [1 to 5,000 μm])") +
-    theme(axis.title.y = element_blank(),
-          axis.text.y = element_blank())
-  
-  # Step 5: Extract PNEC values for both HCX values
+  if (debug) {
+    saveRDS(PNEC_05_df, file = file.path(debug_dir, paste0("step4b_PNEC05_df_", combo_id, ".rds")))
+  }
+
+  PNEC_plot_05 <- tryCatch({
+    if (debug) cat("🔧 STEP 4b: make_PNEC_plot() HC5...\n")
+    p <- make_PNEC_plot(
+      pssd_results = pssd_results,
+      hcx = 0.05,
+      quantile_type = quantile_type,
+      data_name = paste("Tier", tier, "(", erm, ") - HC5")
+    ) + 
+      labs(title  = "Tier 3 (HC5)",
+           x = "PNEC (Particles/L; 1 to 5,000 μm)") +
+      theme(axis.text.y = element_blank())
+    if (debug) saveRDS(p, file = file.path(debug_dir, paste0("step4b_PNEC_plot_05_", combo_id, ".rds")))
+    p
+  }, error = function(e) {
+    if (debug) {
+      saveRDS(list(error = e, pssd_results = pssd_results),
+              file = file.path(debug_dir, paste0("ERROR_step4b_PNEC_plot_05_", combo_id, ".rds")))
+      cat("❌ ERROR @ STEP 4b (make_PNEC_plot HC5):", e$message, "\n")
+    }
+    stop(e)
+  })
+
+  PNEC_plot_10 <- tryCatch({
+    if (debug) cat("🔧 STEP 4b: make_PNEC_plot() HC10...\n")
+    p <- make_PNEC_plot(
+      pssd_results = pssd_results,
+      hcx = 0.10,
+      quantile_type = quantile_type,
+      data_name = paste("Tier", tier, "(", erm, ") - HC10")
+    ) +
+      labs(title = "Tier 4 (HC10)",
+           x = "PNEC (Particles/L; 1 to 5,000 μm)") +
+      theme(axis.title.y = element_blank(),
+            axis.text.y = element_blank())
+    if (debug) saveRDS(p, file = file.path(debug_dir, paste0("step4b_PNEC_plot_10_", combo_id, ".rds")))
+    p
+  }, error = function(e) {
+    if (debug) {
+      saveRDS(list(error = e, pssd_results = pssd_results),
+              file = file.path(debug_dir, paste0("ERROR_step4b_PNEC_plot_10_", combo_id, ".rds")))
+      cat("❌ ERROR @ STEP 4b (make_PNEC_plot HC10):", e$message, "\n")
+    }
+    stop(e)
+  })
+
+  # ---------- STEP 5: PNEC summaries ----------
   PNEC_summary_05 <- PNEC_data_summary(
     pssd_results = pssd_results,
     hcx = 0.05,
     quantile_type = quantile_type,
     data_name = paste("Tier", tier, "(", erm, ") - HC5")
   )
-  
   PNEC_summary_10 <- PNEC_data_summary(
     pssd_results = pssd_results,
     hcx = 0.10,
     quantile_type = quantile_type,
     data_name = paste("Tier", tier, "(", erm, ") - HC10")
   )
-  
-  # Arrange plots for HC5/HC10
-  arranged_plot <- ggarrange(
-    pSSD_plot, 
-    ggarrange(PNEC_plot_05, PNEC_plot_10, ncol = 2, widths = c(0.5, 0.5)), 
-    nrow = 2, 
-    heights = c(0.6, 0.4)
-    )
-  
-  # Save the arranged plots for the manuscript
-  ggsave(
-    filename = paste0(erm, "_", environment, "_arranged_plot.jpg"),
-    dpi = 300,
-    path = output_path,
-    plot = arranged_plot,
-    width = 10, height = 8, units = "in"
-  )
-  
-  # Save the arranged plots for presentations (wide format)
-  ggsave(
-    filename = paste0(erm, "_", environment, "_arranged_plot.jpg"),
-    dpi = 450,
-    path = presentation_path,
-    plot = arranged_plot,
-    width = 12, height = 6, units = "in"
-  )
+  if (debug) {
+    saveRDS(list(PNEC_summary_05 = PNEC_summary_05,
+                 PNEC_summary_10 = PNEC_summary_10),
+            file = file.path(debug_dir, paste0("step5_PNEC_summaries_", combo_id, ".rds")))
+  }
 
-  
-  # Return the plots and summaries for both HCX values
+  # ---------- STEP 6: Arrange plots ----------
+  arranged_plot <- tryCatch({
+    if (debug) cat("🔧 STEP 6: ggarrange()...\n")
+    p <- ggarrange(
+      pSSD_plot, 
+      ggarrange(PNEC_plot_05, PNEC_plot_10, ncol = 2, widths = c(0.5, 0.5)), 
+      nrow = 2, 
+      heights = c(0.6, 0.4)
+    )
+    if (debug) saveRDS(p, file = file.path(debug_dir, paste0("step6_arranged_plot_", combo_id, ".rds")))
+    p
+  }, error = function(e) {
+    if (debug) {
+      saveRDS(list(
+        error = e,
+        pSSD_plot = pSSD_plot,
+        PNEC_plot_05 = PNEC_plot_05,
+        PNEC_plot_10 = PNEC_plot_10
+      ), file = file.path(debug_dir, paste0("ERROR_step6_arranged_plot_", combo_id, ".rds")))
+      cat("❌ ERROR @ STEP 6 (ggarrange):", e$message, "\n")
+    }
+    stop(e)
+  })
+
+  # ---------- STEP 7: Save figures ----------
+  tryCatch({
+    if (debug) cat("💾 STEP 7: ggsave() manuscript...\n")
+    ggsave(
+      filename = paste0(erm, "_", environment, "_arranged_plot.jpg"),
+      dpi = 300,
+      path = output_path,
+      plot = arranged_plot,
+      width = 10, height = 8, units = "in"
+    )
+  }, error = function(e) {
+    if (debug) {
+      saveRDS(list(error = e, arranged_plot = arranged_plot),
+              file = file.path(debug_dir, paste0("ERROR_step7_ggsave_manuscript_", combo_id, ".rds")))
+      cat("❌ ERROR @ STEP 7 (ggsave manuscript):", e$message, "\n")
+    }
+    stop(e)
+  })
+
+  tryCatch({
+    if (debug) cat("💾 STEP 7: ggsave() presentation...\n")
+    ggsave(
+      filename = paste0(erm, "_", environment, "_arranged_plot.jpg"),
+      dpi = 450,
+      path = presentation_path,
+      plot = arranged_plot,
+      width = 12, height = 6, units = "in"
+    )
+  }, error = function(e) {
+    if (debug) {
+      saveRDS(list(error = e, arranged_plot = arranged_plot),
+              file = file.path(debug_dir, paste0("ERROR_step7_ggsave_presentation_", combo_id, ".rds")))
+      cat("❌ ERROR @ STEP 7 (ggsave presentation):", e$message, "\n")
+    }
+    stop(e)
+  })
+
+  # ---------- RETURN ----------
+  if (debug) cat("✅ generate_plots_and_summary() complete for", combo_id, "\n")
+
   return(list(
-    pSSD_plot = pSSD_plot,
-    PNEC_plot_05 = PNEC_plot_05,
-    PNEC_plot_10 = PNEC_plot_10,
+    pSSD_plot     = pSSD_plot,
+    PNEC_plot_05  = PNEC_plot_05,
+    PNEC_plot_10  = PNEC_plot_10,
     arranged_plot = arranged_plot,
-    summary_05 = PNEC_summary_05,
-    summary_10 = PNEC_summary_10,
-    quantiles = plot_prep$quantiles_df,
-    PNEC_df = PNEC_05_df
+    summary_05    = PNEC_summary_05,
+    summary_10    = PNEC_summary_10,
+    quantiles     = plot_prep$quantiles_df,
+    PNEC_df       = PNEC_05_df
   ))
 }
 ```
@@ -5823,31 +6185,28 @@ results_df <- results_df_test
 *For Loop PSSD+ with Caching*
 
 * Each simulation result is saved to disk immediately after it's run, rather than only saving the full object at the end.
-
 * When the function starts, it checks if cached results already exist.
-
 * It loads any cached results and only runs simulations for the missing iterations.
-
 * After the loop is complete, it combines the cached pieces and saves the final result as usual.
 
-```{r warning=FALSE}
-library(crayon)
-library(tictoc)
-library(beepr)
 
+```{r warning=FALSE}
 # Define parameters
 tiers <- c(3)
 environments <- c("Freshwater", "Marine")
 erms <- c("Food Dilution", "Tissue Translocation")
 output_path <- "../output/Manuscript_Figs/"
 presentation_path <- "../output/presentation_Figs/"
-cache_dir <- "../output/cache_pssd_results_300sim_trapezoidal"  # directory to store cache
-sim <- 300 # Number of simulations to run
+sim <- 300 # Number of simulations to run (300 default for PSSD++ based on 64 GB RAM capacity)
 num_iterations <- sim
 cv_uf <- 0.5
-rmore_method <- "step" #step (original Wigger Trapezoidal) or lognormal (shortcut developed here)
-quantile_type <- 8
+#rmore_method <- "step" #'step' (original Wigger Trapezoidal) or 'lognormal' (shortcut developed here=)
+rmore_method <- "lognormal" #'step' (original Wigger Trapezoidal) or 'lognormal' (shortcut developed here=)
+quantile_type <- 8 #linear interpolation for the median-unbiased estimate to determine the values (i - 3/8) / (n + ¼; where i is the rank, and n is the number of observations). This ensures that distinct values are produced for every HCx (e.g., HC5, HC10), even with limited data.
 species_data_source <- aoc_aligned
+debug_option = FALSE #debugging option provides intermediate outputs and diagnostics to assist the user if the function provides unexcpected or incomplete results. This option can significantly increase processing time, so it's advised to run this with the minimum number of simulations (i.e., sim = 3)
+base_cache_dir <- "../output/pssd_cache/"
+cache_dir <- paste0(base_cache_dir, rmore_method, "_", sim, "sims") 
 
 # Create cache directory if it doesn't exist
 if (!dir.exists(cache_dir)) dir.create(cache_dir)
@@ -5889,7 +6248,7 @@ for (tier in tiers) {
           tier = tier,
           environment = environment,
           erm = erm,
-          color_palette = color_palette,
+          color_palette = global_color_palette,
           results_df = results_df,
           sim = sim,
           num_iterations = num_iterations,
@@ -5899,7 +6258,8 @@ for (tier in tiers) {
           rmore_method = rmore_method,
           species_data_source = species_data_source,
           output_path = output_path,
-          presentation_path = presentation_path
+          presentation_path = presentation_path,
+          debug = debug_option
         )
         
         saveRDS(result, cache_file)
@@ -5943,14 +6303,10 @@ results$`Tier3_Marine_Food Dilution`$quantiles
 
 #### Summary table
 ```{r}
-saveRDS(results, 
-        "../data/output/PSDDplusplusresults.rds")
+saveRDS(results, "../data/output/PSDDplusplusresults.rds")
 ```
 
 ```{r}
-library(dplyr)
-library(tidyr)
-
 # Initialize an empty list to store the standardized summaries
 PNEC_summaries <- list()
 
@@ -6017,82 +6373,81 @@ print(PNEC_summary_table_wide)
 
 
 #### Arrange plots for publication
-##### pSSD Plots
+##### pSSD Plots (Figure 5)
 ```{r}
-library(ggpubr)
-
 # Customize the plots
 plot_list <- list(
+  # top left
     results$`Tier3_Marine_Food Dilution`$pSSD_plot +
       labs(title = "Marine", y = "Food Dilution") + # Explicitly set y-axis label
-    scale_color_manual(values = color_palette, 
+    scale_color_manual(values = global_color_palette, 
                        labels = legend_labels,
                        drop = FALSE,
                        name = "Organism Group") + # Apply consistent color mapping
-    scale_fill_manual(values = color_palette, 
+    scale_fill_manual(values = global_color_palette, 
                       labels = legend_labels,
                       drop = FALSE,
                        name = "Organism Group") + # Apply consistent color mapping
-    theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
+    theme(axis.title.y = element_text(size = 18, face = "bold"), # Keep y-axis title
+          plot.title = element_text(size = 20, face = "bold"),
           plot.subtitle = element_blank(),
-          axis.title.x = element_text(size = 12),
+          axis.title.x = element_blank(),
           axis.text.y = element_text(size = 10),
           legend.text = element_markdown(size = 12)), # Keep y-axis text
-  
+  # top right
   results$`Tier3_Freshwater_Food Dilution`$pSSD_plot +
     scale_y_continuous(position = "right") +
-    scale_color_manual(values = color_palette, 
+    scale_color_manual(values = global_color_palette, 
                        labels = legend_labels,
                        drop = FALSE,
                        name = "Organism Group") + # Apply consistent color mapping
-    scale_fill_manual(values = color_palette, 
+    scale_fill_manual(values = global_color_palette, 
                       labels = legend_labels,
                       drop = FALSE,
                        name = "Organism Group") + # Apply consistent color mapping
     labs(title = "Freshwater") +
-    theme(axis.title.y = element_text(size = 12),
+    theme(axis.title.y.right = element_text(size = 13), #cumulative probability title on right
+          plot.title = element_text(size = 20, face = "bold"),
           plot.subtitle = element_blank(),
-          axis.title.x = element_text(size = 12),
+          axis.title.x = element_blank(),
           axis.text.y = element_text(size = 10),
           legend.text = element_markdown(size = 12)), # Keep y-axis text
-  
+  # bottom left
   results$`Tier3_Marine_Tissue Translocation`$pSSD_plot +
     labs(y = "Tissue Translocation") +
-    scale_color_manual(values = color_palette, 
+    scale_color_manual(values = global_color_palette, 
                        labels = legend_labels,
                        drop = FALSE,
                        name = "Organism Group") + # Apply consistent color mapping
-    scale_fill_manual(values = color_palette, 
+    scale_fill_manual(values = global_color_palette, 
                       labels = legend_labels,
                       drop = FALSE,
                        name = "Organism Group") + # Apply consistent color mapping
-    theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
+    theme(axis.title.y = element_text(size = 18, face = "bold"), # Keep y-axis title
           plot.subtitle = element_blank(),
-          axis.title.x = element_blank(),
+          axis.title.x = element_text(size = 12),
           plot.title = element_blank(),
           axis.text.y = element_text(size = 10),
           legend.text = element_markdown(size = 12)), # Keep y-axis text
-  
+  # bottom right
   results$`Tier3_Freshwater_Tissue Translocation`$pSSD_plot +
     scale_y_continuous(position = "right") +
-    scale_color_manual(values = color_palette, 
+    scale_color_manual(values = global_color_palette, 
                        labels = legend_labels,
                        drop = FALSE,
                        name = "Organism Group") + # Apply consistent color mapping
-    scale_fill_manual(values = color_palette, 
+    scale_fill_manual(values = global_color_palette, 
                       labels = legend_labels,
                       drop = FALSE,
                        name = "Organism Group") + # Apply consistent color mapping
-    theme(axis.title.y = element_text(size = 12), # Remove y-axis title
+    theme(axis.title.y.right = element_text(size = 13), # Remove y-axis title
           plot.subtitle = element_blank(),
-          axis.title.x = element_blank(),
+          axis.title.x = element_text(size = 12),
           plot.title = element_blank(),
           axis.text.y = element_text(size = 10),
           legend.text = element_markdown(size = 12)) # Keep y-axis text
 )
 
-
-library(ggpubr)
 
 # Arrange the plots
 arranged_plot <- ggarrange(
@@ -6101,15 +6456,15 @@ arranged_plot <- ggarrange(
   common.legend = TRUE, # Common legend for all plots
   legend = "bottom" # Place legend at the bottom
 ) +
-   guides(color = guide_legend(override.aes = list(shape = 21, size = 3,  hjust = NULL, color = NA, alpha = 1,
-                                                   fill = unname(color_palette))),
-            fill =  guide_legend(override.aes = list(shape = 21, size = 3,  hjust = NULL, color = NA, alpha = 1,
-                                                     fill = unname(color_palette)))
-          )   # Combine color and fill legends
+  guides(color = guide_legend(override.aes = list(shape = 21, size = 3,  hjust = NULL, color = NA, alpha = 1,
+                                                  fill = unname(global_color_palette))),
+         fill =  guide_legend(override.aes = list(shape = 21, size = 3,  hjust = NULL, color = NA, alpha = 1,
+                                                  fill = unname(global_color_palette)))
+         )   # Combine color and fill legends
 
 # Save the final plot
 ggsave(
-  filename = "../output/Manuscript_Figs/final_pSSD_plot.jpg",
+  filename = "../output/Manuscript_Figs/Figure5.jpg",
   plot = arranged_plot,
   dpi = 500,
   width = 9,
@@ -6182,7 +6537,7 @@ ggsave(
 print(PNEC_arranged_plot)
 ```
 
-##### Comparison of pSSD and SSD-MC Distributions
+##### Comparison of pSSD and SSD-MC Distributions (Figure 6)
 ```{r}
 SSD_base_thresholds <- base_thresholds_df %>% 
   mutate(y_position_comparison = case_when(
@@ -6328,7 +6683,7 @@ scale_x_log10(
     axis.title.x = element_blank(),
     plot.subtitle = element_blank()
   ) +
-  labs(title = environment, y = "Relative Density", x = "PNEC (Tier 3; Particles/L [1 to 5,000 μm])")
+  labs(title = environment, y = "Relative Density", x = "PNEC \n(Tier 3; Particles/L; 1 to 5,000 μm)")
 
 }
 
@@ -6378,7 +6733,6 @@ PNEC_compare_plot_list <- list(
     theme(axis.title.y = element_text(size = 12),
           plot.subtitle = element_blank(),
           axis.title.x = element_blank()
-          #axis.text.y = element_text(size = 10)
           ), # Keep y-axis text
   
    PNECs_comparisons$`TierTier3_Marine_Tissue Translocation` +
@@ -6391,8 +6745,7 @@ PNEC_compare_plot_list <- list(
     theme(axis.title.y = element_text(size = 16, face = "bold"), # Keep y-axis title
           plot.subtitle = element_blank(),
           plot.title = element_blank(),
-          axis.title.x = element_text(size = 12)#,
-          #axis.text.y = element_text(size = 10)
+          axis.title.x = element_text(size = 12)
           ), # Keep y-axis text
   
   PNECs_comparisons$`TierTier3_Freshwater_Tissue Translocation` +
@@ -6406,8 +6759,7 @@ PNEC_compare_plot_list <- list(
     theme(axis.title.y = element_text(size = 12), # Remove y-axis title
           plot.title = element_blank(),
           plot.subtitle = element_blank(),
-          axis.title.x = element_text(size = 12)#,
-          #axis.text.y = element_text(size = 10)
+          axis.title.x = element_text(size = 12)
           ) # Keep y-axis text
 )
 
@@ -6424,7 +6776,8 @@ PNEC_compare_arranged_plot <- ggarrange(
 
 # Save the final plot
 ggsave(
-  filename = "../output/Manuscript_Figs/PNEC_compare_arranged_plot.jpg",
+  #filename = "../output/Manuscript_Figs/PNEC_compare_arranged_plot_trapezoidal.jpg", # uncomment if doing comparison with lognormal/trapezoidal. Figure 6 uses trapezoidal method.
+  filename = "../output/Manuscript_Figs/Figure6_PNEC_compare_arranged_plot.jpg",
   plot = PNEC_compare_arranged_plot,
   dpi = 500,
   width = 7.5,
