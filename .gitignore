@@ -300,3 +300,6 @@ data/output/tier1_2_food.RDS
 data/output/tier1_2_tissue.RDS
 data/output/tier3_4_food.RDS
 data/output/tier3_4_tissue.RDS
+scripts/monte carlo/output/sobol_results_filtered.rds
+scripts/monte carlo/output/sobol_results.rds
+scripts/monte carlo/output/sobol_time.txt
