@@ -2502,7 +2502,7 @@ aoc_MC_sobol <- left_join(aoc_MC_sobol,
   mutate(n_sim = n_sobol)
 #filter(size.length.um.used.for.conversions >= x1M_set) %>% #alignments not valid below 1 um, so filter them before they become problems later
 
-#Save file for EcoTox Project
+#Save file for ToMEx2_EcoTox.Rmd script
 saveRDS(aoc_MC_sobol, "output/aoc_MC_sobol.rds")
 ```
 ##### Start here to read in

@@ -58,6 +58,8 @@ library(ssdtools)
 
 ```{r Set Particle Size, include = FALSE}
 ###define sizes for filtering and alignment##
+x1D_set <- 1 #um lower size for all alignments
+x2D_set <- 5000 #um upper size for all alignments
 # smaller size bin
 small_tier_lower_size <- 1 #um
 small_tier_upper_size <- 5000 #um #size to align to
@@ -5921,7 +5923,7 @@ sim <- 300 # Number of simulations to run (300 default for PSSD++ based on 64 GB
 num_iterations <- sim
 cv_uf <- 0.5
 #rmore_method <- "step" #'step' (original Wigger Trapezoidal) or 'lognormal' (shortcut developed here=)
-rmore_method <- "lognormal" #'step' (original Wigger Trapezoidal) or 'lognormal' (shortcut developed here=)
+rmore_method <- "step" #'step' (original Wigger Trapezoidal) or 'lognormal' (shortcut developed here=)
 quantile_type <- 8 #linear interpolation for the median-unbiased estimate to determine the values (i - 3/8) / (n + ¼; where i is the rank, and n is the number of observations). This ensures that distinct values are produced for every HCx (e.g., HC5, HC10), even with limited data.
 species_data_source <- aoc_aligned
 debug_option = FALSE #debugging option provides intermediate outputs and diagnostics to assist the user if the function provides unexcpected or incomplete results. This option can significantly increase processing time, so it's advised to run this with the minimum number of simulations (i.e., sim = 3)
