@@ -1751,7 +1751,9 @@ generate_plots_and_summary <- function(
   output_path,
   presentation_path,
   debug = FALSE,
-  debug_dir = "../output/pssd_debug" # <— new
+  debug_dir = "../output/pssd_debug",
+  silent = FALSE, # progress reporting for single-threading
+  progress = NULL # report-out progress for parallel processing
 ) {
   combo_id <- paste0("Tier", tier, "_", environment, "_", erm)
 
@@ -1830,7 +1832,9 @@ generate_plots_and_summary <- function(
         cv_dp = cv_dp,
         cv_uf = cv_uf,
         rmore_method = rmore_method,
-        data_name = paste0("tier", tier, "_", erm)
+        data_name = paste0("tier", tier, "_", erm),
+        silent = silent, # silencing for parallel processing
+        progress = progress # report out for parallel processing
       )
       if (debug) {
         cat("  pSSD dims:", dim(x$pSSD), "\n")
@@ -2728,7 +2732,8 @@ prepare_plot_data <- function(
       NOEC_90th = quantile(NOEC_log10, 0.90, type = 7),
       NOEC_99th = quantile(NOEC_log10, 0.99, type = 7),
       NOEC_999th = quantile(NOEC_log10, 0.999, type = 7),
-      NOEC_9999th = quantile(NOEC_log10, 0.9999, type = 7)
+      NOEC_9999th = quantile(NOEC_log10, 0.9999, type = 7),
+      .groups = "drop"
     ) %>%
     ungroup() %>%
     left_join(
@@ -2853,7 +2858,9 @@ run_pSSD_analysis <- function(
   cv_dp,
   cv_uf,
   data_name,
-  rmore_method = "step"
+  rmore_method = "step",
+  silent = FALSE,
+  progress = NULL
 ) {
   require(crayon) # for colorized output
 
@@ -2863,10 +2870,12 @@ run_pSSD_analysis <- function(
   # Define checkpoints for reporting
   checkpoints <- floor(c(0.25, 0.5, 0.75, 1.0) * num_iterations)
 
-  cat(crayon::blue(sprintf(
-    "🚀 Starting PSSD analysis with %d sims each...\n",
-    num_iterations
-  )))
+  if (!silent) {
+    cat(crayon::blue(sprintf(
+      "🚀 Starting PSSD analysis with %d sims each...\n",
+      num_iterations
+    )))
+  }
 
   # Loop through each iteration
   for (i in 1:num_iterations) {
@@ -2882,15 +2891,21 @@ run_pSSD_analysis <- function(
       rmore_method = rmore_method #lognormal or step
     )
 
-    # Progress reporting at checkpoints
-    if (i %in% checkpoints) {
-      pct_done <- round(100 * i / num_iterations)
-      cat(crayon::yellow(sprintf(
-        "⏳ %.0f%% complete (%d of %d simulations done)\n",
-        pct_done,
-        i,
-        num_iterations
-      )))
+    if (!silent) {
+      # Progress reporting at checkpoints
+      if (i %in% checkpoints) {
+        pct_done <- round(100 * i / num_iterations)
+        cat(crayon::yellow(sprintf(
+          "⏳ %.0f%% complete (%d of %d simulations done)\n",
+          pct_done,
+          i,
+          num_iterations
+        )))
+      }
+    }
+    # report out progress when running in parallel with wrapper
+    if (!is.null(progress)) {
+      progress()
     }
   }
 
@@ -3070,4 +3085,247 @@ PNEC_data_summary <- function(
   colnames(Stat_PNEC_t) <- paste0(data_name, " - HC", hcx * 100)
 
   return(list("stats" = as.data.frame(Stat_PNEC_t), "df" = PNEC_df))
+}
+
+# function to generate PSSDs and plots with caching and optional debugging
+make_all_pSSDs <- function(
+  MC_sim_df = NULL, # MC-sim dataframe
+  tiers = c(3), #mehinto et al tiers
+  environments = c("Freshwater", "Marine"), #environments to loop through
+  erms = c("Food Dilution", "Tissue Translocation"), #ERMs to loop through
+  sim = 10,
+  cv_uf = 0.5,
+  rmore_method = "step",
+  quantile_type = 8,
+  debug_option = FALSE,
+  parallel = TRUE,
+  workers = parallel::detectCores() - 1,
+  base_cache_dir = "package/test_output/pssd_cache/",
+  base_output_path = "package/test_output/figures/",
+  overwrite_cache = FALSE
+) {
+  # ---- Argument validation ----
+  if (is.null(MC_sim_df)) {
+    stop("MC_sim_df must be provided explicitly.", call. = FALSE)
+  }
+  # Create output directories if they don't exist
+  output_path <- paste0(base_output_path, rmore_method, "_", sim, "sims")
+  if (!dir.exists(output_path)) {
+    dir.create(output_path, recursive = TRUE)
+  }
+  cache_dir <- paste0(base_cache_dir, rmore_method, "_", sim, "sims")
+  # Create cache directory if it doesn't exist
+  if (!dir.exists(cache_dir)) {
+    dir.create(cache_dir, recursive = T)
+  }
+  # generate color palette for unique levels of species/groups
+  all_species <- MC_sim_df %>%
+    filter(
+      environment %in% environments,
+      !Group %in% c("Insect", "Annelida") #not used in this analysis
+    ) %>%
+    distinct(Species, Group, environment) %>%
+    droplevels() %>%
+    arrange(environment, Group, Species)
+
+  # Generate a consistent color palette
+  global_color_palette <- generate_color_palette(all_species)
+
+  # Initialize tracking
+  total_iterations <- length(tiers) * length(environments) * length(erms)
+  iteration_times <- numeric(total_iterations)
+  iteration_count <- 0
+  tictoc::tic("PSSD++ For Loop Begins...")
+  # Progress bar handlers with progressr package
+  handlers(global = TRUE)
+  handlers("txtprogressbar") # console-safe
+
+  # Start loop
+  results <- list()
+  # list combinations to loop through
+  combo_tbl <- expand.grid(
+    tier = tiers,
+    environment = environments,
+    erm = erms,
+    stringsAsFactors = FALSE
+  )
+  # calculate length of progress bar
+  n_combos <- nrow(combo_tbl)
+  total_steps <- n_combos * sim
+  # set up parllel plan
+  if (parallel) {
+    silent = TRUE #removes redundant progress update
+    cat(sprintf(
+      "⚙️ Running %d PSSD combinations in parallel (%d workers)\n",
+      nrow(combo_tbl),
+      workers
+    ))
+    future::plan(multisession, workers = workers)
+  } else {
+    silent = FALSE # sequential progress update
+    cat("⚙️ Running PSSD combinations sequentially\n")
+    future::plan(sequential)
+  }
+
+  on.exit(future::plan(sequential), add = TRUE)
+  with_progress({
+    p <- progressor(steps = total_steps)
+
+    results_list <- future_lapply(
+      seq_len(nrow(combo_tbl)),
+      function(i) {
+        tier <- combo_tbl$tier[i]
+        environment <- combo_tbl$environment[i]
+        erm <- combo_tbl$erm[i]
+
+        combo_id <- paste0("Tier", tier, "_", environment, "_", erm)
+        cache_file <- file.path(cache_dir, paste0(combo_id, ".rds"))
+
+        # ---- Cache logic ----
+        if (file.exists(cache_file) && !overwrite_cache) {
+          cat(blue(sprintf("🔁 Using cached: %s\n", combo_id)))
+          return(readRDS(cache_file))
+        }
+
+        if (file.exists(cache_file) && overwrite_cache) {
+          cat(yellow(sprintf("♻️ Overwriting cached: %s\n", combo_id)))
+        }
+
+        # ---- Run safely ----
+        result <- tryCatch(
+          {
+            results_df <- get_results_df(tier, environment, erm)
+
+            res <- generate_plots_and_summary(
+              tier = tier,
+              environment = environment,
+              erm = erm,
+              color_palette = global_color_palette,
+              results_df = results_df,
+              sim = sim,
+              num_iterations = sim,
+              quantile_type = quantile_type,
+              cv_dp = NULL,
+              cv_uf = cv_uf,
+              rmore_method = rmore_method,
+              species_data_source = MC_sim_df,
+              output_path = output_path,
+              presentation_path = NULL,
+              debug = debug_option,
+              silent = silent,
+              progress = p # pass progress callback
+            )
+
+            # Atomic cache write
+            tmp <- paste0(cache_file, ".tmp")
+            saveRDS(res, tmp)
+            file.rename(tmp, cache_file)
+
+            cat(yellow(sprintf("✅ Completed: %s\n", combo_id)))
+            res
+          },
+          error = function(e) {
+            cat(red(sprintf("❌ ERROR in %s: %s\n", combo_id, e$message)))
+            NULL
+          }
+        )
+
+        result
+      },
+      future.seed = TRUE
+    )
+  })
+
+  names(results_list) <- paste0(
+    "Tier",
+    combo_tbl$tier,
+    "_",
+    combo_tbl$environment,
+    "_",
+    combo_tbl$erm
+  )
+
+  return(results_list)
+
+  # Wrap up
+  pSSD_time <- tictoc::toc()
+  total_runtime_sec <- pSSD_time$toc - pSSD_time$tic
+  cat(blue(sprintf(
+    "\n🎉 PSSD++ complete for all combinations! Total time: %.2f hours\n",
+    total_runtime_sec / 3600
+  )))
+}
+
+#### PNEC Summarization ####
+summarize_PNECs <- function(pSSDs = NULL) {
+  # Initialize an empty list to store the standardized summaries
+  PNEC_summaries <- list()
+
+  # Loop through the results list to extract and standardize PNEC summaries
+  for (combination in names(pSSDs)) {
+    # Extract the PNEC summary statistics for HC5 (hcx = 0.05)
+    PNEC_stats_05 <- pSSDs[[combination]]$summary_05$stats
+    PNEC_stats_05_long <- data.frame(
+      Statistic = rownames(PNEC_stats_05),
+      Value = as.numeric(PNEC_stats_05[, 1]), # Extract the first column (values)
+      HCX = "HC5", # Add a column to indicate HC5
+      Tier = "Tier3" # Assign Tier3 for HC5
+    )
+
+    # Extract the PNEC summary statistics for HC10 (hcx = 0.10)
+    PNEC_stats_10 <- pSSDs[[combination]]$summary_10$stats
+    PNEC_stats_10_long <- data.frame(
+      Statistic = rownames(PNEC_stats_10),
+      Value = as.numeric(PNEC_stats_10[, 1]), # Extract the first column (values)
+      HCX = "HC10", # Add a column to indicate HC10
+      Tier = "Tier4" # Assign Tier4 for HC10
+    )
+
+    # Combine HC5 and HC10 into a single data frame
+    PNEC_stats_long <- rbind(PNEC_stats_05_long, PNEC_stats_10_long)
+
+    # Add the combination name and split it into environment and ERM
+    PNEC_stats_long$Combination <- combination
+    PNEC_stats_long$Environment <- sub(".*_(.*)_(.*)", "\\1", combination) # Extract environment
+    PNEC_stats_long$ERM <- sub(".*_(.*)", "\\1", combination) # Extract ERM
+
+    # Append to the list
+    PNEC_summaries[[combination]] <- PNEC_stats_long
+  }
+
+  # Combine all standardized summaries into a single data frame
+  PNEC_summary_table <- do.call(rbind, PNEC_summaries)
+
+  # Reorder columns for clarity
+  PNEC_summary_table <- PNEC_summary_table[, c(
+    "Tier",
+    "Environment",
+    "ERM",
+    "HCX",
+    "Statistic",
+    "Value"
+  )]
+
+  # Sort the table by Environment, ERM, Tier, and HCX
+  PNEC_summary_table <- PNEC_summary_table[
+    order(
+      PNEC_summary_table$Environment,
+      PNEC_summary_table$ERM,
+      PNEC_summary_table$Tier,
+      PNEC_summary_table$HCX
+    ),
+  ]
+
+  # Remove row names
+  rownames(PNEC_summary_table) <- NULL
+
+  # Pivot the table wider
+  PNEC_summary_table_wide <- PNEC_summary_table %>%
+    pivot_wider(
+      names_from = c(Statistic), # Use both Statistic and HCX for new column names
+      values_from = Value # Use the Value column for the values
+    ) %>%
+    select(-HCX)
+
+  return(PNEC_summary_table_wide)
 }

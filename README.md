@@ -1,6 +1,6 @@
 # ToMEx 2.0 - Ecotoxicological Risk Assessment
 
-Repository for the Journal of Hazardous Materials manuscript ([Pre-print](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537)): \
+Repository for the Journal of Hazardous Materials manuscript ([Pre-print](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537)):\
 **"A Probabilistic Risk Framework for Microplastics Integrating Uncertainty Across Toxicological and Environmental Variability: Development and Application to Marine and Freshwater Ecosystems."**
 
 Authors: Scott Coffin, Lidwina Bertrand, Kazi Towsif Ahmed, Luan de Souza Leite, Win Cowger, Mariella Sina, Andrew Barrick, Anna Kukkola, Bethanie Carney Almroth, Ezra Miller, Andrew Yeh, Stephanie Kennedy, Magdalena M. Mair\
@@ -15,7 +15,7 @@ Authors: Scott Coffin, Lidwina Bertrand, Kazi Towsif Ahmed, Luan de Souza Leite,
 
 ## Repro workflow at a glance
 
--   Option A (fastest): Download precomputed Monte Carlo and PSSD++ outputs[ from Zenodo](https://doi.org/10.5281/zenodo.16740504) and place them as listed under *Large files*; then knit `scripts/ToMEx2_EcoTox.Rmd`.
+-   Option A (fastest): Download precomputed Monte Carlo and PSSD++ outputs[from Zenodo](https://doi.org/10.5281/zenodo.16740504) and place them as listed under *Large files*; then knit `scripts/ToMEx2_EcoTox.Rmd`.
 -   Option B (full recompute): Run `scripts/monte carlo/EcoTox_MonteCarlo.Rmd` (can exceed 12 hours; high RAM and multiple cores recommended) to generate aligned MC datasets and Sobol outputs, then knit `scripts/ToMEx2_EcoTox.Rmd`.
 -   Environmental comparisons: run the scripts in `scripts/characteristics and NMDS/`.
 -   Translocation model: knit `scripts/translocation/translocation.Rmd`.
@@ -65,3 +65,51 @@ Some outputs are too large for GitHub and are `.gitignore`d. Generate via the sc
 -   Manuscript text: see the pre-print at https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537.
 -   The main Rmd (`scripts/ToMEx2_EcoTox.Rmd`) produces the manuscript visuals located in `output/Manuscript_Figs/` (e.g., `Figure5.jpg`, `Figure6_PNEC_compare_arranged_plot.jpg`, `figure1_a_alpha_combined_plot.jpg`, `figure2_bio_response_taxa.jpg`).
 -   Environmental data extractions (`data/input/Environmental_Data_Collection/`) underpin comparisons to ToMEx particle traits; keep these synchronized with updates to the ToMEx source data when re-running analyses.
+
+------------------------------------------------------------------------
+
+# WORKFLOW FLOW DIAGRAM (Mermaid)
+
+This diagram summarizes the end-to-end PSSD++ pipeline implemented in this script, from data import through probabilistic threshold derivation and aggregation.
+
+## PSSD++ Workflow Overview
+
+``` mermaid
+flowchart TD
+
+  A[Start Script] --> B[Load Libraries]
+  B --> C[Check & Enforce ssdtools v0.3.7]
+  C --> D[Source Utility, SSD, PSSD, and Plotting Functions]
+
+  D --> E[Import & QC ToMEx-derived Toxicity Dataset]
+  E --> E1[Apply Tier 0 Technical & Risk Filters]
+  E1 --> E2[Compute Composite Assessment Factors]
+
+  E2 --> F[Generate MC Parameter Matrix<br/>(Latin Hypercube Sampling)]
+  F --> G[Visualize Parameter Distributions]
+
+  G --> H[MC-SIM Alignment<br/>(MC_sim_align_parallel)]
+  H --> I[Aligned MC-Simulation Dataset]
+
+  I --> J{ERM Type}
+
+  J -->|Food Dilution| K1[Construct Food Dilution Datasets]
+  J -->|Tissue Translocation| K2[Construct Tissue Translocation Datasets]
+
+  K1 --> L[Stratify by Environment<br/>(Freshwater / Marine)]
+  K2 --> L
+
+  L --> M[Select Tier 3/4 Data]
+
+  M --> N[make_all_pSSDs()]
+  N --> N1[Parallel Loop<br/>Tier × Environment × ERM]
+  N1 --> N2[Probabilistic SSD Fitting]
+  N2 --> N3[Monte Carlo Uncertainty Propagation]
+  N3 --> N4[Derive HC5 / HC10 PNECs]
+  N4 --> N5[Generate & Save PSSD / PNEC Figures]
+  N5 --> N6[Cache Results to Disk]
+
+  N6 --> O[Aggregate PNECs Across Runs]
+  O --> P[Summarized PNEC Output Table]
+
+  P --> Q[End]

@@ -38,8 +38,8 @@ do.pSSD_mod <- function(
     UFdd <- UFdd[, -ind.sp.rem]
   }
 
-  require(trapezoid)
-  require(mc2d)
+  require(trapezoid, quietly = TRUE)
+  require(mc2d, quietly = TRUE)
 
   # Calculate corrected endpoints
   corr.endpoints <- DP / (UFdd * UFt)

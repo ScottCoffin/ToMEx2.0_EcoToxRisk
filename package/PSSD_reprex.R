@@ -1,22 +1,166 @@
-#################################
-#### MINIMAL REPREX PSSD++ #####
-#################################
+###############################################
+#### MINIMAL REPREX — PSSD++ FRAMEWORK ####
+###############################################
+
+# PURPOSE
+# -------
+# This script provides a minimal, end-to-end reproducible example (REPREX)
+# of the PSSD++ probabilistic ecotoxicological threshold framework used to
+# derive microplastic (MP) hazard thresholds across environments and
+# Effect–Response Metrics (ERMs).
+#
+# The workflow integrates:
+#   (i) Monte Carlo (MC) uncertainty propagation,
+#   (ii) probabilistic Species Sensitivity Distributions (pSSDs),
+#   (iii) alignment of laboratory toxicity data to environmentally relevant
+#        MP particle distributions, and
+#   (iv) parallel computation with caching and progress reporting.
+#
+# The implementation mirrors the analytical pipeline described in
+# Coffin et al. (2025) and related manuscripts, while remaining compact
+# enough for debugging, method development, and demonstration.
+
+# OVERVIEW OF WORKFLOW
+# --------------------
+# 1. Load required R packages (data wrangling, plotting, MC simulation,
+#    parallelization, progress tracking).
+#
+# 2. Enforce a specific version of ssdtools (v0.3.7) to ensure consistency
+#    with published SSD fitting behavior.
+#
+# 3. Source all custom utility, SSD, plotting, and PSSD functions required
+#    for the analysis.
+#
+# 4. Import a preprocessed microplastics ecotoxicity dataset (ToMEx 2.0–derived),
+#    apply quality-control filters, compute composite assessment factors (AFs),
+#    and retain only studies meeting Tier 0 technical and risk criteria.
+#
+# 5. Generate synthetic uncertainty parameter sets using Latin Hypercube
+#    Sampling (LHS) to support Monte Carlo simulation of ERM alignment
+#    parameters (particle size bounds, truncation limits, uncertainty factors).
+#
+# 6. Perform MC-based alignment of toxicity data to environmentally relevant
+#    MP exposure metrics (MC_sim_align_parallel), producing a simulation-ready
+#    dataset spanning ERMs, environments, and uncertainty realizations.
+#
+# 7. Construct ERM-specific datasets for:
+#       - Food Dilution
+#       - Tissue Translocation
+#    and stratify these by environment (Freshwater vs Marine) and threshold
+#    tier (Tier 3/4 only in this REPREX).
+#
+# 8. Run the PSSD++ framework using make_all_pSSDs(), which:
+#       - Iterates over tiers, environments, and ERMs
+#       - Fits probabilistic SSDs using MC-simulated NOEC distributions
+#       - Derives HC5 and HC10-based PNECs
+#       - Generates and saves publication-ready figures
+#       - Caches results to disk to avoid redundant recomputation
+#       - Executes in parallel with live progress reporting
+#
+# 9. Aggregate resulting PNECs across all combinations into a summary table
+#    suitable for visualization, reporting, or downstream risk assessment.
+#
+# KEY FEATURES
+# ------------
+# - Fully probabilistic (uncertainty propagated end-to-end)
+# - Parallelized across Tier × Environment × ERM combinations
+# - Deterministic caching for reproducibility and efficiency
+# - Minimal simulation size (sim = 10) for demonstration purposes
+#   (increase to ≥300 for production analyses)
+#
+# OUTPUTS
+# -------
+# - Cached PSSD results (.rds) for each Tier × Environment × ERM combination
+# - Saved PSSD and PNEC figures in the specified output directory
+# - A summarized table of PNECs across all model runs
+#
+# INTENDED USE
+# ------------
+# - Method development and debugging
+# - Demonstration of the PSSD++ framework
+# - Reproducible example accompanying manuscripts or technical reports
+#
+# NOTES
+# -----
+# - This script assumes all sourced helper functions are available locally.
+# - Parallel progress is reported using the progressr + future framework.
+# - Console verbosity is intentionally minimal for batch execution.
+#
+###############################################
+
+# ------------------------------------------------------------------
+# WORKFLOW FLOW DIAGRAM (Mermaid)
+#
+# This diagram summarizes the end-to-end PSSD++ pipeline implemented
+# in this script, from data import through probabilistic threshold
+# derivation and aggregation.
+#
+# ```mermaid
+# flowchart TD
+
+#   A[Start Script] --> B[Load Libraries]
+#   B --> C[Check & Enforce ssdtools v0.3.7]
+#   C --> D[Source Utility, SSD, PSSD, and Plotting Functions]
+
+#   D --> E[Import & QC ToMEx-derived Toxicity Dataset]
+#   E --> E1[Apply Tier 0 Technical & Risk Filters]
+#   E1 --> E2[Compute Composite Assessment Factors]
+
+#   E2 --> F[Generate MC Parameter Matrix<br/>(Latin Hypercube Sampling)]
+#   F --> G[Visualize Parameter Distributions]
+
+#   G --> H[MC-SIM Alignment<br/>(MC_sim_align_parallel)]
+#   H --> I[Aligned MC-Simulation Dataset]
+
+#   I --> J{ERM Type}
+
+#   J -->|Food Dilution| K1[Construct Food Dilution Datasets]
+#   J -->|Tissue Translocation| K2[Construct Tissue Translocation Datasets]
+
+#   K1 --> L[Stratify by Environment<br/>(Freshwater / Marine)]
+#   K2 --> L
+
+#   L --> M[Select Tier 3/4 Data]
+
+#   M --> N[make_all_pSSDs()]
+
+#   N --> N1[Parallel Loop<br/>Tier × Environment × ERM]
+#   N1 --> N2[Probabilistic SSD Fitting]
+#   N2 --> N3[Monte Carlo Uncertainty Propagation]
+#   N3 --> N4[Derive HC5 / HC10 PNECs]
+#   N4 --> N5[Generate & Save PSSD / PNEC Figures]
+#   N5 --> N6[Cache Results to Disk]
+
+#   N6 --> O[Aggregate PNECs Across Runs]
+#   O --> P[Summarized PNEC Output Table]
+
+#   P --> Q[End]
+# ```
+# ------------------------------------------------------------------
 
 # libraries
-library(tidyverse)
-library(sensobol)
-library(truncnorm)
-library(ggpubr)
-library(ggdark)
-library(gtsummary)
-library(doParallel)
-library(doSNOW)
-library(tictoc)
-library(crayon)
-library(Matrix)
-library(reshape2)
-library(future)
-library(future.apply)
+pkgs <- c(
+  "tidyverse",
+  "sensobol",
+  "truncnorm",
+  "ggpubr",
+  "ggdark",
+  "gtsummary",
+  "doParallel",
+  "doSNOW",
+  "tictoc",
+  "crayon",
+  "Matrix",
+  "reshape2",
+  "future",
+  "future.apply",
+  "progressr"
+)
+
+invisible(lapply(pkgs, function(p) {
+  suppressPackageStartupMessages(library(p, character.only = TRUE))
+}))
+
 #check SSDtools package version is 0.3.7#
 source("scripts/utils/check_pckg.R")
 check_and_install_version("ssdtools", "0.3.7")
@@ -82,39 +226,30 @@ results_df_food <- MC_sim_df %>%
   ) %>%
   mutate(dose_new_particles_L = particles_L_food_dilution) %>%
   drop_na(particles_L_food_dilution)
-
 # Tier 3/4
 results_df_food_t3_t4 <- results_df_food %>%
   filter(risk.13 != 1, bio_f %in% c("Organism", "Population"))
-
 ##### marine food ####
 # T1/2
-results_df_food_marine <- results_df_food %>%
-  filter(environment == "Marine")
+results_df_food_marine <- results_df_food %>% filter(environment == "Marine")
 # T3/4
 results_df_food_t3_t4_marine <- results_df_food_t3_t4 %>%
   filter(environment == "Marine")
-
 ##### freshwater food ####
 # T1/2
 results_df_food_freshwater <- results_df_food %>%
   filter(environment == "Freshwater")
-
 # T3/4
 results_df_food_t3_t4_freshwater <- results_df_food_t3_t4 %>%
   filter(environment == "Freshwater")
-
-
 ########## Tissue Translocation ################
 results_df_tissue <- MC_sim_df %>%
   filter(translocatable != "not translocatable", particles_L_ox_stress > 0) %>%
   mutate(dose_new_particles_L = particles_L_ox_stress) %>%
   drop_na(particles_L_ox_stress)
-
 # Tier 3/4
 results_df_tissue_t3_t4 <- results_df_tissue %>%
   filter(risk.13 != 1, bio_f %in% c("Organism", "Population"))
-
 ##### marine tissue ####
 # T1/2
 results_df_tissue_marine <- results_df_tissue %>%
@@ -122,18 +257,16 @@ results_df_tissue_marine <- results_df_tissue %>%
 # T3/4
 results_df_tissue_t3_t4_marine <- results_df_tissue_t3_t4 %>%
   filter(environment == "Marine")
-
 ##### freshwater tissue ####
 # T1/2
 results_df_tissue_freshwater <- results_df_tissue %>%
   filter(environment == "Freshwater")
-
 # T3/4
 results_df_tissue_t3_t4_freshwater <- results_df_tissue_t3_t4 %>%
   filter(environment == "Freshwater")
 
 # ------------------------------------------------------------------
-# ERM registry: canonical source of truth
+# ERM registry
 # ------------------------------------------------------------------
 erm_registry <- list(
   "Food Dilution" = list(
@@ -146,229 +279,26 @@ erm_registry <- list(
   )
 )
 
-# function to generate PSSDs and plots with caching and optional debugging
-make_all_pSSDs <- function(
-  MC_sim_df = NULL, # MC-sim dataframe
-  tiers = c(3), #mehinto et al tiers
+##### perform pSSD #####
+pSSDs <- make_all_pSSDs(
+  MC_sim_df, # MC-sim DF
+  tiers = c(3), #mehinto et al (2022) threshold tiers to loop throughj
   environments = c("Freshwater", "Marine"), #environments to loop through
   erms = c("Food Dilution", "Tissue Translocation"), #ERMs to loop through
-  sim = 10,
-  cv_uf = 0.5,
-  rmore_method = "step",
-  quantile_type = 8,
-  debug_option = FALSE,
-  parallel = TRUE,
-  workers = parallel::detectCores() - 1,
-  base_cache_dir = "package/test_output/pssd_cache/",
-  base_output_path = "package/test_output/figures/",
-  overwrite_cache = FALSE
-) {
-  # ---- Argument validation ----
-  if (is.null(MC_sim_df)) {
-    stop("MC_sim_df must be provided explicitly.", call. = FALSE)
-  }
-  # Create output directories if they don't exist
-  output_path <- paste0(base_output_path, rmore_method, "_", sim, "sims")
-  if (!dir.exists(output_path)) {
-    dir.create(output_path, recursive = TRUE)
-  }
-  cache_dir <- paste0(base_cache_dir, rmore_method, "_", sim, "sims")
-  # Create cache directory if it doesn't exist
-  if (!dir.exists(cache_dir)) {
-    dir.create(cache_dir, recursive = T)
-  }
-  # generate color palette for unique levels of species/groups
-  all_species <- MC_sim_df %>%
-    filter(
-      environment %in% environments,
-      !Group %in% c("Insect", "Annelida") #not used in this analysis
-    ) %>%
-    distinct(Species, Group, environment) %>%
-    droplevels() %>%
-    arrange(environment, Group, Species)
+  sim = 10, # number of PSSD simulations
+  cv_uf = 0.5, # coefficient of variation for uncertainty factors
+  rmore_method = "step", # method to handle pSSD distribution building (options = 'step' i.e., original trapezoidal method in Wigger et al., 2020, or 'lognormal' - shortcut developed in Coffin et al. (2025))
+  quantile_type = 8, # quantile type for distribution fitting (8 is default, and use of others may cause unexpected or unreliable results)
+  debug_option = FALSE, # debugging option
+  parallel = TRUE, # enable parallel processing
+  workers = parallel::detectCores() - 1, # number of worker cores to use
+  base_cache_dir = "package/test_output/pssd_cache/", # directory for caching PSSD results
+  base_output_path = "package/test_output/figures/", # directory for saving PSSD figures
+  overwrite_cache = FALSE # whether to overwrite existing cache files
+)
 
-  # Generate a consistent color palette
-  global_color_palette <- generate_color_palette(all_species)
+# summarize PNECs into wide plot
+PNEC_summary <- summarize_PNECs(pSSDs)
 
-  # Initialize tracking
-  total_iterations <- length(tiers) * length(environments) * length(erms)
-  iteration_times <- numeric(total_iterations)
-  iteration_count <- 0
-  tictoc::tic("PSSD++ For Loop Begins...")
-
-  # Start loop
-  results <- list()
-  for (tier in tiers) {
-    for (environment in environments) {
-      for (erm in erms) {
-        iteration_count <- iteration_count + 1
-        iteration_start_time <- Sys.time()
-
-        combo_id <- paste0("Tier", tier, "_", environment, "_", erm)
-        cache_file <- file.path(cache_dir, paste0(combo_id, ".rds"))
-
-        if (file.exists(cache_file) && !overwrite_cache) {
-          cat(blue(sprintf(
-            "\n🔁 [%s] Using cached result: %s\n",
-            format(iteration_start_time, "%H:%M:%S"),
-            combo_id
-          )))
-          results[[combo_id]] <- readRDS(cache_file)
-          next
-        }
-
-        if (file.exists(cache_file) && overwrite_cache) {
-          cat(yellow(sprintf(
-            "\n♻️  [%s] Overwriting cached result: %s\n",
-            format(iteration_start_time, "%H:%M:%S"),
-            combo_id
-          )))
-        }
-
-        cat(green(sprintf(
-          "\n⏳ [%s] Starting: Tier %d | Environment: %s | ERM: %s\n",
-          format(iteration_start_time, "%H:%M:%S"),
-          tier,
-          environment,
-          erm
-        )))
-
-        # Wrap in tryCatch for error handling
-        tryCatch(
-          {
-            results_df <- get_results_df(tier, environment, erm)
-
-            result <- generate_plots_and_summary(
-              tier = tier,
-              environment = environment,
-              erm = erm,
-              color_palette = global_color_palette,
-              results_df = results_df,
-              sim = sim,
-              num_iterations = num_iterations,
-              quantile_type = quantile_type,
-              cv_dp = NULL,
-              cv_uf = cv_uf,
-              rmore_method = rmore_method,
-              species_data_source = MC_sim_df,
-              output_path = output_path,
-              presentation_path = presentation_path,
-              debug = debug_option
-            )
-
-            saveRDS(result, cache_file)
-            results[[combo_id]] <- result
-
-            iteration_end_time <- Sys.time()
-            iteration_time_sec <- as.numeric(difftime(
-              iteration_end_time,
-              iteration_start_time,
-              units = "secs"
-            ))
-            iteration_times[iteration_count] <- iteration_time_sec
-
-            running_average_sec <- mean(iteration_times[1:iteration_count])
-            est_time_remaining_sec <- running_average_sec *
-              (total_iterations - iteration_count)
-
-            cat(yellow(sprintf(
-              "✅ Completed: %s in %.2f hr | Est. remaining: %.2f hr\n",
-              combo_id,
-              iteration_time_sec / 3600,
-              est_time_remaining_sec / 3600
-            )))
-          },
-          error = function(e) {
-            cat(red(sprintf("❌ ERROR in %s: %s\n", combo_id, e$message)))
-          }
-        )
-      }
-    }
-  }
-  return(results)
-
-  # Wrap up
-  pSSD_time <- tictoc::toc()
-  total_runtime_sec <- pSSD_time$toc - pSSD_time$tic
-  cat(blue(sprintf(
-    "\n🎉 PSSD++ complete for all combinations! Total time: %.2f hours\n",
-    total_runtime_sec / 3600
-  )))
-}
-
-pSSDs <- make_all_pSSDs(MC_sim_df, overwrite_cache = TRUE)
-
-# Initialize an empty list to store the standardized summaries
-PNEC_summaries <- list()
-
-# Loop through the results list to extract and standardize PNEC summaries
-for (combination in names(results)) {
-  # Extract the PNEC summary statistics for HC5 (hcx = 0.05)
-  PNEC_stats_05 <- results[[combination]]$summary_05$stats
-  PNEC_stats_05_long <- data.frame(
-    Statistic = rownames(PNEC_stats_05),
-    Value = as.numeric(PNEC_stats_05[, 1]), # Extract the first column (values)
-    HCX = "HC5", # Add a column to indicate HC5
-    Tier = "Tier3" # Assign Tier3 for HC5
-  )
-
-  # Extract the PNEC summary statistics for HC10 (hcx = 0.10)
-  PNEC_stats_10 <- results[[combination]]$summary_10$stats
-  PNEC_stats_10_long <- data.frame(
-    Statistic = rownames(PNEC_stats_10),
-    Value = as.numeric(PNEC_stats_10[, 1]), # Extract the first column (values)
-    HCX = "HC10", # Add a column to indicate HC10
-    Tier = "Tier4" # Assign Tier4 for HC10
-  )
-
-  # Combine HC5 and HC10 into a single data frame
-  PNEC_stats_long <- rbind(PNEC_stats_05_long, PNEC_stats_10_long)
-
-  # Add the combination name and split it into environment and ERM
-  PNEC_stats_long$Combination <- combination
-  PNEC_stats_long$Environment <- sub(".*_(.*)_(.*)", "\\1", combination) # Extract environment
-  PNEC_stats_long$ERM <- sub(".*_(.*)", "\\1", combination) # Extract ERM
-
-  # Append to the list
-  PNEC_summaries[[combination]] <- PNEC_stats_long
-}
-
-# Combine all standardized summaries into a single data frame
-PNEC_summary_table <- do.call(rbind, PNEC_summaries)
-
-# Reorder columns for clarity
-PNEC_summary_table <- PNEC_summary_table[, c(
-  "Tier",
-  "Environment",
-  "ERM",
-  "HCX",
-  "Statistic",
-  "Value"
-)]
-
-# Sort the table by Environment, ERM, Tier, and HCX
-PNEC_summary_table <- PNEC_summary_table[
-  order(
-    PNEC_summary_table$Environment,
-    PNEC_summary_table$ERM,
-    PNEC_summary_table$Tier,
-    PNEC_summary_table$HCX
-  ),
-]
-
-# Remove row names
-rownames(PNEC_summary_table) <- NULL
-
-# Pivot the table wider
-PNEC_summary_table_wide <- PNEC_summary_table %>%
-  pivot_wider(
-    names_from = c(Statistic), # Use both Statistic and HCX for new column names
-    values_from = Value # Use the Value column for the values
-  ) %>%
-  select(-HCX)
-
-# Save the table as an RDS file
-saveRDS(PNEC_summary_table_wide, "../data/output/PNEC_summary_table_wide.rds")
-
-# Display the table in R
-print(PNEC_summary_table_wide)
+# Display the table
+print(PNEC_summary)
