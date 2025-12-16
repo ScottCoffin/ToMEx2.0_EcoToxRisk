@@ -36,44 +36,130 @@ y <- NMDS$points[, 2]
 # get vectors for each variable
 envfitall <- envfit(NMDS, scaled)
 vectors = as_tibble(envfitall$vectors$arrows, rownames = "properties")
-vectors$vectornames = c("PE/PET/Polyester", "PP", "PS", "PA", "PU", 
-                        "PVC/PVA", "PTFE", "Other", "Fragments", "Spheres", 
-                        "Fibers", "Mean length", "Mean width")
+vectors$vectornames = c(
+     "PE/PET/Polyester",
+     "PP",
+     "PS",
+     "PA",
+     "PU",
+     "PVC/PVA",
+     "PTFE",
+     "Other",
+     "Fragments",
+     "Spheres",
+     "Fibers",
+     "Mean length",
+     "Mean width"
+)
 # get vector/arrow weights:
 weights = attr(envfitall$vectors$arrows, "parameters")$norm
 
 palette(c("lightskyblue", "royalblue3"))
 
-adjust.x = c(0.55, 0.3, -0.3, -0.1, 0.1, 
-             0.7, -0.5, 0.1, -0.5, -0.4, 
-             0.5, -0.8, -0.8)
-adjust.y = c(-0.2, 0, 0, 0.2, 0.25, 
-             0.1, 0.1, 0.2, -0.3, 0.3, 
-             0, 0.2, 0)
+adjust.x = c(
+     0.55,
+     0.3,
+     -0.3,
+     -0.1,
+     0.1,
+     0.7,
+     -0.5,
+     0.1,
+     -0.5,
+     -0.4,
+     0.5,
+     -0.8,
+     -0.8
+)
+adjust.y = c(-0.2, 0, 0, 0.2, 0.25, 0.1, 0.1, 0.2, -0.3, 0.3, 0, 0.2, 0)
 
-png("output/Manuscript_Figs/characteristics and NMDS/figure3_NMDS_environmental.png", width = 18, height = 15, units = "cm", res = 1000)
+png(
+     "output/Manuscript_Figs/characteristics and NMDS/figure3_NMDS_environmental.png",
+     width = 18,
+     height = 15,
+     units = "cm",
+     res = 1000
+)
 
 op = par(bty = "l", las = 1, cex = 1)
 
-plot(x,y, bg = adjustcolor(as.numeric(dat$fresh_marine_binary), alpha.f = 0.9), col = c(rep("red",4), rep("grey50",(nrow(dat)-4))), 
-     pch = c(rep(24,2), rep(22,2), rep(21,(nrow(dat)-2))), lwd = c(2,2,2,2, rep(1, (nrow(dat)-4))),
-     xlab = "NMDS1", ylab = "NMDS2", cex = 1.5, 
-     ylim = c(-4,5), xlim = c(-8, 4))
+plot(
+     x,
+     y,
+     bg = adjustcolor(as.numeric(dat$fresh_marine_binary), alpha.f = 0.9),
+     col = c(rep("red", 4), rep("grey50", (nrow(dat) - 4))),
+     pch = c(rep(24, 2), rep(22, 2), rep(21, (nrow(dat) - 2))), # point shapes
+     lwd = c(2, 2, 2, 2, rep(1, (nrow(dat) - 4))), # line width
+     xlab = "NMDS1",
+     ylab = "NMDS2",
+     cex = 1.5,
+     ylim = c(-4, 5),
+     xlim = c(-8, 4)
+)
 
-# for(i in 1:nrow(envfitall$vectors$arrows)){
-# arrows(0,0, envfitall$vectors$arrows[i,1]*2.5, envfitall$vectors$arrows[i,2]*2.5, 
-#        length = 0.1, col = "grey50")
-# text(envfitall$vectors$arrows[i,1]*2.5 + adjust.x[i], envfitall$vectors$arrows[i,2]*2.5 + adjust.y[i],
-#      vectors$vectornames[i], cex = 0.8, col = "grey50")
-# }  
-for(i in 1:nrow(envfitall$vectors$arrows)){
-  arrows(0,0, envfitall$vectors$arrows[i,1]*7*weights[i], envfitall$vectors$arrows[i,2]*7*weights[i], 
-         length = 0.1, col = "grey50")
-  text(envfitall$vectors$arrows[i,1]*7*weights[i] + adjust.x[i], envfitall$vectors$arrows[i,2]*7*weights[i] + adjust.y[i],
-       vectors$vectornames[i], cex = 0.8, col = "grey50")
-}  
-text("ToMEx 2.0", x = -2.5, y = -1.35, col = "red",
-     cex = 0.8, pos = 4, font = 2)
+legend(
+     "topleft",
+     legend = c(
+          "ToMEx 2.0 (full; freshwater)",
+          "ToMEx 2.0 (full; marine)",
+          "ToMEx 2.0 (quality-filtered; freshwater)",
+          "ToMEx 2.0 (quality-filtered; marine)",
+          "Environment (Freshwater)",
+          "Environment (Marine)"
+     ),
+     pch = c(24, 24, 22, 22, 21, 21), # shapes
+     pt.bg = adjustcolor(
+          c(
+               "lightskyblue",
+               "royalblue3",
+               "lightskyblue",
+               "royalblue3",
+               "lightskyblue",
+               "royalblue3"
+          ), # fill
+          alpha.f = 0.9
+     ),
+     col = c(
+          "red",
+          "red",
+          "red",
+          "red",
+          "grey50",
+          "grey50",
+          "grey50",
+          "grey50"
+     ), # outline
+     pt.lwd = c(1.5, 1.5, 1.5, 1.5, 1, 1), # line width
+     bty = "n",
+     cex = 0.85 # text size
+)
+
+for (i in 1:nrow(envfitall$vectors$arrows)) {
+     arrows(
+          0,
+          0,
+          envfitall$vectors$arrows[i, 1] * 7 * weights[i],
+          envfitall$vectors$arrows[i, 2] * 7 * weights[i],
+          length = 0.1,
+          col = "grey50"
+     )
+     text(
+          envfitall$vectors$arrows[i, 1] * 7 * weights[i] + adjust.x[i],
+          envfitall$vectors$arrows[i, 2] * 7 * weights[i] + adjust.y[i],
+          vectors$vectornames[i],
+          cex = 0.8,
+          col = "grey50"
+     )
+}
+text(
+     "ToMEx 2.0",
+     x = -2.5,
+     y = -1.35,
+     col = "red",
+     cex = 0.8,
+     pos = 4,
+     font = 2
+)
 
 dev.off()
 

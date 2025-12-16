@@ -1,6 +1,11 @@
-# ToMEx2.0_EcoToxRisk
+# ToMEx 2.0 - Ecotoxicological Risk Assessment
 
-Repository for the Journal of Hazardous Materials manuscript: "A Probabilistic Risk Framework for Microplastics Integrating Uncertainty Across Toxicological and Environmental Variability: Development and Application to Marine and Freshwater Ecosystems." Authors: Scott Coffin, Lidwina Bertrand, Kazi Towsif Ahmed, Luan de Souza Leite, Win Cowger, Mariella Sina, Andrew Barrick, Anna Kukkola, Bethanie Carney Almroth, Ezra Miller, Andrew Yeh, Stephanie Kennedy, Magdalena M. Mair, spanning California OEHHA; Universidad Nacional de Cordoba; Bangladesh Agricultural University; University of Campinas; Moore Institute for Plastic Pollution Research; National Taiwan University; Auburn University; University of Birmingham; University of Gothenburg; San Francisco Estuary Institute; Gradient Corporation; ToxStrategies LLC; and University of Bayreuth/BayCEER. Pre-print: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537.
+Repository for the Journal of Hazardous Materials manuscript ([Pre-print](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537)): \
+**"A Probabilistic Risk Framework for Microplastics Integrating Uncertainty Across Toxicological and Environmental Variability: Development and Application to Marine and Freshwater Ecosystems."**
+
+Authors: Scott Coffin, Lidwina Bertrand, Kazi Towsif Ahmed, Luan de Souza Leite, Win Cowger, Mariella Sina, Andrew Barrick, Anna Kukkola, Bethanie Carney Almroth, Ezra Miller, Andrew Yeh, Stephanie Kennedy, Magdalena M. Mair\
+\
+![Graphical Abstract](assets/Graphical_abstract.png)
 
 ## Purpose of the assessment
 
@@ -10,7 +15,7 @@ Repository for the Journal of Hazardous Materials manuscript: "A Probabilistic R
 
 ## Repro workflow at a glance
 
--   Option A (fastest): Download precomputed Monte Carlo and PSSD++ outputs from Zenodo (`https://doi.org/10.5281/zenodo.16740504`) and place them as listed under *Large files*; then knit `scripts/ToMEx2_EcoTox.Rmd`.
+-   Option A (fastest): Download precomputed Monte Carlo and PSSD++ outputs[ from Zenodo](https://doi.org/10.5281/zenodo.16740504) and place them as listed under *Large files*; then knit `scripts/ToMEx2_EcoTox.Rmd`.
 -   Option B (full recompute): Run `scripts/monte carlo/EcoTox_MonteCarlo.Rmd` (can exceed 12 hours; high RAM and multiple cores recommended) to generate aligned MC datasets and Sobol outputs, then knit `scripts/ToMEx2_EcoTox.Rmd`.
 -   Environmental comparisons: run the scripts in `scripts/characteristics and NMDS/`.
 -   Translocation model: knit `scripts/translocation/translocation.Rmd`.
@@ -55,7 +60,7 @@ Some outputs are too large for GitHub and are `.gitignore`d. Generate via the sc
 7)  For the pedagogical alignment walkthrough cited in the manuscript/SI, knit `scripts/illustrative_example/ERM Illustrative Example.Rmd`.
 8)  To beta-test the packaged functions, run `Rscript package/test_tomex_functions.R` (uses small subset and reduced `nboot`).
 
-## Notes and provenance
+## Notes
 
 -   Manuscript text: see the pre-print at https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537.
 -   The main Rmd (`scripts/ToMEx2_EcoTox.Rmd`) produces the manuscript visuals located in `output/Manuscript_Figs/` (e.g., `Figure5.jpg`, `Figure6_PNEC_compare_arranged_plot.jpg`, `figure1_a_alpha_combined_plot.jpg`, `figure2_bio_response_taxa.jpg`).

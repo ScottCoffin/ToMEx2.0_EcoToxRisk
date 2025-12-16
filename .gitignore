@@ -303,3 +303,14 @@ data/output/tier3_4_tissue.RDS
 scripts/monte carlo/output/sobol_results_filtered.rds
 scripts/monte carlo/output/sobol_results.rds
 scripts/monte carlo/output/sobol_time.txt
+data/output/aoc_aligned_no_filters.RDS
+data/output/tier1_2_food.RDS
+data/output/tier1_2_tissue.RDS
+data/output/tier3_4_food.RDS
+data/output/tier3_4_tissue.RDS
+output/data/aligned_data.rds
+scripts/monte carlo/output/aoc_MC_sobol.rds
+package/test_output/figures/step_10sims/Food Dilution_Freshwater_arranged_plot.jpg
+package/test_output/figures/step_10sims/Food Dilution_Marine_arranged_plot.jpg
+package/test_output/figures/step_10sims/Tissue Translocation_Freshwater_arranged_plot.jpg
+package/test_output/figures/step_10sims/Tissue Translocation_Marine_arranged_plot.jpg
