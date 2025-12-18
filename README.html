@@ -20,6 +20,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -49,11 +84,18 @@ ul.task-list li input[type="checkbox"] {
 
 <section id="tomex-2.0---ecotoxicological-risk-assessment" class="level1">
 <h1>ToMEx 2.0 - Ecotoxicological Risk Assessment</h1>
+<p><a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" class="img-fluid" alt="MIT License"></a> <a href="DESCRIPTION"><img src="https://img.shields.io/badge/R-%3E%3D%204.1-blue.svg" class="img-fluid" alt="R >= 4.1"></a> <a href="https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/tree/main/package"><img src="https://img.shields.io/badge/install-GitHub-blueviolet.svg" class="img-fluid" alt="Install PSSDplusplus"></a></p>
 <p>Repository for the Journal of Hazardous Materials manuscript (<a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537">Pre-print</a>):<br>
 <strong>“A Probabilistic Risk Framework for Microplastics Integrating Uncertainty Across Toxicological and Environmental Variability: Development and Application to Marine and Freshwater Ecosystems.”</strong></p>
 <p>Authors: Scott Coffin, Lidwina Bertrand, Kazi Towsif Ahmed, Luan de Souza Leite, Win Cowger, Mariella Sina, Andrew Barrick, Anna Kukkola, Bethanie Carney Almroth, Ezra Miller, Andrew Yeh, Stephanie Kennedy, Magdalena M. Mair<br>
 <br>
-<img src="assets/Graphical_abstract.png" class="img-fluid" alt="Graphical Abstract"></p>
+<a href="https://github.com/SCCWRP/ToMEx_AquaticOrganisms">Related resource: ToMEx Aquatic Organisms</a> (source database and onboarding scripts that underpin the ecotoxicity dataset)</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="assets/Graphical_abstract.png" class="img-fluid figure-img"></p>
+<figcaption>Graphical Abstract</figcaption>
+</figure>
+</div>
 <section id="purpose-of-the-assessment" class="level2">
 <h2 class="anchored" data-anchor-id="purpose-of-the-assessment">Purpose of the assessment</h2>
 <ul>
@@ -62,8 +104,52 @@ ul.task-list li input[type="checkbox"] {
 <li>Provide supporting models (tissue translocation GLM) and illustrative materials explaining the alignment framework.</li>
 </ul>
 </section>
+<section id="pssdplusplus-package" class="level2">
+<h2 class="anchored" data-anchor-id="pssdplusplus-package">PSSDplusplus package</h2>
+<p>To improve the technology readiness level of this method, an R package has been developed to enable rapid adoption with limited barriers. At the moment, we do not intend to host this package on CRAN due to a lack of funding, however we believe that the approach provided here is sufficient for nearly all use cases. If you are interested in helping us adapt this for CRAN, we would be happy to collaborate!</p>
+<ul>
+<li>Packaged functions live in <code>package/</code> and install as <code>PSSDplusplus</code>.</li>
+<li>Install locally with <code>devtools::install_local("package", upgrade = "never")</code>.</li>
+<li>Load and run the bundled reprex with <code>library(PSSDplusplus); run_pssd_reprex(sim = 2, n_sim = 2, workers = 1, overwrite_cache = TRUE)</code>.</li>
+<li>The walkthrough vignette is available via <code>vignette("pssdplusplus-walkthrough", package = "PSSDplusplus")</code>.</li>
+</ul>
+<p>Install from GitHub (ignore vignettes by default - as pSSD is computationally heavy):</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># using remotes/devtools</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">"ScottCoffin/ToMEx2.0_EcoToxRisk"</span>, <span class="at">subdir =</span> <span class="st">"package"</span>, <span class="at">build_vignettes =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># or with pak</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>pak<span class="sc">::</span><span class="fu">pak</span>(<span class="st">"ScottCoffin/ToMEx2.0_EcoToxRisk"</span>, <span class="at">subdir =</span> <span class="st">"package"</span>, <span class="at">dependencies =</span> <span class="cn">TRUE</span>, <span class="at">build_vignettes =</span><span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>The vignette provides a simple walkthrough of how to apply the functions in this package. Due to the high degree of computation required to run even a minimal pSSD++ method, it is recommended to install without building the vignette to avoid unnecessary delays.</p>
+</section>
+<section id="quick-start" class="level2">
+<h2 class="anchored" data-anchor-id="quick-start">Quick Start</h2>
+<ul>
+<li>Install the package from GitHub (skip vignettes for speed):</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">"ScottCoffin/ToMEx2.0_EcoToxRisk"</span>, <span class="at">subdir =</span> <span class="st">"package"</span>, <span class="at">build_vignettes =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<ul>
+<li>Load and run the bundled minimal reproducible example:</li>
+</ul>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(PSSDplusplus)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">run_pssd_reprex</span>(<span class="at">sim =</span> <span class="dv">2</span>, <span class="at">n_sim =</span> <span class="dv">2</span>, <span class="at">workers =</span> <span class="dv">1</span>, <span class="at">overwrite_cache =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<ul>
+<li>Optional: build/view the vignette after install (can be slow):</li>
+</ul>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">"ScottCoffin/ToMEx2.0_EcoToxRisk"</span>, <span class="at">subdir =</span> <span class="st">"package"</span>, <span class="at">build_vignettes =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">vignette</span>(<span class="st">"pssdplusplus-walkthrough"</span>, <span class="at">package =</span> <span class="st">"PSSDplusplus"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="system-requirements" class="level2">
+<h2 class="anchored" data-anchor-id="system-requirements">System Requirements</h2>
+<ul>
+<li>R 4.1 or newer (matches <code>Depends</code> in <code>DESCRIPTION</code>).</li>
+<li>Operating systems: standard R platforms (Windows, macOS, Linux) with knitr/rmarkdown toolchain.</li>
+<li>Minimum suggested hardware for full Monte Carlo/vignette runs: multi-core CPU and 16 GB RAM; smaller runs (the bundled REPREX) work on modest laptops.</li>
+<li>External system tools: <code>qpdf</code> recommended for compacting vignettes during <code>R CMD check</code>.</li>
+</ul>
+</section>
 <section id="repro-workflow-at-a-glance" class="level2">
 <h2 class="anchored" data-anchor-id="repro-workflow-at-a-glance">Repro workflow at a glance</h2>
+<p>To reproduce the exact analysis in the manuscript:</p>
 <ul>
 <li>Option A (fastest): Download precomputed Monte Carlo and PSSD++ outputs<a href="https://doi.org/10.5281/zenodo.16740504">from Zenodo</a> and place them as listed under <em>Large files</em>; then knit <code>scripts/ToMEx2_EcoTox.Rmd</code>.</li>
 <li>Option B (full recompute): Run <code>scripts/monte carlo/EcoTox_MonteCarlo.Rmd</code> (can exceed 12 hours; high RAM and multiple cores recommended) to generate aligned MC datasets and Sobol outputs, then knit <code>scripts/ToMEx2_EcoTox.Rmd</code>.</li>

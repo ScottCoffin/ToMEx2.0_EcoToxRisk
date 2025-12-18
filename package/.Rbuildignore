@@ -1,3 +1,5 @@
+^renv$
+^renv\.lock$
 ^test_output$
 ^PSSD_reprex\\.R$
 ^test_tomex_functions\\.R$

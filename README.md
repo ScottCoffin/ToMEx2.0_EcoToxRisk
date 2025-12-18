@@ -1,10 +1,16 @@
 # ToMEx 2.0 - Ecotoxicological Risk Assessment
 
+[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![R >= 4.1](https://img.shields.io/badge/R-%3E%3D%204.1-blue.svg)](DESCRIPTION)
+[![Install PSSDplusplus](https://img.shields.io/badge/install-GitHub-blueviolet.svg)](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/tree/main/package)
+
 Repository for the Journal of Hazardous Materials manuscript ([Pre-print](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537)):\
 **"A Probabilistic Risk Framework for Microplastics Integrating Uncertainty Across Toxicological and Environmental Variability: Development and Application to Marine and Freshwater Ecosystems."**
 
 Authors: Scott Coffin, Lidwina Bertrand, Kazi Towsif Ahmed, Luan de Souza Leite, Win Cowger, Mariella Sina, Andrew Barrick, Anna Kukkola, Bethanie Carney Almroth, Ezra Miller, Andrew Yeh, Stephanie Kennedy, Magdalena M. Mair\
 \
+[Related resource: ToMEx Aquatic Organisms](https://github.com/SCCWRP/ToMEx_AquaticOrganisms) (source database and onboarding scripts that underpin the ecotoxicity dataset)
+
 ![Graphical Abstract](assets/Graphical_abstract.png)
 
 ## Purpose of the assessment
@@ -15,22 +21,46 @@ Authors: Scott Coffin, Lidwina Bertrand, Kazi Towsif Ahmed, Luan de Souza Leite,
 
 ## PSSDplusplus package
 
+To improve the technology readiness level of this method, an R package has been developed to enable rapid adoption with limited barriers. At the moment, we do not intend to host this package on CRAN due to a lack of funding, however we believe that the approach provided here is sufficient for nearly all use cases. If you are interested in helping us adapt this for CRAN, we would be happy to collaborate! 
+
 -   Packaged functions live in `package/` and install as `PSSDplusplus`.
 -   Install locally with `devtools::install_local("package", upgrade = "never")`.
 -   Load and run the bundled reprex with `library(PSSDplusplus); run_pssd_reprex(sim = 2, n_sim = 2, workers = 1, overwrite_cache = TRUE)`.
 -   The walkthrough vignette is available via `vignette("pssdplusplus-walkthrough", package = "PSSDplusplus")`.
 
-Install from GitHub (build vignettes by default):
+Install from GitHub (ignore vignettes by default - as pSSD is computationally heavy):
 
 ```r
-# using remotes/devtools
-remotes::install_github("ScottCoffin/ToMEx2.0_EcoToxRisk", subdir = "package", build_vignettes = TRUE)
+remotes::install_github("ScottCoffin/ToMEx2.0_EcoToxRisk", subdir = "package", build_vignettes = FALSE)
 
 # or with pak
-pak::pak("ScottCoffin/ToMEx2.0_EcoToxRisk", subdir = "package", dependencies = TRUE, build_vignettes = TRUE)
+pak::pak("ScottCoffin/ToMEx2.0_EcoToxRisk", subdir = "package", dependencies = TRUE, build_vignettes =FALSE)
+```
+The vignette provides a simple walkthrough of how to apply the functions in this package. Due to the high degree of computation required to run even a minimal pSSD++ method, it is recommended to install without building the vignette to avoid unnecessary delays. 
+
+- Load and run the bundled minimal reproducible example:
+
+```r
+library(PSSDplusplus)
+run_pssd_reprex(sim = 2, n_sim = 2, workers = 1, overwrite_cache = TRUE)
+```
+- Optional: build/view the vignette after install (can be slow):
+
+```r
+remotes::install_github("ScottCoffin/ToMEx2.0_EcoToxRisk", subdir = "package", build_vignettes = TRUE)
+vignette("pssdplusplus-walkthrough", package = "PSSDplusplus")
 ```
 
+### System Requirements
+
+- R 4.1 or newer (matches `Depends` in `DESCRIPTION`).
+- Operating systems: standard R platforms (Windows, macOS, Linux)
+- Minimum suggested hardware for full Monte Carlo/vignette runs: multi-core CPU and 16 GB RAM; smaller runs (the bundled REPREX) work on modest laptops.
+- Positron IDE preferred over RStudio (in general...)
+
 ## Repro workflow at a glance
+
+To reproduce the exact analysis in the manuscript:
 
 -   Option A (fastest): Download precomputed Monte Carlo and PSSD++ outputs[from Zenodo](https://doi.org/10.5281/zenodo.16740504) and place them as listed under *Large files*; then knit `scripts/ToMEx2_EcoTox.Rmd`.
 -   Option B (full recompute): Run `scripts/monte carlo/EcoTox_MonteCarlo.Rmd` (can exceed 12 hours; high RAM and multiple cores recommended) to generate aligned MC datasets and Sobol outputs, then knit `scripts/ToMEx2_EcoTox.Rmd`.
