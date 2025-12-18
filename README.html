@@ -82,247 +82,191 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<section id="tomex-2.0---ecotoxicological-risk-assessment" class="level1">
-<h1>ToMEx 2.0 - Ecotoxicological Risk Assessment</h1>
-<p><a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" class="img-fluid" alt="MIT License"></a> <a href="DESCRIPTION"><img src="https://img.shields.io/badge/R-%3E%3D%204.1-blue.svg" class="img-fluid" alt="R >= 4.1"></a> <a href="https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/tree/main/package"><img src="https://img.shields.io/badge/install-GitHub-blueviolet.svg" class="img-fluid" alt="Install PSSDplusplus"></a></p>
-<p>Repository for the Journal of Hazardous Materials manuscript (<a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537">Pre-print</a>):<br>
-<strong>“A Probabilistic Risk Framework for Microplastics Integrating Uncertainty Across Toxicological and Environmental Variability: Development and Application to Marine and Freshwater Ecosystems.”</strong></p>
-<p>Authors: Scott Coffin, Lidwina Bertrand, Kazi Towsif Ahmed, Luan de Souza Leite, Win Cowger, Mariella Sina, Andrew Barrick, Anna Kukkola, Bethanie Carney Almroth, Ezra Miller, Andrew Yeh, Stephanie Kennedy, Magdalena M. Mair<br>
-<br>
-<a href="https://github.com/SCCWRP/ToMEx_AquaticOrganisms">Related resource: ToMEx Aquatic Organisms</a> (source database and onboarding scripts that underpin the ecotoxicity dataset)</p>
+<section id="tomex-2.0-probabilistic-ecotoxicological-risk-assessment-for-microplastics" class="level1">
+<h1>ToMEx 2.0 — Probabilistic Ecotoxicological Risk Assessment for Microplastics</h1>
+<p><a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" class="img-fluid" alt="MIT License"></a> [<img src="https://img.shields.io/badge/R-%3E%3D%204.1-blue.svg" class="img-fluid" alt="R ≥ 4.1">] <a href="https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/tree/main/package"><img src="https://img.shields.io/badge/install-GitHub-blueviolet.svg" class="img-fluid" alt="Install PSSDplusplus"></a></p>
+<p>This repository contains the <strong>data, code, and reproducible workflows</strong> supporting the Journal of Hazardous Materials manuscript:</p>
+<blockquote class="blockquote">
+<p><strong>A Probabilistic Risk Framework for Microplastics Integrating Uncertainty Across Toxicological and Environmental Variability: Development and Application to Marine and Freshwater Ecosystems</strong></p>
+</blockquote>
+<p>Preprint: <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537">https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537</a></p>
+<p><strong>Authors:</strong> Scott Coffin et al.</p>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
 <p><img src="assets/Graphical_abstract.png" class="img-fluid figure-img"></p>
 <figcaption>Graphical Abstract</figcaption>
 </figure>
 </div>
-<section id="purpose-of-the-assessment" class="level2">
-<h2 class="anchored" data-anchor-id="purpose-of-the-assessment">Purpose of the assessment</h2>
+<hr>
+<section id="project-overview" class="level2">
+<h2 class="anchored" data-anchor-id="project-overview">Project overview</h2>
+<p>This project develops and applies <strong>PSSD++</strong>, an extension of traditional Species Sensitivity Distributions designed for <strong>microplastics</strong>, explicitly propagating uncertainty arising from:</p>
 <ul>
-<li>Develop PSSD++ thresholds for microplastics, propagating ERM alignment uncertainty, intra-species variability, and parameter uncertainty via Monte Carlo and Sobol sensitivity analysis.</li>
-<li>Compare aligned toxicity thresholds to environmental particle observations across marine and freshwater compartments.</li>
-<li>Provide supporting models (tissue translocation GLM) and illustrative materials explaining the alignment framework.</li>
+<li>Effect–response metric (ERM) alignment</li>
+<li>Intra-species variability</li>
+<li>Particle trait distributions</li>
+<li>Bioaccessibility and tissue translocation</li>
+<li>Monte Carlo and Sobol global sensitivity analysis</li>
 </ul>
+<p>The framework enables probabilistic derivation of <strong>tiered ecological thresholds</strong> for marine and freshwater ecosystems using the ToMEx 2.0 toxicity database.</p>
+<hr>
 </section>
-<section id="pssdplusplus-package" class="level2">
-<h2 class="anchored" data-anchor-id="pssdplusplus-package">PSSDplusplus package</h2>
-<p>To improve the technology readiness level of this method, an R package has been developed to enable rapid adoption with limited barriers. At the moment, we do not intend to host this package on CRAN due to a lack of funding, however we believe that the approach provided here is sufficient for nearly all use cases. If you are interested in helping us adapt this for CRAN, we would be happy to collaborate!</p>
+<section id="associated-resources" class="level2">
+<h2 class="anchored" data-anchor-id="associated-resources">Associated resources</h2>
 <ul>
-<li>Packaged functions live in <code>package/</code> and install as <code>PSSDplusplus</code>.</li>
-<li>Install locally with <code>devtools::install_local("package", upgrade = "never")</code>.</li>
-<li>Load and run the bundled reprex with <code>library(PSSDplusplus); run_pssd_reprex(sim = 2, n_sim = 2, workers = 1, overwrite_cache = TRUE)</code>.</li>
-<li>The walkthrough vignette is available via <code>vignette("pssdplusplus-walkthrough", package = "PSSDplusplus")</code>.</li>
+<li><strong>Source toxicity database:</strong> <a href="https://github.com/SCCWRP/ToMEx_AquaticOrganisms">https://github.com/SCCWRP/ToMEx_AquaticOrganisms</a></li>
+<li><strong>R package:</strong> <code>PSSDplusplus</code> (bundled in this repository)</li>
 </ul>
-<p>Install from GitHub (ignore vignettes by default - as pSSD is computationally heavy):</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># using remotes/devtools</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">"ScottCoffin/ToMEx2.0_EcoToxRisk"</span>, <span class="at">subdir =</span> <span class="st">"package"</span>, <span class="at">build_vignettes =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># or with pak</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>pak<span class="sc">::</span><span class="fu">pak</span>(<span class="st">"ScottCoffin/ToMEx2.0_EcoToxRisk"</span>, <span class="at">subdir =</span> <span class="st">"package"</span>, <span class="at">dependencies =</span> <span class="cn">TRUE</span>, <span class="at">build_vignettes =</span><span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<p>The vignette provides a simple walkthrough of how to apply the functions in this package. Due to the high degree of computation required to run even a minimal pSSD++ method, it is recommended to install without building the vignette to avoid unnecessary delays.</p>
+<hr>
 </section>
-<section id="quick-start" class="level2">
-<h2 class="anchored" data-anchor-id="quick-start">Quick Start</h2>
-<ul>
-<li>Install the package from GitHub (skip vignettes for speed):</li>
-</ul>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">"ScottCoffin/ToMEx2.0_EcoToxRisk"</span>, <span class="at">subdir =</span> <span class="st">"package"</span>, <span class="at">build_vignettes =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<ul>
-<li>Load and run the bundled minimal reproducible example:</li>
-</ul>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(PSSDplusplus)</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">run_pssd_reprex</span>(<span class="at">sim =</span> <span class="dv">2</span>, <span class="at">n_sim =</span> <span class="dv">2</span>, <span class="at">workers =</span> <span class="dv">1</span>, <span class="at">overwrite_cache =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<ul>
-<li>Optional: build/view the vignette after install (can be slow):</li>
-</ul>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">"ScottCoffin/ToMEx2.0_EcoToxRisk"</span>, <span class="at">subdir =</span> <span class="st">"package"</span>, <span class="at">build_vignettes =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">vignette</span>(<span class="st">"pssdplusplus-walkthrough"</span>, <span class="at">package =</span> <span class="st">"PSSDplusplus"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</section>
-<section id="system-requirements" class="level2">
-<h2 class="anchored" data-anchor-id="system-requirements">System Requirements</h2>
-<ul>
-<li>R 4.1 or newer (matches <code>Depends</code> in <code>DESCRIPTION</code>).</li>
-<li>Operating systems: standard R platforms (Windows, macOS, Linux) with knitr/rmarkdown toolchain.</li>
-<li>Minimum suggested hardware for full Monte Carlo/vignette runs: multi-core CPU and 16 GB RAM; smaller runs (the bundled REPREX) work on modest laptops.</li>
-<li>External system tools: <code>qpdf</code> recommended for compacting vignettes during <code>R CMD check</code>.</li>
-</ul>
-</section>
-<section id="repro-workflow-at-a-glance" class="level2">
-<h2 class="anchored" data-anchor-id="repro-workflow-at-a-glance">Repro workflow at a glance</h2>
-<p>To reproduce the exact analysis in the manuscript:</p>
-<ul>
-<li>Option A (fastest): Download precomputed Monte Carlo and PSSD++ outputs<a href="https://doi.org/10.5281/zenodo.16740504">from Zenodo</a> and place them as listed under <em>Large files</em>; then knit <code>scripts/ToMEx2_EcoTox.Rmd</code>.</li>
-<li>Option B (full recompute): Run <code>scripts/monte carlo/EcoTox_MonteCarlo.Rmd</code> (can exceed 12 hours; high RAM and multiple cores recommended) to generate aligned MC datasets and Sobol outputs, then knit <code>scripts/ToMEx2_EcoTox.Rmd</code>.</li>
-<li>Environmental comparisons: run the scripts in <code>scripts/characteristics and NMDS/</code>.</li>
-<li>Translocation model: knit <code>scripts/translocation/translocation.Rmd</code>.</li>
-<li>Alignment walkthrough: knit <code>scripts/illustrative_example/ERM Illustrative Example.Rmd</code>.</li>
-</ul>
-</section>
-<section id="key-scripts-and-where-manuscript-components-are-produced" class="level2">
-<h2 class="anchored" data-anchor-id="key-scripts-and-where-manuscript-components-are-produced">Key scripts and where manuscript components are produced</h2>
-<ul>
-<li><code>scripts/ToMEx2_EcoTox.Rmd</code> — main analysis generating nearly all manuscript figures and tables (threshold tables, PNEC plots, SSD comparisons, etc.). Outputs figures to <code>output/Manuscript_Figs</code>, data tables to <code>output/data</code>, and threshold/PSDD++ objects to <code>data/output/</code>.</li>
-<li><code>scripts/monte carlo/EcoTox_MonteCarlo.Rmd</code> — Monte Carlo ERM alignment, Sobol sensitivity, aligned dataset creation (sources for MC histograms and threshold distributions). Outputs to <code>scripts/monte carlo/output/</code> and selected figures to <code>output/Manuscript_Figs/</code>.</li>
-<li><code>scripts/characteristics and NMDS/*.R</code> — environmental trait extraction and ordinations (ToMEx vs.&nbsp;field particles; Figure 2-type content). Consumes <code>data/input/Environmental_Data_Collection/00_Extraction_finished/</code> and writes to <code>output/Manuscript_Figs/characteristics and NMDS/</code>.</li>
-<li><code>scripts/translocation/translocation.Rmd</code> — GLM for tissue translocation probabilities (manuscript translocation section and figures). Outputs knit artifacts and plots to <code>scripts/translocation/</code> and <code>output/Manuscript_Figs/translocation/</code>.</li>
-<li><code>scripts/illustrative_example/ERM Illustrative Example.Rmd</code> — didactic alignment example referenced in the text/SI.</li>
-<li><code>scripts/utils/</code> — shared alignment, SSD, and data-prep functions used by Monte Carlo and PSSD++ workflows.</li>
-<li><code>package/tomex_functions.R</code> — combined function set (alignment, SSD/PSSD++, tidying) assembled from <code>scripts/utils/*</code>.</li>
-<li><code>package/test_tomex_functions.R</code> — minimal beta test harness using the combined functions (small subset, reduced <code>nboot</code>).</li>
-<li><code>assets/</code> — figures used in the manuscript and supporting visuals.</li>
-</ul>
-</section>
-<section id="required-inputs" class="level2">
-<h2 class="anchored" data-anchor-id="required-inputs">Required inputs</h2>
-<ul>
-<li>Toxicity database: <code>data/input/aoc_z_tomex2.RDS</code> (originates from the ToMEx repository https://github.com/SCCWRP/ToMEx_AquaticOrganisms and the <code>aq_mp_tox_shiny</code> onboarding scripts; see <code>scripts/monte carlo/readme.txt</code> for provenance).</li>
-<li>Legacy/setup data: <code>data/input/aoc_setup.RDS</code>, <code>data/input/aoc_final.RDS</code> (if present), gape size lists, and related reference files mirrored from ToMEx/<code>aq_mp_tox_shiny</code>.</li>
-<li>Environmental observations: <code>data/input/Environmental_Data_Collection/00_Extraction_finished/</code> (used by the characteristics/NMDS scripts).</li>
-<li>Translocation data: <code>data/input/translocation_scored_2.xlsx</code> (and the CSV copy) plus <code>data/input/aoc_z_tomex2.RDS</code>.</li>
-<li>MC reference files: <code>scripts/monte carlo/ref data/</code> (e.g., <code>tomex2_input.rds</code>, <code>gape_size.csv</code>) as noted in <code>scripts/monte carlo/readme.txt</code>.</li>
-</ul>
-</section>
-<section id="dependencies" class="level2">
-<h2 class="anchored" data-anchor-id="dependencies">Dependencies</h2>
-<p>Install these R packages (R Markdown/knitr required for knitting): - Core analysis (<code>scripts/ToMEx2_EcoTox.Rmd</code>): <code>tidyverse</code>, <code>calecopal</code>, <code>DT</code>, <code>plotly</code>, <code>gridExtra</code>, <code>grid</code>, <code>wesanderson</code>, <code>ggtext</code>, <code>broom</code>, <code>knitr</code>, <code>kableExtra</code>, <code>viridis</code>, <code>ggrepel</code>, <code>scales</code>, <code>gt</code>, <code>ggsci</code>, <code>openxlsx</code>, <code>ggpubr</code>, <code>psych</code>, <code>Matrix</code>, <code>mc2d</code>, <code>trapezoid</code>, <code>reshape2</code>, <code>devtools</code>, <code>sciscales</code> (install via <code>devtools::install_github("christyray/sciscales")</code>), and <code>ssdtools</code> version 0.3.7 (checked in-script). - Monte Carlo (<code>scripts/monte carlo/EcoTox_MonteCarlo.Rmd</code>): all of the above plus <code>sensobol</code>, <code>truncnorm</code>, <code>ggdark</code>, <code>gtsummary</code>, <code>doParallel</code>, <code>doSNOW</code>, <code>tictoc</code>. - Translocation (<code>scripts/translocation/translocation.Rmd</code>): <code>readxl</code>, <code>caret</code>, <code>DALEX</code>, <code>skimr</code>, <code>ggeffects</code>.</p>
-</section>
-<section id="large-files-download-from-zenodo-or-generate-locally" class="level2">
-<h2 class="anchored" data-anchor-id="large-files-download-from-zenodo-or-generate-locally">Large files (download from Zenodo or generate locally)</h2>
-<p>Some outputs are too large for GitHub and are <code>.gitignore</code>d.&nbsp;Generate via the scripts or download from <code>https://doi.org/10.5281/zenodo.16740504</code> and place with these names: - <code>scripts/monte carlo/output/</code>: <code>sobol_results.rds</code>, <code>sobol_results_filtered.rds</code>, <code>results_df_sobol.rds</code>, <code>all_thresholds_sobol_filtered.rds</code>, <code>all_thresholds_sobol_long_filtered.rds</code>, <code>mat.rds</code>, <code>mat_filtered.rds</code>, <code>aoc_MC_sobol.rds</code>, <code>summary_stats_base_thresholds_sobol.rds/csv</code>, <code>simple_thresholds_table_sobol*.csv</code>, <code>simple_RSD.csv</code>, <code>sobol_time.txt</code>. - <code>data/output/</code>: <code>PSDDplusplusresults.rds</code>, <code>PNEC_summary_table_wide.rds</code>, <code>marine_alpha_thresholds.rds</code>, tiered SSD files (<code>tier1_2_*</code>, <code>tier3_4_*</code>). - <code>output/pssd_cache/</code> and <code>output/pssd_debug/</code>: cached and debug artifacts generated during PSSD++ runs.</p>
-</section>
-<section id="how-to-reproduce-the-manuscript-results" class="level2">
-<h2 class="anchored" data-anchor-id="how-to-reproduce-the-manuscript-results">How to reproduce the manuscript results</h2>
-<ol type="1">
-<li>Install the packages above (confirm <code>ssdtools</code> is 0.3.7 and <code>sciscales</code> is installed from GitHub).</li>
-<li>Place inputs in <code>data/input/</code> and MC reference files per <code>scripts/monte carlo/readme.txt</code>.</li>
-<li>Choose Option A (Zenodo downloads) or Option B (run <code>scripts/monte carlo/EcoTox_MonteCarlo.Rmd</code>) to populate MC outputs.</li>
-<li>Knit <code>scripts/ToMEx2_EcoTox.Rmd</code> to regenerate manuscript figures/tables, PSSD++ results, threshold summaries, and the supplemental workbook (<code>output/data/supplemental_information.xlsx</code>).</li>
-<li>For environmental comparisons (trait representativeness, NMDS), run <code>scripts/characteristics and NMDS/</code>.</li>
-<li>For translocation GLM results referenced in the manuscript, knit <code>scripts/translocation/translocation.Rmd</code>.</li>
-<li>For the pedagogical alignment walkthrough cited in the manuscript/SI, knit <code>scripts/illustrative_example/ERM Illustrative Example.Rmd</code>.</li>
-<li>To beta-test the packaged functions, run <code>Rscript package/test_tomex_functions.R</code> (uses small subset and reduced <code>nboot</code>).</li>
-</ol>
-</section>
-<section id="notes" class="level2">
-<h2 class="anchored" data-anchor-id="notes">Notes</h2>
-<ul>
-<li>Manuscript text: see the pre-print at https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537.</li>
-<li>The main Rmd (<code>scripts/ToMEx2_EcoTox.Rmd</code>) produces the manuscript visuals located in <code>output/Manuscript_Figs/</code> (e.g., <code>Figure5.jpg</code>, <code>Figure6_PNEC_compare_arranged_plot.jpg</code>, <code>figure1_a_alpha_combined_plot.jpg</code>, <code>figure2_bio_response_taxa.jpg</code>).</li>
-<li>Environmental data extractions (<code>data/input/Environmental_Data_Collection/</code>) underpin comparisons to ToMEx particle traits; keep these synchronized with updates to the ToMEx source data when re-running analyses.</li>
-</ul>
+<section id="repository-structure-high-level" class="level2">
+<h2 class="anchored" data-anchor-id="repository-structure-high-level">Repository structure (high-level)</h2>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 39%">
+<col style="width: 60%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Path</th>
+<th>Purpose</th>
+</tr>
+</thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;"># ToMEx 2.0 - Ecotoxicological Risk Assessment</td>
+<td><code>scripts/ToMEx2_EcoTox.Rmd</code></td>
+<td>Main manuscript analysis (figures, tables, thresholds)</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">Repository for the Journal of Hazardous Materials manuscript (<a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537">Pre-print</a>):<br>
-<strong>"A Probabilistic Risk Framework for Microplastics Integrating Uncertainty Across Toxicological and Environmental Variability: Development and Application to Marine and Freshwater Ecosystems."</strong></td>
+<td><code>scripts/monte carlo/</code></td>
+<td>Monte Carlo ERM alignment + Sobol sensitivity</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">Authors: Scott Coffin, Lidwina Bertrand, Kazi Towsif Ahmed, Luan de Souza Leite, Win Cowger, Mariella Sina, Andrew Barrick, Anna Kukkola, Bethanie Carney Almroth, Ezra Miller, Andrew Yeh, Stephanie Kennedy, Magdalena M. Mair\ \ <img src="assets/Graphical_abstract.png" class="img-fluid" alt="Graphical Abstract"></td>
+<td><code>scripts/characteristics and NMDS/</code></td>
+<td>Environmental trait comparisons and ordinations</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">## Purpose of the assessment</td>
+<td><code>scripts/translocation/</code></td>
+<td>Tissue translocation GLM</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">- Develop PSSD++ thresholds for microplastics, propagating ERM alignment uncertainty, intra-species variability, and parameter uncertainty via Monte Carlo and Sobol sensitivity analysis. - Compare aligned toxicity thresholds to environmental particle observations across marine and freshwater compartments. - Provide supporting models (tissue translocation GLM) and illustrative materials explaining the alignment framework.</td>
+<td><code>scripts/illustrative_example/</code></td>
+<td>Pedagogical ERM alignment example</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">## Repro workflow at a glance</td>
+<td><code>package/</code></td>
+<td><code>PSSDplusplus</code> R package</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">- Option A (fastest): Download precomputed Monte Carlo and PSSD++ outputs<a href="https://doi.org/10.5281/zenodo.16740504">from Zenodo</a> and place them as listed under <em>Large files</em>; then knit <code>scripts/ToMEx2_EcoTox.Rmd</code>. - Option B (full recompute): Run <code>scripts/monte carlo/EcoTox_MonteCarlo.Rmd</code> (can exceed 12 hours; high RAM and multiple cores recommended) to generate aligned MC datasets and Sobol outputs, then knit <code>scripts/ToMEx2_EcoTox.Rmd</code>. - Environmental comparisons: run the scripts in <code>scripts/characteristics and NMDS/</code>. - Translocation model: knit <code>scripts/translocation/translocation.Rmd</code>. - Alignment walkthrough: knit <code>scripts/illustrative_example/ERM Illustrative Example.Rmd</code>.</td>
+<td><code>data/input/</code></td>
+<td>Required input datasets</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">## Key scripts and where manuscript components are produced</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">- <code>scripts/ToMEx2_EcoTox.Rmd</code> — main analysis generating nearly all manuscript figures and tables (threshold tables, PNEC plots, SSD comparisons, etc.). Outputs figures to <code>output/Manuscript_Figs</code>, data tables to <code>output/data</code>, and threshold/PSDD++ objects to <code>data/output/</code>. - <code>scripts/monte carlo/EcoTox_MonteCarlo.Rmd</code> — Monte Carlo ERM alignment, Sobol sensitivity, aligned dataset creation (sources for MC histograms and threshold distributions). Outputs to <code>scripts/monte carlo/output/</code> and selected figures to <code>output/Manuscript_Figs/</code>. - <code>scripts/characteristics and NMDS/*.R</code> — environmental trait extraction and ordinations (ToMEx vs.&nbsp;field particles; Figure 2-type content). Consumes <code>data/input/Environmental_Data_Collection/00_Extraction_finished/</code> and writes to <code>output/Manuscript_Figs/characteristics and NMDS/</code>. - <code>scripts/translocation/translocation.Rmd</code> — GLM for tissue translocation probabilities (manuscript translocation section and figures). Outputs knit artifacts and plots to <code>scripts/translocation/</code> and <code>output/Manuscript_Figs/translocation/</code>. - <code>scripts/illustrative_example/ERM Illustrative Example.Rmd</code> — didactic alignment example referenced in the text/SI. - <code>scripts/utils/</code> — shared alignment, SSD, and data-prep functions used by Monte Carlo and PSSD++ workflows. - <code>package/tomex_functions.R</code> — combined function set (alignment, SSD/PSSD++, tidying) assembled from <code>scripts/utils/*</code>. - <code>package/test_tomex_functions.R</code> — minimal beta test harness using the combined functions (small subset, reduced <code>nboot</code>). - <code>assets/</code> — figures used in the manuscript and supporting visuals.</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">## Required inputs</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">- Toxicity database: <code>data/input/aoc_z_tomex2.RDS</code> (originates from the ToMEx repository https://github.com/SCCWRP/ToMEx_AquaticOrganisms and the <code>aq_mp_tox_shiny</code> onboarding scripts; see <code>scripts/monte carlo/readme.txt</code> for provenance). - Legacy/setup data: <code>data/input/aoc_setup.RDS</code>, <code>data/input/aoc_final.RDS</code> (if present), gape size lists, and related reference files mirrored from ToMEx/<code>aq_mp_tox_shiny</code>. - Environmental observations: <code>data/input/Environmental_Data_Collection/00_Extraction_finished/</code> (used by the characteristics/NMDS scripts). - Translocation data: <code>data/input/translocation_scored_2.xlsx</code> (and the CSV copy) plus <code>data/input/aoc_z_tomex2.RDS</code>. - MC reference files: <code>scripts/monte carlo/ref data/</code> (e.g., <code>tomex2_input.rds</code>, <code>gape_size.csv</code>) as noted in <code>scripts/monte carlo/readme.txt</code>.</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">## Dependencies</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Install these R packages (R Markdown/knitr required for knitting): - Core analysis (<code>scripts/ToMEx2_EcoTox.Rmd</code>): <code>tidyverse</code>, <code>calecopal</code>, <code>DT</code>, <code>plotly</code>, <code>gridExtra</code>, <code>grid</code>, <code>wesanderson</code>, <code>ggtext</code>, <code>broom</code>, <code>knitr</code>, <code>kableExtra</code>, <code>viridis</code>, <code>ggrepel</code>, <code>scales</code>, <code>gt</code>, <code>ggsci</code>, <code>openxlsx</code>, <code>ggpubr</code>, <code>psych</code>, <code>Matrix</code>, <code>mc2d</code>, <code>trapezoid</code>, <code>reshape2</code>, <code>devtools</code>, <code>sciscales</code> (install via <code>devtools::install_github(\"christyray/sciscales\")</code>), and <code>ssdtools</code> version 0.3.7 (checked in-script). - Monte Carlo (<code>scripts/monte carlo/EcoTox_MonteCarlo.Rmd</code>): all of the above plus <code>sensobol</code>, <code>truncnorm</code>, <code>ggdark</code>, <code>gtsummary</code>, <code>doParallel</code>, <code>doSNOW</code>, <code>tictoc</code>. - Translocation (<code>scripts/translocation/translocation.Rmd</code>): <code>readxl</code>, <code>caret</code>, <code>DALEX</code>, <code>skimr</code>, <code>ggeffects</code>.</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">## Large files (download from Zenodo or generate locally)</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Some outputs are too large for GitHub and are <code>.gitignore</code>d.&nbsp;Generate via the scripts or download from <code>https://doi.org/10.5281/zenodo.16740504</code> and place with these names: - <code>scripts/monte carlo/output/</code>: <code>sobol_results.rds</code>, <code>sobol_results_filtered.rds</code>, <code>results_df_sobol.rds</code>, <code>all_thresholds_sobol_filtered.rds</code>, <code>all_thresholds_sobol_long_filtered.rds</code>, <code>mat.rds</code>, <code>mat_filtered.rds</code>, <code>aoc_MC_sobol.rds</code>, <code>summary_stats_base_thresholds_sobol.rds/csv</code>, <code>simple_thresholds_table_sobol*.csv</code>, <code>simple_RSD.csv</code>, <code>sobol_time.txt</code>. - <code>data/output/</code>: <code>PSDDplusplusresults.rds</code>, <code>PNEC_summary_table_wide.rds</code>, <code>marine_alpha_thresholds.rds</code>, tiered SSD files (<code>tier1_2_*</code>, <code>tier3_4_*</code>). - <code>output/pssd_cache/</code> and <code>output/pssd_debug/</code>: cached and debug artifacts generated during PSSD++ runs.</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">## PSSD++ minimal REPREX (package/PSSD_reprex.R)</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">A compact, end-to-end reproducible example that runs the PSSD++ workflow used in the manuscript. The script lives at <code>package/PSSD_reprex.R</code> and demonstrates the full Monte Carlo alignment -&gt; pSSD pipeline using reduced simulation sizes for fast iteration and debugging.</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Key points</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">- The script assembles required helper functions from <code>scripts/utils/</code> and <code>scripts/PSSD/</code> and enforces <code>ssdtools</code> v0.3.7 for consistent SSD behaviour. - Defaults are intentionally small for the REPREX (<code>n_sobol = 10</code>, Monte Carlo <code>n_sim = 10</code>, PSSD <code>sim = 10</code>). Increase these (e.g.&nbsp;<code>sim &gt;= 300</code>) for production-quality results. - Results are cached and figures are saved so repeated runs avoid recomputation (see cache and output paths below).</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Inputs required</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">- <code>data/input/aoc_z_tomex2.RDS</code> — preprocessed toxicity dataset used by the example. - Helper scripts in <code>scripts/utils/</code> and <code>scripts/PSSD/</code> (these are sourced by the REPREX script).</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Where outputs go</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">- Cache: <code>package/test_output/pssd_cache/</code> (per combination .rds cache files) - Figures: <code>package/test_output/figures/</code> (publication-ready PSSD and PNEC plots)</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">How to run</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Run non-interactively from a shell:</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;"><code>bash Rscript package/PSSD_reprex.R</code></td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Or source interactively from an R session:</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;"><code>r source("package/PSSD_reprex.R")</code></td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Notes &amp; tips</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">- The script will check and attempt to install the required <code>ssdtools</code> version; ensure you have permissions to install packages if needed. - To increase fidelity change the <code>sim</code>, <code>n_sim</code> (Monte Carlo sample size) and <code>workers</code> variables inside the script before running. - Set <code>overwrite_cache = TRUE</code> in the <code>make_all_pSSDs()</code> call to force recomputation of cached results.</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Expected output</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">- Cached pSSD <code>.rds</code> files and saved figures as described above. - The script prints a summarized PNEC table (<code>PNEC_summary</code>) at the end and leaves full pSSD objects in the cache for downstream analysis or plotting.</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">## How to reproduce the manuscript results</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">1) Install the packages above (confirm <code>ssdtools</code> is 0.3.7 and <code>sciscales</code> is installed from GitHub). 2) Place inputs in <code>data/input/</code> and MC reference files per <code>scripts/monte carlo/readme.txt</code>. 3) Choose Option A (Zenodo downloads) or Option B (run <code>scripts/monte carlo/EcoTox_MonteCarlo.Rmd</code>) to populate MC outputs. 4) Knit <code>scripts/ToMEx2_EcoTox.Rmd</code> to regenerate manuscript figures/tables, PSSD++ results, threshold summaries, and the supplemental workbook (<code>output/data/supplemental_information.xlsx</code>). 5) For environmental comparisons (trait representativeness, NMDS), run <code>scripts/characteristics and NMDS/</code>. 6) For translocation GLM results referenced in the manuscript, knit <code>scripts/translocation/translocation.Rmd</code>. 7) For the pedagogical alignment walkthrough cited in the manuscript/SI, knit <code>scripts/illustrative_example/ERM Illustrative Example.Rmd</code>. 8) To beta-test the packaged functions, run <code>Rscript package/test_tomex_functions.R</code> (uses small subset and reduced <code>nboot</code>).</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">## Notes</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">- Manuscript text: see the pre-print at https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537. - The main Rmd (<code>scripts/ToMEx2_EcoTox.Rmd</code>) produces the manuscript visuals located in <code>output/Manuscript_Figs/</code> (e.g., <code>Figure5.jpg</code>, <code>Figure6_PNEC_compare_arranged_plot.jpg</code>, <code>figure1_a_alpha_combined_plot.jpg</code>, <code>figure2_bio_response_taxa.jpg</code>). - Environmental data extractions (<code>data/input/Environmental_Data_Collection/</code>) underpin comparisons to ToMEx particle traits; keep these synchronized with updates to the ToMEx source data when re-running analyses.</td>
+<td><code>data/output/</code>, <code>output/</code></td>
+<td>Generated results and manuscript figures</td>
 </tr>
 </tbody>
 </table>
+<hr>
+</section>
+<section id="quick-start-pssdplusplus-package" class="level2">
+<h2 class="anchored" data-anchor-id="quick-start-pssdplusplus-package">Quick start: PSSDplusplus package</h2>
+<p><img src="assets/pssdplusplus_logo.png" alt="PSSDplusplus logo" width="320"></p>
+<p>The <strong>PSSDplusplus</strong> R package provides a streamlined interface to the probabilistic SSD workflow used in the manuscript.</p>
+<section id="installation" class="level3">
+<h3 class="anchored" data-anchor-id="installation">Installation</h3>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"ScottCoffin/ToMEx2.0_EcoToxRisk"</span>,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">subdir =</span> <span class="st">"package"</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">build_vignettes =</span> <span class="cn">FALSE</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>(Vignettes are computationally intensive and disabled by default.)</p>
+</section>
+<section id="minimal-reproducible-example" class="level3">
+<h3 class="anchored" data-anchor-id="minimal-reproducible-example">Minimal reproducible example</h3>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(PSSDplusplus)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">run_pssd_reprex</span>(<span class="at">sim =</span> <span class="dv">2</span>, <span class="at">n_sim =</span> <span class="dv">2</span>, <span class="at">workers =</span> <span class="dv">1</span>, <span class="at">overwrite_cache =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="optional-build-the-vignette" class="level3">
+<h3 class="anchored" data-anchor-id="optional-build-the-vignette">Optional: build the vignette</h3>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"ScottCoffin/ToMEx2.0_EcoToxRisk"</span>,</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">subdir =</span> <span class="st">"package"</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">build_vignettes =</span> <span class="cn">TRUE</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="fu">vignette</span>(<span class="st">"pssdplusplus-walkthrough"</span>, <span class="at">package =</span> <span class="st">"PSSDplusplus"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<hr>
+</section>
+</section>
+<section id="reproducing-the-manuscript-analyses" class="level2">
+<h2 class="anchored" data-anchor-id="reproducing-the-manuscript-analyses">Reproducing the manuscript analyses</h2>
+<p>Two options are provided:</p>
+<section id="option-a-recommended-fast" class="level3">
+<h3 class="anchored" data-anchor-id="option-a-recommended-fast">Option A — Recommended (fast)</h3>
+<p>Download pre-computed Monte Carlo and PSSD++ outputs from Zenodo: <a href="https://doi.org/10.5281/zenodo.16740504">https://doi.org/10.5281/zenodo.16740504</a></p>
+<p>Place files as described under <strong>Large files</strong>, then knit:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>scripts<span class="sc">/</span>ToMEx2_EcoTox.Rmd</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="option-b-full-recomputation" class="level3">
+<h3 class="anchored" data-anchor-id="option-b-full-recomputation">Option B — Full recomputation</h3>
+<p>Run the full Monte Carlo workflow (may exceed 12 hours):</p>
+<ol type="1">
+<li><code>scripts/monte carlo/EcoTox_MonteCarlo.Rmd</code></li>
+<li><code>scripts/ToMEx2_EcoTox.Rmd</code></li>
+</ol>
+<hr>
+</section>
+</section>
+<section id="system-requirements" class="level2">
+<h2 class="anchored" data-anchor-id="system-requirements">System requirements</h2>
+<ul>
+<li>R ≥ 4.1</li>
+<li>Windows, macOS, or Linux</li>
+<li>≥16 GB RAM and multi-core CPU recommended for full MC runs</li>
+</ul>
+<hr>
+</section>
+<section id="large-files-and-data-availability" class="level2">
+<h2 class="anchored" data-anchor-id="large-files-and-data-availability">Large files and data availability</h2>
+<p>Several outputs exceed GitHub size limits and are excluded via <code>.gitignore</code>.</p>
+<ul>
+<li><p><strong>Zenodo archive:</strong> <a href="https://doi.org/10.5281/zenodo.16740504">https://doi.org/10.5281/zenodo.16740504</a></p></li>
+<li><p><strong>Key directories:</strong></p>
+<ul>
+<li><code>scripts/monte carlo/output/</code></li>
+<li><code>data/output/</code></li>
+<li><code>output/pssd_cache/</code></li>
+</ul></li>
+</ul>
+<p>File-level details are listed in the Zenodo record and inline comments.</p>
+<hr>
+</section>
+<section id="submitting-issues" class="level2">
+<h2 class="anchored" data-anchor-id="submitting-issues">Submitting issues</h2>
+<p>Bug reports, questions, and reproducibility issues are welcome and should be submitted via the GitHub Issues tracker for this repository.</p>
+<p>To help us respond efficiently, please include the following when opening an issue:</p>
+<ul>
+<li>A concise description of the problem or question</li>
+<li>The relevant script, function, or workflow (e.g., ToMEx2_EcoTox.Rmd, EcoTox_MonteCarlo.Rmd, or PSSDplusplus)</li>
+<li>Your R version and operating system</li>
+<li>Any error messages, warnings, or tracebacks (copied verbatim)</li>
+<li>Whether you are using Zenodo precomputed outputs (Option A) or full recomputation (Option B)</li>
+</ul>
+<p>For computationally intensive workflows, we strongly recommend first testing with reduced settings (e.g., small n_sim, sim, or single-core execution) before reporting issues observed only at scale.</p>
+<p>Issues related to scientific interpretation, methodological choices, or manuscript content are also appropriate, but please clearly distinguish these from technical bugs.</p>
+</section>
+<section id="citation" class="level2">
+<h2 class="anchored" data-anchor-id="citation">Citation</h2>
+<p>If you use this code or framework, please cite:</p>
+<blockquote class="blockquote">
+<p>Coffin, S., Bertrand, L., Ahmed, K. T., de Souza Leite, L., Cowger, W., Siña, M., Barrick, A., Kukkola, A., Carney Almroth, B., Miller, E., Yeh, A., LaPlaca, S. B., &amp; Mair, M. A Probabilistic Risk Framework for Microplastics Integrating Uncertainty Across Toxicological and Environmental Variability: Development and Application to Marine and Freshwater Ecosystems. Journal of Hazardous Materials (in review). Preprint available at: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537</p>
+</blockquote>
+<hr>
+</section>
+<section id="license" class="level2">
+<h2 class="anchored" data-anchor-id="license">License</h2>
+<p>MIT License. See <code>LICENSE</code>.</p>
+<hr>
 </section>
 </section>
 
