@@ -124,26 +124,119 @@ ul.task-list li input[type="checkbox"] {
 <li>The main Rmd (<code>scripts/ToMEx2_EcoTox.Rmd</code>) produces the manuscript visuals located in <code>output/Manuscript_Figs/</code> (e.g., <code>Figure5.jpg</code>, <code>Figure6_PNEC_compare_arranged_plot.jpg</code>, <code>figure1_a_alpha_combined_plot.jpg</code>, <code>figure2_bio_response_taxa.jpg</code>).</li>
 <li>Environmental data extractions (<code>data/input/Environmental_Data_Collection/</code>) underpin comparisons to ToMEx particle traits; keep these synchronized with updates to the ToMEx source data when re-running analyses.</li>
 </ul>
-<hr>
-</section>
-</section>
-<section id="workflow-flow-diagram-mermaid" class="level1">
-<h1>WORKFLOW FLOW DIAGRAM (Mermaid)</h1>
-<p>This diagram summarizes the end-to-end PSSD++ pipeline implemented in this script, from data import through probabilistic threshold derivation and aggregation.</p>
-<section id="pssd-workflow-overview" class="level2">
-<h2 class="anchored" data-anchor-id="pssd-workflow-overview">PSSD++ Workflow Overview</h2>
-<p>``` mermaid flowchart TD</p>
-<p>A[Start Script] –&gt; B[Load Libraries] B –&gt; C[Check &amp; Enforce ssdtools v0.3.7] C –&gt; D[Source Utility, SSD, PSSD, and Plotting Functions]</p>
-<p>D –&gt; E[Import &amp; QC ToMEx-derived Toxicity Dataset] E –&gt; E1[Apply Tier 0 Technical &amp; Risk Filters] E1 –&gt; E2[Compute Composite Assessment Factors]</p>
-<p>E2 –&gt; F[Generate MC Parameter Matrix<br>(Latin Hypercube Sampling)] F –&gt; G[Visualize Parameter Distributions]</p>
-<p>G –&gt; H[MC-SIM Alignment<br>(MC_sim_align_parallel)] H –&gt; I[Aligned MC-Simulation Dataset]</p>
-<p>I –&gt; J{ERM Type}</p>
-<p>J –&gt;|Food Dilution| K1[Construct Food Dilution Datasets] J –&gt;|Tissue Translocation| K2[Construct Tissue Translocation Datasets]</p>
-<p>K1 –&gt; L[Stratify by Environment<br>(Freshwater / Marine)] K2 –&gt; L</p>
-<p>L –&gt; M[Select Tier 3/4 Data]</p>
-<p>M –&gt; N[make_all_pSSDs()] N –&gt; N1[Parallel Loop<br>Tier × Environment × ERM] N1 –&gt; N2[Probabilistic SSD Fitting] N2 –&gt; N3[Monte Carlo Uncertainty Propagation] N3 –&gt; N4[Derive HC5 / HC10 PNECs] N4 –&gt; N5[Generate &amp; Save PSSD / PNEC Figures] N5 –&gt; N6[Cache Results to Disk]</p>
-<p>N6 –&gt; O[Aggregate PNECs Across Runs] O –&gt; P[Summarized PNEC Output Table]</p>
-<p>P –&gt; Q[End]</p>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"># ToMEx 2.0 - Ecotoxicological Risk Assessment</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Repository for the Journal of Hazardous Materials manuscript (<a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537">Pre-print</a>):<br>
+<strong>"A Probabilistic Risk Framework for Microplastics Integrating Uncertainty Across Toxicological and Environmental Variability: Development and Application to Marine and Freshwater Ecosystems."</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Authors: Scott Coffin, Lidwina Bertrand, Kazi Towsif Ahmed, Luan de Souza Leite, Win Cowger, Mariella Sina, Andrew Barrick, Anna Kukkola, Bethanie Carney Almroth, Ezra Miller, Andrew Yeh, Stephanie Kennedy, Magdalena M. Mair\ \ <img src="assets/Graphical_abstract.png" class="img-fluid" alt="Graphical Abstract"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">## Purpose of the assessment</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">- Develop PSSD++ thresholds for microplastics, propagating ERM alignment uncertainty, intra-species variability, and parameter uncertainty via Monte Carlo and Sobol sensitivity analysis. - Compare aligned toxicity thresholds to environmental particle observations across marine and freshwater compartments. - Provide supporting models (tissue translocation GLM) and illustrative materials explaining the alignment framework.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">## Repro workflow at a glance</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">- Option A (fastest): Download precomputed Monte Carlo and PSSD++ outputs<a href="https://doi.org/10.5281/zenodo.16740504">from Zenodo</a> and place them as listed under <em>Large files</em>; then knit <code>scripts/ToMEx2_EcoTox.Rmd</code>. - Option B (full recompute): Run <code>scripts/monte carlo/EcoTox_MonteCarlo.Rmd</code> (can exceed 12 hours; high RAM and multiple cores recommended) to generate aligned MC datasets and Sobol outputs, then knit <code>scripts/ToMEx2_EcoTox.Rmd</code>. - Environmental comparisons: run the scripts in <code>scripts/characteristics and NMDS/</code>. - Translocation model: knit <code>scripts/translocation/translocation.Rmd</code>. - Alignment walkthrough: knit <code>scripts/illustrative_example/ERM Illustrative Example.Rmd</code>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">## Key scripts and where manuscript components are produced</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">- <code>scripts/ToMEx2_EcoTox.Rmd</code> — main analysis generating nearly all manuscript figures and tables (threshold tables, PNEC plots, SSD comparisons, etc.). Outputs figures to <code>output/Manuscript_Figs</code>, data tables to <code>output/data</code>, and threshold/PSDD++ objects to <code>data/output/</code>. - <code>scripts/monte carlo/EcoTox_MonteCarlo.Rmd</code> — Monte Carlo ERM alignment, Sobol sensitivity, aligned dataset creation (sources for MC histograms and threshold distributions). Outputs to <code>scripts/monte carlo/output/</code> and selected figures to <code>output/Manuscript_Figs/</code>. - <code>scripts/characteristics and NMDS/*.R</code> — environmental trait extraction and ordinations (ToMEx vs.&nbsp;field particles; Figure 2-type content). Consumes <code>data/input/Environmental_Data_Collection/00_Extraction_finished/</code> and writes to <code>output/Manuscript_Figs/characteristics and NMDS/</code>. - <code>scripts/translocation/translocation.Rmd</code> — GLM for tissue translocation probabilities (manuscript translocation section and figures). Outputs knit artifacts and plots to <code>scripts/translocation/</code> and <code>output/Manuscript_Figs/translocation/</code>. - <code>scripts/illustrative_example/ERM Illustrative Example.Rmd</code> — didactic alignment example referenced in the text/SI. - <code>scripts/utils/</code> — shared alignment, SSD, and data-prep functions used by Monte Carlo and PSSD++ workflows. - <code>package/tomex_functions.R</code> — combined function set (alignment, SSD/PSSD++, tidying) assembled from <code>scripts/utils/*</code>. - <code>package/test_tomex_functions.R</code> — minimal beta test harness using the combined functions (small subset, reduced <code>nboot</code>). - <code>assets/</code> — figures used in the manuscript and supporting visuals.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">## Required inputs</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">- Toxicity database: <code>data/input/aoc_z_tomex2.RDS</code> (originates from the ToMEx repository https://github.com/SCCWRP/ToMEx_AquaticOrganisms and the <code>aq_mp_tox_shiny</code> onboarding scripts; see <code>scripts/monte carlo/readme.txt</code> for provenance). - Legacy/setup data: <code>data/input/aoc_setup.RDS</code>, <code>data/input/aoc_final.RDS</code> (if present), gape size lists, and related reference files mirrored from ToMEx/<code>aq_mp_tox_shiny</code>. - Environmental observations: <code>data/input/Environmental_Data_Collection/00_Extraction_finished/</code> (used by the characteristics/NMDS scripts). - Translocation data: <code>data/input/translocation_scored_2.xlsx</code> (and the CSV copy) plus <code>data/input/aoc_z_tomex2.RDS</code>. - MC reference files: <code>scripts/monte carlo/ref data/</code> (e.g., <code>tomex2_input.rds</code>, <code>gape_size.csv</code>) as noted in <code>scripts/monte carlo/readme.txt</code>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">## Dependencies</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Install these R packages (R Markdown/knitr required for knitting): - Core analysis (<code>scripts/ToMEx2_EcoTox.Rmd</code>): <code>tidyverse</code>, <code>calecopal</code>, <code>DT</code>, <code>plotly</code>, <code>gridExtra</code>, <code>grid</code>, <code>wesanderson</code>, <code>ggtext</code>, <code>broom</code>, <code>knitr</code>, <code>kableExtra</code>, <code>viridis</code>, <code>ggrepel</code>, <code>scales</code>, <code>gt</code>, <code>ggsci</code>, <code>openxlsx</code>, <code>ggpubr</code>, <code>psych</code>, <code>Matrix</code>, <code>mc2d</code>, <code>trapezoid</code>, <code>reshape2</code>, <code>devtools</code>, <code>sciscales</code> (install via <code>devtools::install_github(\"christyray/sciscales\")</code>), and <code>ssdtools</code> version 0.3.7 (checked in-script). - Monte Carlo (<code>scripts/monte carlo/EcoTox_MonteCarlo.Rmd</code>): all of the above plus <code>sensobol</code>, <code>truncnorm</code>, <code>ggdark</code>, <code>gtsummary</code>, <code>doParallel</code>, <code>doSNOW</code>, <code>tictoc</code>. - Translocation (<code>scripts/translocation/translocation.Rmd</code>): <code>readxl</code>, <code>caret</code>, <code>DALEX</code>, <code>skimr</code>, <code>ggeffects</code>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">## Large files (download from Zenodo or generate locally)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Some outputs are too large for GitHub and are <code>.gitignore</code>d.&nbsp;Generate via the scripts or download from <code>https://doi.org/10.5281/zenodo.16740504</code> and place with these names: - <code>scripts/monte carlo/output/</code>: <code>sobol_results.rds</code>, <code>sobol_results_filtered.rds</code>, <code>results_df_sobol.rds</code>, <code>all_thresholds_sobol_filtered.rds</code>, <code>all_thresholds_sobol_long_filtered.rds</code>, <code>mat.rds</code>, <code>mat_filtered.rds</code>, <code>aoc_MC_sobol.rds</code>, <code>summary_stats_base_thresholds_sobol.rds/csv</code>, <code>simple_thresholds_table_sobol*.csv</code>, <code>simple_RSD.csv</code>, <code>sobol_time.txt</code>. - <code>data/output/</code>: <code>PSDDplusplusresults.rds</code>, <code>PNEC_summary_table_wide.rds</code>, <code>marine_alpha_thresholds.rds</code>, tiered SSD files (<code>tier1_2_*</code>, <code>tier3_4_*</code>). - <code>output/pssd_cache/</code> and <code>output/pssd_debug/</code>: cached and debug artifacts generated during PSSD++ runs.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">## PSSD++ minimal REPREX (package/PSSD_reprex.R)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">A compact, end-to-end reproducible example that runs the PSSD++ workflow used in the manuscript. The script lives at <code>package/PSSD_reprex.R</code> and demonstrates the full Monte Carlo alignment -&gt; pSSD pipeline using reduced simulation sizes for fast iteration and debugging.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Key points</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">- The script assembles required helper functions from <code>scripts/utils/</code> and <code>scripts/PSSD/</code> and enforces <code>ssdtools</code> v0.3.7 for consistent SSD behaviour. - Defaults are intentionally small for the REPREX (<code>n_sobol = 10</code>, Monte Carlo <code>n_sim = 10</code>, PSSD <code>sim = 10</code>). Increase these (e.g.&nbsp;<code>sim &gt;= 300</code>) for production-quality results. - Results are cached and figures are saved so repeated runs avoid recomputation (see cache and output paths below).</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inputs required</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">- <code>data/input/aoc_z_tomex2.RDS</code> — preprocessed toxicity dataset used by the example. - Helper scripts in <code>scripts/utils/</code> and <code>scripts/PSSD/</code> (these are sourced by the REPREX script).</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Where outputs go</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">- Cache: <code>package/test_output/pssd_cache/</code> (per combination .rds cache files) - Figures: <code>package/test_output/figures/</code> (publication-ready PSSD and PNEC plots)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">How to run</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Run non-interactively from a shell:</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>bash Rscript package/PSSD_reprex.R</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Or source interactively from an R session:</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>r source("package/PSSD_reprex.R")</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Notes &amp; tips</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">- The script will check and attempt to install the required <code>ssdtools</code> version; ensure you have permissions to install packages if needed. - To increase fidelity change the <code>sim</code>, <code>n_sim</code> (Monte Carlo sample size) and <code>workers</code> variables inside the script before running. - Set <code>overwrite_cache = TRUE</code> in the <code>make_all_pSSDs()</code> call to force recomputation of cached results.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Expected output</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">- Cached pSSD <code>.rds</code> files and saved figures as described above. - The script prints a summarized PNEC table (<code>PNEC_summary</code>) at the end and leaves full pSSD objects in the cache for downstream analysis or plotting.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">## How to reproduce the manuscript results</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">1) Install the packages above (confirm <code>ssdtools</code> is 0.3.7 and <code>sciscales</code> is installed from GitHub). 2) Place inputs in <code>data/input/</code> and MC reference files per <code>scripts/monte carlo/readme.txt</code>. 3) Choose Option A (Zenodo downloads) or Option B (run <code>scripts/monte carlo/EcoTox_MonteCarlo.Rmd</code>) to populate MC outputs. 4) Knit <code>scripts/ToMEx2_EcoTox.Rmd</code> to regenerate manuscript figures/tables, PSSD++ results, threshold summaries, and the supplemental workbook (<code>output/data/supplemental_information.xlsx</code>). 5) For environmental comparisons (trait representativeness, NMDS), run <code>scripts/characteristics and NMDS/</code>. 6) For translocation GLM results referenced in the manuscript, knit <code>scripts/translocation/translocation.Rmd</code>. 7) For the pedagogical alignment walkthrough cited in the manuscript/SI, knit <code>scripts/illustrative_example/ERM Illustrative Example.Rmd</code>. 8) To beta-test the packaged functions, run <code>Rscript package/test_tomex_functions.R</code> (uses small subset and reduced <code>nboot</code>).</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">## Notes</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">- Manuscript text: see the pre-print at https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537. - The main Rmd (<code>scripts/ToMEx2_EcoTox.Rmd</code>) produces the manuscript visuals located in <code>output/Manuscript_Figs/</code> (e.g., <code>Figure5.jpg</code>, <code>Figure6_PNEC_compare_arranged_plot.jpg</code>, <code>figure1_a_alpha_combined_plot.jpg</code>, <code>figure2_bio_response_taxa.jpg</code>). - Environmental data extractions (<code>data/input/Environmental_Data_Collection/</code>) underpin comparisons to ToMEx particle traits; keep these synchronized with updates to the ToMEx source data when re-running analyses.</td>
+</tr>
+</tbody>
+</table>
 </section>
 </section>
 

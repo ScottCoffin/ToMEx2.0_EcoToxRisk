@@ -1,0 +1,6 @@
+^test_output$
+^PSSD_reprex\\.R$
+^test_tomex_functions\\.R$
+^tomex_functions\\.R$
+^LICENSE\\.md$
+^README_files$

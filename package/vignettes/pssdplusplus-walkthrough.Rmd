@@ -1,0 +1,255 @@
+---
+title: "PSSDplusplus walkthrough"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{PSSDplusplus walkthrough}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(comment = "#>", collapse = TRUE, verbose = FALSE)
+
+required_pkgs <- c(
+  "tidyverse",
+  "sensobol",
+  "truncnorm",
+  "mc2d",
+  "trapezoid",
+  "ggpubr",
+  "ggdark",
+  "gtsummary",
+  "doParallel",
+  "doSNOW",
+  "tictoc",
+  "crayon",
+  "Matrix",
+  "reshape2",
+  "future",
+  "future.apply",
+  "progressr"
+)
+
+missing <- required_pkgs[!vapply(required_pkgs, requireNamespace, logical(1), quietly = TRUE)]
+if (length(missing)) {
+  stop("Missing required packages for this vignette: ",
+       paste(missing, collapse = ", "))
+}
+library(PSSDplusplus)
+library(trapezoid)
+
+# Automatically detect and set parallel processing options based on rendering or running locally
+parallel_enabled <- TRUE
+if (knitr::is_html_output() || knitr::is_latex_output()) {
+  parallel_enabled <- FALSE
+  future::plan(future::sequential)
+}
+
+workers <- if (parallel_enabled) max(1, parallel::detectCores() - 1) else 1
+num_cores <- if (parallel_enabled) "auto" else 1
+```
+
+# Overview
+This document provides a minimal, end-to-end walkthrough of the **PSSD++ probabilistic ecotoxicological threshold framework** implemented in the `PSSDplusplus` R package. The workflow demonstrates how microplastic (MP) hazard thresholds are derived across environments and Effect–Response Metrics (ERMs) using Monte Carlo uncertainty propagation and probabilistic Species Sensitivity Distributions (pSSDs).
+
+The analytical pipeline mirrors that described in **Coffin et al. (2026)** and related manuscripts, while remaining compact enough for method development, debugging, and demonstration.
+
+---
+
+## Overview of the PSSD++ Framework
+
+The PSSD++ framework integrates the following components:
+
+- **Monte Carlo (MC) uncertainty propagation**
+- **Probabilistic Species Sensitivity Distributions (pSSDs)**
+- **Alignment of laboratory toxicity data to environmentally relevant MP particle distributions**
+- **Parallel computation with deterministic caching**
+
+The workflow proceeds through four main stages:
+
+1. Preparation and filtering of toxicity inputs  
+2. Sampling of alignment and uncertainty parameters  
+3. Monte Carlo alignment of toxicity data  
+4. Fitting and summarization of PSSD++ models  
+
+```{r render-mode, include = FALSE}
+render_mode <- knitr::is_html_output() || knitr::is_latex_output()
+if (render_mode) {
+  knitr::opts_chunk$set(cache = FALSE)
+  options(progressr.enable = FALSE)
+}
+
+parallel_enabled <- !render_mode
+if (!parallel_enabled) {
+  future::plan(future::sequential)
+}
+
+workers <- if (parallel_enabled) max(1, parallel::detectCores() - 1) else 1
+num_cores <- if (parallel_enabled) "auto" else 1
+base_cache_dir <- file.path(tempdir(), "pssd_cache")
+base_output_path <- file.path(tempdir(), "pssd_figures")
+```
+
+## 1) Prepare inputs
+By default, the package uses a preprocessed **ToMEx 2.0–derived ecotoxicity dataset**, distributed with the package.
+```{r}
+# load in toxicity data (ToMEx 2.0 is default, and is supplied with package)
+tox_data <- tomex2
+head(tox_data) # view the first few rows of the toxicity data
+```
+
+The user may choose to filter the toxicity data based on specific criteria (e.g., species, exposure duration, endpoints, quality criteria, etc.). Each of these criteria can be applied using the `filter()` function from the `dplyr` package. Filtering options applied in Mehinto et al. (2022) are applied below:
+```{r}
+tox_data <- tox_data |> 
+  dplyr::filter(
+    Group != "Bacterium", # Drop studies with Bacterium group
+    Group != "Plant", # Drop studies with Plant group
+    effect.metric != "HONEC", # Drop studies with HONEC effect metric
+    tier_zero_tech_f == "Red Criteria Passed", #minimum QC for technical criteria
+    tier_zero_risk_f == "Red Criteria Passed", #minimum QC for risk criteria
+    risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been)
+  )
+```
+
+## 2) Sample alignment parameters
+Use the defaults from the manuscript (i.e., Kooi et al. 2021)[https://doi.org/10.1016/j.envpol.2021.117898] or pass a custom `params` table.
+Note that the parameter names cannot change - regardless of what the user's specified environment is. For instance, if the user would like to model a brackish water environment, simply update the parameters for either 'marine' or 'freshwater' with the brackish parameters, while keeping the original names of parameters intact.
+
+```{r}
+param_default_values <- PSSDplusplus::param_default_values
+#view parameters
+head(param_default_values)
+```
+
+A parameter distribution dataset may be simulated using each respective parameters' distributions (e.g., alpha power law, normal distributions, etc.). By default, the package uses a Latin Hypercube Sampling approach to generate the parameter matrix. If the user wants to user alternative distributions for each parameter, the matrix_function() should be modified accordingly. Note that only water parameters are used in this version of the package, with future versions potentially including sediment.
+```{r}
+param_matrix <- matrix_function(
+  n_sobol = 5, #size of matrix (10,000 is recommended)
+  params = param_default_values, #parameter distribution values -replace with user's specifications
+  upper.tissue.truncation.limit = 500, # maximum particle size (microns) to truncate tissue tranlocation size limit distribution to based on biological plausibility
+  x1M_set = 1, #minimum particle size to generate distributions to in microns
+  x2D_set = 5000 #maximum particle size to generate distributions to in microns
+)
+```
+
+Visualize the sampled draws (each element is a ggplot object):
+
+```{r parameter_histogram_plots}
+param_plots <- parameter_histograms_function(param_matrix) # generate parameter distribution plots
+#visualize plots
+param_plots$alpha_combined_plot # distribution of alpha parameters 
+param_plots$tissue_body #distribution of tissue translocation and mouth size opening model parameters
+```
+
+## 3) Run Monte Carlo alignments
+The following code aligns the toxicity data to the parameter matrix using Monte Carlo simulations. 
+```{r MC-sim alignments}
+message("Starting MC_sim_align_parallel...")
+MC_sim_df <- MC_sim_align_parallel(
+  tox_data = tox_data, # toxicity data (ToMEx 2.0 is default)
+  param_matrix = param_matrix, # parameter matrix generated in prior cell
+  n_sim = 5, # size of parameter matrix (ensure this is the same as the size of the matrix generated)
+  x1D_set = 1, # minimum particle size to generate distributions to (in microns)
+  x2D_set = 5000, # maximum particle size to generate distributions to (in microns)
+  num_cores = num_cores # number of cores to use for parallel processing (specify )
+)
+message("Finished MC_sim_align_parallel.")
+```
+
+### Split the aligned data into ERM- and environment-specific subsets
+Split the aligned data into ERM- and environment-specific registries to replicate the results from Coffin et al. (2026).
+```{r}
+results_df_food <- dplyr::filter(
+  MC_sim_df,
+  ingestible != "not ingestible",
+  particles_L_food_dilution > 0,
+  Group != "Algae"
+) |>
+  dplyr::mutate(dose_new_particles_L = particles_L_food_dilution) |>
+  tidyr::drop_na(particles_L_food_dilution)
+results_df_food_t3_t4 <- dplyr::filter(
+  results_df_food,
+  risk.13 != 1,
+  bio_f %in% c("Organism", "Population")
+)
+
+results_df_tissue <- dplyr::filter(
+  MC_sim_df,
+  translocatable != "not translocatable",
+  particles_L_ox_stress > 0
+) |>
+  dplyr::mutate(dose_new_particles_L = particles_L_ox_stress) |>
+  tidyr::drop_na(particles_L_ox_stress)
+results_df_tissue_t3_t4 <- dplyr::filter(
+  results_df_tissue,
+  risk.13 != 1,
+  bio_f %in% c("Organism", "Population")
+)
+
+erm_registry <- list(
+  "Food Dilution" = list(base = results_df_food, t3_t4 = results_df_food_t3_t4),
+  "Tissue Translocation" = list(base = results_df_tissue, t3_t4 = results_df_tissue_t3_t4)
+)
+```
+
+## 4) Fit PSSD++s
+The following code performs the fitting of PSSD++ models to the aligned data:
+```{r}
+message("Starting make_all_pSSDs...")
+# call object for usage by rtrunc later (this ONLY needs to be done in the vignette, which cannot load other libraries in the file)
+rtrapezoid <- trapezoid::rtrapezoid
+ptrapezoid <- trapezoid::ptrapezoid
+qtrapezoid <- trapezoid::qtrapezoid
+dtrapezoid <- trapezoid::dtrapezoid
+
+# make all pSSDs
+pSSDs <- make_all_pSSDs(
+  MC_sim_df = MC_sim_df, # ensure aligned data is included
+  environments = c("Freshwater", "Marine"), #specify which environments to include
+  erm_registry = erm_registry,
+  sim = 5, # specify the number of simulations to run
+  cv_uf = 0.5, # specify the coefficient of variation for uncertainty factors (acute -> chronic and LOEC/EC50 -> NOEC)
+  rmore_method = "step", # method to handle pSSD distribution building (options = 'step' i.e., original trapezoidal method in Wigger et al., 2020, or 'lognormal' - shortcut developed in Coffin et al. (2025))
+  quantile_type = 8, # quantile type for distribution fitting (8 is default, and use of others may cause unexpected or unreliable results)
+  parallel = parallel_enabled, #whether or not to use parallel processing
+  workers = workers, # number of worker processes to use for parallel processing
+  base_cache_dir = file.path(tempdir(), "pssd_cache"), # directory to store cached pSSD objects (important when running high number of simulations to resume if needed)
+  base_output_path = file.path(tempdir(), "pssd_figures"), # directory to store output figures
+  overwrite_cache = TRUE # whether or not to overwrite cached pSSD objects
+)
+```
+
+
+```{r}
+message("Finished make_all_pSSDs.")
+```
+
+### Examine pSSD++ output
+Each ERM x Environment combination is saved as a list element, with corresponding PNEC quantiles, summary statistics, and plots.
+
+#### PNEC Summary
+By default the pSSD++ performs a quantile regression to estimate PNEC values for Tiers 3 and 4 of the Mehinto et al. (2022) risk assessment framework.
+```{r, eval = FALSE}
+PNEC_summary <- summarize_PNECs(pSSDs)
+head(PNEC_summary)
+```
+
+PNEC distributions are visualized using ggplot:
+```{r}
+pSSDs$`Tier3_Freshwater_Food Dilution`$PNEC_plot_05
+```
+
+#### pSSD++ Plots
+The pSSD++ plots show the relationship between the exposure concentration and the predicted effect levels.
+```{r}
+# view pSSD plot for example:
+pSSDs$`Tier3_Freshwater_Food Dilution`$pSSD_plot
+```
+
+#### Arranged plot
+A manuscript-ready pSSD++ with PNEC distribution plots for Tiers 3 and 4 are generated.
+```{r}
+pSSDs$`Tier3_Freshwater_Food Dilution`$arranged_plot
+```
+
+The cache and figure outputs default to temporary directories; override the paths above to persist artifacts between sessions.

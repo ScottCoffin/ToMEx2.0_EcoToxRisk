@@ -88,56 +88,6 @@
 #
 ###############################################
 
-# ------------------------------------------------------------------
-# WORKFLOW FLOW DIAGRAM (Mermaid)
-#
-# This diagram summarizes the end-to-end PSSD++ pipeline implemented
-# in this script, from data import through probabilistic threshold
-# derivation and aggregation.
-#
-# ```mermaid
-# flowchart TD
-
-#   A[Start Script] --> B[Load Libraries]
-#   B --> C[Check & Enforce ssdtools v0.3.7]
-#   C --> D[Source Utility, SSD, PSSD, and Plotting Functions]
-
-#   D --> E[Import & QC ToMEx-derived Toxicity Dataset]
-#   E --> E1[Apply Tier 0 Technical & Risk Filters]
-#   E1 --> E2[Compute Composite Assessment Factors]
-
-#   E2 --> F[Generate MC Parameter Matrix<br/>(Latin Hypercube Sampling)]
-#   F --> G[Visualize Parameter Distributions]
-
-#   G --> H[MC-SIM Alignment<br/>(MC_sim_align_parallel)]
-#   H --> I[Aligned MC-Simulation Dataset]
-
-#   I --> J{ERM Type}
-
-#   J -->|Food Dilution| K1[Construct Food Dilution Datasets]
-#   J -->|Tissue Translocation| K2[Construct Tissue Translocation Datasets]
-
-#   K1 --> L[Stratify by Environment<br/>(Freshwater / Marine)]
-#   K2 --> L
-
-#   L --> M[Select Tier 3/4 Data]
-
-#   M --> N[make_all_pSSDs()]
-
-#   N --> N1[Parallel Loop<br/>Tier × Environment × ERM]
-#   N1 --> N2[Probabilistic SSD Fitting]
-#   N2 --> N3[Monte Carlo Uncertainty Propagation]
-#   N3 --> N4[Derive HC5 / HC10 PNECs]
-#   N4 --> N5[Generate & Save PSSD / PNEC Figures]
-#   N5 --> N6[Cache Results to Disk]
-
-#   N6 --> O[Aggregate PNECs Across Runs]
-#   O --> P[Summarized PNEC Output Table]
-
-#   P --> Q[End]
-# ```
-# ------------------------------------------------------------------
-
 # libraries
 pkgs <- c(
   "tidyverse",
@@ -179,8 +129,8 @@ source("scripts/PSSD/do.pssd.r")
 # import data
 aoc_risk_paper <- readRDS("data/input/aoc_z_tomex2.RDS") %>% #dataset is prepped in shiny repo
   dplyr::rename(environment = env_f) %>%
-  mutate(AF.total = af.time * af.noec) %>% #calculate composite AF
-  drop_na(effect.metric) %>%
+  dplyr::mutate(AF.total = af.time * af.noec) %>% #calculate composite AF
+  tidyr::drop_na(effect.metric) %>%
   filter(
     !environment %in% c("Terrestrial", "Not Reported"),
     Group != "Bacterium",
@@ -193,7 +143,7 @@ aoc_risk_paper <- readRDS("data/input/aoc_z_tomex2.RDS") %>% #dataset is prepped
 
 # generate synthetic parameter values for MC-SIM using Latin-Hypercube Sampling (uses parameter default values used in paper - modify as needed)
 mat <- matrix_function(
-  n_sobol = 10,
+  n = 10,
   params = param_default_values,
   upper.tissue.truncation.limit = 500,
   x1M_set = 1,
@@ -209,54 +159,57 @@ parameter_histograms$tissue_body
 MC_sim_df <- MC_sim_align_parallel(
   tox_data = aoc_risk_paper,
   param_matrix = mat,
-  n_sim = 10,
+  n_sim = 3,
   x1D_set = 1,
   x2D_set = 5000,
   num_cores = "auto"
 )
 
 ### PSSD++ Simulation ##
-
 ########## food dilution ################
 results_df_food <- MC_sim_df %>%
-  filter(
+  dplyr::filter(
     ingestible != "not ingestible",
     particles_L_food_dilution > 0,
     Group != "Algae"
   ) %>%
-  mutate(dose_new_particles_L = particles_L_food_dilution) %>%
-  drop_na(particles_L_food_dilution)
+  dplyr::mutate(dose_new_particles_L = particles_L_food_dilution) %>%
+  tidyr::drop_na(particles_L_food_dilution)
 # Tier 3/4
 results_df_food_t3_t4 <- results_df_food %>%
-  filter(risk.13 != 1, bio_f %in% c("Organism", "Population"))
+  dplyr::filter(risk.13 != 1, bio_f %in% c("Organism", "Population"))
 ##### marine food ####
 # T1/2
-results_df_food_marine <- results_df_food %>% filter(environment == "Marine")
+results_df_food_marine <- results_df_food %>%
+  dplyr::filter(environment == "Marine")
 # T3/4
 results_df_food_t3_t4_marine <- results_df_food_t3_t4 %>%
-  filter(environment == "Marine")
+  dplyr::filter(environment == "Marine")
 ##### freshwater food ####
 # T1/2
 results_df_food_freshwater <- results_df_food %>%
-  filter(environment == "Freshwater")
+  dplyr::filter(environment == "Freshwater")
 # T3/4
 results_df_food_t3_t4_freshwater <- results_df_food_t3_t4 %>%
-  filter(environment == "Freshwater")
+  dplyr::filter(environment == "Freshwater")
 ########## Tissue Translocation ################
 results_df_tissue <- MC_sim_df %>%
-  filter(translocatable != "not translocatable", particles_L_ox_stress > 0) %>%
-  mutate(dose_new_particles_L = particles_L_ox_stress) %>%
-  drop_na(particles_L_ox_stress)
+  dplyr::filter(
+    translocatable != "not translocatable",
+    particles_L_ox_stress > 0
+  ) %>%
+  dplyr::mutate(dose_new_particles_L = particles_L_ox_stress) %>%
+  tidyr::drop_na(particles_L_ox_stress)
 # Tier 3/4
 results_df_tissue_t3_t4 <- results_df_tissue %>%
-  filter(risk.13 != 1, bio_f %in% c("Organism", "Population"))
+  dplyr::filter(risk.13 != 1, bio_f %in% c("Organism", "Population"))
 ##### marine tissue ####
 # T1/2
 results_df_tissue_marine <- results_df_tissue %>%
-  filter(environment == "Marine")
+  dplyr::filter(environment == "Marine")
 # T3/4
 results_df_tissue_t3_t4_marine <- results_df_tissue_t3_t4 %>%
-  filter(environment == "Marine")
+  dplyr::filter(environment == "Marine")
 ##### freshwater tissue ####
 # T1/2
 results_df_tissue_freshwater <- results_df_tissue %>%
@@ -285,7 +238,7 @@ pSSDs <- make_all_pSSDs(
   tiers = c(3), #mehinto et al (2022) threshold tiers to loop throughj
   environments = c("Freshwater", "Marine"), #environments to loop through
   erms = c("Food Dilution", "Tissue Translocation"), #ERMs to loop through
-  sim = 10, # number of PSSD simulations
+  sim = 3, # number of PSSD simulations
   cv_uf = 0.5, # coefficient of variation for uncertainty factors
   rmore_method = "step", # method to handle pSSD distribution building (options = 'step' i.e., original trapezoidal method in Wigger et al., 2020, or 'lognormal' - shortcut developed in Coffin et al. (2025))
   quantile_type = 8, # quantile type for distribution fitting (8 is default, and use of others may cause unexpected or unreliable results)
