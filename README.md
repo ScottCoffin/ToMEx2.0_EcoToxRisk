@@ -9,7 +9,7 @@ This repository contains the **data, code, and reproducible workflows** supporti
 
 > **A Probabilistic Risk Framework for Microplastics Integrating Uncertainty Across Toxicological and Environmental Variability: Development and Application to Marine and Freshwater Ecosystems**
 
-Preprint: [https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537)
+[Full text](https://www.sciencedirect.com/science/article/pii/S0304389425039421)
 
 **Authors:** Scott Coffin et al.
 
