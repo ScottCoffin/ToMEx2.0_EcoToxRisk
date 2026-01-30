@@ -40,6 +40,12 @@ do.pSSD_mod <- function(
   CV.UF,
   rmore_method = "step"
 ) {
+  # Ensure trapezoid helpers are in scope for mc2d::rtrunc()
+  rtrapezoid <- trapezoid::rtrapezoid
+  ptrapezoid <- trapezoid::ptrapezoid
+  qtrapezoid <- trapezoid::qtrapezoid
+  dtrapezoid <- trapezoid::dtrapezoid
+
   #step (slow) or lognormal (fast)
   # Check for species with no data
   if (any(apply(DP, 2, function(x) length(which(!is.na(x)))) == 0)) {
@@ -183,6 +189,12 @@ do.pSSD_mod <- function(
 #' @return Matrix of simulated NOEC draws with species in rows and iterations in columns.
 #' @export
 do.pSSD <- function(DP, UFt, UFdd, SIM, CV.DP, CV.UF) {
+  # Ensure trapezoid helpers are in scope for mc2d::rtrunc()
+  rtrapezoid <- trapezoid::rtrapezoid
+  ptrapezoid <- trapezoid::ptrapezoid
+  qtrapezoid <- trapezoid::qtrapezoid
+  dtrapezoid <- trapezoid::dtrapezoid
+
   # test if there is no data available for one species
   if (any(apply(DP, 2, function(x) length(which(!is.na(x)))) == 0)) {
     warning(

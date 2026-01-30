@@ -1224,7 +1224,11 @@ matrix_function <- function(
   )
 
   # Generate the Sobol' sequence
-  mat <- sensobol::sobol_matrices(N = n_sobol, params = param_names, type = "LHS")
+  mat <- sensobol::sobol_matrices(
+    N = n_sobol,
+    params = param_names,
+    type = "LHS"
+  )
 
   # Convert to data.table
   # Convert to data.table
@@ -1585,6 +1589,18 @@ MC_sim_align_parallel <- function(
   x2D_set = x2D_set
   tox_data = tox_data
 
+  param_df <- as.data.frame(param_matrix)
+  if (!"simulation_id" %in% names(param_df)) {
+    param_df$simulation_id <- paste0("sim", seq_len(nrow(param_df)))
+  }
+  if (n_sim > nrow(param_df)) {
+    stop(
+      "n_sim exceeds nrow(param_matrix). Increase matrix_function(n_sobol) ",
+      "or reduce n_sim.",
+      call. = FALSE
+    )
+  }
+
   cat(crayon::yellow(paste0(
     "Running alignments for ",
     n_sim,
@@ -1618,12 +1634,13 @@ MC_sim_align_parallel <- function(
       "n_sim",
       "x1D_set",
       "x2D_set",
-      "param_matrix"
+      "param_matrix",
+      "param_df"
     ),
     .combine = rbind
   ) %dopar%
     {
-      param_matrix <- param_matrix[i, ]
+      param_matrix <- param_df[i, , drop = FALSE]
       # Ensure all extracted parameters are correctly coerced to numeric
       # Coerce to numeric directly while accessing the first element of potential list
       alpha.marine <- as.numeric(param_matrix$alpha.marine[1])
@@ -1637,21 +1654,16 @@ MC_sim_align_parallel <- function(
       a.m.freshwater <- as.numeric(param_matrix$a.m.freshwater[1])
       #  a.ssa.freshwater <- as.numeric(param_matrix$a.ssa.freshwater[1])
       R_ave_water_marine <- as.numeric(param_matrix$R.ave.water.marine[1])
-      R_ave_water_freshwater <- as.numeric(param_matrix$R.ave.water.freshwater[
-        1
-      ])
+      R_ave_water_freshwater <- as.numeric(param_matrix$R.ave.water.freshwater[1])
       #  R_ave_sediment_marine <- as.numeric(param_matrix$R.ave.sediment.marine[1])
       #  R_ave_sediment_freshwater <- as.numeric(param_matrix$R.ave.sediment.freshwater[1])
-      sim_beta_log10_body_length <- as.numeric(param_matrix$sim.beta.log10.body.length[
-        1
-      ])
-      sim_body_length_intercept <- as.numeric(param_matrix$sim.body.length.intercept[
-        1
-      ])
-      sim.upper.tissue.trans.size.um <- as.numeric(param_matrix$upper.tissue.trans.size.um[
-        1
-      ])
+      sim_beta_log10_body_length <- as.numeric(param_matrix$sim.beta.log10.body.length[1])
+      sim_body_length_intercept <- as.numeric(param_matrix$sim.body.length.intercept[1])
+      sim.upper.tissue.trans.size.um <- as.numeric(param_matrix$upper.tissue.trans.size.um[1])
       simulation_id <- as.character(param_matrix$simulation_id[1])
+      if (is.na(simulation_id) || !nzchar(simulation_id)) {
+        simulation_id <- paste0("sim", i)
+      }
 
       # Perform the model wrapping
       results_parallel[[i]] <- MC_sim_align_wrapper(
@@ -1675,6 +1687,9 @@ MC_sim_align_parallel <- function(
   results_df <- do.call(
     rbind,
     lapply(results_list, function(x) {
+      if (is.list(x) && !is.null(x$tox_vals)) {
+        x <- x$tox_vals
+      }
       data.frame(
         simulation_id = x$simulation_id,
         unique_id = factor(x$unique_id), #toxicity data point (row)
@@ -2856,7 +2871,6 @@ run_pSSD_analysis <- function(
   silent = FALSE,
   progress = NULL
 ) {
-
   # Initialize an empty list to store the results
   pSSD_list <- vector("list", num_iterations)
 
@@ -3225,7 +3239,9 @@ make_all_pSSDs <- function(
         "Matrix",
         "stats",
         "utils",
-        "purrr"
+        "purrr",
+        "mc2d",
+        "trapezoid"
       ))
     )
     on.exit(options(future.packages = old_future_pkgs), add = TRUE)
@@ -3306,7 +3322,7 @@ make_all_pSSDs <- function(
         result
       },
       future.seed = TRUE,
-      future.packages = c("PSSDplusplus")
+      future.packages = c("PSSDplusplus", "mc2d", "trapezoid")
     )
   })
 
