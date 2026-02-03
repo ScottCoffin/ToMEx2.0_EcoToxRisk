@@ -17,7 +17,6 @@ required_pkgs <- c(
   "magrittr",
   "trapezoid",
   "ggpubr",
-  "ggdark",
   "gtsummary",
   "doParallel",
   "doSNOW",

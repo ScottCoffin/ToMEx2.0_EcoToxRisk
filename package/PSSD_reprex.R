@@ -94,7 +94,6 @@ pkgs <- c(
   "sensobol",
   "truncnorm",
   "ggpubr",
-  "ggdark",
   "gtsummary",
   "doParallel",
   "doSNOW",
