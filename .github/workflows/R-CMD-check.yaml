@@ -19,11 +19,11 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {os: macos-latest,   r: 'release', rspm: false}
-          - {os: windows-latest, r: 'release', rspm: false}
-          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release', rspm: true}
-          - {os: ubuntu-latest,   r: 'release', rspm: true}
-          - {os: ubuntu-latest,   r: 'oldrel-1', rspm: true}
+          - {os: macos-latest,   r: 'release', rspm: false, dependencies: 'hard'}
+          - {os: windows-latest, r: 'release', rspm: false, dependencies: 'all'}
+          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release', rspm: true, dependencies: 'all'}
+          - {os: ubuntu-latest,   r: 'release', rspm: true, dependencies: 'all'}
+          - {os: ubuntu-latest,   r: 'oldrel-1', rspm: true, dependencies: 'all'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -47,6 +47,7 @@ jobs:
         with:
           extra-packages: any::rcmdcheck
           needs: check
+          dependencies: ${{ matrix.config.dependencies }}
           working-directory: package
 
       - uses: r-lib/actions/setup-r-dependencies@v2
@@ -57,9 +58,19 @@ jobs:
         with:
           extra-packages: any::rcmdcheck
           needs: check
+          dependencies: ${{ matrix.config.dependencies }}
           working-directory: package
 
       - uses: r-lib/actions/check-r-package@v2
+        if: runner.os == 'macOS'
+        with:
+          upload-snapshots: true
+          build_args: 'c("--no-manual","--no-build-vignettes")'
+          args: 'c("--no-manual","--ignore-vignettes")'
+          working-directory: package
+
+      - uses: r-lib/actions/check-r-package@v2
+        if: runner.os != 'macOS'
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
