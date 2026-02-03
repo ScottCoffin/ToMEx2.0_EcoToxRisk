@@ -2466,31 +2466,6 @@ MC_sim_align_parallel <- function(
   if (num_cores == "auto") {
     num_cores <- max(1, parallel::detectCores() - 1)
   }
-  # make cluster
-  cl <- parallel::makeCluster(num_cores)
-  on.exit(try(parallel::stopCluster(cl), silent = TRUE), add = TRUE)
-  doSNOW::registerDoSNOW(cl)
-  # list number of cores used
-  message(crayon::yellow(paste0(
-    "Using ",
-    num_cores,
-    " cores for parallel processing"
-  )))
-  # Set up a progress bar
-  pb <- utils::txtProgressBar(min = 0, max = n_sim, style = 3)
-  progress <- function(n) utils::setTxtProgressBar(pb, n)
-  opts <- list(progress = progress)
-  on.exit(try(close(pb), silent = TRUE), add = TRUE)
-  # Initialize vector to store sobol results
-  results_list <- vector("list", n_sim)
-  # Initialize vector to store sobol results
-  results_parallel <- vector("list", n_sim)
-  tictoc::tic("Parallel processing alignments")
-
-  x1D_set = x1D_set
-  x2D_set = x2D_set
-  tox_data = tox_data
-
   param_df <- as.data.frame(param_matrix)
   if (!"simulation_id" %in% names(param_df)) {
     param_df$simulation_id <- paste0("sim", seq_len(nrow(param_df)))
@@ -2502,6 +2477,106 @@ MC_sim_align_parallel <- function(
       call. = FALSE
     )
   }
+
+  # Set up a progress bar
+  pb <- utils::txtProgressBar(min = 0, max = n_sim, style = 3)
+  progress <- function(n) utils::setTxtProgressBar(pb, n)
+  on.exit(try(close(pb), silent = TRUE), add = TRUE)
+
+  # Sequential fallback to avoid PSOCK issues when running with 1 core
+  if (num_cores <= 1) {
+    message(crayon::yellow("Using 1 core (sequential processing)"))
+    tictoc::tic("Sequential processing alignments")
+
+    results_list <- lapply(seq_len(n_sim), function(i) {
+      progress(i)
+      param_row <- param_df[i, , drop = FALSE]
+      simulation_id <- as.character(param_row$simulation_id[1])
+      if (is.na(simulation_id) || !nzchar(simulation_id)) {
+        simulation_id <- paste0("sim", i)
+      }
+      MC_sim_align_wrapper(
+        tox_data = tox_data,
+        param_row,
+        simulation_id = simulation_id
+      )
+    })
+
+    elapsed <- tictoc::toc()
+    message(crayon::green(paste0(
+      "Probabilistic alignments completed in ",
+      round(elapsed$toc - elapsed$tic, 2),
+      " sec"
+    )))
+
+    results_df <- do.call(
+      rbind,
+      lapply(results_list, function(x) {
+        if (is.list(x) && !is.null(x$tox_vals)) {
+          x <- x$tox_vals
+        }
+        data.frame(
+          simulation_id = x$simulation_id,
+          unique_id = factor(x$unique_id),
+          particles_L_ox_stress = x$particles_mL_ox_stress * 1000,
+          particles_L_food_dilution = x$particles_mL_food_dilution * 1000,
+          particles_kg_ox_stress = x$particles_kg_ox_stress,
+          particles_kg_food_dilution = x$particles_kg_food_dilution,
+          species = x$species,
+          group = x$group,
+          shape_f = x$shape_f,
+          poly_f = x$poly_f,
+          environment = x$environment,
+          effect.metric = x$effect.metric,
+          bio_f = x$bio_f,
+          risk.13 = x$risk.13,
+          af.time = x$af.time,
+          af.noec = x$af.noec,
+          ingestible = factor(x$ingestible),
+          ingestible_poly = x$ingestible_poly,
+          translocatable = factor(x$translocatable),
+          translocatable_poly = factor(x$translocatable_poly)
+        )
+      })
+    ) %>%
+      dplyr::mutate(
+        ingestible = dplyr::case_when(
+          !is.na(ingestible_poly) ~ ingestible_poly,
+          T ~ ingestible
+        ),
+        translocatable = dplyr::case_when(
+          !is.na(translocatable_poly) ~ translocatable_poly,
+          T ~ translocatable
+        )
+      ) |>
+      dplyr::rename(Group = group, Species = species) %>%
+      dplyr::mutate(
+        sim_id_numeric = as.numeric(str_replace(simulation_id, "sim", ""))
+      )
+
+    return(results_df)
+  }
+
+  # make cluster
+  cl <- parallel::makeCluster(num_cores)
+  on.exit(try(parallel::stopCluster(cl), silent = TRUE), add = TRUE)
+  doSNOW::registerDoSNOW(cl)
+  # list number of cores used
+  message(crayon::yellow(paste0(
+    "Using ",
+    num_cores,
+    " cores for parallel processing"
+  )))
+  opts <- list(progress = progress)
+  # Initialize vector to store sobol results
+  results_list <- vector("list", n_sim)
+  # Initialize vector to store sobol results
+  results_parallel <- vector("list", n_sim)
+  tictoc::tic("Parallel processing alignments")
+
+  x1D_set = x1D_set
+  x2D_set = x2D_set
+  tox_data = tox_data
 
   cat(crayon::yellow(paste0(
     "Running alignments for ",
