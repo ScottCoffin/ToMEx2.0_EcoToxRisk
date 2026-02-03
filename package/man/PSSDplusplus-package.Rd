@@ -9,10 +9,11 @@
 Implements the Monte Carlo alignment and PSSD++ analysis used for the ToMEx 2.0
 microplastic ecotoxicity assessment. The package bundles helper functions,
 plotting utilities, and workflow wrappers to reproduce the manuscript
-thresholds with the bundled dataset.
+thresholds with the bundled dataset. It now supports sediment compartments,
+adds failure diagnostics, and improves robustness to sparse inputs.
 }
 \author{
-\strong{Maintainer}: Scott Coffin \email{maintainer@example.com}
+\strong{Maintainer}: Scott Coffin \email{scott.l.coffin@gmail.com}
 
 Other contributors:
 \itemize{

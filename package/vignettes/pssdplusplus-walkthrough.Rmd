@@ -11,7 +11,6 @@ vignette: >
 knitr::opts_chunk$set(comment = "#>", collapse = TRUE, verbose = FALSE)
 
 required_pkgs <- c(
-  "tidyverse",
   "sensobol",
   "truncnorm",
   "mc2d",
@@ -106,10 +105,10 @@ tox_data <- tox_data |>
   dplyr::filter(
     Group != "Bacterium", # Drop studies with Bacterium group
     Group != "Plant", # Drop studies with Plant group
-    effect.metric != "HONEC"#, # Drop studies with HONEC effect metric
-   # tier_zero_tech_f == "Red Criteria Passed", #minimum QC for technical criteria
-   # tier_zero_risk_f == "Red Criteria Passed", #minimum QC for risk criteria
-   # risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been)
+    effect.metric != "HONEC", # Drop studies with HONEC effect metric
+    tier_zero_tech_f == "Red Criteria Passed", #minimum QC for technical criteria
+    tier_zero_risk_f == "Red Criteria Passed", #minimum QC for risk criteria
+    risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been)
   )
 ```
 
@@ -287,7 +286,7 @@ pSSDs_water <- make_all_pSSDs(
     base_cache_dir = file.path(tempdir(), "pssd_cache_sediment"),
     base_output_path = file.path(tempdir(), "pssd_figures_sediment"),
     overwrite_cache = TRUE,
-    debug = TRUE
+    debug = F
   )
 ```
 
@@ -317,6 +316,9 @@ The pSSD++ plots show the relationship between the exposure concentration and th
 pSSDs_water$`Tier3_Freshwater_Food Dilution`$pSSD_plot
 ```
 
+```{r}
+pSSDs_water$`Tier3_Marine_Tissue Translocation`$pSSD_plot
+```
 #### Arranged plot
 A manuscript-ready pSSD++ with PNEC distribution plots for Tiers 3 and 4 are generated.
 ```{r}
@@ -326,7 +328,54 @@ pSSDs_water$`Tier3_Freshwater_Food Dilution`$arranged_plot
 Sediment plots use the same access pattern, but with sediment environments:
 
 ```{r}
-  pSSDs_sediment$`Tier3_Freshwater Sediment_Food Dilution`$pSSD_plot
+pSSDs_sediment$`Tier3_Freshwater Sediment_Food Dilution`$pSSD_plot
 ```
 
 The cache and figure outputs default to temporary directories; override the paths above to persist artifacts between sessions.
+
+### Combining environments
+In some cases, one may want to combine pSSD outputs across different environments (e.g., freshwater + marine sediment due to low number of species and/or mixed species environment such as an estuary). This can be done accomplished by overwriting the environment variable in the toxicity dataset before running the pSSD workflow. An example is provided below.
+
+```{r}
+# overwrite environment variable
+tox_data_combined <- tox_data |> dplyr::mutate(env_f = "Freshwater")
+
+#MC-Align
+MC_sim_df_combined <- MC_sim_align_parallel(
+  tox_data = tox_data_combined, # toxicity data (ToMEx 2.0 is default)
+  param_matrix = param_matrix, # parameter matrix generated in prior cell
+  n_sim = 3, # size of parameter matrix (ensure this is the same as the size of the matrix generated)
+  x1D_set = 1, # minimum particle size to generate distributions to (in microns)
+  x2D_set = 5000, # maximum particle size to generate distributions to (in microns)
+  num_cores = num_cores # number of cores to use for parallel processing (specify )
+)
+
+# Filter results to valid data
+results_df_food_sediment_combined <- dplyr::filter(
+  MC_sim_df_combined,
+  ingestible != "not ingestible",
+  particles_kg_food_dilution > 0,
+  Group != "Algae") |>
+  dplyr::mutate(dose_new_particles_kg = particles_kg_food_dilution) |>
+  tidyr::drop_na(particles_kg_food_dilution)
+
+# build ERM registry for pSSD (just one tier for food dilution for minimal reprex)
+erm_registry_sediment_combined <- list(
+  "Food Dilution" = list(base = results_df_food_sediment_combined, t3_t4 = results_df_food_sediment_combined),
+  "Tissue Translocation" = list(base = NA, t3_t4 = NA)
+)
+
+# run pSSD workflow
+pSSDs_sediment_combined <- make_all_pSSDs(
+  MC_sim_df = MC_sim_df_combined, # ensure aligned data is included
+  environments = c("Freshwater Sediment"), #marine and freshwater combined to fresdhwater
+  erm_registry = erm_registry_sediment_combined,
+  sim = 3, 
+  base_cache_dir = file.path(tempdir(), "pssd_cache_combined"), # directory to store cached pSSD objects (important when running high number of simulations to resume if needed)
+  base_output_path = file.path(tempdir(), "pssd_figures_combined"), # directory to store output figures
+  overwrite_cache = TRUE # whether or not to overwrite cached pSSD objects
+)
+
+# inspect results
+pSSDs_sediment_combined$`Tier3_Freshwater Sediment_Food Dilution`$pSSD_plot
+```

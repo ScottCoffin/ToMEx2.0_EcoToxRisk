@@ -95,7 +95,7 @@ SAfnx = function(
 ################# MASS ####################
 massfnx <- function(v, p) {
   # If either v or p is NA, return NA for those elements
-  mass <- ifelse(is.na(v) | is.na(p), NA, p * v * (1 / 1e12) * 1e6) # correction factor (g to µg)
+  mass <- ifelse(is.na(v) | is.na(p), NA, p * v * (1 / 1e12) * 1e6) # correction factor (g to g)
   return(mass)
 }
 
@@ -204,9 +204,9 @@ update_particle_length <- function(
   shape,
   new_value
 ) {
-  data$Particle.Length..μm.[
+  data$Particle.Length..m.[
     data$DOI == doi &
-      data$Particle.Length..μm. == length &
+      data$Particle.Length..m. == length &
       data$Polymer == polymer &
       data$Shape == shape
   ] = new_value
@@ -310,10 +310,10 @@ generate_data <- function(
   R.ave.water.marine.sd = 0.29,
   R.ave.water.freshwater = 0.67,
   R.ave.water.freshwater.sd = 0.28,
-  R.ave.sediment.marine = 0.70,
-  R.ave.sediment.marine.sd = 0.33,
-  R.ave.sediment.freshwater = 0.75,
-  R.ave.sediment.freshwater.sd = 0.30,
+  R.ave.sediment.marine = 0.75,
+  R.ave.sediment.marine.sd = 0.30,
+  R.ave.sediment.freshwater = 0.70,
+  R.ave.sediment.freshwater.sd = 0.33,
 
   # density (g/cm^3)
   p.ave.marine = 1.10,
@@ -538,8 +538,8 @@ align_data <- function(
   x2D_set_input = 5000, #um
   # bioaccessibility
   upper.tissue.trans.size.um_input = 88,
-  beta_log10_body_length_input = 0.9341, # Jâms, et al 2020 Nature paper
-  body_length_intercept_input = 1.1200, # Jâms, et al 2020 Nature paper
+  beta_log10_body_length_input = 0.9341, # Jms, et al 2020 Nature paper
+  body_length_intercept_input = 1.1200, # Jms, et al 2020 Nature paper
   # Freshwater surface area
   R.ave.freshwater_input = 0.67, # average length to width ratio of microplastics in freshwater environment (Kooi et al. 2021)
   H_W_ratio.freshwater_input = 0.67, # H:W ratio assumed same as width:length ratio (Kooi et al. 2021)
@@ -559,7 +559,7 @@ align_data <- function(
   a.m.marine_input = 1.32, # upper limit fora_m for mass for marine surface water in table S4
   a.ssa.marine_input = 1.98, # A_SSA for marine surface water
   ### freshwater sediment
-  R.ave.sediment.freshwater_input = 0.75,
+  R.ave.sediment.freshwater_input = 0.70,
   H_W_ratio.sediment.freshwater_input = 0.70,
   p.ave.sediment.freshwater_input = 1.15,
   alpha.sediment.freshwater_input = 3.25,
@@ -568,7 +568,7 @@ align_data <- function(
   a.m.sediment.freshwater_input = 1.56,
   a.ssa.sediment.freshwater_input = 2.82,
   ### marine sediment
-  R.ave.sediment.marine_input = 0.70,
+  R.ave.sediment.marine_input = 0.75,
   H_W_ratio.sediment.marine_input = 0.75,
   p.ave.sediment.marine_input = 1.16,
   alpha.sediment.marine_input = 2.57,
@@ -1419,8 +1419,8 @@ param_default_values <- data.frame(
   a.ssa.freshwater = 2.71,
   a.ssa.freshwater.sd = 0.009,
   # marine sediment
-  R.ave.sediment.marine = 0.70,
-  R.ave.sediment.marine.sd = 0.33,
+  R.ave.sediment.marine = 0.75,
+  R.ave.sediment.marine.sd = 0.30,
   p.ave.sediment.marine = 1.16,
   p.ave.sediment.marine.sd = 0.16,
   alpha.sediment.marine = 2.57,
@@ -1434,8 +1434,8 @@ param_default_values <- data.frame(
   a.ssa.sediment.marine = 2.54,
   a.ssa.sediment.marine.sd = 0.082,
   # freshwater sediment
-  R.ave.sediment.freshwater = 0.75,
-  R.ave.sediment.freshwater.sd = 0.30,
+  R.ave.sediment.freshwater = 0.70,
+  R.ave.sediment.freshwater.sd = 0.33,
   p.ave.sediment.freshwater = 1.15,
   p.ave.sediment.freshwater.sd = 0.13,
   alpha.sediment.freshwater = 3.25,
@@ -2662,6 +2662,13 @@ Mode_Y <- function(x) {
   dens$x[ind]
 }
 
+safe_debug_id <- function(x) {
+  x <- gsub("[^A-Za-z0-9_-]+", "_", x)
+  x <- gsub("_+", "_", x)
+  x <- gsub("^_|_$", "", x)
+  x
+}
+
 PNEC_data_summary <- function(
   pssd_results,
   hcx,
@@ -2714,7 +2721,7 @@ generate_plots_and_summary <- function(
   erm,
   results_df,
   quantile_type = 7,
-  color_palette = global_color_palette,
+  color_palette = NULL,
   sim = 300, # Default number of simulations
   num_iterations = 300, # Default number of iterations
   cv_dp = NULL,
@@ -2724,11 +2731,19 @@ generate_plots_and_summary <- function(
   output_path,
   presentation_path,
   debug = FALSE,
-  debug_dir = "../output/pssd_debug",
+  debug_dir = file.path(tempdir(), "pssd_debug"),
   silent = FALSE, # progress reporting for single-threading
   progress = NULL # report-out progress for parallel processing
 ) {
   combo_id <- paste0("Tier", tier, "_", environment, "_", erm)
+  safe_combo_id <- safe_debug_id(combo_id)
+  if (is.null(color_palette)) {
+    palette_source <- results_df
+    if (!missing(species_data_source) && !is.null(species_data_source)) {
+      palette_source <- species_data_source
+    }
+    color_palette <- generate_color_palette(palette_source)
+  }
   has_sediment <- "environment" %in% names(results_df) &&
     any(grepl("sediment", results_df$environment, ignore.case = TRUE), na.rm = TRUE)
   dose_column <- NULL
@@ -2758,7 +2773,7 @@ generate_plots_and_summary <- function(
     if (!dir.exists(debug_dir)) {
       dir.create(debug_dir, recursive = TRUE)
     }
-    cat("\n🐞 DEBUG MODE ON for:", combo_id, "\n")
+    cat("\n DEBUG MODE ON for:", safe_combo_id, "\n")
   }
 
   # ---------- STEP 0: Save raw input ----------
@@ -2778,7 +2793,7 @@ generate_plots_and_summary <- function(
         cv_uf = cv_uf,
         rmore_method = rmore_method
       ),
-      file = file.path(debug_dir, paste0("step0_inputs_", combo_id, ".rds"))
+      file = file.path(debug_dir, paste0("step0_inputs_", safe_combo_id, ".rds"))
     )
   }
 
@@ -2786,14 +2801,14 @@ generate_plots_and_summary <- function(
   MCdf <- tryCatch(
     {
       if (debug) {
-        cat("🔧 STEP 1: prep_data()...\n")
+        cat(" STEP 1: prep_data()...\n")
       }
       x <- prep_data(results_df)
       if (debug) {
         cat("  MCdf names:", paste(names(x), collapse = ", "), "\n")
         saveRDS(
           x,
-          file = file.path(debug_dir, paste0("step1_MCdf_", combo_id, ".rds"))
+          file = file.path(debug_dir, paste0("step1_MCdf_", safe_combo_id, ".rds"))
         )
       }
       x
@@ -2807,10 +2822,10 @@ generate_plots_and_summary <- function(
           ),
           file = file.path(
             debug_dir,
-            paste0("ERROR_step1_prep_data_", combo_id, ".rds")
+            paste0("ERROR_step1_prep_data_", safe_combo_id, ".rds")
           )
         )
-        cat("❌ ERROR @ STEP 1 (prep_data):", e$message, "\n")
+        cat(" ERROR @ STEP 1 (prep_data):", e$message, "\n")
       }
       stop(e)
     }
@@ -2822,7 +2837,7 @@ generate_plots_and_summary <- function(
   }
   if (is.null(dp) || is.null(dim(dp)) || any(dim(dp) == 0)) {
     if (debug) {
-      cat("⚠️ Skipping:", combo_id, "- DP matrix has zero dimensions.\n")
+      cat(" Skipping:", safe_combo_id, "- DP matrix has zero dimensions.\n")
     }
     return(NULL)
   }
@@ -2830,7 +2845,7 @@ generate_plots_and_summary <- function(
     valid_species <- colSums(!is.na(dp)) > 0
     if (!any(valid_species)) {
       if (debug) {
-        cat("⚠️ Skipping:", combo_id, "- no species with data after filtering.\n")
+        cat(" Skipping:", safe_combo_id, "- no species with data after filtering.\n")
       }
       return(NULL)
     }
@@ -2840,7 +2855,7 @@ generate_plots_and_summary <- function(
   pssd_results <- tryCatch(
     {
       if (debug) {
-        cat("🔧 STEP 2: run_pSSD_analysis()...\n")
+        cat(" STEP 2: run_pSSD_analysis()...\n")
       }
       x <- run_pSSD_analysis(
         data_matrices = MCdf,
@@ -2859,7 +2874,7 @@ generate_plots_and_summary <- function(
           x,
           file = file.path(
             debug_dir,
-            paste0("step2_pssd_results_", combo_id, ".rds")
+            paste0("step2_pssd_results_", safe_combo_id, ".rds")
           )
         )
       }
@@ -2874,10 +2889,10 @@ generate_plots_and_summary <- function(
           ),
           file = file.path(
             debug_dir,
-            paste0("ERROR_step2_pssd_", combo_id, ".rds")
+            paste0("ERROR_step2_pssd_", safe_combo_id, ".rds")
           )
         )
-        cat("❌ ERROR @ STEP 2 (run_pSSD_analysis):", e$message, "\n")
+        cat(" ERROR @ STEP 2 (run_pSSD_analysis):", e$message, "\n")
       }
       stop(e)
     }
@@ -2887,7 +2902,7 @@ generate_plots_and_summary <- function(
   plot_prep <- tryCatch(
     {
       if (debug) {
-        cat("🔧 STEP 3: prepare_plot_data()...\n")
+        cat(" STEP 3: prepare_plot_data()...\n")
       }
       x <- prepare_plot_data(
         pSSD = pssd_results$pSSD,
@@ -2905,7 +2920,7 @@ generate_plots_and_summary <- function(
           x,
           file = file.path(
             debug_dir,
-            paste0("step3_plot_prep_", combo_id, ".rds")
+            paste0("step3_plot_prep_", safe_combo_id, ".rds")
           )
         )
       }
@@ -2922,10 +2937,10 @@ generate_plots_and_summary <- function(
           ),
           file = file.path(
             debug_dir,
-            paste0("ERROR_step3_prepare_plot_data_", combo_id, ".rds")
+            paste0("ERROR_step3_prepare_plot_data_", safe_combo_id, ".rds")
           )
         )
-        cat("❌ ERROR @ STEP 3 (prepare_plot_data):", e$message, "\n")
+        cat(" ERROR @ STEP 3 (prepare_plot_data):", e$message, "\n")
       }
       stop(e)
     }
@@ -2935,7 +2950,7 @@ generate_plots_and_summary <- function(
   pSSD_plot <- tryCatch(
     {
       if (debug) {
-        cat("🔧 STEP 4a: pSSD_plot_fnx()...\n")
+        cat(" STEP 4a: pSSD_plot_fnx()...\n")
       }
       x <- pSSD_plot_fnx(
         quantiles_df = plot_prep$quantiles_df,
@@ -2955,7 +2970,7 @@ generate_plots_and_summary <- function(
           x,
           file = file.path(
             debug_dir,
-            paste0("step4a_pSSD_plot_", combo_id, ".rds")
+            paste0("step4a_pSSD_plot_", safe_combo_id, ".rds")
           )
         )
       }
@@ -2972,10 +2987,10 @@ generate_plots_and_summary <- function(
           ),
           file = file.path(
             debug_dir,
-            paste0("ERROR_step4a_pSSD_plot_", combo_id, ".rds")
+            paste0("ERROR_step4a_pSSD_plot_", safe_combo_id, ".rds")
           )
         )
-        cat("❌ ERROR @ STEP 4a (pSSD_plot_fnx):", e$message, "\n")
+        cat(" ERROR @ STEP 4a (pSSD_plot_fnx):", e$message, "\n")
       }
       stop(e)
     }
@@ -2989,14 +3004,14 @@ generate_plots_and_summary <- function(
   if (debug) {
     saveRDS(
       PNEC_05_df,
-      file = file.path(debug_dir, paste0("step4b_PNEC05_df_", combo_id, ".rds"))
+      file = file.path(debug_dir, paste0("step4b_PNEC05_df_", safe_combo_id, ".rds"))
     )
   }
 
   PNEC_plot_05 <- tryCatch(
     {
       if (debug) {
-        cat("🔧 STEP 4b: make_PNEC_plot() HC5...\n")
+        cat(" STEP 4b: make_PNEC_plot() HC5...\n")
       }
       p <- make_PNEC_plot(
         pssd_results = pssd_results,
@@ -3015,7 +3030,7 @@ generate_plots_and_summary <- function(
           p,
           file = file.path(
             debug_dir,
-            paste0("step4b_PNEC_plot_05_", combo_id, ".rds")
+            paste0("step4b_PNEC_plot_05_", safe_combo_id, ".rds")
           )
         )
       }
@@ -3027,10 +3042,10 @@ generate_plots_and_summary <- function(
           list(error = e, pssd_results = pssd_results),
           file = file.path(
             debug_dir,
-            paste0("ERROR_step4b_PNEC_plot_05_", combo_id, ".rds")
+            paste0("ERROR_step4b_PNEC_plot_05_", safe_combo_id, ".rds")
           )
         )
-        cat("❌ ERROR @ STEP 4b (make_PNEC_plot HC5):", e$message, "\n")
+        cat(" ERROR @ STEP 4b (make_PNEC_plot HC5):", e$message, "\n")
       }
       stop(e)
     }
@@ -3039,7 +3054,7 @@ generate_plots_and_summary <- function(
   PNEC_plot_10 <- tryCatch(
     {
       if (debug) {
-        cat("🔧 STEP 4b: make_PNEC_plot() HC10...\n")
+        cat(" STEP 4b: make_PNEC_plot() HC10...\n")
       }
       p <- make_PNEC_plot(
         pssd_results = pssd_results,
@@ -3061,7 +3076,7 @@ generate_plots_and_summary <- function(
           p,
           file = file.path(
             debug_dir,
-            paste0("step4b_PNEC_plot_10_", combo_id, ".rds")
+            paste0("step4b_PNEC_plot_10_", safe_combo_id, ".rds")
           )
         )
       }
@@ -3073,10 +3088,10 @@ generate_plots_and_summary <- function(
           list(error = e, pssd_results = pssd_results),
           file = file.path(
             debug_dir,
-            paste0("ERROR_step4b_PNEC_plot_10_", combo_id, ".rds")
+            paste0("ERROR_step4b_PNEC_plot_10_", safe_combo_id, ".rds")
           )
         )
-        cat("❌ ERROR @ STEP 4b (make_PNEC_plot HC10):", e$message, "\n")
+        cat(" ERROR @ STEP 4b (make_PNEC_plot HC10):", e$message, "\n")
       }
       stop(e)
     }
@@ -3103,7 +3118,7 @@ generate_plots_and_summary <- function(
       ),
       file = file.path(
         debug_dir,
-        paste0("step5_PNEC_summaries_", combo_id, ".rds")
+        paste0("step5_PNEC_summaries_", safe_combo_id, ".rds")
       )
     )
   }
@@ -3112,7 +3127,7 @@ generate_plots_and_summary <- function(
   arranged_plot <- tryCatch(
     {
       if (debug) {
-        cat("🔧 STEP 6: ggarrange()...\n")
+        cat(" STEP 6: ggarrange()...\n")
       }
       p <- ggpubr::ggarrange(
         pSSD_plot,
@@ -3130,7 +3145,7 @@ generate_plots_and_summary <- function(
           p,
           file = file.path(
             debug_dir,
-            paste0("step6_arranged_plot_", combo_id, ".rds")
+            paste0("step6_arranged_plot_", safe_combo_id, ".rds")
           )
         )
       }
@@ -3147,10 +3162,10 @@ generate_plots_and_summary <- function(
           ),
           file = file.path(
             debug_dir,
-            paste0("ERROR_step6_arranged_plot_", combo_id, ".rds")
+            paste0("ERROR_step6_arranged_plot_", safe_combo_id, ".rds")
           )
         )
-        cat("❌ ERROR @ STEP 6 (ggarrange):", e$message, "\n")
+        cat(" ERROR @ STEP 6 (ggarrange):", e$message, "\n")
       }
       stop(e)
     }
@@ -3160,7 +3175,7 @@ generate_plots_and_summary <- function(
   tryCatch(
     {
       if (debug) {
-        cat("💾 STEP 7: ggsave() plot...\n")
+        cat(" STEP 7: ggsave() plot...\n")
       }
       ggplot2::ggsave(
         filename = paste0(erm, "_", environment, "_arranged_plot.jpg"),
@@ -3178,10 +3193,10 @@ generate_plots_and_summary <- function(
           list(error = e, arranged_plot = arranged_plot),
           file = file.path(
             debug_dir,
-            paste0("ERROR_step7_ggsave_plot_", combo_id, ".rds")
+            paste0("ERROR_step7_ggsave_plot_", safe_combo_id, ".rds")
           )
         )
-        cat("❌ ERROR @ STEP 7 (ggsave plot):", e$message, "\n")
+        cat(" ERROR @ STEP 7 (ggsave plot):", e$message, "\n")
       }
       stop(e)
     }
@@ -3189,7 +3204,7 @@ generate_plots_and_summary <- function(
 
   # ---------- RETURN ----------
   if (debug) {
-    cat("✅ generate_plots_and_summary() complete for", combo_id, "\n")
+    cat(" generate_plots_and_summary() complete for", safe_combo_id, "\n")
   }
 
   return(list(
@@ -3209,7 +3224,7 @@ generate_plots_and_summary <- function(
 generate_color_palette <- function(data) {
   unique_groups <- unique(stats::na.omit(data$Group)) # Extract unique levels of Group
   if (length(unique_groups) == 0) {
-    return(setNames(character(0), character(0)))
+    return(stats::setNames(character(0), character(0)))
   }
   #palette <- cols4all::c4a("seaborn.dark", n = length(unique_groups)) # Generate colors
   palette <- cols4all::c4a("cols4all.area9d", n = length(unique_groups)) # Generate colors
@@ -3229,15 +3244,16 @@ pSSD_plot_fnx <- function(
   color_palette = color_palette,
   x_label = "NOEC (particles/L; 1 to 5,000 um)",
   debug = FALSE,
-  debug_dir = "../output/pssd_debug",
+  debug_dir = file.path(tempdir(), "pssd_debug"),
   combo_id = "UNKNOWN"
 ) {
+  safe_combo_id <- safe_debug_id(combo_id)
   # ========== DEBUG SETUP =====================================================
   if (debug) {
     if (!dir.exists(debug_dir)) {
       dir.create(debug_dir, recursive = TRUE)
     }
-    cat("\n📊 DEBUG: pSSD_plot_fnx() for", combo_id, "\n")
+    cat("\n DEBUG: pSSD_plot_fnx() for", safe_combo_id, "\n")
     cat("  Species_data rows:", nrow(species_data), "\n")
     cat("  all_NOEC rows:", nrow(all_NOEC), "\n")
     cat("  N NA NOEC values:", sum(is.na(all_NOEC$NOEC_median)), "\n")
@@ -3254,7 +3270,7 @@ pSSD_plot_fnx <- function(
         all_NOEC = all_NOEC,
         species_data = species_data
       ),
-      file = file.path(debug_dir, paste0("pSSD_plot_inputs_", combo_id, ".rds"))
+      file = file.path(debug_dir, paste0("pSSD_plot_inputs_", safe_combo_id, ".rds"))
     )
   }
 
@@ -3275,13 +3291,13 @@ pSSD_plot_fnx <- function(
       list(below = below, above = above),
       file = file.path(
         debug_dir,
-        paste0("pSSD_label_x_checks_", combo_id, ".rds")
+        paste0("pSSD_label_x_checks_", safe_combo_id, ".rds")
       )
     )
   }
 
   # ========== LEGEND LABELS + GROUPS ==========================================
-  legend_labels <- setNames(
+  legend_labels <- stats::setNames(
     paste0(
       "<span style='color:",
       color_palette,
@@ -3293,7 +3309,7 @@ pSSD_plot_fnx <- function(
   )
 
   # only groups that actually appear in the data AND exist in the palette
-  groups_present <- sort(unique(na.omit(all_NOEC$Group)))
+  groups_present <- sort(unique(stats::na.omit(all_NOEC$Group)))
   groups_present <- intersect(groups_present, names(color_palette))
 
   legend_labels_present <- legend_labels[groups_present]
@@ -3307,7 +3323,7 @@ pSSD_plot_fnx <- function(
     if (!debug) {
       return(plot_obj)
     }
-    cat("    🧱 Building stage:", stage_label, "...\n")
+    cat("     Building stage:", stage_label, "...\n")
     tryCatch(
       {
         ggplot2::ggplot_build(plot_obj)
@@ -3315,10 +3331,10 @@ pSSD_plot_fnx <- function(
           plot_obj,
           file = file.path(
             debug_dir,
-            paste0("pSSD_plot_stage_", stage_label, "_", combo_id, ".rds")
+            paste0("pSSD_plot_stage_", stage_label, "_", safe_combo_id, ".rds")
           )
         )
-        cat("    ✅ Stage OK:", stage_label, "\n")
+        cat("     Stage OK:", stage_label, "\n")
         plot_obj
       },
       error = function(e) {
@@ -3326,10 +3342,10 @@ pSSD_plot_fnx <- function(
           list(error = e, plot = plot_obj),
           file = file.path(
             debug_dir,
-            paste0("ERROR_pSSD_plot_stage_", stage_label, "_", combo_id, ".rds")
+            paste0("ERROR_pSSD_plot_stage_", stage_label, "_", safe_combo_id, ".rds")
           )
         )
-        cat("    ❌ ERROR in stage", stage_label, ":", e$message, "\n")
+        cat("     ERROR in stage", stage_label, ":", e$message, "\n")
         stop(e)
       }
     )
@@ -3407,7 +3423,7 @@ pSSD_plot_fnx <- function(
       hjust = 0,
       nudge_x = 7,
       fontface = "italic",
-      size = 3,
+      size = 4.5,
       fill = "white",
       alpha = 0.85,
       segment.alpha = 0.4,
@@ -3428,7 +3444,7 @@ pSSD_plot_fnx <- function(
       hjust = 1,
       nudge_x = -7,
       fontface = "italic",
-      size = 3,
+      size = 4.5,
       fill = "white",
       alpha = 0.85,
       segment.alpha = 0.4,
@@ -3504,7 +3520,7 @@ pSSD_plot_fnx <- function(
   p <- safe_stage(p, "scales_theme")
 
   if (debug) {
-    cat("✅ pSSD_plot_fnx() finished for", combo_id, "\n")
+    cat(" pSSD_plot_fnx() finished for", safe_combo_id, "\n")
   }
 
   return(p)
@@ -3614,13 +3630,16 @@ make_PNEC_plot <- function(
 }
 
 prepare_plot_data <- function(
-  original_data = results_df_food_marine,
-  pSSD = tier1_2_food_pssd$pSSD,
-  data_matrices = tier1_2_food_matrices,
-  species_data_source = tier1_2_food,
+  original_data = NULL,
+  pSSD = NULL,
+  data_matrices = NULL,
+  species_data_source = NULL,
   quantile_type = 7,
   debug = FALSE
 ) {
+  if (is.null(original_data) || is.null(pSSD) || is.null(data_matrices)) {
+    stop("prepare_plot_data requires original_data, pSSD, and data_matrices.")
+  }
   # Ensure that the required matrices are present and correctly formatted
   if (
     is.null(data_matrices[['DP']]) ||
@@ -3650,7 +3669,7 @@ prepare_plot_data <- function(
 
   # Optional Debugging
   if (debug) {
-    cat("\n🔧 DEBUG: prepare_plot_data() input checks...\n")
+    cat("\n DEBUG: prepare_plot_data() input checks...\n")
     cat("  DP dimensions:", dim(data_matrices[['DP']]), "\n")
     cat("  UFdd dimensions:", dim(data_matrices[['UFdd']]), "\n")
     cat("  UFt dimensions:", dim(data_matrices[['UFt']]), "\n")
@@ -3666,20 +3685,25 @@ prepare_plot_data <- function(
     cat("  Zero af.time:", bad3, "\n")
   }
 
-  # Define interpolation values
-  iv <- seq(-5, 10, 0.001)
+  # Define interpolation values using observed ranges so ECDF reaches 1.0
+  log_pssd <- log10(as.numeric(pSSD))
+  log_pssd <- log_pssd[is.finite(log_pssd)]
+  iv_min <- min(log_pssd, na.rm = TRUE)
+  iv_max <- max(log_pssd, na.rm = TRUE)
+  if (!is.finite(iv_min) || !is.finite(iv_max)) {
+    stop("Invalid pSSD values for ECDF range calculation.")
+  }
+  iv <- seq(iv_min - 1, iv_max + 1, length.out = 15001)
   ECDF.data <- matrix(NA, ncol(pSSD), length(iv))
 
   # Compute ECDF for each column in pSSD
-  # for (i in 1:10000) {
   for (i in 1:ncol(pSSD)) {
-    # uncomment if not beta testing!
-    the.ecdf.f <- ecdf(log(pSSD[, i], base = 10))
+    the.ecdf.f <- stats::ecdf(log10(pSSD[, i]))
     ECDF.data[i, ] <- the.ecdf.f(iv)
   }
 
   # Preparing dataframe for ggplot
-  iv_vec <- seq(-5, 10, length.out = ncol(ECDF.data))
+  iv_vec <- iv
   ecdf_df <- data.frame(
     iv = rep(iv_vec, times = nrow(ECDF.data)),
     ecdf_value = as.vector(t(ECDF.data))
@@ -3712,25 +3736,53 @@ prepare_plot_data <- function(
     stop("NOEC.det matrix is empty or not properly formatted.")
   }
 
+  valid_species <- is.finite(NOEC.gmean) & NOEC.gmean > 0
+  if (!any(valid_species)) {
+    stop("No valid NOEC values for species data.")
+  }
+  ranks <- rank(NOEC.gmean[valid_species], ties.method = "average")
+  props <- ranks / (length(ranks) + 1)
+
   ###### GEOMEAN APPROACH - Create Single point for each species ####
   # Creating a dataframe for ggplot with species data
   species_data <- data.frame(
-    Species = colnames(NOEC.det),
-    NOEC_log10 = log10(NOEC.gmean),
-    NOEC = NOEC.gmean,
-    Prop = rank(NOEC.gmean) / (length(NOEC.gmean) + 1)
+    Species = colnames(NOEC.det)[valid_species],
+    NOEC_log10 = log10(NOEC.gmean[valid_species]),
+    NOEC = NOEC.gmean[valid_species],
+    Prop = props
   )
 
-  # Join metadata to species data
+  # Join metadata to species data (ensure one row per Species to avoid duplicate labels)
+  species_lookup <- species_data_source
+  if ("environment" %in% names(original_data)) {
+    env_vals <- unique(original_data$environment)
+    env_vals <- env_vals[!is.na(env_vals)]
+    if (length(env_vals) == 1 && "environment" %in% names(species_lookup)) {
+      species_lookup <- species_lookup %>%
+        dplyr::filter(environment == env_vals[1])
+    }
+  }
+  if ("environment" %in% names(species_lookup)) {
+    species_lookup <- species_lookup %>%
+      dplyr::filter(!is.na(Species)) %>%
+      dplyr::group_by(Species) %>%
+      dplyr::summarise(
+        Group = dplyr::first(stats::na.omit(Group)),
+        environment = dplyr::first(stats::na.omit(environment)),
+        .groups = "drop"
+      )
+  } else {
+    species_lookup <- species_lookup %>%
+      dplyr::filter(!is.na(Species)) %>%
+      dplyr::group_by(Species) %>%
+      dplyr::summarise(
+        Group = dplyr::first(stats::na.omit(Group)),
+        .groups = "drop"
+      )
+  }
+
   species_data <- species_data %>%
-    dplyr::left_join(
-      species_data_source %>% dplyr::distinct(Group, Species),
-      by = "Species"
-    ) %>%
-    dplyr::left_join(
-      species_data_source %>% dplyr::distinct(Species, environment),
-      by = "Species"
-    )
+    dplyr::left_join(species_lookup, by = "Species")
 
   #### Include all Points for each species ####
   # Create a dataframe with all individual unique NOEC values (collapsing alignment df)
@@ -3738,7 +3790,7 @@ prepare_plot_data <- function(
   # Optional Debugging
   if (debug) {
     ### debugging
-    cat("\n🧪 DEBUG: Calculating all_NOEC...\n")
+    cat("\n DEBUG: Calculating all_NOEC...\n")
 
     tmp <- original_data %>%
       dplyr::mutate(
@@ -3756,7 +3808,7 @@ prepare_plot_data <- function(
       )
 
     if (nrow(bad_rows) > 0) {
-      cat("  ❗ BAD ROW EXAMPLE:\n")
+      cat("   BAD ROW EXAMPLE:\n")
       print(head(bad_rows, 3))
     }
   }
@@ -3784,7 +3836,7 @@ prepare_plot_data <- function(
       NOEC_1th = quantile(NOEC_log10, 0.01, type = 7),
       NOEC_10th = quantile(NOEC_log10, 0.10, type = 7),
       NOEC_mean = mean(NOEC_log10, na.rm = TRUE),
-      NOEC_median = median(NOEC_log10),
+      NOEC_median = stats::median(NOEC_log10),
       NOEC_90th = quantile(NOEC_log10, 0.90, type = 7),
       NOEC_99th = quantile(NOEC_log10, 0.99, type = 7),
       NOEC_999th = quantile(NOEC_log10, 0.999, type = 7),
@@ -3801,7 +3853,7 @@ prepare_plot_data <- function(
     n_bad <- sum(is.na(all_NOEC$NOEC_001th))
     if (n_bad > 0) {
       cat(
-        "⚠ DEBUG:",
+        " DEBUG:",
         n_bad,
         "POD groups produced NA quantiles (likely sparse Tier 3/4 data)\n"
       )
@@ -3812,7 +3864,7 @@ prepare_plot_data <- function(
     n_empty <- sum(is.na(all_NOEC$NOEC_mean))
     if (n_empty > 0) {
       cat(
-        "⚠ DEBUG:",
+        " DEBUG:",
         n_empty,
         "groups had zero valid NOECs after Tier 3 stratification\n"
       )
@@ -4130,6 +4182,22 @@ make_status_row <- function(
   )
 }
 
+is_missing_erm_data <- function(df) {
+  if (is.null(df)) {
+    return(TRUE)
+  }
+  if (is.atomic(df) && length(df) == 1 && is.na(df)) {
+    return(TRUE)
+  }
+  if (is.matrix(df) && length(df) == 1 && is.na(df)) {
+    return(TRUE)
+  }
+  if (is.data.frame(df) && nrow(df) == 0) {
+    return(TRUE)
+  }
+  FALSE
+}
+
 #' Run the PSSD++ workflow across tiers, environments, and ERMs
 #'
 #' Generates probabilistic SSDs, summary statistics, and figures with caching
@@ -4247,6 +4315,7 @@ make_all_pSSDs <- function(
     erm <- combo_tbl$erm[idx]
 
     combo_id <- paste0("Tier", tier, "_", environment, "_", erm)
+    safe_combo_id <- safe_debug_id(combo_id)
 
     cache_dir <- file.path(base_cache_dir, paste0("Tier", tier))
     if (!dir.exists(cache_dir)) {
@@ -4260,13 +4329,14 @@ make_all_pSSDs <- function(
     }
 
     if (file.exists(cache_file) && !overwrite_cache) {
-      cat(crayon::yellow(sprintf("Using cached: %s\n", combo_id)))
+      cat(crayon::yellow(sprintf("Using cached: %s\n", safe_combo_id)))
       res <- readRDS(cache_file)
       results_df <- NULL
       if (erm %in% names(erm_registry)) {
         tier_key <- if (tier %in% c(1, 2)) "base" else "t3_t4"
         results_df <- erm_registry[[erm]][[tier_key]]
-        if (!is.null(results_df) && "environment" %in% names(results_df)) {
+        if (!is_missing_erm_data(results_df) &&
+          "environment" %in% names(results_df)) {
           results_df <- results_df %>%
             dplyr::filter(environment == !!environment)
         }
@@ -4286,12 +4356,12 @@ make_all_pSSDs <- function(
     }
 
     if (file.exists(cache_file) && overwrite_cache) {
-      cat(crayon::yellow(sprintf("Overwriting cached: %s\n", combo_id)))
+      cat(crayon::yellow(sprintf("Overwriting cached: %s\n", safe_combo_id)))
     }
 
     if (!erm %in% names(erm_registry)) {
       msg <- paste0("Unknown ERM: ", erm)
-      cat(crayon::red(sprintf("ERROR in %s: %s\n", combo_id, msg)))
+      cat(crayon::red(sprintf("ERROR in %s: %s\n", safe_combo_id, msg)))
       status_row <- make_status_row(
         combo_id = combo_id,
         tier = tier,
@@ -4305,9 +4375,9 @@ make_all_pSSDs <- function(
 
     tier_key <- if (tier %in% c(1, 2)) "base" else "t3_t4"
     results_df <- erm_registry[[erm]][[tier_key]]
-    if (is.null(results_df)) {
+    if (is_missing_erm_data(results_df)) {
       msg <- paste0("No data found for ERM=", erm, ", tier=", tier)
-      cat(crayon::yellow(sprintf("Skipping %s: %s\n", combo_id, msg)))
+      cat(crayon::yellow(sprintf("Skipping %s: %s\n", safe_combo_id, msg)))
       status_row <- make_status_row(
         combo_id = combo_id,
         tier = tier,
@@ -4347,7 +4417,7 @@ make_all_pSSDs <- function(
     dose_col <- get_dose_column(results_df, environment)
     if (is.null(dose_col)) {
       msg <- "missing required dose column"
-      cat(crayon::yellow(sprintf("Skipping %s: %s\n", combo_id, msg)))
+      cat(crayon::yellow(sprintf("Skipping %s: %s\n", safe_combo_id, msg)))
       status_row <- make_status_row(
         combo_id = combo_id,
         tier = tier,
@@ -4432,7 +4502,7 @@ make_all_pSSDs <- function(
         saveRDS(res, tmp)
         file.rename(tmp, cache_file)
 
-        cat(crayon::yellow(sprintf("Completed: %s\n", combo_id)))
+        cat(crayon::yellow(sprintf("Completed: %s\n", safe_combo_id)))
         status_row <- make_status_row(
           combo_id = combo_id,
           tier = tier,

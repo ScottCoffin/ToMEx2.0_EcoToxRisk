@@ -1,55 +1,14 @@
 cff-version: 1.2.0
-message: "If you use this software, data, or framework, please cite the associated Journal of Hazardous Materials manuscript."
-title: "ToMEx 2.0: Probabilistic Ecotoxicological Risk Assessment for Microplastics"
-type: software
-version: "2.0"
-license: MIT
-repository-code: "https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk"
-
+message: "If you use this software, please cite it as below."
+title: "PSSDplusplus"
+version: "0.1.0"
+doi: 10.1016/j.jhazmat.2025.141021
 authors:
   - family-names: Coffin
     given-names: Scott
-    affiliation: "California Environmental Protection Agency (Cal/EPA), Office of Environmental Health Hazard Assessment"
-  - family-names: Bertrand
-    given-names: Lidwina
-    affiliation: "Independent researcher"
-  - family-names: Ahmed
-    given-names: Kazi Towsif
-    affiliation: "Bangladesh Agricultural University"
-  - family-names: de Souza Leite
-    given-names: Luan
-    affiliation: "Independent researcher"
-  - family-names: Cowger
-    given-names: Win
-    affiliation: "Independent researcher"
-  - family-names: Siña
-    given-names: Mariella
-    affiliation: "National Taiwan University"
-  - family-names: Barrick
-    given-names: Andrew
-    affiliation: "Auburn University"
-  - family-names: Kukkola
-    given-names: Anna
-    affiliation: "University of Birmingham"
-  - family-names: Carney Almroth
-    given-names: Bethanie
-    affiliation: "University of Gothenburg"
-  - family-names: Miller
-    given-names: Ezra
-    affiliation: "Independent researcher"
-  - family-names: Yeh
-    given-names: Andrew
-    affiliation: "Independent researcher"
-  - family-names: LaPlaca
-    given-names: Stephanie B.
-    affiliation: "Clemson University"
-  - family-names: Mair
-    given-names: Magdalena
-    affiliation: "Independent researcher"
-
+    email: scott.l.coffin@gmail.com
 preferred-citation:
   type: article
-  title: "A Probabilistic Risk Framework for Microplastics Integrating Uncertainty Across Toxicological and Environmental Variability: Development and Application to Marine and Freshwater Ecosystems"
   authors:
     - family-names: Coffin
       given-names: Scott
@@ -57,26 +16,16 @@ preferred-citation:
       given-names: Lidwina
     - family-names: Ahmed
       given-names: Kazi Towsif
-    - family-names: de Souza Leite
-      given-names: Luan
+    - family-names: Leite
+      given-names: Luan de Souza
     - family-names: Cowger
       given-names: Win
-    - family-names: Siña
-      given-names: Mariella
+    - family-names: Sina
+      given-names: SinaMariella
     - family-names: Barrick
       given-names: Andrew
-    - family-names: Kukkola
-      given-names: Anna
-    - family-names: Carney Almroth
-      given-names: Bethanie
-    - family-names: Miller
-      given-names: Ezra
-    - family-names: Yeh
-      given-names: Andrew
-    - family-names: LaPlaca
-      given-names: Stephanie B.
-    - family-names: Mair
-      given-names: Magdalena
+  title: "A Probabilistic Risk Framework for Microplastics Integrating Uncertainty Across Toxicological and Environmental Variability: Development and Application to Marine and Freshwater Ecosystems"
   journal: "Journal of Hazardous Materials"
-  status: "in review"
-  url: "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5440537"
+  year: 2026
+  article-number: "141021"
+  doi: 10.1016/j.jhazmat.2025.141021

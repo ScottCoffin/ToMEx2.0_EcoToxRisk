@@ -12,25 +12,94 @@
 #              - rmore_method: method for generating random samples ("step" i.e., trapezoidal; or "lognormal" i.e., short-cut method)
 #              - rmore() function is trapezoidal distribution function in rmore.r from the original Wigger et al. (2019) publication
 
+# Helper to align unnamed args to expected positions
+resolve_pssd_args <- function(args, arg_order) {
+  if (length(args) == 0) {
+    return(args)
+  }
+
+  arg_names <- names(args)
+  if (is.null(arg_names)) {
+    arg_names <- rep("", length(args))
+  }
+
+  unnamed_idx <- which(arg_names == "")
+  if (length(unnamed_idx) == 0) {
+    return(args)
+  }
+
+  unnamed <- args[unnamed_idx]
+  args <- args[-unnamed_idx]
+
+  for (value in unnamed) {
+    current_names <- names(args)
+    if (is.null(current_names)) {
+      current_names <- character(0)
+    }
+    next_name <- setdiff(arg_order, current_names)[1]
+    if (is.na(next_name)) {
+      break
+    }
+    args[[next_name]] <- value
+  }
+
+  args
+}
+
 #' Generate probabilistic species sensitivity distributions (PSSD++)
 #'
 #' Propagates intra- and inter-laboratory uncertainty to sample NOEC
 #' distributions per species with either stepwise or log-normal
 #' bootstrapping across endpoints.
 #'
-#' @param DP Matrix of endpoint values (rows = endpoints, cols = species).
-#' @param DP.SD Matrix of endpoint standard deviations aligned with `DP`.
-#' @param UFt Matrix of uncertainty factors for exposure time.
-#' @param UFdd Matrix of uncertainty factors for the dose descriptor.
-#' @param SIM Number of Monte Carlo iterations.
-#' @param CV.DP Coefficient of variation for interlaboratory variation (scalar or matrix).
-#' @param CV.UF Coefficient of variation for non-substance-specific uncertainty factors.
-#' @param rmore_method Distribution type for three or more endpoints; `"step"` (trapezoidal)
-#'   or `"lognormal"` (bootstrap shortcut).
+#' @param .data Matrix of endpoint values (rows = endpoints, cols = species). When
+#'   provided, it is treated as `DP`.
+#' @param ... Additional arguments used by the sampler. Expected arguments include
+#'   `DP`, `DP.SD`, `UFt`, `UFdd`, `SIM`, `CV.DP`, `CV.UF`, and `rmore_method`.
 #'
 #' @return Matrix of simulated NOEC draws with species in rows and iterations in columns.
 #' @export
-do.pSSD_mod <- function(
+do.pSSD_mod <- function(.data = NULL, ...) {
+  args <- list(...)
+  if (!missing(.data) && (is.null(args$DP) || !"DP" %in% names(args))) {
+    args <- c(list(DP = .data), args)
+  }
+
+  arg_order <- c("DP", "DP.SD", "UFt", "UFdd", "SIM", "CV.DP", "CV.UF", "rmore_method")
+  args <- resolve_pssd_args(args, arg_order)
+
+  if (any(names(args) == "")) {
+    stop("Too many unnamed arguments supplied to do.pSSD_mod().", call. = FALSE)
+  }
+
+  allowed <- arg_order
+  unknown <- setdiff(names(args), allowed)
+  if (length(unknown) > 0) {
+    stop(
+      "Unknown arguments in do.pSSD_mod(): ",
+      paste(unknown, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  if (is.null(args$rmore_method)) {
+    args$rmore_method <- "step"
+  }
+
+  required <- c("DP", "DP.SD", "UFt", "UFdd", "SIM", "CV.DP", "CV.UF")
+  missing_args <- setdiff(required, names(args))
+  if (length(missing_args) > 0) {
+    stop(
+      "Missing required arguments in do.pSSD_mod(): ",
+      paste(missing_args, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  do.call(do_pSSD_mod_internal, args)
+}
+
+do_pSSD_mod_internal <- function(
   DP,
   DP.SD,
   UFt,
@@ -157,11 +226,11 @@ do.pSSD_mod <- function(
       )))
       low <- 1 / high
 
-      uncertainty_factor <- runif(min = low, max = high, n = SIM)
+      uncertainty_factor <- stats::runif(min = low, max = high, n = SIM)
 
-      data <- 10^rnorm(
+      data <- 10^stats::rnorm(
         mean = mean(log10(sort.endpoints[[sp]])),
-        sd = sd(log10(sort.endpoints[[sp]])),
+        sd = stats::sd(log10(sort.endpoints[[sp]])),
         n = SIM
       )
 
@@ -205,16 +274,50 @@ do.pSSD_mod <- function(
 #' Samples NOEC distributions per species using triangular, trapezoidal, or
 #' stepwise sampling depending on available endpoints.
 #'
-#' @param DP Matrix of endpoint values (rows = endpoints, cols = species).
-#' @param UFt Matrix of uncertainty factors for exposure time.
-#' @param UFdd Matrix of uncertainty factors for the dose descriptor.
-#' @param SIM Number of Monte Carlo iterations.
-#' @param CV.DP Coefficient of variation for interlaboratory variation.
-#' @param CV.UF Coefficient of variation for non-substance-specific uncertainty factors.
+#' @param .data Matrix of endpoint values (rows = endpoints, cols = species). When
+#'   provided, it is treated as `DP`.
+#' @param ... Additional arguments used by the sampler. Expected arguments include
+#'   `DP`, `UFt`, `UFdd`, `SIM`, `CV.DP`, and `CV.UF`.
 #'
 #' @return Matrix of simulated NOEC draws with species in rows and iterations in columns.
 #' @export
-do.pSSD <- function(DP, UFt, UFdd, SIM, CV.DP, CV.UF) {
+do.pSSD <- function(.data = NULL, ...) {
+  args <- list(...)
+  if (!missing(.data) && (is.null(args$DP) || !"DP" %in% names(args))) {
+    args <- c(list(DP = .data), args)
+  }
+
+  arg_order <- c("DP", "UFt", "UFdd", "SIM", "CV.DP", "CV.UF")
+  args <- resolve_pssd_args(args, arg_order)
+
+  if (any(names(args) == "")) {
+    stop("Too many unnamed arguments supplied to do.pSSD().", call. = FALSE)
+  }
+
+  allowed <- arg_order
+  unknown <- setdiff(names(args), allowed)
+  if (length(unknown) > 0) {
+    stop(
+      "Unknown arguments in do.pSSD(): ",
+      paste(unknown, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  required <- c("DP", "UFt", "UFdd", "SIM", "CV.DP", "CV.UF")
+  missing_args <- setdiff(required, names(args))
+  if (length(missing_args) > 0) {
+    stop(
+      "Missing required arguments in do.pSSD(): ",
+      paste(missing_args, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  do.call(do_pSSD_internal, args)
+}
+
+do_pSSD_internal <- function(DP, UFt, UFdd, SIM, CV.DP, CV.UF) {
   if (!is.null(DP) && (is.null(dim(DP)) || length(dim(DP)) < 2)) {
     DP <- matrix(DP, ncol = 1)
   }

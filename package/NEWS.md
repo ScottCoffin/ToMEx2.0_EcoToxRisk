@@ -1,3 +1,15 @@
+PSSDplusplus 0.1.0
+==================
+
+Updates
+-------
+- Added sediment compartment support with kg-based dosing and alignment logic.
+- Expanded Monte Carlo outputs to include sediment endpoints and conversions.
+- Added LHS parameter toggles and sediment-aware parameter diagnostics.
+- Improved robustness to sparse inputs (single-species handling, safe PSSD matrices).
+- Added per-combination status summaries and clearer skip/error diagnostics.
+- Updated PSSD and PNEC plotting labels to reflect particles/L vs particles/kg.
+
 PSSDplusplus 0.0.2
 ==================
 

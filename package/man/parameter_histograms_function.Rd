@@ -4,10 +4,21 @@
 \alias{parameter_histograms_function}
 \title{Visualize sampled parameter distributions}
 \usage{
-parameter_histograms_function(mat)
+parameter_histograms_function(mat, metrics = NULL, compartments = NULL)
 }
 \arguments{
 \item{mat}{Parameter matrix produced by \link[=matrix_function]{matrix_function()}.}
+
+\item{metrics}{Optional character vector of metrics to include. Defaults to
+all available metrics in \code{mat}. Supported values include
+\code{"length_alpha"}, \code{"mass_alpha"}, \code{"volume_alpha"}, \code{"surface_area_alpha"},
+\code{"length_width_ratio"}, \code{"height_width_ratio"}, \code{"body_length"},
+\code{"translocation"}. Shorthand aliases such as \code{"mass"}, \code{"volume"}, and
+\code{"surface_area"} are also accepted.}
+
+\item{compartments}{Optional character vector of compartments to include.
+Defaults to surface water (\code{"Marine"}, \code{"Freshwater"}). Use
+\code{"Marine Sediment"} and \code{"Freshwater Sediment"} to include sediment draws.}
 }
 \value{
 A list of ggplot objects summarizing parameter draws.

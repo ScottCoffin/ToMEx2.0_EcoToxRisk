@@ -6,3 +6,5 @@
 ^tomex_functions\\.R$
 ^LICENSE\\.md$
 ^README_files$
+^README\\.html$
+^output$

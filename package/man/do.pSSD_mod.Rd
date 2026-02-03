@@ -4,25 +4,14 @@
 \alias{do.pSSD_mod}
 \title{Generate probabilistic species sensitivity distributions (PSSD++)}
 \usage{
-\method{do}{pSSD_mod}(DP, DP.SD, UFt, UFdd, SIM, CV.DP, CV.UF, rmore_method = "step")
+\method{do}{pSSD_mod}(.data = NULL, ...)
 }
 \arguments{
-\item{DP}{Matrix of endpoint values (rows = endpoints, cols = species).}
+\item{.data}{Matrix of endpoint values (rows = endpoints, cols = species). When
+provided, it is treated as \code{DP}.}
 
-\item{DP.SD}{Matrix of endpoint standard deviations aligned with \code{DP}.}
-
-\item{UFt}{Matrix of uncertainty factors for exposure time.}
-
-\item{UFdd}{Matrix of uncertainty factors for the dose descriptor.}
-
-\item{SIM}{Number of Monte Carlo iterations.}
-
-\item{CV.DP}{Coefficient of variation for interlaboratory variation (scalar or matrix).}
-
-\item{CV.UF}{Coefficient of variation for non-substance-specific uncertainty factors.}
-
-\item{rmore_method}{Distribution type for three or more endpoints; \code{"step"} (trapezoidal)
-or \code{"lognormal"} (bootstrap shortcut).}
+\item{...}{Additional arguments used by the sampler. Expected arguments include
+\code{DP}, \code{DP.SD}, \code{UFt}, \code{UFdd}, \code{SIM}, \code{CV.DP}, \code{CV.UF}, and \code{rmore_method}.}
 }
 \value{
 Matrix of simulated NOEC draws with species in rows and iterations in columns.

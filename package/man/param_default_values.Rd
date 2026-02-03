@@ -11,8 +11,6 @@ A data frame with one row of default means/standard deviations for alignment par
 }
 \usage{
 data(param_default_values)
-
-param_default_values
 }
 \description{
 Vectorized defaults for the Monte Carlo alignment sampler
