@@ -43,6 +43,17 @@ jobs:
           use-public-rspm: ${{ matrix.config.rspm }}
 
       - uses: r-lib/actions/setup-r-dependencies@v2
+        if: runner.os == 'Linux'
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+          working-directory: package
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        if: runner.os != 'Linux'
+        env:
+          R_PKGTYPE: source
+          PKGTYPE: source
         with:
           extra-packages: any::rcmdcheck
           needs: check
