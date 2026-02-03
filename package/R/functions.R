@@ -2452,6 +2452,10 @@ MC_sim_align_parallel <- function(
   num_cores = "auto",
   suppress_warnings = TRUE
 ) {
+  # Bind helpers locally so foreach can export them across PSOCK clusters
+  get_param_value <- get_param_value
+  add_param_if_present <- add_param_if_present
+
   if (suppress_warnings) {
     old_warn <- getOption("warn")
     options(warn = -1)
@@ -2508,6 +2512,7 @@ MC_sim_align_parallel <- function(
   results_list <- foreach::foreach(
     i = 1:n_sim,
     .packages = c(
+      "PSSDplusplus",
       "magrittr",
       "dplyr",
       "tidyr",
