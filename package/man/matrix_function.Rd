@@ -9,7 +9,11 @@ matrix_function(
   params = param_default_values,
   upper.tissue.truncation.limit = 500,
   x1M_set = 1,
-  x2D_set = 5000
+  x2D_set = 5000,
+  include_marine_surface_water = TRUE,
+  include_freshwater_surface_water = TRUE,
+  include_marine_sediment = TRUE,
+  include_freshwater_sediment = TRUE
 )
 }
 \arguments{
@@ -22,6 +26,18 @@ matrix_function(
 \item{x1M_set}{Lower bound for monodisperse particle length (um).}
 
 \item{x2D_set}{Upper bound for polydisperse particle length (um).}
+
+\item{include_marine_surface_water}{Logical; include marine surface water
+parameters in the LHS matrix.}
+
+\item{include_freshwater_surface_water}{Logical; include freshwater surface
+water parameters in the LHS matrix.}
+
+\item{include_marine_sediment}{Logical; include marine sediment parameters in
+the LHS matrix.}
+
+\item{include_freshwater_sediment}{Logical; include freshwater sediment
+parameters in the LHS matrix.}
 }
 \value{
 A data frame with sampled parameters and a \code{simulation_id} column.

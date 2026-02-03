@@ -238,15 +238,25 @@ generate_structure_checks <- function(data) {
 #In this case, the limits LL and UL in $\mu_{x,poly}$ relate to the values of the ERM at the 1 and 5,000 um size limits, respectively (i.e., SA, V, and M), rather than to bioavailability limits. Compartment-specific alpha values are used based on Table S4 of Kooi et al 2021.
 
 convert_units_fxn <- function(thresholds_df, environment, params) {
-  if (environment == "Marine") {
-    a.sa.input = params$a.sa.marine
-    a.m.input = params$a.m.marine
-    a.v.input = params$a.v.marine
-  }
-  if (environment == "Freshwater") {
-    a.sa.input = params$a.sa.freshwater
-    a.m.input = params$a.m.freshwater
-    a.v.input = params$a.v.freshwater
+  env <- as.character(environment)
+  if (grepl("sediment", env, ignore.case = TRUE)) {
+    if (grepl("marine", env, ignore.case = TRUE)) {
+      a.sa.input <- params$a.sa.sediment.marine
+      a.m.input <- params$a.m.sediment.marine
+      a.v.input <- params$a.v.sediment.marine
+    } else if (grepl("fresh", env, ignore.case = TRUE)) {
+      a.sa.input <- params$a.sa.sediment.freshwater
+      a.m.input <- params$a.m.sediment.freshwater
+      a.v.input <- params$a.v.sediment.freshwater
+    }
+  } else if (grepl("marine", env, ignore.case = TRUE)) {
+    a.sa.input <- params$a.sa.marine
+    a.m.input <- params$a.m.marine
+    a.v.input <- params$a.v.marine
+  } else if (grepl("fresh", env, ignore.case = TRUE)) {
+    a.sa.input <- params$a.sa.freshwater
+    a.m.input <- params$a.m.freshwater
+    a.v.input <- params$a.v.freshwater
   }
 
   # report the units they're aligned to (um3/L and um2/L)
@@ -292,7 +302,7 @@ convert_units_fxn <- function(thresholds_df, environment, params) {
 #                   environment = "Marine",
 #                   params = params)
 
-#### Function to generate synthetic data for MC alignments
+#### Function to generate synthetic data for MC alignments using default parameter from Kooi et al 2021
 generate_data <- function(
   n_sim = 10,
   ## width to length ratios
@@ -300,17 +310,23 @@ generate_data <- function(
   R.ave.water.marine.sd = 0.29,
   R.ave.water.freshwater = 0.67,
   R.ave.water.freshwater.sd = 0.28,
-  R.ave.sediment.marine = 0.75,
-  R.ave.sediment.marine.sd = 0.30,
-  R.ave.sediment.freshwater = 0.70,
-  R.ave.sediment.freshwater.sd = 0.33,
+  R.ave.sediment.marine = 0.70,
+  R.ave.sediment.marine.sd = 0.33,
+  R.ave.sediment.freshwater = 0.75,
+  R.ave.sediment.freshwater.sd = 0.30,
+
   # density (g/cm^3)
   p.ave.marine = 1.10,
   p.ave.marine.sd = 0.14,
   p.ave.freshwater = 1.04,
   p.ave.freshwater.sd = 0.12,
+  p.ave.sediment.marine = 1.16,
+  p.ave.sediment.marine.sd = 0.16,
+  p.ave.sediment.freshwater = 1.15,
+  p.ave.sediment.freshwater.sd = 0.13,
 
   # alpha values
+  ## marine
   alpha.marine = 2.07,
   alpha.marine.sd = 0.03, #length
   a.sa.marine = 1.50,
@@ -322,6 +338,7 @@ generate_data <- function(
   a.ssa.marine = 1.98,
   a.ssa.marine.sd = 0.297,
 
+  ## freshwater
   alpha.freshwater = 2.64,
   alpha.freshwater.sd = 0.01,
   a.sa.freshwater = 2.00,
@@ -332,6 +349,30 @@ generate_data <- function(
   a.m.freshwater.sd = 0.071,
   a.ssa.freshwater = 2.71,
   a.ssa.freshwater.sd = 0.009,
+
+  ## sediment marine
+  alpha.sediment.marine = 2.57,
+  alpha.sediment.marine.sd = 0.20,
+  a.sa.sediment.marine = 1.75,
+  a.sa.sediment.marine.sd = 0.050,
+  a.v.sediment.marine = 1.50,
+  a.v.sediment.marine.sd = 0.023,
+  a.m.sediment.marine = 1.50,
+  a.m.sediment.marine.sd = 0.026,
+  a.ssa.sediment.marine = 2.54,
+  a.ssa.sediment.marine.sd = 0.082,
+
+  ## sediment freshwater
+  alpha.sediment.freshwater = 3.25,
+  alpha.sediment.freshwater.sd = 0.19,
+  a.sa.sediment.freshwater = 1.89,
+  a.sa.sediment.freshwater.sd = 0.055,
+  a.v.sediment.freshwater = 1.53,
+  a.v.sediment.freshwater.sd = 0.013,
+  a.m.sediment.freshwater = 1.56,
+  a.m.sediment.freshwater.sd = 0.077,
+  a.ssa.sediment.freshwater = 2.82,
+  a.ssa.sediment.freshwater.sd = 0.096,
 
   # body length estimates
   beta_log10_body_length = 0.9341,
@@ -495,30 +536,47 @@ align_data <- function(
   x1M_set_input = 1, #um lower size for all alignments
   x1D_set_input = 1, #um lower size for all alignments
   x2D_set_input = 5000, #um
+  # bioaccessibility
   upper.tissue.trans.size.um_input = 88,
-  R.ave.marine_input = 0.77, # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
-  H_W_ratio.marine_input = 0.77, # H:W ratio assumed same as width:length ratio (Kooi et al. 2021)
+  beta_log10_body_length_input = 0.9341, # Jâms, et al 2020 Nature paper
+  body_length_intercept_input = 1.1200, # Jâms, et al 2020 Nature paper
+  # Freshwater surface area
   R.ave.freshwater_input = 0.67, # average length to width ratio of microplastics in freshwater environment (Kooi et al. 2021)
   H_W_ratio.freshwater_input = 0.67, # H:W ratio assumed same as width:length ratio (Kooi et al. 2021)
-  R.ave.sediment.marine_input = 0.75, # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
-  R.ave.sediment.freshwater_input = 0.70, # average length to width ratio of microplastics in freshwater environment (Kooi et al. 2021)
-  p.ave.marine_input = 1.10, #average density in marine surface water
-  alpha.marine_input = 2.07, #table s4 for marine surface water. length
-  a.sa.marine_input = 1.50, #marine surface area power law
-  a.v.marine_input = 1.48, #a_V for marine surface water volume
-  a.m.marine_input = 1.32, # upper limit fora_m for mass for marine surface water in table S4
-  a.ssa.marine_input = 1.98, # A_SSA for marine surface water
   p.ave.freshwater_input = 1.04, #average density in freshwater surface water
   alpha.freshwater_input = 2.64, #table s4 for freshwater surface water. length
   a.sa.freshwater_input = 2.00, #freshwater surface area power law
   a.v.freshwater_input = 1.68, #a_V for freshwater surface water volume
   a.m.freshwater_input = 1.65, # upper limit fora_m for mass for freshwater surface water in table S4
   a.ssa.freshwater_input = 2.71, # A_SSA for freshwater surface water
-  beta_log10_body_length_input = 0.9341, # Jâms, et al 2020 Nature paper
-  body_length_intercept_input = 1.1200 # Jâms, et al 2020 Nature paper
+  ### marine surface water
+  R.ave.marine_input = 0.77, # average length to width ratio of microplastics in marine environment (Kooi et al. 2021)
+  H_W_ratio.marine_input = 0.77, # H:W ratio assumed same as width:length ratio (Kooi et al. 2021)
+  p.ave.marine_input = 1.10, #average density in marine surface water
+  alpha.marine_input = 2.07, #table s4 for marine surface water. length
+  a.sa.marine_input = 1.50, #marine surface area power law
+  a.v.marine_input = 1.48, #a_V for marine surface water volume
+  a.m.marine_input = 1.32, # upper limit fora_m for mass for marine surface water in table S4
+  a.ssa.marine_input = 1.98, # A_SSA for marine surface water
+  ### freshwater sediment
+  R.ave.sediment.freshwater_input = 0.75,
+  H_W_ratio.sediment.freshwater_input = 0.70,
+  p.ave.sediment.freshwater_input = 1.15,
+  alpha.sediment.freshwater_input = 3.25,
+  a.sa.sediment.freshwater_input = 1.89,
+  a.v.sediment.freshwater_input = 1.53,
+  a.m.sediment.freshwater_input = 1.56,
+  a.ssa.sediment.freshwater_input = 2.82,
+  ### marine sediment
+  R.ave.sediment.marine_input = 0.70,
+  H_W_ratio.sediment.marine_input = 0.75,
+  p.ave.sediment.marine_input = 1.16,
+  alpha.sediment.marine_input = 2.57,
+  a.sa.sediment.marine_input = 1.75,
+  a.v.sediment.marine_input = 1.50,
+  a.m.sediment.marine_input = 1.50,
+  a.ssa.sediment.marine_input = 2.54
 ) {
-  #10 #um #set size for x2M)
-
   # Check if columns exist and conditionally create them
   if (!"dose.mg.kg.sed.measured" %in% names(df)) {
     df <- df %>%
@@ -528,6 +586,27 @@ align_data <- function(
   if (!"dose.mg.kg.sed.nominal" %in% names(df)) {
     df <- df %>%
       dplyr::mutate(dose.mg.kg.sed.nominal = nominal.dose.mg.kg.sediment)
+  }
+
+  if (!"measured.dose.particles.kg.sediment" %in% names(df)) {
+    df <- df %>%
+      dplyr::mutate(measured.dose.particles.kg.sediment = NA_real_)
+  }
+
+  if (!"nominal.dose.particles.kg.sediment" %in% names(df)) {
+    df <- df %>%
+      dplyr::mutate(nominal.dose.particles.kg.sediment = NA_real_)
+  }
+
+  if (!"dose.mg.kg.sediment.master" %in% names(df)) {
+    df <- df %>%
+      dplyr::mutate(
+        dose.mg.kg.sediment.master = dplyr::if_else(
+          !is.na(measured.dose.mg.kg.sediment),
+          measured.dose.mg.kg.sediment,
+          nominal.dose.mg.kg.sediment
+        )
+      )
   }
 
   if (!"dose.particles.kg.sed.nominal" %in% names(df)) {
@@ -542,71 +621,179 @@ align_data <- function(
       dplyr::mutate(environment = env_f)
   }
 
+  if (!"exposure.route" %in% names(df)) {
+    df <- df %>%
+      dplyr::mutate(exposure.route = NA_character_)
+  }
+
+  if (!"dose.particles.kg.master" %in% names(df)) {
+    df$dose.particles.kg.master <- NA_real_
+    if ("dose.particles.kg.sediment.master" %in% names(df)) {
+      df$dose.particles.kg.master <- df$dose.particles.kg.sediment.master
+    } else if ("dose.particles.kg.sed.nominal" %in% names(df)) {
+      df$dose.particles.kg.master <- df$dose.particles.kg.sed.nominal
+    } else if ("nominal.dose.particles.kg.sediment" %in% names(df)) {
+      df$dose.particles.kg.master <- df$nominal.dose.particles.kg.sediment
+    }
+  }
+
+  if (!"dose.particles.kg.sediment.master" %in% names(df)) {
+    df <- df %>%
+      dplyr::mutate(
+        dose.particles.kg.sediment.master = dplyr::coalesce(
+          measured.dose.particles.kg.sediment,
+          nominal.dose.particles.kg.sediment,
+          dose.particles.kg.sed.nominal
+        )
+      )
+  }
+  df <- df %>%
+    dplyr::mutate(
+      dose.particles.kg.master = dplyr::coalesce(
+        dose.particles.kg.master,
+        dose.particles.kg.sediment.master,
+        dose.particles.kg.sed.nominal,
+        nominal.dose.particles.kg.sediment
+      )
+    )
+
+  df <- df %>%
+    dplyr::mutate(environment = as.character(environment))
+
   df <- df %>%
     dplyr::ungroup() %>% #if data grouped - bad things happen
     #assign user  input values
     dplyr::mutate(
+      environment = dplyr::case_when(
+        grepl("sediment", environment, ignore.case = TRUE) &
+          grepl("marine", environment, ignore.case = TRUE) ~ "Marine Sediment",
+        grepl("sediment", environment, ignore.case = TRUE) &
+          grepl(
+            "fresh",
+            environment,
+            ignore.case = TRUE
+          ) ~ "Freshwater Sediment",
+        grepl("sediment", exposure.route, ignore.case = TRUE) &
+          grepl("marine", environment, ignore.case = TRUE) ~ "Marine Sediment",
+        grepl("sediment", exposure.route, ignore.case = TRUE) &
+          grepl("fresh", environment, ignore.case = TRUE) ~ "Freshwater Sediment",
+        grepl("marine", environment, ignore.case = TRUE) ~ "Marine",
+        grepl("fresh", environment, ignore.case = TRUE) ~ "Freshwater",
+        T ~ environment
+      ),
+      is_sediment = grepl("sediment", environment, ignore.case = TRUE) |
+        grepl("sediment", exposure.route, ignore.case = TRUE),
       x1M_set = x1M_set_input,
       x1D_set = x1D_set_input,
       x2D_set = x2D_set_input,
+      ## bioaccessibility
       upper.tissue.trans.size.um = upper.tissue.trans.size.um_input,
       beta_log10_body_length = beta_log10_body_length_input,
       body_length_intercept = body_length_intercept_input,
+      # marine surface water
       H_W_ratio.marine = H_W_ratio.marine_input,
-      H_W_ratio.freshwater = H_W_ratio.freshwater_input,
       R.ave.marine = R.ave.marine_input,
-      R.ave.freshwater = R.ave.freshwater_input,
-      R.ave.sediment.marine = R.ave.sediment.marine_input,
-      R.ave.sediment.freshwater = R.ave.sediment.freshwater_input,
       p.ave.marine = p.ave.marine_input,
       alpha.marine = alpha.marine_input,
       a.sa.marine = a.sa.marine_input,
       a.v.marine = a.v.marine_input,
       a.m.marine = a.m.marine_input,
       a.ssa.marine = a.ssa.marine_input,
+      # freshwater surface water
+      H_W_ratio.freshwater = H_W_ratio.freshwater_input,
+      R.ave.freshwater = R.ave.freshwater_input,
       p.ave.freshwater = p.ave.freshwater_input,
       alpha.freshwater = alpha.freshwater_input,
       a.sa.freshwater = a.sa.freshwater_input,
       a.v.freshwater = a.v.freshwater_input,
       a.m.freshwater = a.m.freshwater_input,
-      a.ssa.freshwater = a.ssa.freshwater_input
+      a.ssa.freshwater = a.ssa.freshwater_input,
+      #marine sediment
+      R.ave.sediment.marine = R.ave.sediment.marine_input,
+      H_W_ratio.sediment.marine = H_W_ratio.sediment.marine_input,
+      p.ave.sediment.marine = p.ave.sediment.marine_input,
+      alpha.sediment.marine = alpha.sediment.marine_input,
+      a.sa.sediment.marine = a.sa.sediment.marine_input,
+      a.v.sediment.marine = a.v.sediment.marine_input,
+      a.m.sediment.marine = a.m.sediment.marine_input,
+      a.ssa.sediment.marine = a.ssa.sediment.marine_input,
+      # freshwater sediment
+      R.ave.sediment.freshwater = R.ave.sediment.freshwater_input,
+      H_W_ratio.sediment.freshwater = H_W_ratio.sediment.freshwater_input,
+      p.ave.sediment.freshwater = p.ave.sediment.freshwater_input,
+      alpha.sediment.freshwater = alpha.sediment.freshwater_input,
+      a.sa.sediment.freshwater = a.sa.sediment.freshwater_input,
+      a.v.sediment.freshwater = a.v.sediment.freshwater_input,
+      a.m.sediment.freshwater = a.m.sediment.freshwater_input,
+      a.ssa.sediment.freshwater = a.ssa.sediment.freshwater_input
     )
 
   # calculate ERM for each species
   aoc_final <- df %>%
-    # define environment-specific alpha parameters #
+    # define compartment/environment-specific alpha parameters #
     dplyr::mutate(
       alpha = dplyr::case_when(
         environment == "Marine" ~ alpha.marine,
-        environment == "Freshwater" ~ alpha.freshwater
+        environment == "Freshwater" ~ alpha.freshwater,
+        environment == "Marine Sediment" ~ alpha.sediment.marine,
+        environment == "Freshwater Sediment" ~ alpha.sediment.freshwater
       ),
       a.sa = dplyr::case_when(
         environment == "Marine" ~ a.sa.marine,
-        environment == "Freshwater" ~ a.sa.freshwater
+        environment == "Freshwater" ~ a.sa.freshwater,
+        environment == "Marine Sediment" ~ a.sa.sediment.marine,
+        environment == "Freshwater Sediment" ~ a.sa.sediment.freshwater
       ),
       a.v = dplyr::case_when(
         environment == "Marine" ~ a.v.marine,
-        environment == "Freshwater" ~ a.v.freshwater
+        environment == "Freshwater" ~ a.v.freshwater,
+        environment == "Marine Sediment" ~ a.v.sediment.marine,
+        environment == "Freshwater Sediment" ~ a.v.sediment.freshwater
       ),
       a.m = dplyr::case_when(
         environment == "Marine" ~ a.m.marine,
-        environment == "Freshwater" ~ a.m.freshwater
+        environment == "Freshwater" ~ a.m.freshwater,
+        environment == "Marine Sediment" ~ a.m.sediment.marine,
+        environment == "Freshwater Sediment" ~ a.m.sediment.freshwater
       ),
       a.ssa = dplyr::case_when(
         environment == "Marine" ~ a.ssa.marine,
-        environment == "Freshwater" ~ a.ssa.freshwater
+        environment == "Freshwater" ~ a.ssa.freshwater,
+        environment == "Marine Sediment" ~ a.ssa.sediment.marine,
+        environment == "Freshwater Sediment" ~ a.ssa.sediment.freshwater
       ),
       R.ave = dplyr::case_when(
         environment == "Marine" ~ R.ave.marine,
-        environment == "Freshwater" ~ R.ave.freshwater
+        environment == "Freshwater" ~ R.ave.freshwater,
+        environment == "Marine Sediment" ~ R.ave.sediment.marine,
+        environment == "Freshwater Sediment" ~ R.ave.sediment.freshwater
       ),
       H_W_ratio = dplyr::case_when(
         environment == "Marine" ~ H_W_ratio.marine,
-        environment == "Freshwater" ~ H_W_ratio.freshwater
+        environment == "Freshwater" ~ H_W_ratio.freshwater,
+        environment == "Marine Sediment" ~ H_W_ratio.sediment.marine,
+        environment == "Freshwater Sediment" ~ H_W_ratio.sediment.freshwater
       ),
       p.ave = dplyr::case_when(
         environment == "Marine" ~ p.ave.marine,
-        environment == "Freshwater" ~ p.ave.freshwater
+        environment == "Freshwater" ~ p.ave.freshwater,
+        environment == "Marine Sediment" ~ p.ave.sediment.marine,
+        environment == "Freshwater Sediment" ~ p.ave.sediment.freshwater
+      )
+    ) %>%
+    # fill missing polydisperse length bounds when only a single length is reported
+    dplyr::mutate(
+      size.length.min.um.used.for.conversions = dplyr::case_when(
+        polydispersity == "polydisperse" &
+          is.na(size.length.min.um.used.for.conversions) ~
+          size.length.um.used.for.conversions,
+        TRUE ~ size.length.min.um.used.for.conversions
+      ),
+      size.length.max.um.used.for.conversions = dplyr::case_when(
+        polydispersity == "polydisperse" &
+          is.na(size.length.max.um.used.for.conversions) ~
+          size.length.um.used.for.conversions,
+        TRUE ~ size.length.max.um.used.for.conversions
       )
     ) %>%
 
@@ -693,14 +880,6 @@ align_data <- function(
         T ~ 1
       )
     ) %>% # all other cases retain original dose
-    # now correct the dosage (will be fraction )
-    dplyr::mutate(
-      dose.particles.mL.trans = dplyr::case_when(
-        translocatable_poly == "translocatable (some)" ~ CF_bioavailable_trans *
-          dose.particles.mL.master,
-        T ~ dose.particles.mL.master
-      )
-    ) %>%
     # correct for partially ingestible particles
     dplyr::mutate(
       CF_bioavailable_ingest = dplyr::case_when(
@@ -712,13 +891,6 @@ align_data <- function(
           x2M = size.length.max.um.used.for.conversions
         ),
         T ~ 1
-      )
-    ) %>%
-    dplyr::mutate(
-      dose.particles.mL.ingest = dplyr::case_when(
-        ingestible_poly == "ingestible (some)" ~ CF_bioavailable_ingest *
-          dose.particles.mL.master,
-        T ~ dose.particles.mL.master
       )
     ) %>%
 
@@ -929,13 +1101,61 @@ align_data <- function(
       ) *
         1e-3
     ) %>% #equation uses g/cm3
+    # ensure sediment particle doses exist (convert mass-based if needed)
+    dplyr::mutate(
+      dose.particles.kg.master = dplyr::case_when(
+        is_sediment & !is.na(dose.particles.kg.master) ~ dose.particles.kg.master,
+        is_sediment & !is.na(dose.particles.kg.sediment.master) ~
+          dose.particles.kg.sediment.master,
+        is_sediment & !is.na(dose.mg.kg.sediment.master) &
+          mass.per.particle.mg > 0 ~
+          dose.mg.kg.sediment.master / mass.per.particle.mg,
+        is_sediment & !is.na(dose.mg.kg.sed.measured) &
+          mass.per.particle.mg > 0 ~
+          dose.mg.kg.sed.measured / mass.per.particle.mg,
+        is_sediment & !is.na(dose.mg.kg.sed.nominal) &
+          mass.per.particle.mg > 0 ~
+          dose.mg.kg.sed.nominal / mass.per.particle.mg,
+        TRUE ~ dose.particles.kg.master
+      )
+    ) %>%
+    # now correct the dosage (will be fraction)
+    dplyr::mutate(
+      dose.particles.mL.trans = dplyr::case_when(
+        !is_sediment & translocatable_poly == "translocatable (some)" ~
+          CF_bioavailable_trans * dose.particles.mL.master,
+        !is_sediment ~ dose.particles.mL.master,
+        T ~ NA_real_
+      ),
+      dose.particles.kg.trans = dplyr::case_when(
+        is_sediment & translocatable_poly == "translocatable (some)" ~
+          CF_bioavailable_trans * dose.particles.kg.master,
+        is_sediment ~ dose.particles.kg.master,
+        T ~ NA_real_
+      ),
+      dose.particles.mL.ingest = dplyr::case_when(
+        !is_sediment & ingestible_poly == "ingestible (some)" ~
+          CF_bioavailable_ingest * dose.particles.mL.master,
+        !is_sediment ~ dose.particles.mL.master,
+        T ~ NA_real_
+      ),
+      dose.particles.kg.ingest = dplyr::case_when(
+        is_sediment & ingestible_poly == "ingestible (some)" ~
+          CF_bioavailable_ingest * dose.particles.kg.master,
+        is_sediment ~ dose.particles.kg.master,
+        T ~ NA_real_
+      )
+    ) %>%
     ################################################################
     ########################## ALIGNMENTS ##########################
     ###################################################################
     dplyr::mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
     #### TISSUE TRANSLOCATION ####
     # calculate effect threshold for particles
-    dplyr::mutate(EC_mono_p.particles.mL_trans = dose.particles.mL.trans) %>%
+    dplyr::mutate(
+      EC_mono_p.particles.mL_trans = dose.particles.mL.trans,
+      EC_mono_p.particles.kg_trans = dose.particles.kg.trans
+    ) %>%
     dplyr::mutate(
       mu.p.poly_trans = mux_polyfnx(
         a.x = alpha,
@@ -946,6 +1166,9 @@ align_data <- function(
     # polydisperse effect threshold for particles
     dplyr::mutate(
       EC_poly_p.particles.mL_trans = (EC_mono_p.particles.mL_trans *
+        mu.p.mono) /
+        mu.p.poly_trans,
+      EC_poly_p.particles.kg_trans = (EC_mono_p.particles.kg_trans *
         mu.p.mono) /
         mu.p.poly_trans
     ) %>%
@@ -961,7 +1184,8 @@ align_data <- function(
     ) %>%
     ## Calculate environmentally relevant effect threshold for particles
     dplyr::mutate(
-      EC_env_p.particles.mL_trans = EC_poly_p.particles.mL_trans * CF_bio_trans
+      EC_env_p.particles.mL_trans = EC_poly_p.particles.mL_trans * CF_bio_trans,
+      EC_env_p.particles.kg_trans = EC_poly_p.particles.kg_trans * CF_bio_trans
     ) %>% #aligned particle effect concentraiton (1-5000 um)
 
     #### Surface area ERM ####
@@ -1003,17 +1227,25 @@ align_data <- function(
     dplyr::mutate(
       EC_poly_sa.particles.mL_trans = (EC_mono_p.particles.mL_trans *
         mu.sa.mono.trans) /
+        mu.sa.poly_trans,
+      EC_poly_sa.particles.kg_trans = (EC_mono_p.particles.kg_trans *
+        mu.sa.mono.trans) /
         mu.sa.poly_trans
     ) %>%
     #calculate environmentally realistic effect threshold
     dplyr::mutate(
       EC_env_sa.particles.mL_trans = EC_poly_sa.particles.mL_trans *
+        CF_bio_trans,
+      EC_env_sa.particles.kg_trans = EC_poly_sa.particles.kg_trans *
         CF_bio_trans
     ) %>%
 
     ##### FOOD DILUTION ####
     # calculate effect threshold for particles
-    dplyr::mutate(EC_mono_p.particles.mL_ingest = dose.particles.mL.ingest) %>%
+    dplyr::mutate(
+      EC_mono_p.particles.mL_ingest = dose.particles.mL.ingest,
+      EC_mono_p.particles.kg_ingest = dose.particles.kg.ingest
+    ) %>%
     dplyr::mutate(
       mu.p.poly_ingest = mux_polyfnx(
         a.x = alpha, #alpha for particles
@@ -1024,6 +1256,9 @@ align_data <- function(
     # polydisperse effect threshold for particles
     dplyr::mutate(
       EC_poly_p.particles.mL_ingest = (EC_mono_p.particles.mL_ingest *
+        mu.p.mono) /
+        mu.p.poly_ingest,
+      EC_poly_p.particles.kg_ingest = (EC_mono_p.particles.kg_ingest *
         mu.p.mono) /
         mu.p.poly_ingest
     ) %>%
@@ -1040,6 +1275,8 @@ align_data <- function(
     ## Calculate environmentally relevant effect threshold for particles
     dplyr::mutate(
       EC_env_p.particles.mL_ingest = EC_poly_p.particles.mL_ingest *
+        CF_bio_ingest,
+      EC_env_p.particles.kg_ingest = EC_poly_p.particles.kg_ingest *
         CF_bio_ingest
     ) %>% #aligned particle effect concentraiton (1-5000 um)
     #### volume ERM ####
@@ -1080,11 +1317,16 @@ align_data <- function(
     dplyr::mutate(
       EC_poly_v.particles.mL_ingest = (EC_mono_p.particles.mL_ingest *
         mu.v.mono.ingest) /
+        mu.v.poly_ingest,
+      EC_poly_v.particles.kg_ingest = (EC_mono_p.particles.kg_ingest *
+        mu.v.mono.ingest) /
         mu.v.poly_ingest
     ) %>%
     #calculate environmentally realistic effect threshold
     dplyr::mutate(
       EC_env_v.particles.mL_ingest = EC_poly_v.particles.mL_ingest *
+        CF_bio_ingest,
+      EC_env_v.particles.kg_ingest = EC_poly_v.particles.kg_ingest *
         CF_bio_ingest
     ) %>%
 
@@ -1119,16 +1361,23 @@ align_data <- function(
     ##### EASY ID ###
     dplyr::mutate(
       particles.mL.ox.stress = EC_env_sa.particles.mL_trans,
-      particles.mL.food.dilution = EC_env_v.particles.mL_ingest
+      particles.mL.food.dilution = EC_env_v.particles.mL_ingest,
+      particles.kg.ox.stress = EC_env_sa.particles.kg_trans,
+      particles.kg.food.dilution = EC_env_v.particles.kg_ingest
     ) %>%
     dplyr::mutate(
       particles.mL.food.dilution = dplyr::case_when(
         Group == "Algae" ~ NA,
         T ~ particles.mL.food.dilution
+      ),
+      particles.kg.food.dilution = dplyr::case_when(
+        Group == "Algae" ~ NA,
+        T ~ particles.kg.food.dilution
       )
     ) %>%
     # ensure particles are within valid range
-    dplyr::filter(size.length.um.used.for.conversions >= x1D_set)
+    dplyr::filter(size.length.um.used.for.conversions >= x1D_set) %>%
+    dplyr::select(-is_sediment)
 
   aoc_final
 }
@@ -1139,14 +1388,9 @@ align_data <- function(
 param_default_values <- data.frame(
   x1D_set = 1,
   x2D_set = 5000,
+  # marine water
   R.ave.water.marine = 0.77,
   R.ave.water.marine.sd = 0.29,
-  R.ave.water.freshwater = 0.67,
-  R.ave.water.freshwater.sd = 0.28,
-  R.ave.sediment.marine = 0.75,
-  R.ave.sediment.marine.sd = 0.30,
-  R.ave.sediment.freshwater = 0.70,
-  R.ave.sediment.freshwater.sd = 0.33,
   p.ave.marine = 1.10,
   p.ave.marine.sd = 0.14,
   alpha.marine = 2.07,
@@ -1159,6 +1403,9 @@ param_default_values <- data.frame(
   a.m.marine.sd = 0.009,
   a.ssa.marine = 1.98,
   a.ssa.marine.sd = 0.297,
+  # freshwater water
+  R.ave.water.freshwater = 0.67,
+  R.ave.water.freshwater.sd = 0.28,
   p.ave.freshwater = 1.04,
   p.ave.freshwater.sd = 0.12,
   alpha.freshwater = 2.64,
@@ -1171,6 +1418,37 @@ param_default_values <- data.frame(
   a.m.freshwater.sd = 0.071,
   a.ssa.freshwater = 2.71,
   a.ssa.freshwater.sd = 0.009,
+  # marine sediment
+  R.ave.sediment.marine = 0.70,
+  R.ave.sediment.marine.sd = 0.33,
+  p.ave.sediment.marine = 1.16,
+  p.ave.sediment.marine.sd = 0.16,
+  alpha.sediment.marine = 2.57,
+  alpha.sediment.marine.sd = 0.20,
+  a.sa.sediment.marine = 1.75,
+  a.sa.sediment.marine.sd = 0.050,
+  a.v.sediment.marine = 1.50,
+  a.v.sediment.marine.sd = 0.023,
+  a.m.sediment.marine = 1.50,
+  a.m.sediment.marine.sd = 0.026,
+  a.ssa.sediment.marine = 2.54,
+  a.ssa.sediment.marine.sd = 0.082,
+  # freshwater sediment
+  R.ave.sediment.freshwater = 0.75,
+  R.ave.sediment.freshwater.sd = 0.30,
+  p.ave.sediment.freshwater = 1.15,
+  p.ave.sediment.freshwater.sd = 0.13,
+  alpha.sediment.freshwater = 3.25,
+  alpha.sediment.freshwater.sd = 0.19,
+  a.sa.sediment.freshwater = 1.89,
+  a.sa.sediment.freshwater.sd = 0.055,
+  a.v.sediment.freshwater = 1.53,
+  a.v.sediment.freshwater.sd = 0.013,
+  a.m.sediment.freshwater = 1.56,
+  a.m.sediment.freshwater.sd = 0.077,
+  a.ssa.sediment.freshwater = 2.82,
+  a.ssa.sediment.freshwater.sd = 0.096,
+  # bioavailability
   beta_log10_body_length = 0.9341,
   se_beta_log10_body_length = 0.1376,
   body_length_intercept = 1.1200,
@@ -1191,6 +1469,14 @@ param_default_values <- data.frame(
 #' @param upper.tissue.truncation.limit Maximum tissue translocation size (um).
 #' @param x1M_set Lower bound for monodisperse particle length (um).
 #' @param x2D_set Upper bound for polydisperse particle length (um).
+#' @param include_marine_surface_water Logical; include marine surface water
+#'   parameters in the LHS matrix.
+#' @param include_freshwater_surface_water Logical; include freshwater surface
+#'   water parameters in the LHS matrix.
+#' @param include_marine_sediment Logical; include marine sediment parameters in
+#'   the LHS matrix.
+#' @param include_freshwater_sediment Logical; include freshwater sediment
+#'   parameters in the LHS matrix.
 #'
 #' @return A data frame with sampled parameters and a `simulation_id` column.
 #' @export
@@ -1199,25 +1485,60 @@ matrix_function <- function(
   params = param_default_values,
   upper.tissue.truncation.limit = 500,
   x1M_set = 1,
-  x2D_set = 5000
+  x2D_set = 5000,
+  include_marine_surface_water = TRUE,
+  include_freshwater_surface_water = TRUE,
+  include_marine_sediment = TRUE,
+  include_freshwater_sediment = TRUE
 ) {
   matrices <- c("A", "B", "AB", "BA")
   first <- total <- "azzini"
 
   param_names <- c(
-    "alpha.marine",
-    "a.sa.marine",
-    "a.v.marine",
-    "a.m.marine",
-    "alpha.freshwater",
-    "a.sa.freshwater",
-    "a.v.freshwater",
-    "a.m.freshwater",
-    "R.ave.water.marine",
-    "R.ave.water.freshwater",
-    "H_W_ratio.marine",
-    "H_W_ratio.freshwater",
-    #  "R.ave.sediment.marine", "R.ave.sediment.freshwater", "a.ssa.marine", "a.ssa.freshwater",
+    if (isTRUE(include_marine_surface_water)) {
+      c(
+        "alpha.marine",
+        "a.sa.marine",
+        "a.v.marine",
+        "a.m.marine",
+        "a.ssa.marine",
+        "R.ave.water.marine",
+        "H_W_ratio.marine"
+      )
+    },
+    if (isTRUE(include_freshwater_surface_water)) {
+      c(
+        "alpha.freshwater",
+        "a.sa.freshwater",
+        "a.v.freshwater",
+        "a.m.freshwater",
+        "a.ssa.freshwater",
+        "R.ave.water.freshwater",
+        "H_W_ratio.freshwater"
+      )
+    },
+    if (isTRUE(include_marine_sediment)) {
+      c(
+        "alpha.sediment.marine",
+        "a.sa.sediment.marine",
+        "a.v.sediment.marine",
+        "a.m.sediment.marine",
+        "a.ssa.sediment.marine",
+        "R.ave.sediment.marine",
+        "H_W_ratio.sediment.marine"
+      )
+    },
+    if (isTRUE(include_freshwater_sediment)) {
+      c(
+        "alpha.sediment.freshwater",
+        "a.sa.sediment.freshwater",
+        "a.v.sediment.freshwater",
+        "a.m.sediment.freshwater",
+        "a.ssa.sediment.freshwater",
+        "R.ave.sediment.freshwater",
+        "H_W_ratio.sediment.freshwater"
+      )
+    },
     "sim.beta.log10.body.length",
     "sim.body.length.intercept",
     "upper.tissue.trans.size.um"
@@ -1231,120 +1552,300 @@ matrix_function <- function(
   )
 
   # Convert to data.table
-  # Convert to data.table
   mat <- data.table::as.data.table(mat)
 
   # Transform each column to the specified probability distribution
-  mat[,
-    alpha.marine := stats::rnorm(
-      .N,
-      mean = params$alpha.marine,
-      sd = params$alpha.marine.sd
-    )
-  ]
-  mat[,
-    a.sa.marine := stats::rnorm(
-      .N,
-      mean = params$a.sa.marine,
-      sd = params$a.sa.marine.sd
-    )
-  ]
-  mat[,
-    a.v.marine := stats::rnorm(
-      .N,
-      mean = params$a.v.marine,
-      sd = params$a.v.marine.sd
-    )
-  ]
-  mat[,
-    a.m.marine := stats::rnorm(
-      .N,
-      mean = params$a.m.marine,
-      sd = params$a.m.marine.sd
-    )
-  ]
-  #mat[, a.ssa.marine := rnorm(.N,  mean = a_ssa.marine, sd = a.ssa.sd.marine)]
-  mat[,
-    alpha.freshwater := stats::rnorm(
-      .N,
-      mean = params$alpha.freshwater,
-      sd = params$alpha.freshwater.sd
-    )
-  ]
-  mat[,
-    a.sa.freshwater := stats::rnorm(
-      .N,
-      mean = params$a.sa.freshwater,
-      sd = params$a.sa.freshwater.sd
-    )
-  ]
-  mat[,
-    a.v.freshwater := stats::rnorm(
-      .N,
-      mean = params$a.v.freshwater,
-      sd = params$a.v.freshwater.sd
-    )
-  ]
-  mat[,
-    a.m.freshwater := stats::rnorm(
-      .N,
-      mean = params$a.m.freshwater,
-      sd = params$a.m.freshwater.sd
-    )
-  ]
-  #mat[, a.ssa.freshwater := rnorm(.N,   mean = a_ssa.freshwater, sd = a.ssa.sd.freshwater)]
-  mat[,
-    R.ave.water.marine := truncnorm::rtruncnorm(
-      .N,
-      a = 0.0001,
-      b = 1,
-      mean = params$R.ave.water.marine,
-      sd = params$R.ave.water.marine.sd
-    )
-  ]
-  mat[,
-    H_W_ratio.marine := truncnorm::rtruncnorm(
-      .N,
-      a = 0.0001,
-      b = 1,
-      mean = params$R.ave.water.marine,
-      sd = params$R.ave.water.marine.sd
-    )
-  ]
-  mat[,
-    R.ave.water.freshwater := truncnorm::rtruncnorm(
-      .N,
-      a = 0.0001,
-      b = 1,
-      mean = params$R.ave.water.freshwater,
-      sd = params$R.ave.water.freshwater.sd
-    )
-  ]
-  mat[,
-    H_W_ratio.freshwater := truncnorm::rtruncnorm(
-      .N,
-      a = 0.0001,
-      b = 1,
-      mean = params$R.ave.water.freshwater,
-      sd = params$R.ave.water.freshwater.sd
-    )
-  ]
-  mat[,
-    sim.beta.log10.body.length := stats::rnorm(
-      .N,
-      mean = params$beta_log10_body_length,
-      sd = params$se_beta_log10_body_length
-    )
-  ]
-  mat[,
-    sim.body.length.intercept := stats::rnorm(
-      .N,
-      mean = params$body_length_intercept,
-      sd = params$se_beta_log10_body_length
-    )
-  ]
-  #mat[, "R.ave.sediment.marine" := rtruncnorm(.N, a = 0.0001, b= 0.9999, mean = 0.75, sd = 0.30)]
-  #mat[, "R.ave.sediment.freshwater" := rtruncnorm(.N, a = 0.0001, b= 0.9999, mean = 0.70, sd = 0.33)]
+  ## marine surface water
+  if ("alpha.marine" %in% names(mat)) {
+    mat[,
+      alpha.marine := stats::rnorm(
+        .N,
+        mean = params$alpha.marine,
+        sd = params$alpha.marine.sd
+      )
+    ]
+  }
+  if ("a.sa.marine" %in% names(mat)) {
+    mat[,
+      a.sa.marine := stats::rnorm(
+        .N,
+        mean = params$a.sa.marine,
+        sd = params$a.sa.marine.sd
+      )
+    ]
+  }
+  if ("a.v.marine" %in% names(mat)) {
+    mat[,
+      a.v.marine := stats::rnorm(
+        .N,
+        mean = params$a.v.marine,
+        sd = params$a.v.marine.sd
+      )
+    ]
+  }
+  if ("a.m.marine" %in% names(mat)) {
+    mat[,
+      a.m.marine := stats::rnorm(
+        .N,
+        mean = params$a.m.marine,
+        sd = params$a.m.marine.sd
+      )
+    ]
+  }
+  if ("a.ssa.marine" %in% names(mat)) {
+    mat[,
+      a.ssa.marine := stats::rnorm(
+        .N,
+        mean = params$a.ssa.marine,
+        sd = params$a.ssa.marine.sd
+      )
+    ]
+  }
+  if ("R.ave.water.marine" %in% names(mat)) {
+    mat[,
+      R.ave.water.marine := truncnorm::rtruncnorm(
+        .N,
+        a = 0.0001,
+        b = 1,
+        mean = params$R.ave.water.marine,
+        sd = params$R.ave.water.marine.sd
+      )
+    ]
+  }
+  if ("H_W_ratio.marine" %in% names(mat)) {
+    mat[,
+      H_W_ratio.marine := truncnorm::rtruncnorm(
+        .N,
+        a = 0.0001,
+        b = 1,
+        mean = params$R.ave.water.marine,
+        sd = params$R.ave.water.marine.sd
+      )
+    ]
+  }
+  ## freshwater surface water
+  if ("alpha.freshwater" %in% names(mat)) {
+    mat[,
+      alpha.freshwater := stats::rnorm(
+        .N,
+        mean = params$alpha.freshwater,
+        sd = params$alpha.freshwater.sd
+      )
+    ]
+  }
+  if ("a.sa.freshwater" %in% names(mat)) {
+    mat[,
+      a.sa.freshwater := stats::rnorm(
+        .N,
+        mean = params$a.sa.freshwater,
+        sd = params$a.sa.freshwater.sd
+      )
+    ]
+  }
+  if ("a.v.freshwater" %in% names(mat)) {
+    mat[,
+      a.v.freshwater := stats::rnorm(
+        .N,
+        mean = params$a.v.freshwater,
+        sd = params$a.v.freshwater.sd
+      )
+    ]
+  }
+  if ("a.m.freshwater" %in% names(mat)) {
+    mat[,
+      a.m.freshwater := stats::rnorm(
+        .N,
+        mean = params$a.m.freshwater,
+        sd = params$a.m.freshwater.sd
+      )
+    ]
+  }
+  if ("a.ssa.freshwater" %in% names(mat)) {
+    mat[,
+      a.ssa.freshwater := stats::rnorm(
+        .N,
+        mean = params$a.ssa.freshwater,
+        sd = params$a.ssa.freshwater.sd
+      )
+    ]
+  }
+  if ("R.ave.water.freshwater" %in% names(mat)) {
+    mat[,
+      R.ave.water.freshwater := truncnorm::rtruncnorm(
+        .N,
+        a = 0.0001,
+        b = 1,
+        mean = params$R.ave.water.freshwater,
+        sd = params$R.ave.water.freshwater.sd
+      )
+    ]
+  }
+  if ("H_W_ratio.freshwater" %in% names(mat)) {
+    mat[,
+      H_W_ratio.freshwater := truncnorm::rtruncnorm(
+        .N,
+        a = 0.0001,
+        b = 1,
+        mean = params$R.ave.water.freshwater,
+        sd = params$R.ave.water.freshwater.sd
+      )
+    ]
+  }
+  ## marine sediment
+  if ("alpha.sediment.marine" %in% names(mat)) {
+    mat[,
+      alpha.sediment.marine := stats::rnorm(
+        .N,
+        mean = params$alpha.sediment.marine,
+        sd = params$alpha.sediment.marine.sd
+      )
+    ]
+  }
+  if ("a.sa.sediment.marine" %in% names(mat)) {
+    mat[,
+      a.sa.sediment.marine := stats::rnorm(
+        .N,
+        mean = params$a.sa.sediment.marine,
+        sd = params$a.sa.sediment.marine.sd
+      )
+    ]
+  }
+  if ("a.v.sediment.marine" %in% names(mat)) {
+    mat[,
+      a.v.sediment.marine := stats::rnorm(
+        .N,
+        mean = params$a.v.sediment.marine,
+        sd = params$a.v.sediment.marine.sd
+      )
+    ]
+  }
+  if ("a.m.sediment.marine" %in% names(mat)) {
+    mat[,
+      a.m.sediment.marine := stats::rnorm(
+        .N,
+        mean = params$a.m.sediment.marine,
+        sd = params$a.m.sediment.marine.sd
+      )
+    ]
+  }
+  if ("a.ssa.sediment.marine" %in% names(mat)) {
+    mat[,
+      a.ssa.sediment.marine := stats::rnorm(
+        .N,
+        mean = params$a.ssa.sediment.marine,
+        sd = params$a.ssa.sediment.marine.sd
+      )
+    ]
+  }
+  if ("R.ave.sediment.marine" %in% names(mat)) {
+    mat[,
+      R.ave.sediment.marine := truncnorm::rtruncnorm(
+        .N,
+        a = 0.0001,
+        b = 1,
+        mean = params$R.ave.sediment.marine,
+        sd = params$R.ave.sediment.marine.sd
+      )
+    ]
+  }
+  if ("H_W_ratio.sediment.marine" %in% names(mat)) {
+    mat[,
+      H_W_ratio.sediment.marine := truncnorm::rtruncnorm(
+        .N,
+        a = 0.0001,
+        b = 1,
+        mean = params$R.ave.sediment.marine,
+        sd = params$R.ave.sediment.marine.sd
+      )
+    ]
+  }
+  ## freshwater sediment
+  if ("alpha.sediment.freshwater" %in% names(mat)) {
+    mat[,
+      alpha.sediment.freshwater := stats::rnorm(
+        .N,
+        mean = params$alpha.sediment.freshwater,
+        sd = params$alpha.sediment.freshwater.sd
+      )
+    ]
+  }
+  if ("a.sa.sediment.freshwater" %in% names(mat)) {
+    mat[,
+      a.sa.sediment.freshwater := stats::rnorm(
+        .N,
+        mean = params$a.sa.sediment.freshwater,
+        sd = params$a.sa.sediment.freshwater.sd
+      )
+    ]
+  }
+  if ("a.v.sediment.freshwater" %in% names(mat)) {
+    mat[,
+      a.v.sediment.freshwater := stats::rnorm(
+        .N,
+        mean = params$a.v.sediment.freshwater,
+        sd = params$a.v.sediment.freshwater.sd
+      )
+    ]
+  }
+  if ("a.m.sediment.freshwater" %in% names(mat)) {
+    mat[,
+      a.m.sediment.freshwater := stats::rnorm(
+        .N,
+        mean = params$a.m.sediment.freshwater,
+        sd = params$a.m.sediment.freshwater.sd
+      )
+    ]
+  }
+  if ("a.ssa.sediment.freshwater" %in% names(mat)) {
+    mat[,
+      a.ssa.sediment.freshwater := stats::rnorm(
+        .N,
+        mean = params$a.ssa.sediment.freshwater,
+        sd = params$a.ssa.sediment.freshwater.sd
+      )
+    ]
+  }
+  if ("R.ave.sediment.freshwater" %in% names(mat)) {
+    mat[,
+      R.ave.sediment.freshwater := truncnorm::rtruncnorm(
+        .N,
+        a = 0.0001,
+        b = 1,
+        mean = params$R.ave.sediment.freshwater,
+        sd = params$R.ave.sediment.freshwater.sd
+      )
+    ]
+  }
+  if ("H_W_ratio.sediment.freshwater" %in% names(mat)) {
+    mat[,
+      H_W_ratio.sediment.freshwater := truncnorm::rtruncnorm(
+        .N,
+        a = 0.0001,
+        b = 1,
+        mean = params$R.ave.sediment.freshwater,
+        sd = params$R.ave.sediment.freshwater.sd
+      )
+    ]
+  }
+  ## bioaccessibility
+  if ("sim.beta.log10.body.length" %in% names(mat)) {
+    mat[,
+      sim.beta.log10.body.length := stats::rnorm(
+        .N,
+        mean = params$beta_log10_body_length,
+        sd = params$se_beta_log10_body_length
+      )
+    ]
+  }
+  if ("sim.body.length.intercept" %in% names(mat)) {
+    mat[,
+      sim.body.length.intercept := stats::rnorm(
+        .N,
+        mean = params$body_length_intercept,
+        sd = params$se_beta_log10_body_length
+      )
+    ]
+  }
 
   # Parameters from tissue translocaiton logistic regression model derived in Coffin et al. (2026)
   # beta_0 <- 1.308344
@@ -1383,33 +1884,227 @@ matrix_function <- function(
 
   # Convert the data.table to a data.frame
   mat <- as.data.frame(mat) %>%
-    dplyr::mutate(simulation_id = paste0("sim", row_number()))
+    dplyr::mutate(simulation_id = paste0("sim", dplyr::row_number()))
 
   return(mat)
+}
+
+add_param_if_present <- function(arg_list, params, column, arg_name = column) {
+  if (column %in% names(params)) {
+    arg_list[[arg_name]] <- params[[column]][1]
+  }
+  arg_list
+}
+
+get_param_value <- function(params, primary, fallback = NULL) {
+  if (primary %in% names(params)) {
+    return(params[[primary]][1])
+  }
+  if (!is.null(fallback) && fallback %in% names(params)) {
+    return(params[[fallback]][1])
+  }
+  NULL
 }
 
 
 #### MC-SIM Align Data and generate thresholds (preps data for PSSD++ AND runs MC-SIM SSD method)
 model_wrapper_sobol_parallel <- function(params, simulation_id) {
   # perform alignments using parameters for simulation
-  aoc_MC_iter <- align_data(
-    aoc_aligned,
-    upper.tissue.trans.size.um_input = params$upper.tissue.trans.size.um[1],
-    body_length_intercept_input = params$sim_body_length_intercept[1],
-    beta_log10_body_length_input = params$sim_beta_log10_body_length[1],
-    R.ave.marine_input = params$R.ave.water.marine[1],
-    H_W_ratio.marine_input = params$H_W_ratio.marine[1],
-    alpha.marine_input = params$alpha.marine[1],
-    a.sa.marine_input = params$a.sa.marine[1],
-    a.v.marine_input = params$a.v.marine[1],
-    a.m.marine_input = params$a.m.marine[1],
-    R.ave.freshwater_input = params$R.ave.water.freshwater[1],
-    H_W_ratio.freshwater_input = params$H_W_ratio.freshwater[1],
-    alpha.freshwater_input = params$alpha.freshwater[1],
-    a.sa.freshwater_input = params$a.sa.freshwater[1],
-    a.v.freshwater_input = params$a.v.freshwater[1],
-    a.m.freshwater_input = params$a.m.freshwater[1]
+  align_args <- list(df = aoc_aligned)
+  upper_val <- get_param_value(params, "upper.tissue.trans.size.um")
+  if (!is.null(upper_val)) {
+    align_args$upper.tissue.trans.size.um_input <- upper_val
+  }
+  beta_val <- get_param_value(
+    params,
+    "sim.beta.log10.body.length",
+    "sim_beta_log10_body_length"
   )
+  if (!is.null(beta_val)) {
+    align_args$beta_log10_body_length_input <- beta_val
+  }
+  intercept_val <- get_param_value(
+    params,
+    "sim.body.length.intercept",
+    "sim_body_length_intercept"
+  )
+  if (!is.null(intercept_val)) {
+    align_args$body_length_intercept_input <- intercept_val
+  }
+  ## marine surface water
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "R.ave.water.marine",
+    "R.ave.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "H_W_ratio.marine",
+    "H_W_ratio.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "alpha.marine",
+    "alpha.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.sa.marine",
+    "a.sa.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.v.marine",
+    "a.v.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.m.marine",
+    "a.m.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.ssa.marine",
+    "a.ssa.marine_input"
+  )
+  ## freshwater surface water
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "R.ave.water.freshwater",
+    "R.ave.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "H_W_ratio.freshwater",
+    "H_W_ratio.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "alpha.freshwater",
+    "alpha.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.sa.freshwater",
+    "a.sa.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.v.freshwater",
+    "a.v.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.m.freshwater",
+    "a.m.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.ssa.freshwater",
+    "a.ssa.freshwater_input"
+  )
+  ## marine sediment
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "R.ave.sediment.marine",
+    "R.ave.sediment.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "H_W_ratio.sediment.marine",
+    "H_W_ratio.sediment.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "alpha.sediment.marine",
+    "alpha.sediment.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.sa.sediment.marine",
+    "a.sa.sediment.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.v.sediment.marine",
+    "a.v.sediment.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.m.sediment.marine",
+    "a.m.sediment.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.ssa.sediment.marine",
+    "a.ssa.sediment.marine_input"
+  )
+  ## freshwater sediment
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "R.ave.sediment.freshwater",
+    "R.ave.sediment.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "H_W_ratio.sediment.freshwater",
+    "H_W_ratio.sediment.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "alpha.sediment.freshwater",
+    "alpha.sediment.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.sa.sediment.freshwater",
+    "a.sa.sediment.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.v.sediment.freshwater",
+    "a.v.sediment.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.m.sediment.freshwater",
+    "a.m.sediment.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.ssa.sediment.freshwater",
+    "a.ssa.sediment.freshwater_input"
+  )
+
+  aoc_MC_iter <- do.call(align_data, align_args)
 
   # Filter out risk criteria and calculate thresholds for different environments
   aoc_aligned <- aoc_MC_iter %>%
@@ -1437,12 +2132,32 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
     ## convert particles/L thresholds to volume, mass, surface area (ERM-dependent)
     convert_units_fxn(environment = "Freshwater", params = params[1, ])
 
+  marine_sediment_thresholds <- process_environment_data(
+    aoc_aligned,
+    "Marine Sediment",
+    upper.tissue.trans.size.um = sim.upper.tissue.trans.size.um,
+    x1D_set = x1D_set,
+    x2D_set = x2D_set
+  ) %>%
+    convert_units_fxn(environment = "Marine Sediment", params = params[1, ])
+
+  freshwater_sediment_thresholds <- process_environment_data(
+    aoc_aligned,
+    "Freshwater Sediment",
+    upper.tissue.trans.size.um = sim.upper.tissue.trans.size.um,
+    x1D_set = x1D_set,
+    x2D_set = x2D_set
+  ) %>%
+    convert_units_fxn(environment = "Freshwater Sediment", params = params[1, ])
+
   # Store results in list
   sobol_result <- list(
     tox_vals = list(
       simulation_id = simulation_id,
       particles_mL_ox_stress = aoc_aligned$particles.mL.ox.stress,
       particles_mL_food_dilution = aoc_aligned$particles.mL.food.dilution,
+      particles_kg_ox_stress = aoc_aligned$particles.kg.ox.stress,
+      particles_kg_food_dilution = aoc_aligned$particles.kg.food.dilution,
       ingestible = aoc_aligned$ingestible,
       ingestible_poly = aoc_aligned$ingestible_poly,
       translocatable = aoc_aligned$translocatable,
@@ -1462,12 +2177,15 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
       bio_f = aoc_aligned$bio_f,
       risk.13 = aoc_aligned$risk.13,
       dose.particles.mL.master = aoc_aligned$dose.particles.mL.master,
+      dose.particles.kg.master = aoc_aligned$dose.particles.kg.master,
       unique_id = aoc_aligned$unique_id
     ), #row id that allows matching back to database
     base_thresholds = list(
       simulation_id = simulation_id,
       marine = marine_thresholds,
-      freshwater = freshwater_thresholds
+      freshwater = freshwater_thresholds,
+      marine_sediment = marine_sediment_thresholds,
+      freshwater_sediment = freshwater_sediment_thresholds
     )
   )
 
@@ -1479,24 +2197,201 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
 ## wrapper function for Monte Carlo simulations
 MC_sim_align_wrapper <- function(tox_data, params, simulation_id) {
   # perform alignments using parameters for simulation
-  aligned_tox_data <- align_data(
-    tox_data,
-    upper.tissue.trans.size.um_input = params$upper.tissue.trans.size.um[1],
-    body_length_intercept_input = params$sim_body_length_intercept[1],
-    beta_log10_body_length_input = params$sim_beta_log10_body_length[1],
-    R.ave.marine_input = params$R.ave.water.marine[1],
-    H_W_ratio.marine_input = params$H_W_ratio.marine[1],
-    alpha.marine_input = params$alpha.marine[1],
-    a.sa.marine_input = params$a.sa.marine[1],
-    a.v.marine_input = params$a.v.marine[1],
-    a.m.marine_input = params$a.m.marine[1],
-    R.ave.freshwater_input = params$R.ave.water.freshwater[1],
-    H_W_ratio.freshwater_input = params$H_W_ratio.freshwater[1],
-    alpha.freshwater_input = params$alpha.freshwater[1],
-    a.sa.freshwater_input = params$a.sa.freshwater[1],
-    a.v.freshwater_input = params$a.v.freshwater[1],
-    a.m.freshwater_input = params$a.m.freshwater[1]
+  align_args <- list(df = tox_data)
+  upper_val <- get_param_value(params, "upper.tissue.trans.size.um")
+  if (!is.null(upper_val)) {
+    align_args$upper.tissue.trans.size.um_input <- upper_val
+  }
+  beta_val <- get_param_value(
+    params,
+    "sim.beta.log10.body.length",
+    "sim_beta_log10_body_length"
   )
+  if (!is.null(beta_val)) {
+    align_args$beta_log10_body_length_input <- beta_val
+  }
+  intercept_val <- get_param_value(
+    params,
+    "sim.body.length.intercept",
+    "sim_body_length_intercept"
+  )
+  if (!is.null(intercept_val)) {
+    align_args$body_length_intercept_input <- intercept_val
+  }
+  ## marine surface water
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "R.ave.water.marine",
+    "R.ave.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "H_W_ratio.marine",
+    "H_W_ratio.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "alpha.marine",
+    "alpha.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.sa.marine",
+    "a.sa.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.v.marine",
+    "a.v.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.m.marine",
+    "a.m.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.ssa.marine",
+    "a.ssa.marine_input"
+  )
+  ## freshwater surface water
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "R.ave.water.freshwater",
+    "R.ave.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "H_W_ratio.freshwater",
+    "H_W_ratio.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "alpha.freshwater",
+    "alpha.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.sa.freshwater",
+    "a.sa.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.v.freshwater",
+    "a.v.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.m.freshwater",
+    "a.m.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.ssa.freshwater",
+    "a.ssa.freshwater_input"
+  )
+  ## marine sediment
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "R.ave.sediment.marine",
+    "R.ave.sediment.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "H_W_ratio.sediment.marine",
+    "H_W_ratio.sediment.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "alpha.sediment.marine",
+    "alpha.sediment.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.sa.sediment.marine",
+    "a.sa.sediment.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.v.sediment.marine",
+    "a.v.sediment.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.m.sediment.marine",
+    "a.m.sediment.marine_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.ssa.sediment.marine",
+    "a.ssa.sediment.marine_input"
+  )
+  ## freshwater sediment
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "R.ave.sediment.freshwater",
+    "R.ave.sediment.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "H_W_ratio.sediment.freshwater",
+    "H_W_ratio.sediment.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "alpha.sediment.freshwater",
+    "alpha.sediment.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.sa.sediment.freshwater",
+    "a.sa.sediment.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.v.sediment.freshwater",
+    "a.v.sediment.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.m.sediment.freshwater",
+    "a.m.sediment.freshwater_input"
+  )
+  align_args <- add_param_if_present(
+    align_args,
+    params,
+    "a.ssa.sediment.freshwater",
+    "a.ssa.sediment.freshwater_input"
+  )
+
+  aligned_tox_data <- do.call(align_data, align_args)
 
   # Store results in list
   result <- list(
@@ -1504,6 +2399,8 @@ MC_sim_align_wrapper <- function(tox_data, params, simulation_id) {
       simulation_id = simulation_id,
       particles_mL_ox_stress = aligned_tox_data$particles.mL.ox.stress,
       particles_mL_food_dilution = aligned_tox_data$particles.mL.food.dilution,
+      particles_kg_ox_stress = aligned_tox_data$particles.kg.ox.stress,
+      particles_kg_food_dilution = aligned_tox_data$particles.kg.food.dilution,
       ingestible = aligned_tox_data$ingestible,
       ingestible_poly = aligned_tox_data$ingestible_poly,
       translocatable = aligned_tox_data$translocatable,
@@ -1523,6 +2420,7 @@ MC_sim_align_wrapper <- function(tox_data, params, simulation_id) {
       bio_f = aligned_tox_data$bio_f,
       risk.13 = aligned_tox_data$risk.13,
       dose.particles.mL.master = aligned_tox_data$dose.particles.mL.master,
+      dose.particles.kg.master = aligned_tox_data$dose.particles.kg.master,
       unique_id = aligned_tox_data$unique_id #row id that allows matching back to database
     )
   )
@@ -1631,6 +2529,8 @@ MC_sim_align_parallel <- function(
       "SAfnx",
       "massfnx",
       "SSA.inversefnx",
+      "add_param_if_present",
+      "get_param_value",
       "n_sim",
       "x1D_set",
       "x2D_set",
@@ -1641,25 +2541,45 @@ MC_sim_align_parallel <- function(
   ) %dopar%
     {
       param_matrix <- param_df[i, , drop = FALSE]
+      get_val <- function(name) {
+        if (name %in% names(param_matrix)) {
+          return(as.numeric(param_matrix[[name]][1]))
+        }
+        NA_real_
+      }
       # Ensure all extracted parameters are correctly coerced to numeric
       # Coerce to numeric directly while accessing the first element of potential list
-      alpha.marine <- as.numeric(param_matrix$alpha.marine[1])
-      a.sa.marine <- as.numeric(param_matrix$a.sa.marine[1])
-      a.v.marine <- as.numeric(param_matrix$a.v.marine[1])
-      a.m.marine <- as.numeric(param_matrix$a.m.marine[1])
+      ### marine surface water
+      R_ave_water_marine <- get_val("R.ave.water.marine")
+      alpha.marine <- get_val("alpha.marine")
+      a.sa.marine <- get_val("a.sa.marine")
+      a.v.marine <- get_val("a.v.marine")
+      a.m.marine <- get_val("a.m.marine")
       # a.ssa.marine <- as.numeric(param_matrix$a.ssa.marine[1])
-      alpha.freshwater <- as.numeric(param_matrix$alpha.freshwater[1])
-      a.sa.freshwater <- as.numeric(param_matrix$a.sa.freshwater[1])
-      a.v.freshwater <- as.numeric(param_matrix$a.v.freshwater[1])
-      a.m.freshwater <- as.numeric(param_matrix$a.m.freshwater[1])
+      ### freshwater surface water
+      R_ave_water_freshwater <- get_val("R.ave.water.freshwater")
+      alpha.freshwater <- get_val("alpha.freshwater")
+      a.sa.freshwater <- get_val("a.sa.freshwater")
+      a.v.freshwater <- get_val("a.v.freshwater")
+      a.m.freshwater <- get_val("a.m.freshwater")
       #  a.ssa.freshwater <- as.numeric(param_matrix$a.ssa.freshwater[1])
-      R_ave_water_marine <- as.numeric(param_matrix$R.ave.water.marine[1])
-      R_ave_water_freshwater <- as.numeric(param_matrix$R.ave.water.freshwater[1])
-      #  R_ave_sediment_marine <- as.numeric(param_matrix$R.ave.sediment.marine[1])
-      #  R_ave_sediment_freshwater <- as.numeric(param_matrix$R.ave.sediment.freshwater[1])
-      sim_beta_log10_body_length <- as.numeric(param_matrix$sim.beta.log10.body.length[1])
-      sim_body_length_intercept <- as.numeric(param_matrix$sim.body.length.intercept[1])
-      sim.upper.tissue.trans.size.um <- as.numeric(param_matrix$upper.tissue.trans.size.um[1])
+      ### marine sediment
+      R_ave_sediment_marine <- get_val("R.ave.sediment.marine")
+      alpha.sediment_marine <- get_val("alpha.sediment.marine")
+      a.sa.sediment_marine <- get_val("a.sa.sediment.marine")
+      a.v.sediment_marine <- get_val("a.v.sediment.marine")
+      a.m.sediment_marine <- get_val("a.m.sediment.marine")
+      ### freshwater sediment
+      R_ave_sediment_freshwater <- get_val("R.ave.sediment.freshwater")
+      alpha.sediment_freshwater <- get_val("alpha.sediment.freshwater")
+      a.sa.sediment_freshwater <- get_val("a.sa.sediment.freshwater")
+      a.v.sediment_freshwater <- get_val("a.v.sediment.freshwater")
+      a.m.sediment_freshwater <- get_val("a.m.sediment.freshwater")
+      ## bioaccessibility
+      sim_beta_log10_body_length <- get_val("sim.beta.log10.body.length")
+      sim_body_length_intercept <- get_val("sim.body.length.intercept")
+      sim.upper.tissue.trans.size.um <- get_val("upper.tissue.trans.size.um")
+
       simulation_id <- as.character(param_matrix$simulation_id[1])
       if (is.na(simulation_id) || !nzchar(simulation_id)) {
         simulation_id <- paste0("sim", i)
@@ -1695,6 +2615,8 @@ MC_sim_align_parallel <- function(
         unique_id = factor(x$unique_id), #toxicity data point (row)
         particles_L_ox_stress = x$particles_mL_ox_stress * 1000,
         particles_L_food_dilution = x$particles_mL_food_dilution * 1000,
+        particles_kg_ox_stress = x$particles_kg_ox_stress,
+        particles_kg_food_dilution = x$particles_kg_food_dilution,
         species = x$species,
         group = x$group,
         shape_f = x$shape_f,
@@ -1730,6 +2652,61 @@ MC_sim_align_parallel <- function(
 } # close MC_sim_align_parallel function
 
 
+Mode_Y <- function(x) {
+  x <- stats::na.omit(x)
+  if (length(x) < 2) {
+    return(NA_real_)
+  }
+  dens <- stats::density(x)
+  ind <- which.max(dens$y)
+  dens$x[ind]
+}
+
+PNEC_data_summary <- function(
+  pssd_results,
+  hcx,
+  data_name,
+  quantile_type = 7
+) {
+  if (is.null(pssd_results) || is.null(pssd_results$pSSD)) {
+    return(list(stats = data.frame(), df = data.frame()))
+  }
+
+  pssd_mat <- pssd_results$pSSD
+  if (is.null(dim(pssd_mat)) || any(dim(pssd_mat) == 0)) {
+    return(list(stats = data.frame(), df = data.frame()))
+  }
+
+  PNEC <- apply(pssd_mat, 2, function(x) {
+    stats::quantile(x, probs = hcx, type = quantile_type, na.rm = TRUE)
+  })
+
+  PNEC <- stats::na.omit(PNEC)
+  if (length(PNEC) == 0) {
+    return(list(stats = data.frame(), df = data.frame()))
+  }
+
+  PNEC_df <- data.frame(PNEC = PNEC)
+
+  Stat_PNEC <- data.frame(
+    Min = min(PNEC),
+    Q5 = stats::quantile(PNEC, 0.05, type = quantile_type),
+    Q25 = stats::quantile(PNEC, 0.25, type = quantile_type),
+    Mean = mean(PNEC),
+    Median = stats::quantile(PNEC, 0.5, type = quantile_type),
+    Mode = Mode_Y(PNEC),
+    Q75 = stats::quantile(PNEC, 0.75, type = quantile_type),
+    Q95 = stats::quantile(PNEC, 0.95, type = quantile_type),
+    Max = max(PNEC)
+  )
+
+  Stat_PNEC <- as.data.frame(lapply(Stat_PNEC, function(x) signif(x, 3)))
+  Stat_PNEC_t <- t(Stat_PNEC)
+  colnames(Stat_PNEC_t) <- paste0(data_name, " - HC", hcx * 100)
+
+  list(stats = as.data.frame(Stat_PNEC_t), df = PNEC_df)
+}
+
 ## PSSD++ wrapper function ###
 generate_plots_and_summary <- function(
   tier,
@@ -1752,6 +2729,30 @@ generate_plots_and_summary <- function(
   progress = NULL # report-out progress for parallel processing
 ) {
   combo_id <- paste0("Tier", tier, "_", environment, "_", erm)
+  has_sediment <- "environment" %in% names(results_df) &&
+    any(grepl("sediment", results_df$environment, ignore.case = TRUE), na.rm = TRUE)
+  dose_column <- NULL
+  if (has_sediment && "dose_new_particles_kg" %in% names(results_df)) {
+    dose_column <- "dose_new_particles_kg"
+  } else if ("dose_new_particles_L" %in% names(results_df)) {
+    dose_column <- "dose_new_particles_L"
+  } else if ("dose_new_particles_kg" %in% names(results_df)) {
+    dose_column <- "dose_new_particles_kg"
+  }
+  if (is.null(dose_column)) {
+    stop(
+      "Missing required dose column. Provide `dose_new_particles_L` or ",
+      "`dose_new_particles_kg`.",
+      call. = FALSE
+    )
+  }
+  dose_unit_label <- if (dose_column == "dose_new_particles_kg") {
+    "Particles/kg"
+  } else {
+    "Particles/L"
+  }
+  pnec_x_label <- paste0("PNEC (", dose_unit_label, "; 1 to 5,000 um)")
+  noec_x_label <- paste0("NOEC (", dose_unit_label, "; 1 to 5,000 um)")
 
   if (debug) {
     if (!dir.exists(debug_dir)) {
@@ -1814,6 +2815,26 @@ generate_plots_and_summary <- function(
       stop(e)
     }
   )
+
+  dp <- MCdf[["DP"]]
+  if (!is.null(dp)) {
+    dp <- as.matrix(dp)
+  }
+  if (is.null(dp) || is.null(dim(dp)) || any(dim(dp) == 0)) {
+    if (debug) {
+      cat("⚠️ Skipping:", combo_id, "- DP matrix has zero dimensions.\n")
+    }
+    return(NULL)
+  }
+  if (ncol(dp) > 0) {
+    valid_species <- colSums(!is.na(dp)) > 0
+    if (!any(valid_species)) {
+      if (debug) {
+        cat("⚠️ Skipping:", combo_id, "- no species with data after filtering.\n")
+      }
+      return(NULL)
+    }
+  }
 
   # ---------- STEP 2: Run PSSD analysis ----------
   pssd_results <- tryCatch(
@@ -1924,6 +2945,7 @@ generate_plots_and_summary <- function(
         environment_name = environment,
         ERM_name = erm,
         color_palette = color_palette,
+        x_label = noec_x_label,
         debug = debug,
         debug_dir = debug_dir,
         combo_id = combo_id
@@ -1980,11 +3002,12 @@ generate_plots_and_summary <- function(
         pssd_results = pssd_results,
         hcx = 0.05,
         quantile_type = quantile_type,
-        data_name = paste("Tier", tier, "(", erm, ") - HC5")
+        data_name = paste("Tier", tier, "(", erm, ") - HC5"),
+        x_label = pnec_x_label
       ) +
         ggplot2::labs(
           title = "Tier 3 (HC5)",
-          x = "PNEC (Particles/L; 1 to 5,000 μm)"
+          x = pnec_x_label
         ) +
         ggplot2::theme(axis.text.y = ggplot2::element_blank())
       if (debug) {
@@ -2022,11 +3045,12 @@ generate_plots_and_summary <- function(
         pssd_results = pssd_results,
         hcx = 0.10,
         quantile_type = quantile_type,
-        data_name = paste("Tier", tier, "(", erm, ") - HC10")
+        data_name = paste("Tier", tier, "(", erm, ") - HC10"),
+        x_label = pnec_x_label
       ) +
         ggplot2::labs(
           title = "Tier 4 (HC10)",
-          x = "PNEC (Particles/L; 1 to 5,000 μm)"
+          x = pnec_x_label
         ) +
         ggplot2::theme(
           axis.title.y = ggplot2::element_blank(),
@@ -2183,7 +3207,10 @@ generate_plots_and_summary <- function(
 
 # Dynamically generate a color palette based on the levels of Group
 generate_color_palette <- function(data) {
-  unique_groups <- unique(data$Group) # Extract unique levels of Group
+  unique_groups <- unique(stats::na.omit(data$Group)) # Extract unique levels of Group
+  if (length(unique_groups) == 0) {
+    return(setNames(character(0), character(0)))
+  }
   #palette <- cols4all::c4a("seaborn.dark", n = length(unique_groups)) # Generate colors
   palette <- cols4all::c4a("cols4all.area9d", n = length(unique_groups)) # Generate colors
   names(palette) <- unique_groups # Assign names to the colors
@@ -2200,6 +3227,7 @@ pSSD_plot_fnx <- function(
   tier_name,
   ERM_name,
   color_palette = color_palette,
+  x_label = "NOEC (particles/L; 1 to 5,000 um)",
   debug = FALSE,
   debug_dir = "../output/pssd_debug",
   combo_id = "UNKNOWN"
@@ -2432,7 +3460,7 @@ pSSD_plot_fnx <- function(
     ) +
     ggplot2::scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
     ggplot2::ylab("Cumulative probability") +
-    ggplot2::xlab("NOEC (particles/L; 1 to 5,000 μm)") +
+    ggplot2::xlab(x_label) +
 
     # Global palette, but legend only includes groups_present
     ggplot2::scale_color_manual(
@@ -2487,6 +3515,7 @@ make_PNEC_plot <- function(
   pssd_results,
   hcx,
   data_name,
+  x_label = "PNEC (Particles/L)",
   quantile_type = 7 #Type 1 is no interpolation (default for pSSD), # type  7 inovlves interpolation (note that type 7 results in higher values for mean/median, but the mode is around the same as the median would be with type 1. It's necessary to use type 7 to get distinct values between HC5 and HC10 for freshwater bc there's so few species)
 ) {
   PNEC <- apply(pssd_results$pSSD, 2, function(x) {
@@ -2536,7 +3565,7 @@ make_PNEC_plot <- function(
       na.rm = TRUE
     ) +
     ggplot2::labs(
-      x = "PNEC (Particles/L)",
+      x = x_label,
       y = "Probability density",
       title = "Probability density of the PNEC",
       subtitle = data_name
@@ -2601,6 +3630,24 @@ prepare_plot_data <- function(
     stop("Data matrices for DP, UFdd, or UFt are not available or incorrect.")
   }
 
+  has_sediment <- "environment" %in% names(original_data) &&
+    any(grepl("sediment", original_data$environment, ignore.case = TRUE), na.rm = TRUE)
+  dose_column <- NULL
+  if (has_sediment && "dose_new_particles_kg" %in% colnames(original_data)) {
+    dose_column <- "dose_new_particles_kg"
+  } else if ("dose_new_particles_L" %in% colnames(original_data)) {
+    dose_column <- "dose_new_particles_L"
+  } else if ("dose_new_particles_kg" %in% colnames(original_data)) {
+    dose_column <- "dose_new_particles_kg"
+  }
+  if (is.null(dose_column)) {
+    stop(
+      "Missing required dose column. Provide `dose_new_particles_L` or ",
+      "`dose_new_particles_kg`.",
+      call. = FALSE
+    )
+  }
+
   # Optional Debugging
   if (debug) {
     cat("\n🔧 DEBUG: prepare_plot_data() input checks...\n")
@@ -2610,7 +3657,7 @@ prepare_plot_data <- function(
     cat("  pSSD matrix dimensions:", dim(pSSD), "\n")
     cat("  original_data rows:", nrow(original_data), "\n")
 
-    bad1 <- sum(is.na(original_data$dose_new_particles_L))
+    bad1 <- sum(is.na(original_data[[dose_column]]))
     bad2 <- sum(original_data$af.noec == 0)
     bad3 <- sum(original_data$af.time == 0)
 
@@ -2695,7 +3742,7 @@ prepare_plot_data <- function(
 
     tmp <- original_data %>%
       dplyr::mutate(
-        NOEC_raw = dose_new_particles_L / (af.noec * af.time),
+        NOEC_raw = .data[[dose_column]] / (af.noec * af.time),
         NOEC_log10 = log10(NOEC_raw)
       )
 
@@ -2717,7 +3764,7 @@ prepare_plot_data <- function(
   ### perform data summarization
   all_NOEC <- original_data %>%
     dplyr::mutate(
-      NOEC_log10 = log10(dose_new_particles_L / (af.noec * af.time))
+      NOEC_log10 = log10(.data[[dose_column]] / (af.noec * af.time))
     ) %>%
     dplyr::group_by(
       Species,
@@ -2780,6 +3827,15 @@ prepare_plot_data <- function(
 }
 
 prep_data <- function(data) {
+  if (is.null(data)) {
+    stop("prep_data: input data is NULL.", call. = FALSE)
+  }
+  if (!is.data.frame(data)) {
+    data <- as.data.frame(data)
+  }
+  if (nrow(data) == 0) {
+    stop("prep_data: input data has zero rows.", call. = FALSE)
+  }
   # Base part of the names used for returned list elements
   names <- c(
     "DP",
@@ -2793,62 +3849,117 @@ prep_data <- function(data) {
     "group"
   )
 
+  has_sediment <- "environment" %in% names(data) &&
+    any(grepl("sediment", data$environment, ignore.case = TRUE), na.rm = TRUE)
+  dose_column <- NULL
+  if (has_sediment && "dose_new_particles_kg" %in% colnames(data)) {
+    dose_column <- "dose_new_particles_kg"
+  } else if ("dose_new_particles_L" %in% colnames(data)) {
+    dose_column <- "dose_new_particles_L"
+  } else if ("dose_new_particles_kg" %in% colnames(data)) {
+    dose_column <- "dose_new_particles_kg"
+  }
+  if (is.null(dose_column)) {
+    stop(
+      "Missing required dose column. Provide `dose_new_particles_L` or ",
+      "`dose_new_particles_kg`.",
+      call. = FALSE
+    )
+  }
+
+  dose_sd_column <- NULL
+  if (has_sediment && "dose_new_particles_kg_sd" %in% colnames(data)) {
+    dose_sd_column <- "dose_new_particles_kg_sd"
+  } else if ("dose_new_particles_L_sd" %in% colnames(data)) {
+    dose_sd_column <- "dose_new_particles_L_sd"
+  } else if ("dose_new_particles_kg_sd" %in% colnames(data)) {
+    dose_sd_column <- "dose_new_particles_kg_sd"
+  }
+
+  safe_acast_matrix <- function(df, value_var) {
+    mat <- reshape2::acast(
+      df,
+      id ~ Species,
+      value.var = value_var,
+      drop = FALSE
+    )
+    if (is.null(dim(mat)) || length(dim(mat)) < 2) {
+      mat <- as.matrix(mat)
+    }
+    if (length(dim(mat)) < 2) {
+      mat <- matrix(mat, ncol = 1)
+    }
+    if (!is.numeric(mat) && !is.integer(mat) && !is.logical(mat)) {
+      return(mat)
+    }
+    Matrix::Matrix(mat, sparse = TRUE)
+  }
+
   # Data processing steps
   matrices <- list(
-    DP = data %>%
-      dplyr::mutate(id = row_number()) %>%
-      dplyr::mutate(particles_L = dose_new_particles_L) %>% # ERM-specific - converted appropriately upstream
-      dplyr::select(id, Species, particles_L) %>%
-      reshape2::acast(id ~ Species, value.var = "particles_L") %>%
-      Matrix::Matrix(sparse = TRUE),
-
-    # Conditionally create DP.SD only if dose_new_particles_L_sd exists
-    DP.SD = if ("dose_new_particles_L_sd" %in% colnames(data)) {
+    DP = safe_acast_matrix(
       data %>%
         dplyr::mutate(id = row_number()) %>%
-        dplyr::mutate(particles_L_sd = dose_new_particles_L_sd) %>%
-        dplyr::select(id, Species, particles_L_sd) %>% # ERM-specific - converted appropriately upstream
-        reshape2::acast(id ~ Species, value.var = "particles_L_sd") %>%
-        Matrix::Matrix(sparse = TRUE)
+        dplyr::mutate(particles_L = .data[[dose_column]]) %>% # ERM-specific - converted appropriately upstream
+        dplyr::select(id, Species, particles_L),
+      "particles_L"
+    ),
+
+    # Conditionally create DP.SD only if dose_new_particles_L_sd exists
+    DP.SD = if (!is.null(dose_sd_column)) {
+      safe_acast_matrix(
+        data %>%
+          dplyr::mutate(id = row_number()) %>%
+          dplyr::mutate(particles_L_sd = .data[[dose_sd_column]]) %>%
+          dplyr::select(id, Species, particles_L_sd), # ERM-specific - converted appropriately upstream
+        "particles_L_sd"
+      )
     } else {
       NULL
     },
 
-    UFt = data %>%
-      dplyr::mutate(id = row_number()) %>%
-      dplyr::select(id, Species, af.time) %>%
-      reshape2::acast(id ~ Species, value.var = "af.time") %>%
-      Matrix::Matrix(sparse = T),
-    UFdd = data %>%
-      dplyr::mutate(id = row_number()) %>%
-      dplyr::select(id, Species, af.noec) %>%
-      reshape2::acast(id ~ Species, value.var = "af.noec") %>%
-      Matrix::Matrix(sparse = T),
-    doseDescriptor <- data %>%
-      dplyr::mutate(id = row_number()) %>%
-      dplyr::select(id, Species, effect.metric) %>%
-      reshape2::acast(id ~ Species, value.var = "effect.metric") %>%
-      Matrix::Matrix(sparse = T),
-    polymer_matrix <- data %>%
-      dplyr::mutate(id = row_number()) %>%
-      dplyr::select(id, Species, poly_f) %>%
-      reshape2::acast(id ~ Species, value.var = "poly_f") %>%
-      Matrix::Matrix(sparse = T),
-    shape_matrix <- data %>%
-      dplyr::mutate(id = row_number()) %>%
-      select(id, Species, shape_f) %>%
-      reshape2::acast(id ~ Species, value.var = "shape_f") %>%
-      Matrix::Matrix(sparse = T),
-    env_matrix <- data %>%
-      dplyr::mutate(id = row_number()) %>%
-      select(id, Species, environment) %>%
-      reshape2::acast(id ~ Species, value.var = "environment") %>%
-      Matrix::Matrix(sparse = T),
-    group_matrix <- data %>%
-      dplyr::mutate(id = row_number()) %>%
-      select(id, Species, Group) %>%
-      reshape2::acast(id ~ Species, value.var = "Group") %>%
-      Matrix::Matrix(sparse = T)
+    UFt = safe_acast_matrix(
+      data %>%
+        dplyr::mutate(id = row_number()) %>%
+        dplyr::select(id, Species, af.time),
+      "af.time"
+    ),
+    UFdd = safe_acast_matrix(
+      data %>%
+        dplyr::mutate(id = row_number()) %>%
+        dplyr::select(id, Species, af.noec),
+      "af.noec"
+    ),
+    doseDescriptor = safe_acast_matrix(
+      data %>%
+        dplyr::mutate(id = row_number()) %>%
+        dplyr::select(id, Species, effect.metric),
+      "effect.metric"
+    ),
+    polymer_matrix = safe_acast_matrix(
+      data %>%
+        dplyr::mutate(id = row_number()) %>%
+        dplyr::select(id, Species, poly_f),
+      "poly_f"
+    ),
+    shape_matrix = safe_acast_matrix(
+      data %>%
+        dplyr::mutate(id = row_number()) %>%
+        dplyr::select(id, Species, shape_f),
+      "shape_f"
+    ),
+    env_matrix = safe_acast_matrix(
+      data %>%
+        dplyr::mutate(id = row_number()) %>%
+        dplyr::select(id, Species, environment),
+      "environment"
+    ),
+    group_matrix = safe_acast_matrix(
+      data %>%
+        dplyr::mutate(id = row_number()) %>%
+        dplyr::select(id, Species, Group),
+      "Group"
+    )
   )
 
   # Rename the list elements based on constructed names
@@ -2875,17 +3986,18 @@ run_pSSD_analysis <- function(
   pSSD_list <- vector("list", num_iterations)
 
   # Define checkpoints for reporting
-  checkpoints <- floor(c(0.25, 0.5, 0.75, 1.0) * num_iterations)
+  checkpoints <- unique(floor(c(0.25, 0.5, 0.75, 1.0) * num_iterations))
+  checkpoints <- checkpoints[checkpoints > 0]
 
   if (!silent) {
     cat(crayon::blue(sprintf(
-      "🚀 Starting PSSD analysis with %d sims each...\n",
+      "Starting PSSD analysis with %d sims each...\n",
       num_iterations
     )))
   }
 
   # Loop through each iteration
-  for (i in 1:num_iterations) {
+  for (i in seq_len(num_iterations)) {
     # Run the modified PSSD simulation
     pSSD_list[[i]] <- do.pSSD_mod(
       DP = data_matrices[["DP"]],
@@ -2895,206 +4007,129 @@ run_pSSD_analysis <- function(
       SIM = sim,
       CV.DP = cv_dp,
       CV.UF = cv_uf,
-      rmore_method = rmore_method #lognormal or step
+      rmore_method = rmore_method # lognormal or step
     )
 
-    if (!silent) {
-      # Progress reporting at checkpoints
-      if (i %in% checkpoints) {
-        pct_done <- round(100 * i / num_iterations)
-        cat(crayon::yellow(sprintf(
-          "⏳ %.0f%% complete (%d of %d simulations done)\n",
-          pct_done,
-          i,
-          num_iterations
-        )))
-      }
+    if (!silent && i %in% checkpoints) {
+      pct_done <- round(100 * i / num_iterations)
+      cat(crayon::yellow(sprintf(
+        "Completed %d%% of simulations (%d/%d)\n",
+        pct_done,
+        i,
+        num_iterations
+      )))
     }
-    # report out progress when running in parallel with wrapper
+
     if (!is.null(progress)) {
       progress()
     }
   }
 
-  # Combine all the results into a single object
   pSSD <- do.call(cbind, pSSD_list)
-
-  # Calculate corrected endpoints
   corr_endpoints <- data_matrices[["DP"]] /
     (data_matrices[["UFt"]] * data_matrices[["UFdd"]])
 
-  cat(crayon::green(sprintf(
-    "✅ PSSD analysis for %s complete and saved.\n",
-    data_name
-  )))
+  if (!silent) {
+    cat(crayon::blue(sprintf(
+      "PSSD analysis complete for %s\n",
+      data_name
+    )))
+  }
 
   return(list(pSSD = pSSD, corr_endpoints = corr_endpoints))
 }
 
-# Define dataset mapping for PSSD++ (commented out as new version below)
-# get_results_df <- function(tier, environment, erm) {
-#   if (environment == "Marine" && erm == "Food Dilution") {
-#     if (tier < 3) {
-#       return(results_df_food_marine)
-#     } else {
-#       return(results_df_food_t3_t4_marine)
-#     }
-#   } else if (environment == "Marine" && erm == "Tissue Translocation") {
-#     if (tier < 3) {
-#       return(results_df_tissue_marine)
-#     } else {
-#       return(results_df_tissue_t3_t4_marine)
-#     }
-#   } else if (environment == "Freshwater" && erm == "Food Dilution") {
-#     if (tier < 3) {
-#       return(results_df_food_freshwater)
-#     } else {
-#       return(results_df_food_t3_t4_freshwater)
-#     }
-#   } else if (environment == "Freshwater" && erm == "Tissue Translocation") {
-#     if (tier < 3) {
-#       return(results_df_tissue_freshwater)
-#     } else {
-#       return(results_df_tissue_t3_t4_freshwater)
-#     }
-#   } else {
-#     stop("Invalid combination of tier, environment, and ERM")
-#   }
-# }
-
-# ------------------------------------------------------------------
-# Resolve tier → dataset key
-# ------------------------------------------------------------------
-resolve_tier_key <- function(tier) {
-  if (tier %in% c(1, 2)) {
-    return("base")
+get_dose_column <- function(df, environment = NULL) {
+  if (is.null(df) || nrow(df) == 0) {
+    return(NULL)
   }
-  if (tier %in% c(3, 4)) {
-    return("t3_t4")
-  }
-  stop("Unsupported tier: ", tier)
-}
-
-# ------------------------------------------------------------------
-# Main data accessor used by PSSD++
-# ------------------------------------------------------------------
-
-get_results_df <- function(tier, environment, erm, erm_registry) {
-  if (!erm %in% names(erm_registry)) {
-    stop("Unknown ERM: ", erm)
-  }
-
-  tier_key <- resolve_tier_key(tier)
-
-  df <- erm_registry[[erm]][[tier_key]]
-
-  if (is.null(df)) {
-    stop("No data found for ERM = ", erm, ", tier = ", tier)
-  }
-
-  df_env <- df %>%
-    dplyr::filter(environment == !!environment)
-
-  if (nrow(df_env) == 0) {
-    stop(
-      "Empty dataset after filtering: ",
-      "ERM=",
-      erm,
-      ", tier=",
-      tier,
-      ", environment=",
-      environment
+  is_sediment <- FALSE
+  if (!is.null(environment)) {
+    is_sediment <- grepl("sediment", environment, ignore.case = TRUE)
+  } else if ("environment" %in% names(df)) {
+    is_sediment <- any(
+      grepl("sediment", df$environment, ignore.case = TRUE),
+      na.rm = TRUE
     )
   }
 
-  return(df_env)
-}
-# ------------------------------------------------------------------
-# Sanity check all combinations before running PSSD++
-# ------------------------------------------------------------------
-
-validate_pssd_inputs <- function(tiers, environments, erms, erm_registry) {
-  for (tier in tiers) {
-    for (environment in environments) {
-      for (erm in erms) {
-        tryCatch(
-          {
-            df <- get_results_df(tier, environment, erm, erm_registry)
-            message(
-              sprintf(
-                "✔ OK: Tier %d | %s | %s (n = %d)",
-                tier,
-                environment,
-                erm,
-                nrow(df)
-              )
-            )
-          },
-          error = function(e) {
-            stop(
-              sprintf(
-                "❌ Validation failed: Tier %d | %s | %s\n%s",
-                tier,
-                environment,
-                erm,
-                e$message
-              )
-            )
-          }
-        )
-      }
+  if (is_sediment) {
+    if ("dose_new_particles_kg" %in% names(df)) {
+      return("dose_new_particles_kg")
     }
+    return(NULL)
   }
+  if ("dose_new_particles_L" %in% names(df)) {
+    return("dose_new_particles_L")
+  }
+  if ("dose_new_particles_kg" %in% names(df)) {
+    return("dose_new_particles_kg")
+  }
+
+  return(NULL)
 }
 
-# Mode calculation using density
-Mode_Y <- function(x) {
-  dens <- density(x)
-  ind <- which(dens$y == max(dens$y))
-  return(dens$x[ind])
+extract_species_counts <- function(df, environment = NULL) {
+  if (is.null(df) || nrow(df) == 0) {
+    return(list(
+      n_rows = 0,
+      n_species = 0,
+      n_species_with_data = 0
+    ))
+  }
+
+  n_rows <- nrow(df)
+  n_species <- if ("Species" %in% names(df)) {
+    length(unique(df$Species))
+  } else {
+    0
+  }
+
+  dose_col <- get_dose_column(df, environment)
+  if (is.null(dose_col) || !"Species" %in% names(df)) {
+    n_species_with_data <- 0
+  } else {
+    n_species_with_data <- df %>%
+      dplyr::filter(
+        is.finite(.data[[dose_col]]),
+        .data[[dose_col]] > 0
+      ) %>%
+      dplyr::distinct(Species) %>%
+      nrow()
+  }
+
+  list(
+    n_rows = n_rows,
+    n_species = n_species,
+    n_species_with_data = n_species_with_data
+  )
 }
 
-#PNEC Data summary function
-PNEC_data_summary <- function(
-  pssd_results,
-  hcx,
-  data_name,
-  quantile_type = 7 #Type 1 is no interpolation (default for pSSD), # type  7 inovlves interpolation (note that type 7 results in higher values for mean/median, but the mode is around the same as the median would be with type 1. It's necessary to use type 7 to get distinct values between HC5 and HC10 for freshwater bc there's so few species)
+make_status_row <- function(
+  combo_id,
+  tier,
+  environment,
+  erm,
+  status,
+  reason = NA_character_,
+  n_rows = NA_integer_,
+  n_species = NA_integer_,
+  n_species_with_data = NA_integer_
 ) {
-  PNEC <- apply(pssd_results$pSSD, 2, function(x) {
-    quantile(
-      x,
-      probs = hcx, #HC value
-      type = quantile_type
-    )
-  })
-
-  #PNEC <- apply(pssd_results$pSSD, 2, function(x) quantile(x, probs = hcx, type = 1))
-  PNEC_df <- data.frame(PNEC = PNEC)
-
-  # Calculate statistics for PNEC1
-  Stat_PNEC <- data.frame(
-    Min = min(PNEC),
-    Q5 = quantile(PNEC, 0.05, type = quantile_type),
-    Q25 = quantile(PNEC, 0.25, type = quantile_type),
-    Mean = mean(PNEC),
-    #Median = median(PNEC),
-    Median = quantile(PNEC, 0.5, type = quantile_type),
-    Mode = Mode_Y(PNEC),
-    Q75 = quantile(PNEC, 0.75, type = quantile_type),
-    Q95 = quantile(PNEC, 0.95, type = quantile_type),
-    Max = max(PNEC)
-  ) %>%
-    dplyr::mutate_if(is.numeric, ~ signif(., 3))
-
-  # Transposing for similar structure to your matrix
-  Stat_PNEC_t <- t(Stat_PNEC)
-  colnames(Stat_PNEC_t) <- paste0(data_name, " - HC", hcx * 100)
-
-  return(list("stats" = as.data.frame(Stat_PNEC_t), "df" = PNEC_df))
+  data.frame(
+    combo_id = combo_id,
+    tier = tier,
+    environment = environment,
+    erm = erm,
+    status = status,
+    reason = reason,
+    n_rows = n_rows,
+    n_species = n_species,
+    n_species_with_data = n_species_with_data,
+    stringsAsFactors = FALSE
+  )
 }
 
-# function to generate PSSDs and plots with caching and optional debugging
 #' Run the PSSD++ workflow across tiers, environments, and ERMs
 #'
 #' Generates probabilistic SSDs, summary statistics, and figures with caching
@@ -3122,10 +4157,10 @@ PNEC_data_summary <- function(
 #' @return A named list of PSSD results (one per combination).
 #' @export
 make_all_pSSDs <- function(
-  MC_sim_df = NULL, # MC-sim dataframe
-  tiers = c(3), #mehinto et al tiers
-  environments = c("Freshwater", "Marine"), #environments to loop through
-  erms = c("Food Dilution", "Tissue Translocation"), #ERMs to loop through
+  MC_sim_df = NULL,
+  tiers = c(3),
+  environments = c("Freshwater", "Marine"),
+  erms = c("Food Dilution", "Tissue Translocation"),
   erm_registry = NULL,
   sim = 10,
   cv_uf = 0.5,
@@ -3139,192 +4174,330 @@ make_all_pSSDs <- function(
   overwrite_cache = FALSE,
   progress = NULL
 ) {
-  # ---- Argument validation ----
-  if (is.null(MC_sim_df)) {
+  if (is.null(MC_sim_df) || nrow(MC_sim_df) == 0) {
     stop("MC_sim_df must be provided explicitly.", call. = FALSE)
   }
-  if (is.null(erm_registry)) {
+  if (is.null(erm_registry) || length(erm_registry) == 0) {
     stop("erm_registry must be provided explicitly.", call. = FALSE)
   }
 
-  progress_enabled <- progress
-  if (is.null(progress_enabled)) {
-    progress_enabled <- !isTRUE(getOption("knitr.in.progress")) &&
-      !identical(Sys.getenv("RSTUDIO"), "1")
+  if (!dir.exists(base_output_path)) {
+    dir.create(base_output_path, recursive = TRUE)
   }
-  progress_enabled <- isTRUE(progress_enabled) &&
-    isTRUE(getOption("progressr.enable", TRUE))
-  if (!progress_enabled) {
-    old_progressr_opts <- options(progressr.enable = FALSE)
-    on.exit(options(old_progressr_opts), add = TRUE)
-  }
-  # Create output directories if they don't exist
-  output_path <- file.path(
-    base_output_path,
-    paste0(rmore_method, "_", sim, "sims")
-  )
-  if (!dir.exists(output_path)) {
-    dir.create(output_path, recursive = TRUE)
-  }
-  cache_dir <- file.path(base_cache_dir, paste0(rmore_method, "_", sim, "sims"))
-  # Create cache directory if it doesn't exist
-  if (!dir.exists(cache_dir)) {
-    dir.create(cache_dir, recursive = T)
-  }
-  # generate color palette for unique levels of species/groups
-  all_species <- MC_sim_df |>
-    dplyr::filter(
-      environment %in% environments,
-      !Group %in% c("Insect", "Annelida") # not used in this analysis
-    ) |>
-    dplyr::distinct(Species, Group, environment) |>
-    base::droplevels() |>
-    dplyr::arrange(environment, Group, Species)
-
-  # Generate a consistent color palette
-  global_color_palette <- generate_color_palette(all_species)
-
-  # Initialize tracking
-  total_iterations <- length(tiers) * length(environments) * length(erms)
-  iteration_times <- numeric(total_iterations)
-  iteration_count <- 0
-  tictoc::tic("PSSD++ For Loop Begins...")
-  # Progress bar handlers with progressr package
-  if (progress_enabled) {
-    tryCatch(
-      {
-        progressr::handlers(global = TRUE)
-        progressr::handlers("txtprogressbar") # console-safe
-      },
-      error = function(e) {
-        progress_enabled <<- FALSE
-      }
-    )
+  if (!dir.exists(base_cache_dir)) {
+    dir.create(base_cache_dir, recursive = TRUE)
   }
 
-  # Start loop
-  results <- list()
-  # list combinations to loop through
+  tictoc::tic("PSSD++ combinations")
+
   combo_tbl <- expand.grid(
     tier = tiers,
     environment = environments,
     erm = erms,
     stringsAsFactors = FALSE
   )
-  # calculate length of progress bar
-  n_combos <- nrow(combo_tbl)
-  total_steps <- n_combos * sim
 
-  # Silence repeated package startup messages inside futures
-  old_future_opts <- options(future.startup.messages = FALSE)
-  on.exit(options(old_future_opts), add = TRUE)
-  # set up parllel plan
+  if (nrow(combo_tbl) == 0) {
+    return(list())
+  }
+
   if (parallel) {
-    silent = TRUE #removes redundant progress update
-    cat(sprintf(
-      "⚙️ Running %d PSSD combinations in parallel (%d workers)\n",
+    cat(crayon::blue(sprintf(
+      "Running %d PSSD combinations in parallel (%d workers)\n",
       nrow(combo_tbl),
       workers
-    ))
-    # ensure required packages are available on workers (including magrittr for legacy pipes)
-    old_future_pkgs <- getOption("future.packages")
-    options(
-      future.packages = unique(c(
-        "PSSDplusplus",
-        "magrittr",
-        "dplyr",
-        "tidyr",
-        "ggplot2",
-        "reshape2",
-        "Matrix",
-        "stats",
-        "utils",
-        "purrr",
-        "mc2d",
-        "trapezoid"
-      ))
-    )
-    on.exit(options(future.packages = old_future_pkgs), add = TRUE)
+    )))
+  } else {
+    cat(crayon::blue(sprintf(
+      "Running %d PSSD combinations sequentially\n",
+      nrow(combo_tbl)
+    )))
+  }
+
+  min_species_required <- 4L
+
+  all_species <- MC_sim_df %>%
+    dplyr::filter(environment %in% environments) %>%
+    dplyr::distinct(Species, Group, environment) %>%
+    dplyr::arrange(environment, Group, Species)
+
+  global_color_palette <- generate_color_palette(all_species)
+
+  use_progress <- isTRUE(progress)
+  if (use_progress) {
+    progressr::handlers(global = TRUE)
+    progressr::handlers("txtprogressbar")
+  }
+
+  old_plan <- future::plan()
+  on.exit(future::plan(old_plan), add = TRUE)
+  if (parallel) {
     future::plan(future::multisession, workers = workers)
   } else {
-    silent = FALSE # sequential progress update
-    cat("⚙️ Running PSSD combinations sequentially\n")
     future::plan(future::sequential)
   }
 
-  on.exit(future::plan(future::sequential), add = TRUE)
-  progressr::with_progress({
-    p <- progressr::progressor(steps = total_steps)
+  run_combo <- function(idx, p = NULL) {
+    if (!is.null(p)) {
+      on.exit(p(), add = TRUE)
+    }
 
-    results_list <- future.apply::future_lapply(
-      seq_len(nrow(combo_tbl)),
-      function(i) {
-        tier <- combo_tbl$tier[i]
-        environment <- combo_tbl$environment[i]
-        erm <- combo_tbl$erm[i]
+    tier <- combo_tbl$tier[idx]
+    environment <- combo_tbl$environment[idx]
+    erm <- combo_tbl$erm[idx]
 
-        combo_id <- paste0("Tier", tier, "_", environment, "_", erm)
-        cache_file <- file.path(cache_dir, paste0(combo_id, ".rds"))
+    combo_id <- paste0("Tier", tier, "_", environment, "_", erm)
 
-        # ---- Cache logic ----
-        if (file.exists(cache_file) && !overwrite_cache) {
-          cat(crayon::blue(sprintf("🔁 Using cached: %s\n", combo_id)))
-          return(readRDS(cache_file))
+    cache_dir <- file.path(base_cache_dir, paste0("Tier", tier))
+    if (!dir.exists(cache_dir)) {
+      dir.create(cache_dir, recursive = TRUE)
+    }
+    cache_file <- file.path(cache_dir, paste0(combo_id, ".rds"))
+
+    output_path <- file.path(base_output_path, paste0("Tier", tier))
+    if (!dir.exists(output_path)) {
+      dir.create(output_path, recursive = TRUE)
+    }
+
+    if (file.exists(cache_file) && !overwrite_cache) {
+      cat(crayon::yellow(sprintf("Using cached: %s\n", combo_id)))
+      res <- readRDS(cache_file)
+      results_df <- NULL
+      if (erm %in% names(erm_registry)) {
+        tier_key <- if (tier %in% c(1, 2)) "base" else "t3_t4"
+        results_df <- erm_registry[[erm]][[tier_key]]
+        if (!is.null(results_df) && "environment" %in% names(results_df)) {
+          results_df <- results_df %>%
+            dplyr::filter(environment == !!environment)
         }
+      }
+      counts <- extract_species_counts(results_df, environment)
+      status_row <- make_status_row(
+        combo_id = combo_id,
+        tier = tier,
+        environment = environment,
+        erm = erm,
+        status = "cached",
+        n_rows = counts$n_rows,
+        n_species = counts$n_species,
+        n_species_with_data = counts$n_species_with_data
+      )
+      return(list(result = res, status = status_row))
+    }
 
-        if (file.exists(cache_file) && overwrite_cache) {
-          cat(crayon::yellow(sprintf("♻️ Overwriting cached: %s\n", combo_id)))
-        }
+    if (file.exists(cache_file) && overwrite_cache) {
+      cat(crayon::yellow(sprintf("Overwriting cached: %s\n", combo_id)))
+    }
 
-        # ---- Run safely ----
-        result <- tryCatch(
-          {
-            results_df <- get_results_df(tier, environment, erm, erm_registry)
+    if (!erm %in% names(erm_registry)) {
+      msg <- paste0("Unknown ERM: ", erm)
+      cat(crayon::red(sprintf("ERROR in %s: %s\n", combo_id, msg)))
+      status_row <- make_status_row(
+        combo_id = combo_id,
+        tier = tier,
+        environment = environment,
+        erm = erm,
+        status = "error",
+        reason = msg
+      )
+      return(list(result = NULL, status = status_row))
+    }
 
-            res <- generate_plots_and_summary(
-              tier = tier,
-              environment = environment,
-              erm = erm,
-              color_palette = global_color_palette,
-              results_df = results_df,
-              sim = sim,
-              num_iterations = sim,
-              quantile_type = quantile_type,
-              cv_dp = NULL,
-              cv_uf = cv_uf,
-              rmore_method = rmore_method,
-              species_data_source = MC_sim_df,
-              output_path = output_path,
-              presentation_path = NULL,
-              debug = debug_option,
-              silent = silent,
-              progress = p # pass progress callback
-            )
+    tier_key <- if (tier %in% c(1, 2)) "base" else "t3_t4"
+    results_df <- erm_registry[[erm]][[tier_key]]
+    if (is.null(results_df)) {
+      msg <- paste0("No data found for ERM=", erm, ", tier=", tier)
+      cat(crayon::yellow(sprintf("Skipping %s: %s\n", combo_id, msg)))
+      status_row <- make_status_row(
+        combo_id = combo_id,
+        tier = tier,
+        environment = environment,
+        erm = erm,
+        status = "skipped",
+        reason = msg
+      )
+      return(list(result = NULL, status = status_row))
+    }
 
-            # Atomic cache write
-            tmp <- paste0(cache_file, ".tmp")
-            saveRDS(res, tmp)
-            file.rename(tmp, cache_file)
+    if ("environment" %in% names(results_df)) {
+      results_df <- results_df %>%
+        dplyr::filter(environment == !!environment)
+    }
 
-            cat(crayon::yellow(sprintf("✅ Completed: %s\n", combo_id)))
-            res
-          },
-          error = function(e) {
-            cat(crayon::red(sprintf(
-              "❌ ERROR in %s: %s\n",
-              combo_id,
-              e$message
-            )))
-            NULL
-          }
+    counts <- extract_species_counts(results_df, environment)
+    if (counts$n_rows == 0) {
+      cat(crayon::yellow(sprintf(
+        "Skipping %s: no data after filtering\n",
+        combo_id
+      )))
+      status_row <- make_status_row(
+        combo_id = combo_id,
+        tier = tier,
+        environment = environment,
+        erm = erm,
+        status = "skipped",
+        reason = "no data after filtering",
+        n_rows = counts$n_rows,
+        n_species = counts$n_species,
+        n_species_with_data = counts$n_species_with_data
+      )
+      return(list(result = NULL, status = status_row))
+    }
+
+    dose_col <- get_dose_column(results_df, environment)
+    if (is.null(dose_col)) {
+      msg <- "missing required dose column"
+      cat(crayon::yellow(sprintf("Skipping %s: %s\n", combo_id, msg)))
+      status_row <- make_status_row(
+        combo_id = combo_id,
+        tier = tier,
+        environment = environment,
+        erm = erm,
+        status = "skipped",
+        reason = msg,
+        n_rows = counts$n_rows,
+        n_species = counts$n_species,
+        n_species_with_data = counts$n_species_with_data
+      )
+      return(list(result = NULL, status = status_row))
+    }
+
+    if (counts$n_species_with_data < min_species_required) {
+      cat(crayon::yellow(sprintf(
+        "Skipping %s: fewer than %d species with data\n",
+        combo_id,
+        min_species_required
+      )))
+      status_row <- make_status_row(
+        combo_id = combo_id,
+        tier = tier,
+        environment = environment,
+        erm = erm,
+        status = "skipped",
+        reason = paste0(
+          "fewer than ",
+          min_species_required,
+          " species with data"
+        ),
+        n_rows = counts$n_rows,
+        n_species = counts$n_species,
+        n_species_with_data = counts$n_species_with_data
+      )
+      return(list(result = NULL, status = status_row))
+    }
+
+    result <- tryCatch(
+      {
+        res <- generate_plots_and_summary(
+          tier = tier,
+          environment = environment,
+          erm = erm,
+          color_palette = global_color_palette,
+          results_df = results_df,
+          sim = sim,
+          num_iterations = sim,
+          quantile_type = quantile_type,
+          cv_dp = NULL,
+          cv_uf = cv_uf,
+          rmore_method = rmore_method,
+          species_data_source = MC_sim_df,
+          output_path = output_path,
+          presentation_path = NULL,
+          debug = debug_option,
+          silent = parallel,
+          progress = NULL
         )
 
-        result
+        if (is.null(res)) {
+          cat(crayon::yellow(sprintf(
+            "Skipping %s: no species with data after filtering\n",
+            combo_id
+          )))
+          status_row <- make_status_row(
+            combo_id = combo_id,
+            tier = tier,
+            environment = environment,
+            erm = erm,
+            status = "skipped",
+            reason = "no species with data after filtering",
+            n_rows = counts$n_rows,
+            n_species = counts$n_species,
+            n_species_with_data = counts$n_species_with_data
+          )
+          return(list(result = NULL, status = status_row))
+        }
+
+        # Atomic cache write
+        tmp <- paste0(cache_file, ".tmp")
+        saveRDS(res, tmp)
+        file.rename(tmp, cache_file)
+
+        cat(crayon::yellow(sprintf("Completed: %s\n", combo_id)))
+        status_row <- make_status_row(
+          combo_id = combo_id,
+          tier = tier,
+          environment = environment,
+          erm = erm,
+          status = "completed",
+          n_rows = counts$n_rows,
+          n_species = counts$n_species,
+          n_species_with_data = counts$n_species_with_data
+        )
+        list(result = res, status = status_row)
       },
-      future.seed = TRUE,
-      future.packages = c("PSSDplusplus", "mc2d", "trapezoid")
+      error = function(e) {
+        cat(crayon::red(sprintf(
+          "ERROR in %s: %s\n",
+          combo_id,
+          e$message
+        )))
+        status_row <- make_status_row(
+          combo_id = combo_id,
+          tier = tier,
+          environment = environment,
+          erm = erm,
+          status = "error",
+          reason = e$message
+        )
+        list(result = NULL, status = status_row)
+      }
     )
-  })
+
+    result
+  }
+
+  if (parallel) {
+    wrapped_results <- if (use_progress) {
+      progressr::with_progress({
+        p <- progressr::progressor(along = seq_len(nrow(combo_tbl)))
+        future.apply::future_lapply(
+          seq_len(nrow(combo_tbl)),
+          function(i) run_combo(i, p),
+          future.seed = TRUE,
+          future.packages = c("PSSDplusplus", "mc2d", "trapezoid")
+        )
+      })
+    } else {
+      future.apply::future_lapply(
+        seq_len(nrow(combo_tbl)),
+        function(i) run_combo(i, NULL),
+        future.seed = TRUE,
+        future.packages = c("PSSDplusplus", "mc2d", "trapezoid")
+      )
+    }
+  } else {
+    wrapped_results <- if (use_progress) {
+      progressr::with_progress({
+        p <- progressr::progressor(along = seq_len(nrow(combo_tbl)))
+        lapply(seq_len(nrow(combo_tbl)), function(i) run_combo(i, p))
+      })
+    } else {
+      lapply(seq_len(nrow(combo_tbl)), function(i) run_combo(i, NULL))
+    }
+  }
+
+  results_list <- lapply(wrapped_results, function(x) x$result)
+  status_list <- lapply(wrapped_results, function(x) x$status)
 
   names(results_list) <- paste0(
     "Tier",
@@ -3335,18 +4508,43 @@ make_all_pSSDs <- function(
     combo_tbl$erm
   )
 
-  return(results_list)
+  summary_tbl <- do.call(rbind, status_list)
+  attr(results_list, "summary") <- summary_tbl
+  attr(results_list, "min_species_required") <- min_species_required
 
-  # Wrap up
+  if (!is.null(summary_tbl) && nrow(summary_tbl) > 0) {
+    status_counts <- table(summary_tbl$status)
+    cat(crayon::blue(sprintf(
+      "\nPSSD++ summary (min species required = %d)\n",
+      min_species_required
+    )))
+    cat(crayon::blue(sprintf(
+      "Status counts: %s\n",
+      paste(
+        paste0(names(status_counts), "=", as.integer(status_counts)),
+        collapse = ", "
+      )
+    )))
+    issues <- summary_tbl[summary_tbl$status %in% c("skipped", "error"), ]
+    if (nrow(issues) > 0) {
+      cat(crayon::yellow("Skipped/Error combinations:\n"))
+      print(issues)
+    }
+  }
+
   pSSD_time <- tictoc::toc()
   total_runtime_sec <- pSSD_time$toc - pSSD_time$tic
   cat(crayon::blue(sprintf(
-    "\n🎉 PSSD++ complete for all combinations! Total time: %.2f hours\n",
+    "\nPSSD++ complete for all combinations. Total time: %.2f hours\n",
     total_runtime_sec / 3600
   )))
+
+  return(results_list)
 }
 
 #### PNEC Summarization ####
+
+
 #' Summarize PSSD-derived PNECs
 #'
 #' Extracts HC5/HC10 summaries from the PSSD result list produced by
@@ -3358,30 +4556,71 @@ make_all_pSSDs <- function(
 #'   and HCX labels.
 #' @export
 summarize_PNECs <- function(pSSDs = NULL) {
+  if (is.null(pSSDs) || length(pSSDs) == 0) {
+    return(data.frame())
+  }
+
+  stats_to_long <- function(stats, hcx_label, tier_label) {
+    if (is.null(stats)) {
+      return(NULL)
+    }
+
+    if (is.vector(stats) && !is.list(stats)) {
+      vals <- as.numeric(stats)
+      stat_names <- names(stats)
+      if (is.null(stat_names) || length(stat_names) == 0) {
+        stat_names <- paste0("V", seq_along(vals))
+      }
+      return(data.frame(
+        Statistic = stat_names,
+        Value = vals,
+        HCX = hcx_label,
+        Tier = tier_label,
+        stringsAsFactors = FALSE
+      ))
+    }
+
+    stats_df <- as.data.frame(stats)
+    if (nrow(stats_df) == 0) {
+      return(NULL)
+    }
+    stat_names <- rownames(stats_df)
+    if (is.null(stat_names) || length(stat_names) == 0) {
+      if ("Statistic" %in% names(stats_df)) {
+        stat_names <- as.character(stats_df$Statistic)
+      } else {
+        stat_names <- paste0("V", seq_len(nrow(stats_df)))
+      }
+    }
+    vals <- stats_df[[1]]
+    if (length(vals) != length(stat_names)) {
+      return(NULL)
+    }
+    data.frame(
+      Statistic = stat_names,
+      Value = as.numeric(vals),
+      HCX = hcx_label,
+      Tier = tier_label,
+      stringsAsFactors = FALSE
+    )
+  }
+
   # Initialize an empty list to store the standardized summaries
   PNEC_summaries <- list()
 
   # Loop through the results list to extract and standardize PNEC summaries
   for (combination in names(pSSDs)) {
-    # Extract the PNEC summary statistics for HC5 (hcx = 0.05)
-    PNEC_stats_05 <- pSSDs[[combination]]$summary_05$stats
-    PNEC_stats_05_long <- data.frame(
-      Statistic = rownames(PNEC_stats_05),
-      Value = as.numeric(PNEC_stats_05[, 1]), # Extract the first column (values)
-      HCX = "HC5", # Add a column to indicate HC5
-      Tier = "Tier3" # Assign Tier3 for HC5
-    )
+    entry <- pSSDs[[combination]]
+    if (is.null(entry) || is.null(entry$summary_05) || is.null(entry$summary_10)) {
+      next
+    }
 
-    # Extract the PNEC summary statistics for HC10 (hcx = 0.10)
-    PNEC_stats_10 <- pSSDs[[combination]]$summary_10$stats
-    PNEC_stats_10_long <- data.frame(
-      Statistic = rownames(PNEC_stats_10),
-      Value = as.numeric(PNEC_stats_10[, 1]), # Extract the first column (values)
-      HCX = "HC10", # Add a column to indicate HC10
-      Tier = "Tier4" # Assign Tier4 for HC10
-    )
+    PNEC_stats_05_long <- stats_to_long(entry$summary_05$stats, "HC5", "Tier3")
+    PNEC_stats_10_long <- stats_to_long(entry$summary_10$stats, "HC10", "Tier4")
+    if (is.null(PNEC_stats_05_long) || is.null(PNEC_stats_10_long)) {
+      next
+    }
 
-    # Combine HC5 and HC10 into a single data frame
     PNEC_stats_long <- rbind(PNEC_stats_05_long, PNEC_stats_10_long)
 
     # Add the combination name and split it into environment and ERM
@@ -3391,6 +4630,10 @@ summarize_PNECs <- function(pSSDs = NULL) {
 
     # Append to the list
     PNEC_summaries[[combination]] <- PNEC_stats_long
+  }
+
+  if (length(PNEC_summaries) == 0) {
+    return(data.frame())
   }
 
   # Combine all standardized summaries into a single data frame

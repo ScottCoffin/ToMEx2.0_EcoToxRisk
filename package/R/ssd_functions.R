@@ -135,18 +135,43 @@ process_environment_data <- function(data,
                                      x1D_set = 1,
                                      x2D_set = 5000,
                                      nboot = 10) {
-  if (!"particles.mL.ox.stress" %in% names(data)) {
-    data <- data %>%
-      dplyr::mutate(particles.mL.ox.stress = EC_env_sa.particles.mL_trans)
+  is_sediment <- any(grepl("sediment", env_filter, ignore.case = TRUE))
+  particles_ox_col <- if (is_sediment) {
+    "particles.kg.ox.stress"
+  } else {
+    "particles.mL.ox.stress"
   }
-  if (!"particles.mL.food.dilution" %in% names(data)) {
-    data <- data %>%
-      dplyr::mutate(particles.mL.food.dilution = EC_env_v.particles.mL_ingest)
+  particles_food_col <- if (is_sediment) {
+    "particles.kg.food.dilution"
+  } else {
+    "particles.mL.food.dilution"
+  }
+  unit_multiplier <- if (is_sediment) 1 else 1000
+
+  if (!particles_ox_col %in% names(data)) {
+    if (is_sediment && "EC_env_sa.particles.kg_trans" %in% names(data)) {
+      data <- data %>%
+        dplyr::mutate(particles.kg.ox.stress = EC_env_sa.particles.kg_trans)
+    } else if (!is_sediment && "EC_env_sa.particles.mL_trans" %in% names(data)) {
+      data <- data %>%
+        dplyr::mutate(particles.mL.ox.stress = EC_env_sa.particles.mL_trans)
+    }
+  }
+  if (!particles_food_col %in% names(data)) {
+    if (is_sediment && "EC_env_v.particles.kg_ingest" %in% names(data)) {
+      data <- data %>%
+        dplyr::mutate(particles.kg.food.dilution = EC_env_v.particles.kg_ingest)
+    } else if (!is_sediment && "EC_env_v.particles.mL_ingest" %in% names(data)) {
+      data <- data %>%
+        dplyr::mutate(particles.mL.food.dilution = EC_env_v.particles.mL_ingest)
+    }
   }
 
   filtered_data_small_default_t1_2 <- data %>%
     dplyr::ungroup() %>%
-    dplyr::mutate(dose_new = particles.mL.ox.stress / (af.time * af.noec)) %>%
+    dplyr::mutate(
+      dose_new = .data[[particles_ox_col]] / (af.time * af.noec)
+    ) %>%
     tidyr::drop_na(dose_new) %>%
     dplyr::filter(
       dose_new > 0,
@@ -164,10 +189,12 @@ process_environment_data <- function(data,
 
   filtered_data_large_default_t1_2 <- data %>%
     dplyr::filter(Group != "Algae") %>%
-    dplyr::mutate(dose_new = particles.mL.food.dilution / (af.time * af.noec)) %>%
+    dplyr::mutate(
+      dose_new = .data[[particles_food_col]] / (af.time * af.noec)
+    ) %>%
     tidyr::drop_na(dose_new) %>%
     dplyr::filter(dose_new > 0) %>%
-    dplyr::mutate(dose_new = dose_new * 1000) %>%
+    dplyr::mutate(dose_new = dose_new * unit_multiplier) %>%
     dplyr::filter(
       dplyr::between(size.length.um.used.for.conversions, x1D_set, x2D_set),
       ingestible != "not ingestible",

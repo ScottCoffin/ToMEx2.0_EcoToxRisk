@@ -40,6 +40,25 @@ do.pSSD_mod <- function(
   CV.UF,
   rmore_method = "step"
 ) {
+  # Coerce to 2-D matrices to avoid apply() errors on vectors/1-D objects
+  if (!is.null(DP) && (is.null(dim(DP)) || length(dim(DP)) < 2)) {
+    DP <- matrix(DP, ncol = 1)
+  }
+  if (!is.null(DP.SD) && (is.null(dim(DP.SD)) || length(dim(DP.SD)) < 2)) {
+    DP.SD <- matrix(DP.SD, ncol = 1)
+  }
+  if (!is.null(UFt) && (is.null(dim(UFt)) || length(dim(UFt)) < 2)) {
+    UFt <- matrix(UFt, ncol = 1)
+  }
+  if (!is.null(UFdd) && (is.null(dim(UFdd)) || length(dim(UFdd)) < 2)) {
+    UFdd <- matrix(UFdd, ncol = 1)
+  }
+
+  if (is.null(DP) || nrow(DP) == 0 || ncol(DP) == 0) {
+    warning("No species with data after filtering; returning empty PSSD.")
+    return(matrix(NA_real_, nrow = 0, ncol = SIM))
+  }
+
   # Ensure trapezoid helpers are in scope for mc2d::rtrunc()
   rtrapezoid <- trapezoid::rtrapezoid
   ptrapezoid <- trapezoid::ptrapezoid
@@ -53,10 +72,17 @@ do.pSSD_mod <- function(
       "No data is available for one or more species, it/they won't contribute to the PSSD calculation."
     )
     ind.sp.rem <- which(apply(DP, 2, function(x) length(which(!is.na(x)))) == 0)
-    DP <- DP[, -ind.sp.rem]
-    DP.SD <- DP.SD[, -ind.sp.rem]
-    UFt <- UFt[, -ind.sp.rem]
-    UFdd <- UFdd[, -ind.sp.rem]
+    DP <- DP[, -ind.sp.rem, drop = FALSE]
+    if (!is.null(DP.SD)) {
+      DP.SD <- DP.SD[, -ind.sp.rem, drop = FALSE]
+    }
+    UFt <- UFt[, -ind.sp.rem, drop = FALSE]
+    UFdd <- UFdd[, -ind.sp.rem, drop = FALSE]
+  }
+
+  if (is.null(dim(DP)) || ncol(DP) == 0) {
+    warning("No species with data after filtering; returning empty PSSD.")
+    return(matrix(NA_real_, nrow = 0, ncol = SIM))
   }
 
   # Calculate corrected endpoints
@@ -189,6 +215,20 @@ do.pSSD_mod <- function(
 #' @return Matrix of simulated NOEC draws with species in rows and iterations in columns.
 #' @export
 do.pSSD <- function(DP, UFt, UFdd, SIM, CV.DP, CV.UF) {
+  if (!is.null(DP) && (is.null(dim(DP)) || length(dim(DP)) < 2)) {
+    DP <- matrix(DP, ncol = 1)
+  }
+  if (!is.null(UFt) && (is.null(dim(UFt)) || length(dim(UFt)) < 2)) {
+    UFt <- matrix(UFt, ncol = 1)
+  }
+  if (!is.null(UFdd) && (is.null(dim(UFdd)) || length(dim(UFdd)) < 2)) {
+    UFdd <- matrix(UFdd, ncol = 1)
+  }
+  if (is.null(DP) || nrow(DP) == 0 || ncol(DP) == 0) {
+    warning("No species with data after filtering; returning empty PSSD.")
+    return(matrix(NA_real_, nrow = 0, ncol = SIM))
+  }
+
   # Ensure trapezoid helpers are in scope for mc2d::rtrunc()
   rtrapezoid <- trapezoid::rtrapezoid
   ptrapezoid <- trapezoid::ptrapezoid
@@ -203,9 +243,14 @@ do.pSSD <- function(DP, UFt, UFdd, SIM, CV.DP, CV.UF) {
     # find which species has no data
     ind.sp.rem <- which(apply(DP, 2, function(x) length(which(!is.na(x)))) == 0)
     # remove those columns
-    DP <- DP[, -ind.sp.rem]
-    UFt <- UFt[, -ind.sp.rem]
-    UFdd <- UFdd[, -ind.sp.rem]
+    DP <- DP[, -ind.sp.rem, drop = FALSE]
+    UFt <- UFt[, -ind.sp.rem, drop = FALSE]
+    UFdd <- UFdd[, -ind.sp.rem, drop = FALSE]
+  }
+
+  if (is.null(dim(DP)) || ncol(DP) == 0) {
+    warning("No species with data after filtering; returning empty PSSD.")
+    return(matrix(NA_real_, nrow = 0, ncol = SIM))
   }
 
   # Create the step distributions (or triangular or trapezoidal) for each species

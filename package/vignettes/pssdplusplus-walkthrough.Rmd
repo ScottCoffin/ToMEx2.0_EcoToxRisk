@@ -15,6 +15,7 @@ required_pkgs <- c(
   "sensobol",
   "truncnorm",
   "mc2d",
+  "magrittr",
   "trapezoid",
   "ggpubr",
   "ggdark",
@@ -37,6 +38,7 @@ if (length(missing)) {
 }
 library(PSSDplusplus)
 library(trapezoid)
+`%>%` <- magrittr::`%>%`
 
 # Automatically detect and set parallel processing options based on rendering or running locally
 parallel_enabled <- TRUE
@@ -104,10 +106,10 @@ tox_data <- tox_data |>
   dplyr::filter(
     Group != "Bacterium", # Drop studies with Bacterium group
     Group != "Plant", # Drop studies with Plant group
-    effect.metric != "HONEC", # Drop studies with HONEC effect metric
-    tier_zero_tech_f == "Red Criteria Passed", #minimum QC for technical criteria
-    tier_zero_risk_f == "Red Criteria Passed", #minimum QC for risk criteria
-    risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been)
+    effect.metric != "HONEC"#, # Drop studies with HONEC effect metric
+   # tier_zero_tech_f == "Red Criteria Passed", #minimum QC for technical criteria
+   # tier_zero_risk_f == "Red Criteria Passed", #minimum QC for risk criteria
+   # risk.13 != 0 #Drop studies that received a score of 0 for endpoints criteria (this also drops studies that have not yet been)
   )
 ```
 
@@ -121,14 +123,18 @@ param_default_values <- PSSDplusplus::param_default_values
 head(param_default_values)
 ```
 
-A parameter distribution dataset may be simulated using each respective parameters' distributions (e.g., alpha power law, normal distributions, etc.). By default, the package uses a Latin Hypercube Sampling approach to generate the parameter matrix. If the user wants to user alternative distributions for each parameter, the matrix_function() should be modified accordingly. Note that only water parameters are used in this version of the package, with future versions potentially including sediment.
+A parameter distribution dataset may be simulated using each respective parameters' distributions (e.g., alpha power law, normal distributions, etc.). By default, the package uses a Latin Hypercube Sampling approach to generate the parameter matrix. If the user wants to user alternative distributions for each parameter, the matrix_function() should be modified accordingly. This version supports surface water and sediment parameter draws. Use the include_* toggles to control which compartments are included in the LHS matrix (and therefore the matrix size).
 ```{r}
 param_matrix <- matrix_function(
   n_sobol = 5, #size of matrix (10,000 is recommended)
   params = param_default_values, #parameter distribution values -replace with user's specifications
   upper.tissue.truncation.limit = 500, # maximum particle size (microns) to truncate tissue tranlocation size limit distribution to based on biological plausibility
   x1M_set = 1, #minimum particle size to generate distributions to in microns
-  x2D_set = 5000 #maximum particle size to generate distributions to in microns
+  x2D_set = 5000, #maximum particle size to generate distributions to in microns
+  include_marine_surface_water = TRUE,
+  include_freshwater_surface_water = TRUE,
+  include_marine_sediment = TRUE,
+  include_freshwater_sediment = TRUE
 )
 ```
 
@@ -141,6 +147,16 @@ param_plots$alpha_combined_plot # distribution of alpha parameters
 param_plots$tissue_body #distribution of tissue translocation and mouth size opening model parameters
 ```
 
+To focus on sediment-only draws, pass sediment compartments explicitly:
+
+```{r sediment_parameter_histograms}
+sediment_param_plots <- parameter_histograms_function(
+  param_matrix,
+  compartments = c("Marine Sediment", "Freshwater Sediment")
+)
+sediment_param_plots$alpha_combined_plot
+```
+
 ## 3) Run Monte Carlo alignments
 The following code aligns the toxicity data to the parameter matrix using Monte Carlo simulations. 
 ```{r MC-sim alignments}
@@ -148,7 +164,7 @@ message("Starting MC_sim_align_parallel...")
 MC_sim_df <- MC_sim_align_parallel(
   tox_data = tox_data, # toxicity data (ToMEx 2.0 is default)
   param_matrix = param_matrix, # parameter matrix generated in prior cell
-  n_sim = 5, # size of parameter matrix (ensure this is the same as the size of the matrix generated)
+  n_sim = 3, # size of parameter matrix (ensure this is the same as the size of the matrix generated)
   x1D_set = 1, # minimum particle size to generate distributions to (in microns)
   x2D_set = 5000, # maximum particle size to generate distributions to (in microns)
   num_cores = num_cores # number of cores to use for parallel processing (specify )
@@ -157,43 +173,81 @@ message("Finished MC_sim_align_parallel.")
 ```
 
 ### Split the aligned data into ERM- and environment-specific subsets
-Split the aligned data into ERM- and environment-specific registries to replicate the results from Coffin et al. (2026).
+Split the aligned data into ERM- and environment-specific registries to replicate the results from Coffin et al. (2026). Surface water and sediment use different dose units, so build separate registries for each. Surface water uses `dose_new_particles_L`, while sediment uses `dose_new_particles_kg`.
 ```{r}
-results_df_food <- dplyr::filter(
+# ---- Surface water (particles/L) ----
+results_df_food_water <- dplyr::filter(
   MC_sim_df,
+  environment %in% c("Freshwater", "Marine"),
   ingestible != "not ingestible",
   particles_L_food_dilution > 0,
   Group != "Algae"
 ) |>
   dplyr::mutate(dose_new_particles_L = particles_L_food_dilution) |>
   tidyr::drop_na(particles_L_food_dilution)
-results_df_food_t3_t4 <- dplyr::filter(
-  results_df_food,
+results_df_food_water_t3_t4 <- dplyr::filter(
+  results_df_food_water,
   risk.13 != 1,
   bio_f %in% c("Organism", "Population")
 )
 
-results_df_tissue <- dplyr::filter(
+results_df_tissue_water <- dplyr::filter(
   MC_sim_df,
+  environment %in% c("Freshwater", "Marine"),
   translocatable != "not translocatable",
   particles_L_ox_stress > 0
 ) |>
   dplyr::mutate(dose_new_particles_L = particles_L_ox_stress) |>
   tidyr::drop_na(particles_L_ox_stress)
-results_df_tissue_t3_t4 <- dplyr::filter(
-  results_df_tissue,
+results_df_tissue_water_t3_t4 <- dplyr::filter(
+  results_df_tissue_water,
   risk.13 != 1,
   bio_f %in% c("Organism", "Population")
 )
 
-erm_registry <- list(
-  "Food Dilution" = list(base = results_df_food, t3_t4 = results_df_food_t3_t4),
-  "Tissue Translocation" = list(base = results_df_tissue, t3_t4 = results_df_tissue_t3_t4)
+erm_registry_water <- list(
+  "Food Dilution" = list(base = results_df_food_water, t3_t4 = results_df_food_water_t3_t4),
+  "Tissue Translocation" = list(base = results_df_tissue_water, t3_t4 = results_df_tissue_water_t3_t4)
+)
+
+# ---- Sediment (particles/kg) ----
+results_df_food_sediment <- dplyr::filter(
+  MC_sim_df,
+  environment %in% c("Freshwater Sediment", "Marine Sediment"),
+  ingestible != "not ingestible",
+  particles_kg_food_dilution > 0,
+  Group != "Algae"
+) |>
+  dplyr::mutate(dose_new_particles_kg = particles_kg_food_dilution) |>
+  tidyr::drop_na(particles_kg_food_dilution)
+results_df_food_sediment_t3_t4 <- dplyr::filter(
+  results_df_food_sediment,
+  risk.13 != 1,
+  bio_f %in% c("Organism", "Population")
+)
+
+results_df_tissue_sediment <- dplyr::filter(
+  MC_sim_df,
+  environment %in% c("Freshwater Sediment", "Marine Sediment"),
+  translocatable != "not translocatable",
+  particles_kg_ox_stress > 0
+) |>
+  dplyr::mutate(dose_new_particles_kg = particles_kg_ox_stress) |>
+  tidyr::drop_na(particles_kg_ox_stress)
+results_df_tissue_sediment_t3_t4 <- dplyr::filter(
+  results_df_tissue_sediment,
+  risk.13 != 1,
+  bio_f %in% c("Organism", "Population")
+)
+
+erm_registry_sediment <- list(
+  "Food Dilution" = list(base = results_df_food_sediment, t3_t4 = results_df_food_sediment_t3_t4),
+  "Tissue Translocation" = list(base = results_df_tissue_sediment, t3_t4 = results_df_tissue_sediment_t3_t4)
 )
 ```
 
 ## 4) Fit PSSD++s
-The following code performs the fitting of PSSD++ models to the aligned data:
+The following code performs the fitting of PSSD++ models to the aligned data for surface water and sediment separately:
 ```{r}
 message("Starting make_all_pSSDs...")
 # call object for usage by rtrunc later (this ONLY needs to be done in the vignette, which cannot load other libraries in the file)
@@ -202,12 +256,12 @@ ptrapezoid <- trapezoid::ptrapezoid
 qtrapezoid <- trapezoid::qtrapezoid
 dtrapezoid <- trapezoid::dtrapezoid
 
-# make all pSSDs
-pSSDs <- make_all_pSSDs(
+# make all pSSDs for surface water
+pSSDs_water <- make_all_pSSDs(
   MC_sim_df = MC_sim_df, # ensure aligned data is included
   environments = c("Freshwater", "Marine"), #specify which environments to include
-  erm_registry = erm_registry,
-  sim = 5, # specify the number of simulations to run
+  erm_registry = erm_registry_water,
+  sim = 3, # specify the number of simulations to run
   cv_uf = 0.5, # specify the coefficient of variation for uncertainty factors (acute -> chronic and LOEC/EC50 -> NOEC)
   rmore_method = "step", # method to handle pSSD distribution building (options = 'step' i.e., original trapezoidal method in Wigger et al., 2020, or 'lognormal' - shortcut developed in Coffin et al. (2025))
   quantile_type = 8, # quantile type for distribution fitting (8 is default, and use of others may cause unexpected or unreliable results)
@@ -215,14 +269,28 @@ pSSDs <- make_all_pSSDs(
   workers = workers, # number of worker processes to use for parallel processing
   base_cache_dir = file.path(tempdir(), "pssd_cache"), # directory to store cached pSSD objects (important when running high number of simulations to resume if needed)
   base_output_path = file.path(tempdir(), "pssd_figures"), # directory to store output figures
-  overwrite_cache = TRUE # whether or not to overwrite cached pSSD objects
+  overwrite_cache = TRUE, # whether or not to overwrite cached pSSD objects
+  debug = T # whether or not to enable debug mode
 )
+
+# make all pSSDs for sediment (kg-based doses)
+  pSSDs_sediment <- make_all_pSSDs(
+    MC_sim_df = MC_sim_df,
+    environments = c("Freshwater Sediment", "Marine Sediment"),
+    erm_registry = erm_registry_sediment,
+    sim = 3,
+    cv_uf = 0.5,
+    rmore_method = "step",
+    quantile_type = 8,
+    parallel = parallel_enabled,
+    workers = workers,
+    base_cache_dir = file.path(tempdir(), "pssd_cache_sediment"),
+    base_output_path = file.path(tempdir(), "pssd_figures_sediment"),
+    overwrite_cache = TRUE,
+    debug = TRUE
+  )
 ```
 
-
-```{r}
-message("Finished make_all_pSSDs.")
-```
 
 ### Examine pSSD++ output
 Each ERM x Environment combination is saved as a list element, with corresponding PNEC quantiles, summary statistics, and plots.
@@ -230,26 +298,35 @@ Each ERM x Environment combination is saved as a list element, with correspondin
 #### PNEC Summary
 By default the pSSD++ performs a quantile regression to estimate PNEC values for Tiers 3 and 4 of the Mehinto et al. (2022) risk assessment framework.
 ```{r, eval = FALSE}
-PNEC_summary <- summarize_PNECs(pSSDs)
-head(PNEC_summary)
+PNEC_summary_water <- summarize_PNECs(pSSDs_water)
+head(PNEC_summary_water)
+
+PNEC_summary_sediment <- summarize_PNECs(pSSDs_sediment)
+head(PNEC_summary_sediment)
 ```
 
 PNEC distributions are visualized using ggplot:
 ```{r}
-pSSDs$`Tier3_Freshwater_Food Dilution`$PNEC_plot_05
+pSSDs_water$`Tier3_Freshwater_Food Dilution`$PNEC_plot_05
 ```
 
 #### pSSD++ Plots
 The pSSD++ plots show the relationship between the exposure concentration and the predicted effect levels.
 ```{r}
 # view pSSD plot for example:
-pSSDs$`Tier3_Freshwater_Food Dilution`$pSSD_plot
+pSSDs_water$`Tier3_Freshwater_Food Dilution`$pSSD_plot
 ```
 
 #### Arranged plot
 A manuscript-ready pSSD++ with PNEC distribution plots for Tiers 3 and 4 are generated.
 ```{r}
-pSSDs$`Tier3_Freshwater_Food Dilution`$arranged_plot
+pSSDs_water$`Tier3_Freshwater_Food Dilution`$arranged_plot
+```
+
+Sediment plots use the same access pattern, but with sediment environments:
+
+```{r}
+  pSSDs_sediment$`Tier3_Freshwater Sediment_Food Dilution`$pSSD_plot
 ```
 
 The cache and figure outputs default to temporary directories; override the paths above to persist artifacts between sessions.

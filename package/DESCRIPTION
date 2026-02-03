@@ -1,7 +1,7 @@
 Package: PSSDplusplus
 Type: Package
 Title: Probabilistic Microplastic Ecotoxicity Workflow (PSSD++)
-Version: 0.0.1
+Version: 0.0.2
 Authors@R: c(
     person("Scott", "Coffin", role = c("aut", "cre"), email = "maintainer@example.com"),
     person("Contributors", role = "ctb")
