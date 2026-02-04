@@ -8,7 +8,7 @@ This repository contains the **data, code, and reproducible workflows** supporti
 
 [Full text](https://www.sciencedirect.com/science/article/pii/S0304389425039421)
 
-**Authors:** Scott Coffin et al.
+**Authors:** Scott Coffin, Lidwina Bertrand, Kazi Towsif Ahmed, Luan de Souza Leite, Win Cowger, Mariella Siña, Andrew Barrick, Anna Kukkola, Bethanie Carney Almroth, Ezra Miller, Andrew Yeh, Stephanie Kennedy, Magdalena M. Mair
 
 ![Graphical Abstract](assets/Graphical_abstract.png)
 
