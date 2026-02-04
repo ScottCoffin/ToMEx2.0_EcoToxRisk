@@ -1,6 +1,6 @@
 # ToMEx 2.0 — Probabilistic Ecotoxicological Risk Assessment for Microplastics
 
-[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) \[![R ≥ 4.1](https://img.shields.io/badge/R-%3E%3D%204.1-blue.svg)\] [![R-CMD-check](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/actions/workflows/R-CMD-check.yaml/badge.svg](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/actions/workflows/R-CMD-check.yaml) [![Install PSSDplusplus](https://img.shields.io/badge/install-GitHub-blueviolet.svg)](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/tree/main/package)
+[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)![R ≥ 4.1](https://img.shields.io/badge/R-%3E%3D%204.1-blue.svg)\[![R-CMD-check](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/actions/workflows/R-CMD-check.yaml/badge.svg) [![Install PSSDplusplus](https://img.shields.io/badge/install-GitHub-blueviolet.svg)](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/tree/main/package)
 
 This repository contains the **data, code, and reproducible workflows** supporting the Journal of Hazardous Materials manuscript:
 
