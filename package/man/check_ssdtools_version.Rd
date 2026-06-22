@@ -12,3 +12,8 @@ check_ssdtools_version(required_version = "0.3.7")
 \description{
 This package relies on \code{ssdtools} 0.3.7 to reproduce published PSSD fits.
 }
+\examples{
+\dontrun{
+  check_ssdtools_version()
+}
+}

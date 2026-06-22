@@ -1,19 +1,23 @@
 Package: PSSDplusplus
 Type: Package
 Title: Probabilistic Microplastic Ecotoxicity Workflow (PSSD++)
-Version: 0.1.0
-Authors@R: c(
-    person("Scott", "Coffin", role = c("aut", "cre"), email = "scott.l.coffin@gmail.com"),
-    person("Contributors", role = "ctb")
-  )
-Description: Provides the probabilistic ecotoxicity workflow used in the ToMEx 2.0
-    microplastic risk assessment under the PSSD++ banner. The package bundles
-    the Monte Carlo alignment functions, probabilistic species sensitivity
-    distribution (PSSD++) engine, plotting helpers, and the preprocessed ToMEx
-    2.0 ecotoxicity dataset to reproduce the analysis shown in the repository
-    reprex script. It now supports sediment compartments alongside surface
-    water, adds diagnostics for failed combinations, and improves robustness to
-    sparse or missing inputs. See <doi:10.1016/j.jhazmat.2025.141021>.
+Version: 0.2.0
+Authors@R:
+    person("Scott", "Coffin", role = c("aut", "cre"),
+           email = "scott.l.coffin@gmail.com",
+           comment = c(ORCID = "0000-0002-7035-1282"))
+Description: Implements the PSSD++ probabilistic ecotoxicological risk framework
+    for microplastics, as described in Coffin et al. (2026,
+    <doi:10.1016/j.jhazmat.2025.141021>). The package provides Monte Carlo
+    alignment of laboratory toxicity data to environmentally relevant metrics
+    (ERMs) — food dilution and tissue translocation — via Latin Hypercube
+    Sampling of particle-trait parameters. Aligned data are used to fit
+    probabilistic Species Sensitivity Distributions (pSSDs) and derive
+    Predicted No-Effect Concentrations (PNECs) across surface-water and sediment
+    compartments for freshwater and marine environments. Bundles the preprocessed
+    ToMEx 2.0 microplastic ecotoxicity database (~13,000 data points) and a
+    compact 10-species subset for rapid testing. Supports parallel computation,
+    deterministic caching, and structured diagnostic output.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true

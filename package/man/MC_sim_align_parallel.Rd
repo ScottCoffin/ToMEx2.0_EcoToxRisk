@@ -36,3 +36,17 @@ A data frame with aligned doses for each simulation.
 Runs the alignment workflow across Sobol-sampled parameter sets, returning
 simulation-ready microplastic ecotoxicity data.
 }
+\examples{
+\dontrun{
+  # Use the bundled mini dataset for a fast test (3 simulations, 1 core)
+  data(tomex2_mini)
+  mat <- matrix_function(n_sobol = 3, params = param_default_values)
+  mc_out <- MC_sim_align_parallel(
+    tox_data   = tomex2_mini,
+    param_matrix = mat,
+    n_sim      = 3,
+    num_cores  = 1
+  )
+  head(mc_out)
+}
+}

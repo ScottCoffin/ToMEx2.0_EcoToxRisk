@@ -43,7 +43,12 @@ run_pssd_reprex(
 
 \item{cv_uf}{Coefficient of variation for uncertainty factors.}
 
-\item{rmore_method}{Distribution method for \code{rmore} ("step" or "lognormal").}
+\item{rmore_method}{Distribution method for sampling species-level NOEC
+distributions in the PSSD++ step. \code{"step"} (default) uses a trapezoidal
+piecewise-uniform approximation following Wigger et al. (2020), which is
+consistent with published results. \code{"lognormal"} uses a log-normal
+short-cut that is faster but assumes symmetric log-scale variability; use
+only when speed matters more than strict comparability to the manuscript.}
 }
 \value{
 A list containing the aligned data, PSSD outputs, and summary table.
@@ -53,7 +58,15 @@ Executes the full Monte Carlo alignment and PSSD++ workflow bundled with the
 repository, using the included ToMEx 2.0 ecotoxicity dataset.
 }
 \examples{
-if (interactive()) {
+\dontrun{
+  # Fastest possible run using the bundled mini dataset (seconds)
   run_pssd_reprex(sim = 1, n_sim = 1, workers = 1, overwrite_cache = TRUE)
+
+  # Reproducible run with a fixed seed
+  result <- run_pssd_reprex(sim = 2, n_sim = 2, workers = 1, seed = 42)
+  result$pnec_summary
+
+  # Use lognormal method (faster, less precise)
+  run_pssd_reprex(sim = 2, n_sim = 2, workers = 1, rmore_method = "lognormal")
 }
 }

@@ -27,3 +27,17 @@ A list of ggplot objects summarizing parameter draws.
 Generates histograms for the Latin hypercube samples created by
 \link[=matrix_function]{matrix_function()}, returning ggplot objects for reuse.
 }
+\examples{
+\dontrun{
+  mat <- matrix_function(n_sobol = 20, params = param_default_values)
+  plots <- parameter_histograms_function(mat)
+  plots$alpha_combined_plot   # alpha (power law) distributions
+  plots$tissue_body           # tissue translocation and body-length params
+
+  # Surface water only
+  plots_sw <- parameter_histograms_function(
+    mat,
+    compartments = c("Marine", "Freshwater")
+  )
+}
+}

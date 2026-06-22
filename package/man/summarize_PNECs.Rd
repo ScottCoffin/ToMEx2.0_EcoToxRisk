@@ -17,3 +17,10 @@ and HCX labels.
 Extracts HC5/HC10 summaries from the PSSD result list produced by
 \link[=make_all_pSSDs]{make_all_pSSDs()} and returns a tidy table.
 }
+\examples{
+\dontrun{
+  # pSSDs is the list returned by make_all_pSSDs()
+  summary_tbl <- summarize_PNECs(pSSDs)
+  print(summary_tbl)
+}
+}

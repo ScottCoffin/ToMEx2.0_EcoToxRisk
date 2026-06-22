@@ -4,21 +4,22 @@
 \name{PSSDplusplus-package}
 \alias{PSSDplusplus}
 \alias{PSSDplusplus-package}
-\title{PSSDplusplus: Probabilistic Microplastic Ecotoxicity Workflow}
+\title{PSSDplusplus: Probabilistic Microplastic Ecotoxicity Workflow (PSSD++)}
 \description{
-Implements the Monte Carlo alignment and PSSD++ analysis used for the ToMEx 2.0
-microplastic ecotoxicity assessment. The package bundles helper functions,
-plotting utilities, and workflow wrappers to reproduce the manuscript
-thresholds with the bundled dataset. It now supports sediment compartments,
-adds failure diagnostics, and improves robustness to sparse inputs.
+Implements the PSSD++ probabilistic ecotoxicological risk framework for
+microplastics, as described in Coffin et al. (2026,
+\doi{10.1016/j.jhazmat.2025.141021}). The package provides Monte Carlo
+alignment of laboratory toxicity data to environmentally relevant metrics
+(ERMs) -- food dilution and tissue translocation -- via Latin Hypercube
+Sampling of particle-trait parameters. Aligned data are used to fit
+probabilistic Species Sensitivity Distributions (pSSDs) and derive Predicted
+No-Effect Concentrations (PNECs) across surface-water and sediment compartments
+for freshwater and marine environments. Bundles the preprocessed ToMEx 2.0
+microplastic ecotoxicity database (~13,000 data points) and a compact 10-species
+subset for rapid testing. Supports parallel computation, deterministic caching,
+and structured diagnostic output.
 }
 \author{
 \strong{Maintainer}: Scott Coffin \email{scott.l.coffin@gmail.com}
-
-Other contributors:
-\itemize{
-  \item Contributors [contributor]
+(\href{https://orcid.org/0000-0002-7035-1282}{ORCID})
 }
-
-}
-\keyword{internal}

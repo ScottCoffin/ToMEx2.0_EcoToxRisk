@@ -8,6 +8,11 @@
 #' @return Invisibly returns `TRUE` when the required version is present;
 #'   otherwise throws an informative error.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#'   check_package_version("dplyr", as.character(packageVersion("dplyr")))
+#' }
 check_package_version <- function(package, required_version) {
   if (!requireNamespace(package, quietly = TRUE)) {
     stop(
@@ -38,6 +43,11 @@ check_package_version <- function(package, required_version) {
 #'
 #' @param required_version Character version string. Defaults to `"0.3.7"`.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#'   check_ssdtools_version()
+#' }
 check_ssdtools_version <- function(required_version = "0.3.7") {
   check_package_version("ssdtools", required_version)
 }

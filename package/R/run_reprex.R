@@ -15,14 +15,27 @@
 #' @param seed Optional integer seed for reproducibility.
 #' @param quantile_type Quantile type used when summarizing outputs.
 #' @param cv_uf Coefficient of variation for uncertainty factors.
-#' @param rmore_method Distribution method for `rmore` ("step" or "lognormal").
+#' @param rmore_method Distribution method for sampling species-level NOEC
+#'   distributions in the PSSD++ step. `"step"` (default) uses a trapezoidal
+#'   piecewise-uniform approximation following Wigger et al. (2020), which is
+#'   consistent with published results. `"lognormal"` uses a log-normal
+#'   short-cut that is faster but assumes symmetric log-scale variability; use
+#'   only when speed matters more than strict comparability to the manuscript.
 #'
 #' @return A list containing the aligned data, PSSD outputs, and summary table.
 #' @export
 #'
 #' @examples
-#' if (interactive()) {
+#' \dontrun{
+#'   # Fastest possible run using the bundled mini dataset (seconds)
 #'   run_pssd_reprex(sim = 1, n_sim = 1, workers = 1, overwrite_cache = TRUE)
+#'
+#'   # Reproducible run with a fixed seed
+#'   result <- run_pssd_reprex(sim = 2, n_sim = 2, workers = 1, seed = 42)
+#'   result$pnec_summary
+#'
+#'   # Use lognormal method (faster, less precise)
+#'   run_pssd_reprex(sim = 2, n_sim = 2, workers = 1, rmore_method = "lognormal")
 #' }
 run_pssd_reprex <- function(
   data_path = NULL,

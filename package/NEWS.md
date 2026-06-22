@@ -1,3 +1,42 @@
+PSSDplusplus 0.2.0
+==================
+
+New features
+------------
+- Added `tomex2_mini`: a compact 10-species (5 freshwater, 5 marine) pre-filtered subset
+  of the ToMEx 2.0 database for rapid testing and examples. Regeneration script is in
+  `data-raw/create_tomex2_mini.R`.
+- Added `PSSDplusplus_glossary` help page (`?PSSDplusplus_glossary`) with definitions for
+  all acronyms and field-specific terms used in the package and manuscript (Coffin et al.
+  2026, doi:10.1016/j.jhazmat.2025.141021).
+- Vignette now uses `tomex2_mini` for a faster, self-contained end-to-end demonstration.
+
+Documentation improvements
+---------------------------
+- Added `\dontrun{}` examples to all exported functions.
+- Added `@description` and `@noRd` blocks to 20+ internal helper functions so error
+  messages trace to meaningful source locations.
+- Expanded `@param rmore_method` to explain the distributional assumption difference
+  between `"step"` (trapezoidal, Wigger et al. 2020) and `"lognormal"` methods.
+- Added `@details` note to `do.pSSD` / `do.pSSD_mod` clarifying that the dot follows
+  legacy naming from Wigger et al. (2020), not R S3 dispatch conventions.
+- Updated DESCRIPTION: improved abstract-style description with full method summary and
+  DOI, corrected ORCID, removed placeholder contributor entry.
+- Added glossary table to README and a full glossary section to the vignette.
+
+Parallelism fixes
+-----------------
+- `MC_sim_align_parallel()` now automatically falls back to sequential processing when
+  `n_sim <= 20`, where PSOCK cluster startup and data-serialisation overhead exceeds
+  compute savings. `num_cores` is also capped to `n_sim`.
+- `make_all_pSSDs()` internally caps `workers` to `nrow(combo_tbl)` (the number of
+  tier × environment × ERM combinations); workers beyond that ceiling are never spawned.
+- Vignette `workers` default changed from `detectCores() - 1` to
+  `min(detectCores() - 1, 4)`, reflecting the 4-combo ceiling of the default workflow,
+  with explanatory inline comments.
+- Fixed duplicated parallel-setup logic across two vignette chunks; detection and derived
+  variables (`workers`, `num_cores`, cache paths) are now computed exactly once.
+
 PSSDplusplus 0.1.0
 ==================
 

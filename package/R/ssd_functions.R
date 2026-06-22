@@ -1,5 +1,7 @@
 # SSD helper functions ----------------------------------------------------
 
+#' Fit a Tier 1 SSD and return the HC5 lower confidence limit.
+#' @noRd
 SSD_function_t1 <- function(filtered.data, hcxlcl, nboot = 10) {
   collapsed <- filtered.data %>%
     dplyr::group_by(Species, Group) %>%
@@ -39,6 +41,8 @@ SSD_function_t1 <- function(filtered.data, hcxlcl, nboot = 10) {
   )
 }
 
+#' Fit a Tier 2 SSD and return the HC5 estimate with 95% CI.
+#' @noRd
 SSD_function_t2 <- function(filtered.data, hcx, nboot = 10) {
   collapsed <- filtered.data %>%
     dplyr::group_by(Species, Group) %>%
@@ -82,6 +86,8 @@ SSD_function_t2 <- function(filtered.data, hcx, nboot = 10) {
   )
 }
 
+#' Fit a Tier 3/4 SSD (organism/population endpoints, median collapse) and return HCx with CI.
+#' @noRd
 SSD_function_t3_4 <- function(filtered.data, hcx, nboot = 10) {
   collapsed <- filtered.data %>%
     dplyr::filter(risk.13 != 1, bio_f %in% c("Organism", "Population")) %>%
@@ -127,8 +133,8 @@ SSD_function_t3_4 <- function(filtered.data, hcx, nboot = 10) {
   )
 }
 
-# Threshold aggregation used for manuscript-style outputs -----------------
-
+#' Apply all four SSD tiers to one environment/ERM subset and collect thresholds.
+#' @noRd
 process_environment_data <- function(data,
                                      env_filter = "Marine",
                                      upper.tissue.trans.size.um = 88,

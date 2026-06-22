@@ -1,6 +1,7 @@
 ##### FUNCTIONS #####
 
-### Generalizable function that works on any value (alpha == 1 and == 2 are limits!)
+#' Mean particle metric for a power-law size distribution (general case).
+#' @noRd
 mux_polyfnx <- function(a.x, x_UL, x_LL) {
   # Validate inputs
   if (length(a.x) != length(x_UL) || length(a.x) != length(x_LL)) {
@@ -48,7 +49,8 @@ mux_polyfnx <- function(a.x, x_UL, x_LL) {
 }
 
 
-############# VOLUME ############
+#' Particle volume assuming a prolate-spheroid geometry.
+#' @noRd
 volumefnx <- function(
   R = NA, # average length-to-width ratio for environment
   H_W_ratio = 0.67, # assumed 0.67 * width per Kooi et al. (2021)
@@ -69,7 +71,8 @@ volumefnx <- function(
 }
 
 ############### SURFACE AREA ##################
-#surface area equation for elongated spheres
+#' Surface area of an elongated spheroid (Knud Thomsen approximation).
+#' @noRd
 SAfnx = function(
   length,
   width = NA,
@@ -93,6 +96,8 @@ SAfnx = function(
 }
 
 ################# MASS ####################
+#' Particle mass from volume and density (returns micrograms).
+#' @noRd
 massfnx <- function(v, p) {
   # If either v or p is NA, return NA for those elements
   mass <- ifelse(is.na(v) | is.na(p), NA, p * v * (1 / 1e12) * 1e6) # correction factor (g to g)
@@ -100,6 +105,8 @@ massfnx <- function(v, p) {
 }
 
 ###### SSA #####
+#' Inverse specific surface area (mass / surface area ratio).
+#' @noRd
 SSA.inversefnx = function(
   sa, # average surface area
   m
@@ -112,7 +119,8 @@ SSA.inversefnx = function(
 
 #### Ecologically Relevant Metric Functions (used in reactives with user-input params) ####
 
-###function to derive correction factor (CF) from Koelmans et al (equation 2)
+#' ERM correction factor (CF) from Koelmans et al. (2020) eq. 2.
+#' @noRd
 CFfnx = function(
   a, #default alpha from Koelmans et al (2020)
   x2D, #set detault values to convert ranges to (1-5,000 um) #5mm is upper defuault
@@ -125,7 +133,8 @@ CFfnx = function(
 }
 
 #### equations for mu_x_poly (note that there are three depending on certain alphas for limits of equation)
-### Generalizable function that works on any value (alpha == 1 and == 2 are limits!)
+#' Mean particle metric for a power-law distribution, handling alpha == 1/2 limits.
+#' @noRd
 mux_polyfnx_generalizable <- function(a.x, x_UL, x_LL) {
   # Validate inputs
   if (length(a.x) != length(x_UL) || length(a.x) != length(x_LL)) {
@@ -171,8 +180,8 @@ mux_polyfnx_generalizable <- function(a.x, x_UL, x_LL) {
   # Return the result
   return(mux.poly)
 }
-#
-# #max ingestible specific surface area
+#' Inverse specific surface area (duplicate used in alignment pathway).
+#' @noRd
 SSA.inversefnx = function(
   sa, #surface area, calcaulted elsewhere
   m
@@ -185,6 +194,8 @@ SSA.inversefnx = function(
 #data tidying functions from Ana
 
 ############## Levels summary ##################
+#' Print a grouped frequency table for a data column.
+#' @noRd
 summarize_and_print <- function(data, column_name) {
   result <- data %>%
     dplyr::group_by({{ column_name }}) %>%
@@ -196,6 +207,8 @@ summarize_and_print <- function(data, column_name) {
 
 
 ############## Change particle length ##################
+#' Update a particle length value for a given DOI/polymer/shape combination.
+#' @noRd
 update_particle_length <- function(
   data,
   doi,
@@ -216,6 +229,8 @@ update_particle_length <- function(
 
 
 ###### check what is missing #########
+#' Return NA counts and factor levels for each column in a data frame.
+#' @noRd
 generate_structure_checks <- function(data) {
   structure.checks <- data.frame(
     na.counts = sapply(data, function(x) sum(is.na(x))),
@@ -237,6 +252,8 @@ generate_structure_checks <- function(data) {
 #Where $\mu_{x,poly}$ is derived using the following equation: $\mu_{x,poly} = \frac{1 - a_{x}}{2 - a_{x}}  \frac{X^{2-a_x}_{UL} - X^{2-a_x}_{LL}}{X^{1-a_x}_{UL} - X^{1-a_x}_{LL}}$
 #In this case, the limits LL and UL in $\mu_{x,poly}$ relate to the values of the ERM at the 1 and 5,000 um size limits, respectively (i.e., SA, V, and M), rather than to bioavailability limits. Compartment-specific alpha values are used based on Table S4 of Kooi et al 2021.
 
+#' Convert particles/L thresholds to surface-area, volume, and mass units.
+#' @noRd
 convert_units_fxn <- function(thresholds_df, environment, params) {
   env <- as.character(environment)
   if (grepl("sediment", env, ignore.case = TRUE)) {
@@ -302,7 +319,8 @@ convert_units_fxn <- function(thresholds_df, environment, params) {
 #                   environment = "Marine",
 #                   params = params)
 
-#### Function to generate synthetic data for MC alignments using default parameter from Kooi et al 2021
+#' Build synthetic particle distribution data for one MC simulation.
+#' @noRd
 generate_data <- function(
   n_sim = 10,
   ## width to length ratios
@@ -530,7 +548,8 @@ generate_data <- function(
 }
 
 
-### Function to align data to ERMs
+#' Align a toxicity dataset to ERM-specific exposure units for one simulation.
+#' @noRd
 align_data <- function(
   df, #ToMEx database
   x1M_set_input = 1, #um lower size for all alignments
@@ -1480,6 +1499,21 @@ param_default_values <- data.frame(
 #'
 #' @return A data frame with sampled parameters and a `simulation_id` column.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#'   # Generate 5 LHS parameter draws using the bundled defaults
+#'   mat <- matrix_function(n_sobol = 5, params = param_default_values)
+#'   head(mat)
+#'
+#'   # Surface-water only (skip sediment compartments)
+#'   mat_sw <- matrix_function(
+#'     n_sobol = 5,
+#'     params = param_default_values,
+#'     include_marine_sediment = FALSE,
+#'     include_freshwater_sediment = FALSE
+#'   )
+#' }
 matrix_function <- function(
   n_sobol = 10,
   params = param_default_values,
@@ -1889,6 +1923,8 @@ matrix_function <- function(
   return(mat)
 }
 
+#' Append a parameter to an argument list if the column exists in params.
+#' @noRd
 add_param_if_present <- function(arg_list, params, column, arg_name = column) {
   if (column %in% names(params)) {
     arg_list[[arg_name]] <- params[[column]][1]
@@ -1896,6 +1932,8 @@ add_param_if_present <- function(arg_list, params, column, arg_name = column) {
   arg_list
 }
 
+#' Extract a named value from a params data frame, with optional fallback.
+#' @noRd
 get_param_value <- function(params, primary, fallback = NULL) {
   if (primary %in% names(params)) {
     return(params[[primary]][1])
@@ -1907,7 +1945,8 @@ get_param_value <- function(params, primary, fallback = NULL) {
 }
 
 
-#### MC-SIM Align Data and generate thresholds (preps data for PSSD++ AND runs MC-SIM SSD method)
+#' Run one Sobol simulation: align data and derive SSD thresholds.
+#' @noRd
 model_wrapper_sobol_parallel <- function(params, simulation_id) {
   # perform alignments using parameters for simulation
   align_args <- list(df = aoc_aligned)
@@ -2193,8 +2232,8 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
 }
 
 
-####### parallel process alignments (NO SSDs - just used to prep data for PSSD++)#####
-## wrapper function for Monte Carlo simulations
+#' Align one simulation's toxicity data using a single row of the parameter matrix.
+#' @noRd
 MC_sim_align_wrapper <- function(tox_data, params, simulation_id) {
   # perform alignments using parameters for simulation
   align_args <- list(df = tox_data)
@@ -2443,6 +2482,20 @@ MC_sim_align_wrapper <- function(tox_data, params, simulation_id) {
 #'
 #' @return A data frame with aligned doses for each simulation.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#'   # Use the bundled mini dataset for a fast test (3 simulations, 1 core)
+#'   data(tomex2_mini)
+#'   mat <- matrix_function(n_sobol = 3, params = param_default_values)
+#'   mc_out <- MC_sim_align_parallel(
+#'     tox_data   = tomex2_mini,
+#'     param_matrix = mat,
+#'     n_sim      = 3,
+#'     num_cores  = 1
+#'   )
+#'   head(mc_out)
+#' }
 MC_sim_align_parallel <- function(
   tox_data = aoc_risk_paper, # data to be processed (raw ToMEx 2.0 as default)
   param_matrix = mat, # matrix params for simulation
@@ -2465,6 +2518,17 @@ MC_sim_align_parallel <- function(
   # assign cores
   if (num_cores == "auto") {
     num_cores <- max(1, parallel::detectCores() - 1)
+  }
+  # PSOCK startup + data serialization cost exceeds compute savings when
+  # n_sim is small. Cap to n_sim (idle workers) and force sequential for
+  # very small jobs where overhead dominates.
+  num_cores <- min(num_cores, n_sim)
+  if (n_sim <= 20 && num_cores > 1) {
+    message(crayon::yellow(sprintf(
+      "n_sim = %d is small; using sequential processing to avoid PSOCK overhead.",
+      n_sim
+    )))
+    num_cores <- 1L
   }
   param_df <- as.data.frame(param_matrix)
   if (!"simulation_id" %in% names(param_df)) {
@@ -2732,6 +2796,8 @@ MC_sim_align_parallel <- function(
 } # close MC_sim_align_parallel function
 
 
+#' Kernel-density mode estimator for a numeric vector.
+#' @noRd
 Mode_Y <- function(x) {
   x <- stats::na.omit(x)
   if (length(x) < 2) {
@@ -2742,6 +2808,8 @@ Mode_Y <- function(x) {
   dens$x[ind]
 }
 
+#' Sanitise a string to be safe as a file or variable identifier.
+#' @noRd
 safe_debug_id <- function(x) {
   x <- gsub("[^A-Za-z0-9_-]+", "_", x)
   x <- gsub("_+", "_", x)
@@ -2749,6 +2817,8 @@ safe_debug_id <- function(x) {
   x
 }
 
+#' Summarise the HCx distribution from a PSSD result list.
+#' @noRd
 PNEC_data_summary <- function(
   pssd_results,
   hcx,
@@ -2795,6 +2865,8 @@ PNEC_data_summary <- function(
 }
 
 ## PSSD++ wrapper function ###
+#' Generate PSSD and PNEC plots plus summary statistics for one combination.
+#' @noRd
 generate_plots_and_summary <- function(
   tier,
   environment,
@@ -3301,6 +3373,8 @@ generate_plots_and_summary <- function(
 
 
 # Dynamically generate a color palette based on the levels of Group
+#' Build a named color palette from the unique groups in a data frame.
+#' @noRd
 generate_color_palette <- function(data) {
   unique_groups <- unique(stats::na.omit(data$Group)) # Extract unique levels of Group
   if (length(unique_groups) == 0) {
@@ -3313,6 +3387,8 @@ generate_color_palette <- function(data) {
 }
 
 
+#' Render a PSSD plot with per-species distributions and the combined SSD curve.
+#' @noRd
 pSSD_plot_fnx <- function(
   quantiles_df,
   all_NOEC,
@@ -3607,6 +3683,8 @@ pSSD_plot_fnx <- function(
 }
 
 # Calculate PNEC1 if not already calculated
+#' Build a ggplot showing PNEC distribution with HC5/HC10 annotations.
+#' @noRd
 make_PNEC_plot <- function(
   pssd_results,
   hcx,
@@ -3709,6 +3787,8 @@ make_PNEC_plot <- function(
     )
 }
 
+#' Reshape a PSSD result matrix into long format suitable for ggplot.
+#' @noRd
 prepare_plot_data <- function(
   original_data = NULL,
   pSSD = NULL,
@@ -3958,6 +4038,8 @@ prepare_plot_data <- function(
   )
 }
 
+#' Prepare species matrices (DP, DP.SD, UFt, UFdd) from an aligned dataset.
+#' @noRd
 prep_data <- function(data) {
   if (is.null(data)) {
     stop("prep_data: input data is NULL.", call. = FALSE)
@@ -4102,7 +4184,8 @@ prep_data <- function(data) {
 }
 
 
-# minimum PSSD function
+#' Run the full PSSD++ loop over Monte Carlo iterations for one combination.
+#' @noRd
 run_pSSD_analysis <- function(
   data_matrices,
   num_iterations,
@@ -4171,6 +4254,8 @@ run_pSSD_analysis <- function(
   return(list(pSSD = pSSD, corr_endpoints = corr_endpoints))
 }
 
+#' Return the appropriate dose column name for a given environment (particles/L vs /kg).
+#' @noRd
 get_dose_column <- function(df, environment = NULL) {
   if (is.null(df) || nrow(df) == 0) {
     return(NULL)
@@ -4201,6 +4286,8 @@ get_dose_column <- function(df, environment = NULL) {
   return(NULL)
 }
 
+#' Count distinct species and groups in a filtered dataset.
+#' @noRd
 extract_species_counts <- function(df, environment = NULL) {
   if (is.null(df) || nrow(df) == 0) {
     return(list(
@@ -4237,6 +4324,8 @@ extract_species_counts <- function(df, environment = NULL) {
   )
 }
 
+#' Build one row of the per-combination status summary table.
+#' @noRd
 make_status_row <- function(
   combo_id,
   tier,
@@ -4262,6 +4351,8 @@ make_status_row <- function(
   )
 }
 
+#' Return TRUE if an ERM dataset is NULL, empty, or a single NA.
+#' @noRd
 is_missing_erm_data <- function(df) {
   if (is.null(df)) {
     return(TRUE)
@@ -4291,7 +4382,12 @@ is_missing_erm_data <- function(df) {
 #'   the aligned data.
 #' @param sim Number of PSSD simulations per combination.
 #' @param cv_uf Coefficient of variation for uncertainty factors.
-#' @param rmore_method Distribution method for `rmore` ("step" or "lognormal").
+#' @param rmore_method Distribution method for sampling species-level NOEC
+#'   distributions in the PSSD++ step. `"step"` (default) uses a trapezoidal
+#'   piecewise-uniform approximation following Wigger et al. (2020), which is
+#'   consistent with published results. `"lognormal"` uses a log-normal
+#'   short-cut that is faster but assumes symmetric log-scale variability; use
+#'   only when speed matters more than strict comparability to the manuscript.
 #' @param quantile_type Quantile type used when summarizing outputs.
 #' @param debug_option Logical; saves intermediate objects for debugging.
 #' @param parallel Logical; run combinations in parallel.
@@ -4304,6 +4400,21 @@ is_missing_erm_data <- function(df) {
 #'
 #' @return A named list of PSSD results (one per combination).
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#'   # After running MC_sim_align_parallel to get mc_out and building erm_registry:
+#'   pSSDs <- make_all_pSSDs(
+#'     MC_sim_df    = mc_out,
+#'     tiers        = 3,
+#'     environments = c("Freshwater", "Marine"),
+#'     erms         = c("Food Dilution", "Tissue Translocation"),
+#'     erm_registry = erm_registry,
+#'     sim          = 3,
+#'     parallel     = FALSE
+#'   )
+#'   names(pSSDs)
+#' }
 make_all_pSSDs <- function(
   MC_sim_df = NULL,
   tiers = c(3),
@@ -4347,6 +4458,11 @@ make_all_pSSDs <- function(
 
   if (nrow(combo_tbl) == 0) {
     return(list())
+  }
+
+  # Cap workers to the actual number of combinations — additional workers are idle.
+  if (parallel && workers > nrow(combo_tbl)) {
+    workers <- max(1L, nrow(combo_tbl))
   }
 
   if (parallel) {
@@ -4705,6 +4821,13 @@ make_all_pSSDs <- function(
 #' @return Data frame of summary statistics with combination, environment, ERM,
 #'   and HCX labels.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#'   # pSSDs is the list returned by make_all_pSSDs()
+#'   summary_tbl <- summarize_PNECs(pSSDs)
+#'   print(summary_tbl)
+#' }
 summarize_PNECs <- function(pSSDs = NULL) {
   if (is.null(pSSDs) || length(pSSDs) == 0) {
     return(data.frame())

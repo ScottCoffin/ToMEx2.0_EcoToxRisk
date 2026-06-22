@@ -46,3 +46,18 @@ A data frame with sampled parameters and a \code{simulation_id} column.
 Builds Sobol-based parameter matrices used by the Monte Carlo alignment
 routine. Defaults mirror the values reported in the ToMEx 2.0 manuscript.
 }
+\examples{
+\dontrun{
+  # Generate 5 LHS parameter draws using the bundled defaults
+  mat <- matrix_function(n_sobol = 5, params = param_default_values)
+  head(mat)
+
+  # Surface-water only (skip sediment compartments)
+  mat_sw <- matrix_function(
+    n_sobol = 5,
+    params = param_default_values,
+    include_marine_sediment = FALSE,
+    include_freshwater_sediment = FALSE
+  )
+}
+}

@@ -27,7 +27,8 @@
 
 # -------------------------------------------------------------------------------------------------
 
-# Helper function for parameter validation
+#' Validate arguments for the truncated distribution sampler in rmore().
+#' @noRd
 validate_rtrunc_args <- function(dist, minv, maxv, mode = NULL, lsup, linf) {
   # Check for NA, NaN, or non-numeric
   vals <- c(minv, maxv, lsup, linf)
@@ -59,6 +60,8 @@ validate_rtrunc_args <- function(dist, minv, maxv, mode = NULL, lsup, linf) {
   }
 }
 
+#' Stepwise trapezoidal sampler from Wigger et al. (2020) for multi-modal NOECs.
+#' @noRd
 rmore <- function(
   values,
   coef = NULL,

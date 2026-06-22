@@ -135,6 +135,36 @@ File-level details are listed in the Zenodo record and inline comments.
 
 ------------------------------------------------------------------------
 
+## Glossary
+
+Key acronyms and domain terms used throughout the package and manuscript.
+See also `?PSSDplusplus-glossary` for the full in-package reference.
+
+| Term | Definition |
+|------|-----------|
+| **ERM** | Ecologically Relevant Metric — a particle- and species-specific measure of MP exposure effects (food dilution or tissue translocation) |
+| **Food dilution** | ERM in which MPs reduce caloric intake; alignment based on ingestible particle volume per L |
+| **Tissue translocation** | ERM in which MPs cross the gut epithelium into tissues; alignment based on ingestible surface area per L |
+| **SSD** | Species Sensitivity Distribution — statistical model of sensitivity variation across species |
+| **PSSD** | Probabilistic SSD — preserves species-level variability using per-species distributions |
+| **PSSD++** | This package's method — PSSD+ extended with MC-propagated ERM alignment uncertainty |
+| **HC5 / HC10** | Hazard Concentration protecting 95% / 90% of species; the SSD-derived PNEC basis |
+| **PNEC** | Predicted No Effect Concentration — threshold below which no adverse ecological effects are expected |
+| **NOEC** | No Observed Effect Concentration — highest concentration with no statistically significant adverse effect |
+| **ECx / LCx** | Effect/Lethal Concentration at x% effect; converted to NOEC via assessment factors |
+| **AF** | Assessment Factor — safety multiplier converting acute or ECx data to chronic NOEC equivalents |
+| **Tier** | Data-filter level 1–4: tiers 1–2 are protective (all endpoints, 1st-quartile collapse); tiers 3–4 are predictive (organism/population only, median collapse) |
+| **MC** | Monte Carlo — repeated random sampling for probabilistic uncertainty propagation |
+| **LHS** | Latin Hypercube Sampling — stratified sampling ensuring uniform parameter-space coverage |
+| **Bioaccessibility** | Fraction of environmental MPs physically accessible to an organism based on size and physiology |
+| **Translocation** | Movement of ingested particles from gut to tissues; predicted by a logistic regression on particle length |
+| **Power law (alpha)** | Exponent describing the particle size–abundance relationship in environmental MP distributions |
+| **ToMEx 2.0** | Toxicity of Microplastics Explorer v2.0 — the bundled ecotoxicity database (~13,000 data points) |
+| **cv_uf** | Coefficient of variation for uncertainty factors in the PSSD++ sampler |
+| **rmore_method** | Distribution method for PSSD++ sampling: `"step"` (trapezoidal, Wigger et al. 2020) or `"lognormal"` |
+
+------------------------------------------------------------------------
+
 ## Submitting issues
 
 Bug reports, questions, and reproducibility issues are welcome and should be submitted via the GitHub Issues tracker for this repository.

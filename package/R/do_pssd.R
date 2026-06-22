@@ -12,7 +12,8 @@
 #              - rmore_method: method for generating random samples ("step" i.e., trapezoidal; or "lognormal" i.e., short-cut method)
 #              - rmore() function is trapezoidal distribution function in rmore.r from the original Wigger et al. (2019) publication
 
-# Helper to align unnamed args to expected positions
+#' Map positional (unnamed) arguments to their expected named positions.
+#' @noRd
 resolve_pssd_args <- function(args, arg_order) {
   if (length(args) == 0) {
     return(args)
@@ -52,6 +53,14 @@ resolve_pssd_args <- function(args, arg_order) {
 #' distributions per species with either stepwise or log-normal
 #' bootstrapping across endpoints.
 #'
+#' @details
+#' **Naming convention:** The dot in `do.pSSD_mod` and `do.pSSD` follows R's
+#' S3 dispatch notation, where a function named `generic.class` is the method
+#' for class `class`. Here the dot is part of the legacy name inherited from
+#' Wigger et al. (2020) and does **not** indicate S3 dispatch — no object of
+#' class `pSSD` is defined. New code should call these functions by their full
+#' names rather than relying on dispatch.
+#'
 #' @param .data Matrix of endpoint values (rows = endpoints, cols = species). When
 #'   provided, it is treated as `DP`.
 #' @param ... Additional arguments used by the sampler. Expected arguments include
@@ -59,6 +68,22 @@ resolve_pssd_args <- function(args, arg_order) {
 #'
 #' @return Matrix of simulated NOEC draws with species in rows and iterations in columns.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#'   # Minimal single-species example
+#'   DP   <- matrix(c(10, 20, 40), nrow = 3, ncol = 1,
+#'                  dimnames = list(NULL, "Daphnia_magna"))
+#'   DP.SD <- DP * 0.1
+#'   UFt  <- matrix(rep(1, 3), nrow = 3, ncol = 1,
+#'                  dimnames = list(NULL, "Daphnia_magna"))
+#'   UFdd <- matrix(rep(2, 3), nrow = 3, ncol = 1,
+#'                  dimnames = list(NULL, "Daphnia_magna"))
+#'   result <- do.pSSD_mod(
+#'     DP = DP, DP.SD = DP.SD, UFt = UFt, UFdd = UFdd,
+#'     SIM = 100, CV.DP = 0.3, CV.UF = 0.5, rmore_method = "step"
+#'   )
+#' }
 do.pSSD_mod <- function(.data = NULL, ...) {
   args <- list(...)
   if (!missing(.data) && (is.null(args$DP) || !"DP" %in% names(args))) {
@@ -99,6 +124,8 @@ do.pSSD_mod <- function(.data = NULL, ...) {
   do.call(do_pSSD_mod_internal, args)
 }
 
+#' Core PSSD++ sampling loop (called by do.pSSD_mod after argument validation).
+#' @noRd
 do_pSSD_mod_internal <- function(
   DP,
   DP.SD,
@@ -272,7 +299,13 @@ do_pSSD_mod_internal <- function(
 #' Probabilistic SSD generator (original implementation)
 #'
 #' Samples NOEC distributions per species using triangular, trapezoidal, or
-#' stepwise sampling depending on available endpoints.
+#' stepwise sampling depending on available endpoints. This is the original
+#' PSSD+ formulation; prefer \code{\link{do.pSSD_mod}} for new analyses that
+#' include alignment-derived standard deviations.
+#'
+#' @details
+#' See \code{\link{do.pSSD_mod}} for a note on the dot-notation naming
+#' convention.
 #'
 #' @param .data Matrix of endpoint values (rows = endpoints, cols = species). When
 #'   provided, it is treated as `DP`.
@@ -281,6 +314,20 @@ do_pSSD_mod_internal <- function(
 #'
 #' @return Matrix of simulated NOEC draws with species in rows and iterations in columns.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#'   DP  <- matrix(c(10, 20, 40), nrow = 3, ncol = 1,
+#'                 dimnames = list(NULL, "Daphnia_magna"))
+#'   UFt  <- matrix(rep(1, 3), nrow = 3, ncol = 1,
+#'                  dimnames = list(NULL, "Daphnia_magna"))
+#'   UFdd <- matrix(rep(2, 3), nrow = 3, ncol = 1,
+#'                  dimnames = list(NULL, "Daphnia_magna"))
+#'   result <- do.pSSD(
+#'     DP = DP, UFt = UFt, UFdd = UFdd,
+#'     SIM = 100, CV.DP = 0.3, CV.UF = 0.5
+#'   )
+#' }
 do.pSSD <- function(.data = NULL, ...) {
   args <- list(...)
   if (!missing(.data) && (is.null(args$DP) || !"DP" %in% names(args))) {

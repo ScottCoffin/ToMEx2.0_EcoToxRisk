@@ -39,7 +39,12 @@ the aligned data.}
 
 \item{cv_uf}{Coefficient of variation for uncertainty factors.}
 
-\item{rmore_method}{Distribution method for \code{rmore} ("step" or "lognormal").}
+\item{rmore_method}{Distribution method for sampling species-level NOEC
+distributions in the PSSD++ step. \code{"step"} (default) uses a trapezoidal
+piecewise-uniform approximation following Wigger et al. (2020), which is
+consistent with published results. \code{"lognormal"} uses a log-normal
+short-cut that is faster but assumes symmetric log-scale variability; use
+only when speed matters more than strict comparability to the manuscript.}
 
 \item{quantile_type}{Quantile type used when summarizing outputs.}
 
@@ -64,4 +69,19 @@ A named list of PSSD results (one per combination).
 \description{
 Generates probabilistic SSDs, summary statistics, and figures with caching
 for each combination of tier, environment, and ERM.
+}
+\examples{
+\dontrun{
+  # After running MC_sim_align_parallel to get mc_out and building erm_registry:
+  pSSDs <- make_all_pSSDs(
+    MC_sim_df    = mc_out,
+    tiers        = 3,
+    environments = c("Freshwater", "Marine"),
+    erms         = c("Food Dilution", "Tissue Translocation"),
+    erm_registry = erm_registry,
+    sim          = 3,
+    parallel     = FALSE
+  )
+  names(pSSDs)
+}
 }

@@ -18,6 +18,20 @@
 #'
 #' @return A list of ggplot objects summarizing parameter draws.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#'   mat <- matrix_function(n_sobol = 20, params = param_default_values)
+#'   plots <- parameter_histograms_function(mat)
+#'   plots$alpha_combined_plot   # alpha (power law) distributions
+#'   plots$tissue_body           # tissue translocation and body-length params
+#'
+#'   # Surface water only
+#'   plots_sw <- parameter_histograms_function(
+#'     mat,
+#'     compartments = c("Marine", "Freshwater")
+#'   )
+#' }
 parameter_histograms_function <- function(mat, metrics = NULL, compartments = NULL) {
   # Define colors for marine and freshwater parameters
   env_colors <- c(

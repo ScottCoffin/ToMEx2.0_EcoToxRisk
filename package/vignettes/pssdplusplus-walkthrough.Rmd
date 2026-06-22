@@ -38,15 +38,29 @@ library(PSSDplusplus)
 library(trapezoid)
 `%>%` <- magrittr::`%>%`
 
-# Automatically detect and set parallel processing options based on rendering or running locally
+# Default to parallel when run interactively; overridden to FALSE when rendering.
 parallel_enabled <- TRUE
-if (knitr::is_html_output() || knitr::is_latex_output()) {
+
+render_mode <- knitr::is_html_output() || knitr::is_latex_output()
+if (render_mode) {
+  knitr::opts_chunk$set(cache = FALSE)
+  options(progressr.enable = FALSE)
   parallel_enabled <- FALSE
   future::plan(future::sequential)
 }
 
-workers <- if (parallel_enabled) max(1, parallel::detectCores() - 1) else 1
+# Useful parallelism is bounded by the job count, not the core count:
+#   MC_sim_align_parallel: one PSOCK job per n_sim row. PSOCK startup + data
+#     serialisation dominates for n_sim <= 20, so the function auto-falls back
+#     to sequential in that range. For n_sim 1000+, 4-8 cores is the sweet spot.
+#   make_all_pSSDs: one future job per tier x environment x ERM combination.
+#     Default (Tier3 x 2 envs x 2 ERMs) = 4 combos; the function internally
+#     caps workers to nrow(combo_tbl), so extra workers are never launched.
+# Setting workers = detectCores()-1 on a 16-core machine wastes 12 idle sessions.
+workers <- if (parallel_enabled) min(max(1L, parallel::detectCores() - 1L), 4L) else 1
 num_cores <- if (parallel_enabled) "auto" else 1
+base_cache_dir <- file.path(tempdir(), "pssd_cache")
+base_output_path <- file.path(tempdir(), "pssd_figures")
 ```
 
 # Overview
@@ -72,35 +86,24 @@ The workflow proceeds through four main stages:
 3. Monte Carlo alignment of toxicity data  
 4. Fitting and summarization of PSSD++ models  
 
-```{r render-mode, include = FALSE}
-render_mode <- knitr::is_html_output() || knitr::is_latex_output()
-if (render_mode) {
-  knitr::opts_chunk$set(cache = FALSE)
-  options(progressr.enable = FALSE)
-}
-
-parallel_enabled <- !render_mode
-if (!parallel_enabled) {
-  future::plan(future::sequential)
-}
-
-workers <- if (parallel_enabled) max(1, parallel::detectCores() - 1) else 1
-num_cores <- if (parallel_enabled) "auto" else 1
-base_cache_dir <- file.path(tempdir(), "pssd_cache")
-base_output_path <- file.path(tempdir(), "pssd_figures")
-```
 
 ## 1) Prepare inputs
-By default, the package uses a preprocessed **ToMEx 2.0–derived ecotoxicity dataset**, distributed with the package.
+This vignette uses **`tomex2_mini`**, a compact 10-species (5 freshwater + 5 marine) subset
+of the full ToMEx 2.0 dataset bundled with the package. It is pre-filtered to pass all Tier 1–4
+quality criteria and runs end-to-end in seconds, making it ideal for exploration and testing.
+To replicate the full analysis from Coffin et al. (2026), swap `tomex2_mini` for `tomex2`.
 ```{r}
-# load in toxicity data (ToMEx 2.0 is default, and is supplied with package)
-tox_data <- tomex2
+# load in toxicity data (tomex2_mini is a compact 10-species subset of ToMEx 2.0. that is pre-filtered for quick testing.)
+#tox_data <- tomex2_mini #beta-testing
+tox_data <- tomex2 # full dataset
 head(tox_data) # view the first few rows of the toxicity data
 ```
 
-The user may choose to filter the toxicity data based on specific criteria (e.g., species, exposure duration, endpoints, quality criteria, etc.). Each of these criteria can be applied using the `filter()` function from the `dplyr` package. Filtering options applied in Mehinto et al. (2022) are applied below:
+Users working with the full `tomex2` dataset may filter by specific criteria using `dplyr::filter()`.
+The filters below (applied in Mehinto et al. 2022) are already satisfied in `tomex2_mini`, so they
+are shown here as documentation of the filtering logic rather than an active transformation:
 ```{r}
-tox_data <- tox_data |> 
+tox_data <- tox_data |>
   dplyr::filter(
     Group != "Bacterium", # Drop studies with Bacterium group
     Group != "Plant", # Drop studies with Plant group
@@ -254,6 +257,7 @@ ptrapezoid <- trapezoid::ptrapezoid
 qtrapezoid <- trapezoid::qtrapezoid
 dtrapezoid <- trapezoid::dtrapezoid
 
+message("Building surface water pSSDs...")
 # make all pSSDs for surface water
 pSSDs_water <- make_all_pSSDs(
   MC_sim_df = MC_sim_df, # ensure aligned data is included
@@ -268,9 +272,10 @@ pSSDs_water <- make_all_pSSDs(
   base_cache_dir = file.path(tempdir(), "pssd_cache"), # directory to store cached pSSD objects (important when running high number of simulations to resume if needed)
   base_output_path = file.path(tempdir(), "pssd_figures"), # directory to store output figures
   overwrite_cache = TRUE, # whether or not to overwrite cached pSSD objects
-  debug = T # whether or not to enable debug mode
+  debug = F # T or F: whether or not to enable debug mode. Off by default.
 )
 
+message("Building sediment pSSDs...")
 # make all pSSDs for sediment (kg-based doses)
   pSSDs_sediment <- make_all_pSSDs(
     MC_sim_df = MC_sim_df,
@@ -378,3 +383,63 @@ pSSDs_sediment_combined <- make_all_pSSDs(
 # inspect results
 pSSDs_sediment_combined$`Tier3_Freshwater Sediment_Food Dilution`$pSSD_plot
 ```
+
+---
+
+## Glossary
+
+Quick reference for terminology used throughout this vignette and the
+accompanying manuscript (Coffin et al. 2026). See also `?PSSDplusplus_glossary`
+for the full in-package reference.
+
+### Statistical and modelling methods
+
+| Term | Definition |
+|------|-----------|
+| **LHS** | Latin Hypercube Sampling — stratified-random sampling ensuring uniform coverage of parameter space |
+| **MC (Monte Carlo)** | Repeated random sampling used to propagate parameter uncertainty through the full workflow |
+| **Sobol' sequence** | Quasi-random low-discrepancy sequence underlying the LHS parameter matrix |
+| **Power law (alpha)** | Exponent describing the size–abundance relationship of particles in a polydisperse environment |
+| **Bootstrapping** | Resampling method for estimating SSD confidence intervals |
+| **RCI** | Relative Confidence Interval: (95th − 5th percentile) / median |
+
+### Ecological risk assessment
+
+| Term | Definition |
+|------|-----------|
+| **SSD** | Species Sensitivity Distribution — model of variation in sensitivity across species |
+| **PSSD** | Probabilistic SSD — preserves species-level variability via per-species distributions |
+| **PSSD+** | Adds probabilistic assessment factors (Wigger et al. 2020) |
+| **PSSD++** | This package — PSSD+ with MC-propagated ERM alignment uncertainty |
+| **HC5 / HC10** | Hazard Concentration protecting 95% / 90% of species |
+| **PNEC** | Predicted No Effect Concentration — the derived threshold |
+| **Tier** | Data-filter level 1–4: protective (1–2, all endpoints) → predictive (3–4, organism/population) |
+| **AF** | Assessment Factor — converts acute or ECx/LCx values to chronic NOEC equivalents |
+| **cv_uf** | Coefficient of variation for the uncertainty factor distribution in PSSD++ |
+
+### Microplastic-specific terms
+
+| Term | Definition |
+|------|-----------|
+| **ERM** | Ecologically Relevant Metric — a particle- and species-specific measure of MP exposure effects |
+| **Food dilution** | ERM: MPs dilute caloric intake; aligned to ingestible particle volume/L |
+| **Tissue translocation** | ERM: MPs cross the gut epithelium; aligned to ingestible surface area/L |
+| **Bioaccessibility** | Fraction of environmental MPs accessible to an organism based on size and physiology |
+| **Translocation** | Movement of particles from gut to tissues, predicted by logistic regression on particle length |
+| **ToMEx 2.0** | Toxicity of Microplastics Explorer v2.0 — the bundled ecotoxicity database |
+
+### Effect metrics
+
+| Acronym | Full name | Notes |
+|---------|-----------|-------|
+| NOEC | No Observed Effect Concentration | Target endpoint for all tiers |
+| LOEC | Lowest Observed Effect Concentration | Converted to NOEC via `af.noec` |
+| ECx | Effect Concentration at x% | x = percentage effect (e.g., EC50) |
+| LCx | Lethal Concentration at x% | x = percentage mortality |
+| HONEC | Highest Observed No Effect Concentration | Excluded — not rigorously determined |
+
+### Key polymer abbreviations
+
+PA = Polyamide; PE = Polyethylene; PET = Polyethylene Terephthalate;
+PP = Polypropylene; PS = Polystyrene; PTFE = Polytetrafluoroethylene;
+PUR = Polyurethane; PVC = Polyvinyl Chloride.

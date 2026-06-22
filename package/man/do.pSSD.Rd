@@ -18,5 +18,25 @@ Matrix of simulated NOEC draws with species in rows and iterations in columns.
 }
 \description{
 Samples NOEC distributions per species using triangular, trapezoidal, or
-stepwise sampling depending on available endpoints.
+stepwise sampling depending on available endpoints. This is the original
+PSSD+ formulation; prefer \code{\link{do.pSSD_mod}} for new analyses that
+include alignment-derived standard deviations.
+}
+\details{
+See \code{\link{do.pSSD_mod}} for a note on the dot-notation naming
+convention.
+}
+\examples{
+\dontrun{
+  DP  <- matrix(c(10, 20, 40), nrow = 3, ncol = 1,
+                dimnames = list(NULL, "Daphnia_magna"))
+  UFt  <- matrix(rep(1, 3), nrow = 3, ncol = 1,
+                 dimnames = list(NULL, "Daphnia_magna"))
+  UFdd <- matrix(rep(2, 3), nrow = 3, ncol = 1,
+                 dimnames = list(NULL, "Daphnia_magna"))
+  result <- do.pSSD(
+    DP = DP, UFt = UFt, UFdd = UFdd,
+    SIM = 100, CV.DP = 0.3, CV.UF = 0.5
+  )
+}
 }

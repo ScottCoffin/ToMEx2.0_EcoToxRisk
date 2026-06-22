@@ -19,3 +19,8 @@ otherwise throws an informative error.
 Lightweight helper to enforce a specific dependency version without
 attempting to install anything (CRAN-friendly).
 }
+\examples{
+\dontrun{
+  check_package_version("dplyr", as.character(packageVersion("dplyr")))
+}
+}

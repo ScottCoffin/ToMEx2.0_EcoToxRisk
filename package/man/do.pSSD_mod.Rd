@@ -21,3 +21,27 @@ Propagates intra- and inter-laboratory uncertainty to sample NOEC
 distributions per species with either stepwise or log-normal
 bootstrapping across endpoints.
 }
+\details{
+\strong{Naming convention:} The dot in \code{do.pSSD_mod} and \code{do.pSSD} follows R's
+S3 dispatch notation, where a function named \code{generic.class} is the method
+for class \code{class}. Here the dot is part of the legacy name inherited from
+Wigger et al. (2020) and does \strong{not} indicate S3 dispatch — no object of
+class \code{pSSD} is defined. New code should call these functions by their full
+names rather than relying on dispatch.
+}
+\examples{
+\dontrun{
+  # Minimal single-species example
+  DP   <- matrix(c(10, 20, 40), nrow = 3, ncol = 1,
+                 dimnames = list(NULL, "Daphnia_magna"))
+  DP.SD <- DP * 0.1
+  UFt  <- matrix(rep(1, 3), nrow = 3, ncol = 1,
+                 dimnames = list(NULL, "Daphnia_magna"))
+  UFdd <- matrix(rep(2, 3), nrow = 3, ncol = 1,
+                 dimnames = list(NULL, "Daphnia_magna"))
+  result <- do.pSSD_mod(
+    DP = DP, DP.SD = DP.SD, UFt = UFt, UFdd = UFdd,
+    SIM = 100, CV.DP = 0.3, CV.UF = 0.5, rmore_method = "step"
+  )
+}
+}

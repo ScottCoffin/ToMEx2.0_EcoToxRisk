@@ -8,3 +8,5 @@
 ^README_files$
 ^README\\.html$
 ^output$
+^doc$
+^Meta$
