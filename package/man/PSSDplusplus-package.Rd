@@ -19,7 +19,11 @@ microplastic ecotoxicity database (~13,000 data points) and a compact 10-species
 subset for rapid testing. Supports parallel computation, deterministic caching,
 and structured diagnostic output.
 }
+\references{
+Coffin, S. et al. (2026). \emph{Journal of Hazardous Materials}
+503, 141021. \doi{10.1016/j.jhazmat.2025.141021}
+}
 \author{
-\strong{Maintainer}: Scott Coffin \email{scott.l.coffin@gmail.com}
-(\href{https://orcid.org/0000-0002-7035-1282}{ORCID})
+\strong{Maintainer}: Scott Coffin \email{scott.l.coffin@gmail.com} (\href{https://orcid.org/0000-0002-7035-1282}{ORCID})
+
 }

@@ -548,8 +548,106 @@ generate_data <- function(
 }
 
 
-#' Align a toxicity dataset to ERM-specific exposure units for one simulation.
-#' @noRd
+#' Align a toxicity dataset to ERM-specific exposure units for one simulation
+#'
+#' Converts laboratory-measured toxicity endpoints (mg/L or mg/kg) into
+#' particle-based environmentally relevant metrics (ERMs) for two mechanisms:
+#' **food dilution** (ingestible particle volume) and **tissue translocation**
+#' (ingestible particle surface area). Alignment accounts for particle size
+#' distributions (power-law), shape (prolate-spheroid), density, and organism
+#' bioaccessibility based on mouth-opening body-length models.
+#'
+#' This is the per-simulation workhorse called by [MC_sim_align_parallel()].
+#' Call it directly when you want a single deterministic alignment using
+#' specific (e.g., default) parameter values.
+#'
+#' @param df A data frame of toxicity records from the ToMEx 2.0 database (or
+#'   compatible format). Must contain dose columns, `env_f`, `size.length.um`,
+#'   `shape_f`, `poly_f`, and assessment-factor columns `af.time`, `af.noec`.
+#' @param x1M_set_input Lower particle size limit (µm) for mass-based ERMs.
+#'   Default `1`.
+#' @param x1D_set_input Lower particle size limit (µm) for all alignments.
+#'   Default `1`.
+#' @param x2D_set_input Upper particle size limit (µm) for food-dilution ERMs.
+#'   Default `5000`.
+#' @param upper.tissue.trans.size.um_input Maximum particle length (µm)
+#'   considered translocatable. Default `88` (Kooi et al. 2021).
+#' @param beta_log10_body_length_input Slope of the log10 body-length
+#'   bioaccessibility model. Default `0.9341` (Jms et al. 2020).
+#' @param body_length_intercept_input Intercept of the bioaccessibility model.
+#'   Default `1.12`.
+#' @param R.ave.freshwater_input Length-to-width ratio for freshwater MPs.
+#'   Default `0.67`.
+#' @param H_W_ratio.freshwater_input Height-to-width ratio for freshwater MPs.
+#'   Default `0.67`.
+#' @param p.ave.freshwater_input Average density (g/cm³) in freshwater.
+#'   Default `1.04`.
+#' @param alpha.freshwater_input Power-law exponent for freshwater surface
+#'   water particle length distribution. Default `2.64`.
+#' @param a.sa.freshwater_input Surface-area power-law exponent, freshwater.
+#'   Default `2.00`.
+#' @param a.v.freshwater_input Volume power-law exponent, freshwater.
+#'   Default `1.68`.
+#' @param a.m.freshwater_input Mass power-law exponent, freshwater.
+#'   Default `1.65`.
+#' @param a.ssa.freshwater_input Specific surface-area power-law exponent,
+#'   freshwater. Default `2.71`.
+#' @param R.ave.marine_input Length-to-width ratio for marine MPs.
+#'   Default `0.77`.
+#' @param H_W_ratio.marine_input Height-to-width ratio for marine MPs.
+#'   Default `0.77`.
+#' @param p.ave.marine_input Average density in marine surface water.
+#'   Default `1.10`.
+#' @param alpha.marine_input Power-law exponent, marine surface water.
+#'   Default `2.07`.
+#' @param a.sa.marine_input Surface-area power-law exponent, marine.
+#'   Default `1.50`.
+#' @param a.v.marine_input Volume power-law exponent, marine. Default `1.48`.
+#' @param a.m.marine_input Mass power-law exponent, marine. Default `1.32`.
+#' @param a.ssa.marine_input Specific surface-area power-law exponent, marine.
+#'   Default `1.98`.
+#' @param R.ave.sediment.freshwater_input Length-to-width ratio, freshwater
+#'   sediment. Default `0.70`.
+#' @param H_W_ratio.sediment.freshwater_input Height-to-width ratio, freshwater
+#'   sediment. Default `0.70`.
+#' @param p.ave.sediment.freshwater_input Average density, freshwater sediment.
+#'   Default `1.15`.
+#' @param alpha.sediment.freshwater_input Power-law exponent, freshwater
+#'   sediment. Default `3.25`.
+#' @param a.sa.sediment.freshwater_input Surface-area exponent, freshwater
+#'   sediment. Default `1.89`.
+#' @param a.v.sediment.freshwater_input Volume exponent, freshwater sediment.
+#'   Default `1.53`.
+#' @param a.m.sediment.freshwater_input Mass exponent, freshwater sediment.
+#'   Default `1.56`.
+#' @param a.ssa.sediment.freshwater_input Specific SA exponent, freshwater
+#'   sediment. Default `2.82`.
+#' @param R.ave.sediment.marine_input Length-to-width ratio, marine sediment.
+#'   Default `0.75`.
+#' @param H_W_ratio.sediment.marine_input Height-to-width ratio, marine
+#'   sediment. Default `0.75`.
+#' @param p.ave.sediment.marine_input Average density, marine sediment.
+#'   Default `1.16`.
+#' @param alpha.sediment.marine_input Power-law exponent, marine sediment.
+#'   Default `2.57`.
+#' @param a.sa.sediment.marine_input Surface-area exponent, marine sediment.
+#'   Default `1.75`.
+#' @param a.v.sediment.marine_input Volume exponent, marine sediment.
+#'   Default `1.50`.
+#' @param a.m.sediment.marine_input Mass exponent, marine sediment.
+#'   Default `1.50`.
+#' @param a.ssa.sediment.marine_input Specific SA exponent, marine sediment.
+#'   Default `2.54`.
+#'
+#' @return The input data frame `df` augmented with ERM columns including
+#'   `EC_env_sa.particles.mL_trans` (surface-water tissue translocation, p/mL),
+#'   `EC_env_v.particles.mL_ingest` (surface-water food dilution, p/mL),
+#'   `EC_env_sa.particles.kg_trans` (sediment tissue translocation, p/kg),
+#'   `EC_env_v.particles.kg_ingest` (sediment food dilution, p/kg), plus
+#'   classification columns `translocatable` and `ingestible`.
+#'
+#' @seealso [MC_sim_align_parallel()], [make_tiered_SSDs()]
+#' @export
 align_data <- function(
   df, #ToMEx database
   x1M_set_input = 1, #um lower size for all alignments

@@ -87,6 +87,163 @@ The workflow proceeds through four main stages:
 4. Fitting and summarization of PSSD++ models  
 
 
+## Quick start: alignment → traditional SSDs
+
+This section demonstrates the complete basic workflow in a few steps using the
+default (deterministic) parameter values and the bundled `tomex2` dataset.
+Use this path when you want single-run, non-Monte-Carlo SSDs — for example,
+to explore the data, reproduce Tier 1–4 thresholds at default parameters, or
+validate results against the full probabilistic workflow.
+
+### Step A — Filter and align
+
+```{r basic-align, eval = FALSE}
+library(PSSDplusplus)
+library(dplyr)
+
+# 1. Load and (optionally) filter ToMEx 2.0 
+tox_filtered <- tomex2 |>
+   # demonstrating filters used for threshold development. Adjust as needed.
+  dplyr::filter(
+    Group != "Bacterium",
+    Group != "Plant",
+    effect.metric != "HONEC",
+    tier_zero_tech_f == "Red Criteria Passed",
+    tier_zero_risk_f == "Red Criteria Passed",
+    risk.13 != 0
+  )
+
+# 2. Align to ERMs using default parameters (single deterministic run)
+aligned <- align_data(tox_filtered)
+```
+
+`align_data()` adds columns such as `EC_env_sa.particles.mL_trans` (tissue
+translocation, particles/mL) and `EC_env_v.particles.mL_ingest` (food dilution,
+particles/mL) to every row. Sediment equivalents use `particles.kg` units.
+
+### Step B — Prepare data for SSD fitting
+
+After alignment the dose column must be named `dose_new`. The snippet below
+prepares a food-dilution freshwater surface-water subset for Tiers 1–4:
+
+```{r basic-prep, eval = FALSE}
+# Surface-water food dilution subset (particles/L = particles/mL * 1000)
+fd_water <- aligned |>
+  dplyr::filter(
+    environment %in% c("Freshwater", "Marine"),
+    ingestible != "not ingestible",
+    EC_env_v.particles.mL_ingest > 0,
+    Group != "Algae",
+    shape_f != "Not Reported",
+    poly_f  != "Not Reported"
+  ) |>
+  dplyr::mutate(
+    dose_new = (EC_env_v.particles.mL_ingest / (af.time * af.noec)) * 1000
+  ) |>
+  tidyr::drop_na(dose_new) |>
+  dplyr::filter(dose_new > 0)
+```
+
+### Step C — Fit tiered SSDs with `make_tiered_SSDs()`
+
+The tiers follow the risk assessment framework defined in
+[Mehinto et al. (2022)](https://link.springer.com/article/10.1186/s43591-022-00033-3),
+which grades data quality and protectiveness from Tier 1 (all endpoints, most
+protective) through Tier 4 (organism/population endpoints only, predictive):
+
+| `tier` | Data filter | Collapse | HCx |
+|--------|-------------|----------|-----|
+| 1 | All endpoints | 25th percentile | HC5 lower confidence limit |
+| 2 | All endpoints | 25th percentile | HC5 estimate + 95% CI |
+| 3 | Organism/Population, `risk.13 ≠ 1` | Median | HC5 estimate + 95% CI |
+| 4 | Organism/Population, `risk.13 ≠ 1` | Median | HC10 estimate + 95% CI |
+
+`make_tiered_SSDs()` is the single entry point for all four tiers:
+
+```{r basic-ssd, eval = FALSE}
+# Tier 1 — most protective (Mehinto et al. 2022); returns HC5 lower CL
+result_t1 <- make_tiered_SSDs(fd_water, tier = 1)
+
+# Tier 2 — HC5 estimate + 95% CI
+result_t2 <- make_tiered_SSDs(fd_water, tier = 2)
+
+# Tier 3 — organism/population only, median collapse, HC5 + CI
+result_t3 <- make_tiered_SSDs(fd_water, tier = 3)
+
+# Tier 4 — same filter as Tier 3, HC10 + CI
+result_t4 <- make_tiered_SSDs(fd_water, tier = 4)
+
+# Inspect:
+result_t1$hc5lcl  # particles/L
+result_t2$hcx_est
+```
+
+For the full Monte Carlo workflow (propagating alignment-parameter uncertainty
+across hundreds of simulations), continue to Section 1 below.
+
+---
+
+### Step D — Plot the SSD
+
+`make_tiered_SSDs()` returns a `tiered_SSD` S3 object that bundles everything
+needed to reproduce the SSD plot.
+
+#### Static plot with `autoplot()`
+
+Call `ggplot2::autoplot()` on the result. Dashed crosshair lines intersect at
+the actual HCx position on the curve. Adjust `base_size`, `point_size`, and
+`label_size` to scale the plot for different figure dimensions:
+
+```{r basic-plot, eval = FALSE}
+# Fit Tier 3 SSD on the food-dilution surface-water subset
+result_t3 <- make_tiered_SSDs(fd_water, tier = 3)
+
+# Print a compact summary
+print(result_t3)
+
+# Publication-ready static plot
+ggplot2::autoplot(result_t3,
+                  x_label    = "particles/L",
+                  erm_label  = "Food Dilution",
+                  base_size  = 12,    # overall font size
+                  point_size = 2,     # species data points
+                  label_size = 3.5)   # repelled species labels
+```
+
+#### Interactive plot with `plotly_ssd()`
+
+`plotly_ssd()` produces the same layout as `autoplot()` but as an interactive
+[plotly](https://plotly.com/r/) widget. Requires the `plotly` package
+(`install.packages("plotly")`). The arrow annotation points directly to the HCx
+position on the SSD curve:
+
+```{r plotly-plot, eval = FALSE}
+# Interactive SSD with hover tooltips and HCx arrow annotation
+plotly_ssd(result_t3,
+           x_label    = "particles/L",
+           erm_label  = "Food Dilution",
+           lower_size = 1,      # optional: particle size range for axis title
+           upper_size = 5000)
+```
+
+The `tiered_SSD` object also exposes the underlying data for fully custom plots:
+
+```{r basic-plot-components, eval = FALSE}
+# Model-averaged SSD predictions with CI (aoc_pred in Shiny)
+result_t3$predictions    # columns: proportion, est, lcl, ucl, ...
+
+# Species-level collapsed data with empirical CDF fractions (aoc_ssd)
+result_t3$collapsed_data # columns: Species, Group, Conc, frac
+
+# Single-row HCx annotation data with est_format (aoc_hc)
+result_t3$hc_data
+
+# The raw ssdtools fit object for re-fitting or custom predictions
+result_t3$fit_dists
+```
+
+---
+
 ## 1) Prepare inputs
 This vignette uses **`tomex2_mini`**, a compact 10-species (5 freshwater + 5 marine) subset
 of the full ToMEx 2.0 dataset bundled with the package. It is pre-filtered to pass all Tier 1–4

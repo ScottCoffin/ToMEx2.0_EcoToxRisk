@@ -18,11 +18,11 @@ This repository contains the **data, code, and reproducible workflows** supporti
 
 This project develops and applies **PSSD++**, an extension of traditional Species Sensitivity Distributions designed for **microplastics**, explicitly propagating uncertainty arising from:
 
--   Effect–response metric (ERM) alignment
--   Intra-species variability
--   Particle trait distributions
--   Bioaccessibility and tissue translocation
--   Monte Carlo and Sobol global sensitivity analysis
+- Effect–response metric (ERM) alignment
+- Intra-species variability
+- Particle trait distributions
+- Bioaccessibility and tissue translocation
+- Monte Carlo and Sobol global sensitivity analysis
 
 The framework enables probabilistic derivation of **tiered ecological thresholds** for marine and freshwater ecosystems using the ToMEx 2.0 toxicity database.
 
@@ -30,8 +30,8 @@ The framework enables probabilistic derivation of **tiered ecological thresholds
 
 ## Associated resources
 
--   **Source toxicity database:** <https://github.com/SCCWRP/ToMEx_AquaticOrganisms>
--   **R package:** `PSSDplusplus` (bundled in this repository)
+- **Source toxicity database:** <https://github.com/SCCWRP/ToMEx_AquaticOrganisms>
+- **R package:** `PSSDplusplus` (bundled in this repository)
 
 ------------------------------------------------------------------------
 
@@ -113,9 +113,9 @@ Run the full Monte Carlo workflow (may exceed 12 hours):
 
 ## System requirements
 
--   R ≥ 4.1
--   Windows, macOS, or Linux
--   ≥16 GB RAM and multi-core CPU recommended for full MC runs
+- R ≥ 4.1
+- Windows, macOS, or Linux
+- ≥16 GB RAM and multi-core CPU recommended for full MC runs
 
 ------------------------------------------------------------------------
 
@@ -123,13 +123,13 @@ Run the full Monte Carlo workflow (may exceed 12 hours):
 
 Several outputs exceed GitHub size limits and are excluded via `.gitignore`.
 
--   **Zenodo archive:** <https://doi.org/10.5281/zenodo.16740504>
+- **Zenodo archive:** <https://doi.org/10.5281/zenodo.16740504>
 
--   **Key directories:**
+- **Key directories:**
 
-    -   `scripts/monte carlo/output/`
-    -   `data/output/`
-    -   `output/pssd_cache/`
+  - `scripts/monte carlo/output/`
+  - `data/output/`
+  - `output/pssd_cache/`
 
 File-level details are listed in the Zenodo record and inline comments.
 
@@ -137,11 +137,10 @@ File-level details are listed in the Zenodo record and inline comments.
 
 ## Glossary
 
-Key acronyms and domain terms used throughout the package and manuscript.
-See also `?PSSDplusplus-glossary` for the full in-package reference.
+Key acronyms and domain terms used throughout the package and manuscript. See also `?PSSDplusplus-glossary` for the full in-package reference.
 
 | Term | Definition |
-|------|-----------|
+|----|----|
 | **ERM** | Ecologically Relevant Metric — a particle- and species-specific measure of MP exposure effects (food dilution or tissue translocation) |
 | **Food dilution** | ERM in which MPs reduce caloric intake; alignment based on ingestible particle volume per L |
 | **Tissue translocation** | ERM in which MPs cross the gut epithelium into tissues; alignment based on ingestible surface area per L |
@@ -159,7 +158,7 @@ See also `?PSSDplusplus-glossary` for the full in-package reference.
 | **Bioaccessibility** | Fraction of environmental MPs physically accessible to an organism based on size and physiology |
 | **Translocation** | Movement of ingested particles from gut to tissues; predicted by a logistic regression on particle length |
 | **Power law (alpha)** | Exponent describing the particle size–abundance relationship in environmental MP distributions |
-| **ToMEx 2.0** | Toxicity of Microplastics Explorer v2.0 — the bundled ecotoxicity database (~13,000 data points) |
+| **ToMEx 2.0** | Toxicity of Microplastics Explorer v2.0 — the bundled ecotoxicity database (\~13,000 data points) |
 | **cv_uf** | Coefficient of variation for uncertainty factors in the PSSD++ sampler |
 | **rmore_method** | Distribution method for PSSD++ sampling: `"step"` (trapezoidal, Wigger et al. 2020) or `"lognormal"` |
 
@@ -171,11 +170,11 @@ Bug reports, questions, and reproducibility issues are welcome and should be sub
 
 To help us respond efficiently, please include the following when opening an issue:
 
--   A concise description of the problem or question
--   The relevant script, function, or workflow (e.g., ToMEx2_EcoTox.Rmd, EcoTox_MonteCarlo.Rmd, or PSSDplusplus)
--   Your R version and operating system
--   Any error messages, warnings, or tracebacks (copied verbatim)
--   Whether you are using Zenodo precomputed outputs (Option A) or full recomputation (Option B)
+- A concise description of the problem or question
+- The relevant script, function, or workflow (e.g., ToMEx2_EcoTox.Rmd, EcoTox_MonteCarlo.Rmd, or PSSDplusplus)
+- Your R version and operating system
+- Any error messages, warnings, or tracebacks (copied verbatim)
+- Whether you are using Zenodo precomputed outputs (Option A) or full recomputation (Option B)
 
 For computationally intensive workflows, we strongly recommend first testing with reduced settings (e.g., small n_sim, sim, or single-core execution) before reporting issues observed only at scale.
 
