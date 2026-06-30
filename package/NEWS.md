@@ -1,3 +1,14 @@
+PSSDplusplus 0.3.3
+==================
+
+Bug fixes
+---------
+- Fixed GitHub source-archive installs on Windows by excluding raw repository
+  input files from generated archives. This keeps
+  `remotes::install_github(..., subdir = "package")` focused on the package
+  subtree and avoids extraction failures from deep/non-ASCII raw-data paths
+  outside the package.
+
 PSSDplusplus 0.3.2
 ==================
 

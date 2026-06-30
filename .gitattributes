@@ -1,0 +1,5 @@
+# Keep GitHub source archives installable on Windows when installing the R
+# package from the package/ subdirectory. These raw input files are not needed
+# for package installation and include deep/non-ASCII paths that can break
+# archive extraction in remotes::install_github().
+data/input/** export-ignore
