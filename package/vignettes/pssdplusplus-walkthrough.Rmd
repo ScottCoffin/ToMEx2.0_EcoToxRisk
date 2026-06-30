@@ -34,6 +34,7 @@ if (length(missing)) {
   stop("Missing required packages for this vignette: ",
        paste(missing, collapse = ", "))
 }
+has_plotly <- requireNamespace("plotly", quietly = TRUE)
 library(PSSDplusplus)
 library(trapezoid)
 `%>%` <- magrittr::`%>%`
@@ -97,12 +98,14 @@ validate results against the full probabilistic workflow.
 
 ### Step A — Filter and align
 
-```{r basic-align, eval = FALSE}
+```{r basic-align, message = FALSE}
 library(PSSDplusplus)
 library(dplyr)
 
+tox_data <- tomex2_mini #beta-testing
+
 # 1. Load and (optionally) filter ToMEx 2.0 
-tox_filtered <- tomex2 |>
+tox_filtered <- tox_data |>
    # demonstrating filters used for threshold development. Adjust as needed.
   dplyr::filter(
     Group != "Bacterium",
@@ -126,7 +129,7 @@ particles/mL) to every row. Sediment equivalents use `particles.kg` units.
 After alignment the dose column must be named `dose_new`. The snippet below
 prepares a food-dilution freshwater surface-water subset for Tiers 1–4:
 
-```{r basic-prep, eval = FALSE}
+```{r basic-prep}
 # Surface-water food dilution subset (particles/L = particles/mL * 1000)
 fd_water <- aligned |>
   dplyr::filter(
@@ -160,7 +163,9 @@ protective) through Tier 4 (organism/population endpoints only, predictive):
 
 `make_tiered_SSDs()` is the single entry point for all four tiers:
 
-```{r basic-ssd, eval = FALSE}
+```{r basic-ssd}
+set.seed(42)
+
 # Tier 1 — most protective (Mehinto et al. 2022); returns HC5 lower CL
 result_t1 <- make_tiered_SSDs(fd_water, tier = 1)
 
@@ -194,10 +199,7 @@ Call `ggplot2::autoplot()` on the result. Dashed crosshair lines intersect at
 the actual HCx position on the curve. Adjust `base_size`, `point_size`, and
 `label_size` to scale the plot for different figure dimensions:
 
-```{r basic-plot, eval = FALSE}
-# Fit Tier 3 SSD on the food-dilution surface-water subset
-result_t3 <- make_tiered_SSDs(fd_water, tier = 3)
-
+```{r basic-plot, fig.width = 7, fig.height = 5}
 # Print a compact summary
 print(result_t3)
 
@@ -217,13 +219,19 @@ ggplot2::autoplot(result_t3,
 (`install.packages("plotly")`). The arrow annotation points directly to the HCx
 position on the SSD curve:
 
-```{r plotly-plot, eval = FALSE}
+```{r plotly-plot, eval = has_plotly, fig.width = 7, fig.height = 5}
 # Interactive SSD with hover tooltips and HCx arrow annotation
 plotly_ssd(result_t3,
            x_label    = "particles/L",
            erm_label  = "Food Dilution",
            lower_size = 1,      # optional: particle size range for axis title
            upper_size = 5000)
+```
+
+```{r plotly-plot-unavailable, eval = !has_plotly, echo = FALSE, results = "asis"}
+knitr::asis_output(
+  "> The interactive Plotly widget is skipped because the optional `plotly` package is not installed. Install it with `install.packages(\"plotly\")` and re-knit this vignette to render the widget.\n"
+)
 ```
 
 The `tiered_SSD` object also exposes the underlying data for fully custom plots:
@@ -251,8 +259,8 @@ quality criteria and runs end-to-end in seconds, making it ideal for exploration
 To replicate the full analysis from Coffin et al. (2026), swap `tomex2_mini` for `tomex2`.
 ```{r}
 # load in toxicity data (tomex2_mini is a compact 10-species subset of ToMEx 2.0. that is pre-filtered for quick testing.)
-#tox_data <- tomex2_mini #beta-testing
-tox_data <- tomex2 # full dataset
+tox_data <- tomex2_mini #beta-testing
+#tox_data <- tomex2 # full dataset
 head(tox_data) # view the first few rows of the toxicity data
 ```
 

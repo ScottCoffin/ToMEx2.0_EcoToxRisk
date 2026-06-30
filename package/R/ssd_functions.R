@@ -4,7 +4,7 @@
 #'
 #' Collapses endpoints to the 25th percentile per species-group combination,
 #' fits a model-averaged SSD (log-logistic, log-normal, gamma, log-Gumbel),
-#' and returns the lower confidence limit of the HC5 — the most protective
+#' and returns the lower confidence limit of the HC5 - the most protective
 #' estimate suitable for Tier 1 risk assessment.
 #'
 #' @param filtered.data A data frame containing aligned toxicity data with
@@ -194,7 +194,7 @@ SSD_function_t3_4 <- function(filtered.data, hcx, nboot = 10) {
 #' Fit a Tier 2 SSD (alias for SSD_function_t2)
 #'
 #' Identical to [SSD_function_t2()]. Provided as a named alias for clarity
-#' when working with tiers 2–3 style data (25th-percentile collapse, all
+#' when working with tiers 2-3 style data (25th-percentile collapse, all
 #' endpoints). Use `hcx = 5` for HC5.
 #'
 #' @inheritParams SSD_function_t2
@@ -228,22 +228,22 @@ SSD_function_t2_3 <- function(filtered.data, hcx, nboot = 10) {
 #' backward compatibility with existing scripts but are no longer exported.
 #'
 #' @param filtered.data A data frame of aligned toxicity data. Must contain
-#'   `dose_new`, `Species`, `Group`. Tiers 3–4 additionally require `bio_f`
+#'   `dose_new`, `Species`, `Group`. Tiers 3-4 additionally require `bio_f`
 #'   and `risk.13`.
-#' @param tier Integer 1–4 specifying the tier to apply.
+#' @param tier Integer 1-4 specifying the tier to apply.
 #' @param hcx Integer percentile for the hazard concentration. Defaults to 5
-#'   (HC5) for tiers 1–3 and 10 (HC10) for tier 4.
+#'   (HC5) for tiers 1-3 and 10 (HC10) for tier 4.
 #' @param nboot Number of bootstrap iterations for confidence intervals.
 #'   Default `10`; use 1000+ for publication results.
 #'
 #' @return An object of class `"tiered_SSD"` (a list) containing:
 #'   \describe{
 #'     \item{hc5lcl}{(Tier 1 only) HC5 lower confidence limit.}
-#'     \item{hcx_est, hcx05cl, hcx95cl}{(Tiers 2–4) HC5/HC10 estimate and 95% CI.}
+#'     \item{hcx_est, hcx05cl, hcx95cl}{(Tiers 2-4) HC5/HC10 estimate and 95% CI.}
 #'     \item{n_species, n_groups, n_datapoints}{Sample-size metadata.}
 #'     \item{tier, hcx, nboot}{Parameters used.}
 #'     \item{predictions}{Full 100-row `ssdtools::predict()` output (one row per
-#'       percent 1–100). Serves as `aoc_pred` for plotting.}
+#'       percent 1-100). Serves as `aoc_pred` for plotting.}
 #'     \item{collapsed_data}{Species-level collapsed data frame with `Conc`,
 #'       `frac` (Hazen plotting position), `Species`, and `Group` columns.
 #'       Serves as `aoc_ssd` for plotting.}
@@ -539,9 +539,9 @@ autoplot.tiered_SSD <- function(object,
 #'   and units, e.g. `"particles/L"`). Default `"Concentration"`.
 #' @param erm_label Optional ERM name shown in the plot title (e.g.
 #'   `"Food Dilution"`). Default `NULL`.
-#' @param lower_size Optional lower particle-size limit (µm) for the x-axis
+#' @param lower_size Optional lower particle-size limit (um) for the x-axis
 #'   title (e.g. `1`). Only used when `upper_size` is also supplied.
-#' @param upper_size Optional upper particle-size limit (µm) for the x-axis
+#' @param upper_size Optional upper particle-size limit (um) for the x-axis
 #'   title (e.g. `5000`). Formatted with comma separator.
 #'
 #' @return A `plotly` htmlwidget. Returns `NULL` (with a warning) when fewer
@@ -620,7 +620,7 @@ plotly_ssd <- function(object,
   # x-axis title, optionally including particle size range
   x_title <- if (!is.null(lower_size) && !is.null(upper_size)) {
     paste0(x_label, " (", lower_size, " to ",
-           formatC(upper_size, big.mark = ",", format = "fg", digits = 3), " µm)")
+           formatC(upper_size, big.mark = ",", format = "fg", digits = 3), " \u00b5m)")
   } else {
     x_label
   }
@@ -637,7 +637,7 @@ plotly_ssd <- function(object,
     aoc_hc$est_format, " ", x_label
   )
 
-  # Build figure with explicit sequential assignments — avoids pipe/Reduce
+  # Build figure with explicit sequential assignments - avoids pipe/Reduce
   # lazy-eval issues where plotly captures variable *names* and tries to
   # re-evaluate them after the function returns, producing blank JS.
   fig <- plotly::plot_ly()
@@ -669,7 +669,7 @@ plotly_ssd <- function(object,
     hoverinfo = "text"
   )
 
-  # One trace per Group — bypasses plotly's brewer.pal color machinery
+  # One trace per Group - bypasses plotly's brewer.pal color machinery
   for (grp in groups) {
     d   <- aoc_ssd[aoc_ssd$Group == grp, ]
     col <- unname(group_colors[grp])
