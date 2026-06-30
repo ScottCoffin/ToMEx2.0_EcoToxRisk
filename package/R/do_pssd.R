@@ -47,6 +47,17 @@ resolve_pssd_args <- function(args, arg_order) {
   args
 }
 
+#' Return a unit uncertainty-factor matrix aligned to DP.
+#' @noRd
+unit_uf_matrix <- function(DP) {
+  matrix(
+    1,
+    nrow = nrow(DP),
+    ncol = ncol(DP),
+    dimnames = dimnames(DP)
+  )
+}
+
 #' Generate probabilistic species sensitivity distributions (PSSD++)
 #'
 #' Propagates intra- and inter-laboratory uncertainty to sample NOEC
@@ -64,7 +75,11 @@ resolve_pssd_args <- function(args, arg_order) {
 #' @param .data Matrix of endpoint values (rows = endpoints, cols = species). When
 #'   provided, it is treated as `DP`.
 #' @param ... Additional arguments used by the sampler. Expected arguments include
-#'   `DP`, `DP.SD`, `UFt`, `UFdd`, `SIM`, `CV.DP`, `CV.UF`, and `rmore_method`.
+#'   `DP`, `DP.SD`, `UFt`, `UFdd`, `SIM`, `CV.DP`, `CV.UF`, `rmore_method`,
+#'   and `apply_assessment_factors`. `UFt` and `UFdd` are assessment-factor
+#'   matrices for exposure-time and endpoint-to-NOEC conversion, respectively.
+#'   They are optional; when omitted, or when `apply_assessment_factors = FALSE`,
+#'   unit matrices are used and endpoints are not divided by assessment factors.
 #'
 #' @return Matrix of simulated NOEC draws with species in rows and iterations in columns.
 #' @export
@@ -75,13 +90,10 @@ resolve_pssd_args <- function(args, arg_order) {
 #'   DP   <- matrix(c(10, 20, 40), nrow = 3, ncol = 1,
 #'                  dimnames = list(NULL, "Daphnia_magna"))
 #'   DP.SD <- DP * 0.1
-#'   UFt  <- matrix(rep(1, 3), nrow = 3, ncol = 1,
-#'                  dimnames = list(NULL, "Daphnia_magna"))
-#'   UFdd <- matrix(rep(2, 3), nrow = 3, ncol = 1,
-#'                  dimnames = list(NULL, "Daphnia_magna"))
 #'   result <- do.pSSD_mod(
-#'     DP = DP, DP.SD = DP.SD, UFt = UFt, UFdd = UFdd,
-#'     SIM = 100, CV.DP = 0.3, CV.UF = 0.5, rmore_method = "step"
+#'     DP = DP, DP.SD = DP.SD,
+#'     SIM = 100, CV.DP = 0.3, CV.UF = 0.5, rmore_method = "step",
+#'     apply_assessment_factors = FALSE
 #'   )
 #' }
 do.pSSD_mod <- function(.data = NULL, ...) {
@@ -90,7 +102,17 @@ do.pSSD_mod <- function(.data = NULL, ...) {
     args <- c(list(DP = .data), args)
   }
 
-  arg_order <- c("DP", "DP.SD", "UFt", "UFdd", "SIM", "CV.DP", "CV.UF", "rmore_method")
+  arg_order <- c(
+    "DP",
+    "DP.SD",
+    "UFt",
+    "UFdd",
+    "SIM",
+    "CV.DP",
+    "CV.UF",
+    "rmore_method",
+    "apply_assessment_factors"
+  )
   args <- resolve_pssd_args(args, arg_order)
 
   if (any(names(args) == "")) {
@@ -110,8 +132,11 @@ do.pSSD_mod <- function(.data = NULL, ...) {
   if (is.null(args$rmore_method)) {
     args$rmore_method <- "step"
   }
+  if (is.null(args$apply_assessment_factors)) {
+    args$apply_assessment_factors <- TRUE
+  }
 
-  required <- c("DP", "DP.SD", "UFt", "UFdd", "SIM", "CV.DP", "CV.UF")
+  required <- c("DP", "DP.SD", "SIM", "CV.DP", "CV.UF")
   missing_args <- setdiff(required, names(args))
   if (length(missing_args) > 0) {
     stop(
@@ -129,12 +154,13 @@ do.pSSD_mod <- function(.data = NULL, ...) {
 do_pSSD_mod_internal <- function(
   DP,
   DP.SD,
-  UFt,
-  UFdd,
+  UFt = NULL,
+  UFdd = NULL,
   SIM,
   CV.DP,
   CV.UF,
-  rmore_method = "step"
+  rmore_method = "step",
+  apply_assessment_factors = TRUE
 ) {
   # Coerce to 2-D matrices to avoid apply() errors on vectors/1-D objects
   if (!is.null(DP) && (is.null(dim(DP)) || length(dim(DP)) < 2)) {
@@ -153,6 +179,17 @@ do_pSSD_mod_internal <- function(
   if (is.null(DP) || nrow(DP) == 0 || ncol(DP) == 0) {
     warning("No species with data after filtering; returning empty PSSD.")
     return(matrix(NA_real_, nrow = 0, ncol = SIM))
+  }
+  if (!isTRUE(apply_assessment_factors)) {
+    UFt <- unit_uf_matrix(DP)
+    UFdd <- unit_uf_matrix(DP)
+  } else {
+    if (is.null(UFt)) {
+      UFt <- unit_uf_matrix(DP)
+    }
+    if (is.null(UFdd)) {
+      UFdd <- unit_uf_matrix(DP)
+    }
   }
 
   # Ensure trapezoid helpers are in scope for mc2d::rtrunc()
@@ -183,7 +220,10 @@ do_pSSD_mod_internal <- function(
 
   # Calculate corrected endpoints
   corr.endpoints <- DP / (UFdd * UFt)
-  sort.endpoints <- apply(corr.endpoints, 2, sort)
+  sort.endpoints <- lapply(seq_len(ncol(corr.endpoints)), function(j) {
+    sort(corr.endpoints[, j])
+  })
+  names(sort.endpoints) <- colnames(corr.endpoints)
 
   # Initialize matrix for results
   NOEC_comb <- matrix(NA, ncol(DP), SIM, dimnames = list(colnames(DP), NULL))
@@ -310,7 +350,10 @@ do_pSSD_mod_internal <- function(
 #' @param .data Matrix of endpoint values (rows = endpoints, cols = species). When
 #'   provided, it is treated as `DP`.
 #' @param ... Additional arguments used by the sampler. Expected arguments include
-#'   `DP`, `UFt`, `UFdd`, `SIM`, `CV.DP`, and `CV.UF`.
+#'   `DP`, `UFt`, `UFdd`, `SIM`, `CV.DP`, `CV.UF`, and
+#'   `apply_assessment_factors`. `UFt` and `UFdd` are optional assessment-factor
+#'   matrices; omitted matrices, or `apply_assessment_factors = FALSE`, are
+#'   treated as unit multipliers.
 #'
 #' @return Matrix of simulated NOEC draws with species in rows and iterations in columns.
 #' @export
@@ -319,13 +362,10 @@ do_pSSD_mod_internal <- function(
 #' \dontrun{
 #'   DP  <- matrix(c(10, 20, 40), nrow = 3, ncol = 1,
 #'                 dimnames = list(NULL, "Daphnia_magna"))
-#'   UFt  <- matrix(rep(1, 3), nrow = 3, ncol = 1,
-#'                  dimnames = list(NULL, "Daphnia_magna"))
-#'   UFdd <- matrix(rep(2, 3), nrow = 3, ncol = 1,
-#'                  dimnames = list(NULL, "Daphnia_magna"))
 #'   result <- do.pSSD(
-#'     DP = DP, UFt = UFt, UFdd = UFdd,
-#'     SIM = 100, CV.DP = 0.3, CV.UF = 0.5
+#'     DP = DP,
+#'     SIM = 100, CV.DP = 0.3, CV.UF = 0.5,
+#'     apply_assessment_factors = FALSE
 #'   )
 #' }
 do.pSSD <- function(.data = NULL, ...) {
@@ -334,7 +374,7 @@ do.pSSD <- function(.data = NULL, ...) {
     args <- c(list(DP = .data), args)
   }
 
-  arg_order <- c("DP", "UFt", "UFdd", "SIM", "CV.DP", "CV.UF")
+  arg_order <- c("DP", "UFt", "UFdd", "SIM", "CV.DP", "CV.UF", "apply_assessment_factors")
   args <- resolve_pssd_args(args, arg_order)
 
   if (any(names(args) == "")) {
@@ -351,7 +391,11 @@ do.pSSD <- function(.data = NULL, ...) {
     )
   }
 
-  required <- c("DP", "UFt", "UFdd", "SIM", "CV.DP", "CV.UF")
+  if (is.null(args$apply_assessment_factors)) {
+    args$apply_assessment_factors <- TRUE
+  }
+
+  required <- c("DP", "SIM", "CV.DP", "CV.UF")
   missing_args <- setdiff(required, names(args))
   if (length(missing_args) > 0) {
     stop(
@@ -364,7 +408,7 @@ do.pSSD <- function(.data = NULL, ...) {
   do.call(do_pSSD_internal, args)
 }
 
-do_pSSD_internal <- function(DP, UFt, UFdd, SIM, CV.DP, CV.UF) {
+do_pSSD_internal <- function(DP, UFt = NULL, UFdd = NULL, SIM, CV.DP, CV.UF, apply_assessment_factors = TRUE) {
   if (!is.null(DP) && (is.null(dim(DP)) || length(dim(DP)) < 2)) {
     DP <- matrix(DP, ncol = 1)
   }
@@ -377,6 +421,17 @@ do_pSSD_internal <- function(DP, UFt, UFdd, SIM, CV.DP, CV.UF) {
   if (is.null(DP) || nrow(DP) == 0 || ncol(DP) == 0) {
     warning("No species with data after filtering; returning empty PSSD.")
     return(matrix(NA_real_, nrow = 0, ncol = SIM))
+  }
+  if (!isTRUE(apply_assessment_factors)) {
+    UFt <- unit_uf_matrix(DP)
+    UFdd <- unit_uf_matrix(DP)
+  } else {
+    if (is.null(UFt)) {
+      UFt <- unit_uf_matrix(DP)
+    }
+    if (is.null(UFdd)) {
+      UFdd <- unit_uf_matrix(DP)
+    }
   }
 
   # Ensure trapezoid helpers are in scope for mc2d::rtrunc()
@@ -412,7 +467,10 @@ do_pSSD_internal <- function(DP, UFt, UFdd, SIM, CV.DP, CV.UF) {
   # distribution is produced. One line is for one species.
   # store the corrected endpoints
   corr.endpoints <- DP / (UFdd * UFt)
-  sort.endpoints <- apply(corr.endpoints, 2, sort)
+  sort.endpoints <- lapply(seq_len(ncol(corr.endpoints)), function(j) {
+    sort(corr.endpoints[, j])
+  })
+  names(sort.endpoints) <- colnames(corr.endpoints)
 
   for (sp in colnames(DP)) {
     # store the indices of the minimal and maximal data point

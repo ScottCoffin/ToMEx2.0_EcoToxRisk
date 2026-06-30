@@ -12,6 +12,7 @@ make_all_pSSDs(
   erm_registry = NULL,
   sim = 10,
   cv_uf = 0.5,
+  apply_assessment_factors = TRUE,
   rmore_method = "step",
   quantile_type = 8,
   debug_option = FALSE,
@@ -38,6 +39,12 @@ the aligned data.}
 \item{sim}{Number of PSSD simulations per combination.}
 
 \item{cv_uf}{Coefficient of variation for uncertainty factors.}
+
+\item{apply_assessment_factors}{Logical; when \code{TRUE} (default), \code{af.time}
+and \code{af.noec} are used as assessment-factor matrices and aligned doses are
+divided by their product before PSSD sampling. When \code{FALSE}, both factors
+are treated as 1; this is useful for sensitivity checks or inputs already
+expressed as NOEC-equivalent values.}
 
 \item{rmore_method}{Distribution method for sampling species-level NOEC
 distributions in the PSSD++ step. \code{"step"} (default) uses a trapezoidal

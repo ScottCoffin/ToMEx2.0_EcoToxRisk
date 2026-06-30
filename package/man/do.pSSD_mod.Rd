@@ -11,7 +11,11 @@
 provided, it is treated as \code{DP}.}
 
 \item{...}{Additional arguments used by the sampler. Expected arguments include
-\code{DP}, \code{DP.SD}, \code{UFt}, \code{UFdd}, \code{SIM}, \code{CV.DP}, \code{CV.UF}, and \code{rmore_method}.}
+\code{DP}, \code{DP.SD}, \code{UFt}, \code{UFdd}, \code{SIM}, \code{CV.DP}, \code{CV.UF}, \code{rmore_method},
+and \code{apply_assessment_factors}. \code{UFt} and \code{UFdd} are assessment-factor
+matrices for exposure-time and endpoint-to-NOEC conversion, respectively.
+They are optional; when omitted, or when \code{apply_assessment_factors = FALSE},
+unit matrices are used and endpoints are not divided by assessment factors.}
 }
 \value{
 Matrix of simulated NOEC draws with species in rows and iterations in columns.
@@ -35,13 +39,10 @@ names rather than relying on dispatch.
   DP   <- matrix(c(10, 20, 40), nrow = 3, ncol = 1,
                  dimnames = list(NULL, "Daphnia_magna"))
   DP.SD <- DP * 0.1
-  UFt  <- matrix(rep(1, 3), nrow = 3, ncol = 1,
-                 dimnames = list(NULL, "Daphnia_magna"))
-  UFdd <- matrix(rep(2, 3), nrow = 3, ncol = 1,
-                 dimnames = list(NULL, "Daphnia_magna"))
   result <- do.pSSD_mod(
-    DP = DP, DP.SD = DP.SD, UFt = UFt, UFdd = UFdd,
-    SIM = 100, CV.DP = 0.3, CV.UF = 0.5, rmore_method = "step"
+    DP = DP, DP.SD = DP.SD,
+    SIM = 100, CV.DP = 0.3, CV.UF = 0.5, rmore_method = "step",
+    apply_assessment_factors = FALSE
   )
 }
 }

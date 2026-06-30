@@ -227,6 +227,15 @@ SSD_function_t2_3 <- function(filtered.data, hcx, nboot = 10) {
 #' `SSD_function_t2_3`, `SSD_function_t3_4`) are preserved in the source for
 #' backward compatibility with existing scripts but are no longer exported.
 #'
+#' `make_tiered_SSDs()` does not apply assessment factors internally. The input
+#' must already contain the threshold dose in `dose_new`. The examples divide
+#' aligned exposure metrics by `af.time * af.noec` to recreate the
+#' Mehinto et al. (2022) threshold preparation, where `af.time` converts acute
+#' values to chronic equivalents and `af.noec` converts LOEC/ECx/LCx values to
+#' NOEC-equivalent values. Omit that division when your input is already
+#' NOEC-equivalent or when intentionally running an unadjusted sensitivity
+#' analysis.
+#'
 #' @param filtered.data A data frame of aligned toxicity data. Must contain
 #'   `dose_new`, `Species`, `Group`. Tiers 3-4 additionally require `bio_f`
 #'   and `risk.13`.

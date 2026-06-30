@@ -129,6 +129,13 @@ particles/mL) to every row. Sediment equivalents use `particles.kg` units.
 After alignment the dose column must be named `dose_new`. The snippet below
 prepares a food-dilution freshwater surface-water subset for Tiers 1–4:
 
+`make_tiered_SSDs()` uses `dose_new` as provided and does not apply assessment
+factors internally. The example divides by `af.time * af.noec` to recreate the
+Mehinto et al. threshold preparation, where `af.time` converts acute values to
+chronic equivalents and `af.noec` converts LOEC/ECx/LCx values to
+NOEC-equivalent values. Omit this division when inputs are already
+NOEC-equivalent or when running an unadjusted sensitivity analysis.
+
 ```{r basic-prep}
 # Surface-water food dilution subset (particles/L = particles/mL * 1000)
 fd_water <- aligned |>
@@ -430,6 +437,7 @@ pSSDs_water <- make_all_pSSDs(
   erm_registry = erm_registry_water,
   sim = 3, # specify the number of simulations to run
   cv_uf = 0.5, # specify the coefficient of variation for uncertainty factors (acute -> chronic and LOEC/EC50 -> NOEC)
+  apply_assessment_factors = TRUE, # set FALSE only for NOEC-equivalent inputs or unadjusted sensitivity checks
   rmore_method = "step", # method to handle pSSD distribution building (options = 'step' i.e., original trapezoidal method in Wigger et al., 2020, or 'lognormal' - shortcut developed in Coffin et al. (2025))
   quantile_type = 8, # quantile type for distribution fitting (8 is default, and use of others may cause unexpected or unreliable results)
   parallel = parallel_enabled, #whether or not to use parallel processing
@@ -448,6 +456,7 @@ message("Building sediment pSSDs...")
     erm_registry = erm_registry_sediment,
     sim = 3,
     cv_uf = 0.5,
+    apply_assessment_factors = TRUE,
     rmore_method = "step",
     quantile_type = 8,
     parallel = parallel_enabled,
@@ -458,6 +467,12 @@ message("Building sediment pSSDs...")
     debug = F
   )
 ```
+
+By default, the PSSD++ workflow applies ToMEx assessment factors through
+`af.time` and `af.noec`. `make_all_pSSDs()`, `run_pssd_reprex()`,
+`do.pSSD_mod()`, and `do.pSSD()` accept `apply_assessment_factors = FALSE` to
+treat those factors as 1 for sensitivity checks or data already expressed as
+NOEC-equivalent values. In that mode the `UFt` and `UFdd` matrices are optional.
 
 
 ### Examine pSSD++ output

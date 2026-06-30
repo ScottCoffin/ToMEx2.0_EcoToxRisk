@@ -70,6 +70,13 @@ compact summary and `ggplot2::autoplot()` to produce the SSD plot. The object
 also exposes `predictions`, `collapsed_data`, `hc_data`, and `fit_dists` for
 fully custom plots.
 
+`make_tiered_SSDs()` expects the final dose column to be supplied as
+`dose_new`; it does not apply assessment factors internally. In the example
+below, `af.time` and `af.noec` are divided into the aligned exposure metric to
+recreate the Mehinto et al. threshold preparation. If input doses are already
+NOEC-equivalent, or if an unadjusted sensitivity run is intended, omit that
+division before calling `make_tiered_SSDs()`.
+
 Internal per-tier helpers (`SSD_function_t1`, `SSD_function_t2`, `SSD_function_t2_3`,
 `SSD_function_t3_4`) remain in the package source for backward compatibility with
 existing scripts but are no longer exported.
@@ -80,8 +87,13 @@ existing scripts but are no longer exported.
 |----------|-------------|
 | `make_all_pSSDs()` | Fit PSSD++ models across all tier × environment × ERM combinations with parallelisation and caching. |
 | `summarize_PNECs()` | Extract HC5/HC10 statistics from cached PSSD++ objects and pivot to a wide summary table. |
-| `do.pSSD_mod()` | Per-species NOEC sampling engine with alignment-derived SDs (PSSD++). |
-| `do.pSSD()` | Original per-species NOEC sampling engine (PSSD+, no alignment SD). |
+| `do.pSSD_mod()` | Per-species NOEC sampling engine with alignment-derived SDs (PSSD++). `UFt`/`UFdd` assessment-factor matrices are optional; use `apply_assessment_factors = FALSE` to treat them as 1. |
+| `do.pSSD()` | Original per-species NOEC sampling engine (PSSD+, no alignment SD). `UFt`/`UFdd` are optional and default to unit multipliers when omitted. |
+
+For PSSD++ workflows, `make_all_pSSDs()` and `run_pssd_reprex()` default to
+`apply_assessment_factors = TRUE`, preserving the published correction using
+`af.time` and `af.noec`. Set `apply_assessment_factors = FALSE` only for
+sensitivity checks or data already expressed as NOEC-equivalent values.
 
 ### Utilities
 

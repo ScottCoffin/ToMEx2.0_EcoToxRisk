@@ -8,13 +8,13 @@ make_tiered_SSDs(filtered.data, tier, hcx = NULL, nboot = 10)
 }
 \arguments{
 \item{filtered.data}{A data frame of aligned toxicity data. Must contain
-\code{dose_new}, \code{Species}, \code{Group}. Tiers 3–4 additionally require \code{bio_f}
+\code{dose_new}, \code{Species}, \code{Group}. Tiers 3-4 additionally require \code{bio_f}
 and \code{risk.13}.}
 
-\item{tier}{Integer 1–4 specifying the tier to apply.}
+\item{tier}{Integer 1-4 specifying the tier to apply.}
 
 \item{hcx}{Integer percentile for the hazard concentration. Defaults to 5
-(HC5) for tiers 1–3 and 10 (HC10) for tier 4.}
+(HC5) for tiers 1-3 and 10 (HC10) for tier 4.}
 
 \item{nboot}{Number of bootstrap iterations for confidence intervals.
 Default \code{10}; use 1000+ for publication results.}
@@ -23,11 +23,11 @@ Default \code{10}; use 1000+ for publication results.}
 An object of class \code{"tiered_SSD"} (a list) containing:
 \describe{
 \item{hc5lcl}{(Tier 1 only) HC5 lower confidence limit.}
-\item{hcx_est, hcx05cl, hcx95cl}{(Tiers 2–4) HC5/HC10 estimate and 95\% CI.}
+\item{hcx_est, hcx05cl, hcx95cl}{(Tiers 2-4) HC5/HC10 estimate and 95\% CI.}
 \item{n_species, n_groups, n_datapoints}{Sample-size metadata.}
 \item{tier, hcx, nboot}{Parameters used.}
 \item{predictions}{Full 100-row \code{ssdtools::predict()} output (one row per
-percent 1–100). Serves as \code{aoc_pred} for plotting.}
+percent 1-100). Serves as \code{aoc_pred} for plotting.}
 \item{collapsed_data}{Species-level collapsed data frame with \code{Conc},
 \code{frac} (Hazen plotting position), \code{Species}, and \code{Group} columns.
 Serves as \code{aoc_ssd} for plotting.}
@@ -61,6 +61,15 @@ scalar HCx summaries it carries all data needed to reproduce the SSD plot via
 \code{ggplot2::autoplot()}. The internal per-tier helpers (\code{SSD_function_t1},
 \code{SSD_function_t2_3}, \code{SSD_function_t3_4}) are preserved in the source for
 backward compatibility with existing scripts but are no longer exported.
+
+\code{make_tiered_SSDs()} does not apply assessment factors internally. The input
+must already contain the threshold dose in \code{dose_new}. The examples divide
+aligned exposure metrics by \code{af.time * af.noec} to recreate the
+Mehinto et al. (2022) threshold preparation, where \code{af.time} converts acute
+values to chronic equivalents and \code{af.noec} converts LOEC/ECx/LCx values to
+NOEC-equivalent values. Omit that division when your input is already
+NOEC-equivalent or when intentionally running an unadjusted sensitivity
+analysis.
 }
 \examples{
 \dontrun{

@@ -15,6 +15,10 @@
 #' @param seed Optional integer seed for reproducibility.
 #' @param quantile_type Quantile type used when summarizing outputs.
 #' @param cv_uf Coefficient of variation for uncertainty factors.
+#' @param apply_assessment_factors Logical; when `TRUE` (default), the ToMEx
+#'   assessment-factor columns `af.time` and `af.noec` are used in the PSSD++
+#'   correction. When `FALSE`, they are treated as unit multipliers for
+#'   sensitivity checks or NOEC-equivalent inputs.
 #' @param rmore_method Distribution method for sampling species-level NOEC
 #'   distributions in the PSSD++ step. `"step"` (default) uses a trapezoidal
 #'   piecewise-uniform approximation following Wigger et al. (2020), which is
@@ -49,6 +53,7 @@ run_pssd_reprex <- function(
   seed = NULL,
   quantile_type = 8,
   cv_uf = 0.5,
+  apply_assessment_factors = TRUE,
   rmore_method = "step"
 ) {
   # Load bundled dataset if no custom path is provided
@@ -148,6 +153,7 @@ run_pssd_reprex <- function(
     erm_registry = erm_registry,
     sim = sim,
     cv_uf = cv_uf,
+    apply_assessment_factors = apply_assessment_factors,
     rmore_method = rmore_method,
     quantile_type = quantile_type,
     debug_option = FALSE,

@@ -2977,6 +2977,7 @@ generate_plots_and_summary <- function(
   cv_dp = NULL,
   cv_uf = 0.5, # Default value for coefficient of variation for uncertainty factors
   rmore_method = "step", # step or lognormal
+  apply_assessment_factors = TRUE,
   species_data_source,
   output_path,
   presentation_path,
@@ -3041,6 +3042,7 @@ generate_plots_and_summary <- function(
         num_iterations = num_iterations,
         cv_dp = cv_dp,
         cv_uf = cv_uf,
+        apply_assessment_factors = apply_assessment_factors,
         rmore_method = rmore_method
       ),
       file = file.path(debug_dir, paste0("step0_inputs_", safe_combo_id, ".rds"))
@@ -3053,7 +3055,10 @@ generate_plots_and_summary <- function(
       if (debug) {
         cat(" STEP 1: prep_data()...\n")
       }
-      x <- prep_data(results_df)
+      x <- prep_data(
+        results_df,
+        apply_assessment_factors = apply_assessment_factors
+      )
       if (debug) {
         cat("  MCdf names:", paste(names(x), collapse = ", "), "\n")
         saveRDS(
@@ -3114,6 +3119,7 @@ generate_plots_and_summary <- function(
         cv_dp = cv_dp,
         cv_uf = cv_uf,
         rmore_method = rmore_method,
+        apply_assessment_factors = apply_assessment_factors,
         data_name = paste0("tier", tier, "_", erm),
         silent = silent, # silencing for parallel processing
         progress = progress # report out for parallel processing
@@ -3160,6 +3166,7 @@ generate_plots_and_summary <- function(
         data_matrices = MCdf,
         quantile_type = quantile_type,
         species_data_source = species_data_source,
+        apply_assessment_factors = apply_assessment_factors,
         debug = debug
       )
       if (debug) {
@@ -3893,6 +3900,7 @@ prepare_plot_data <- function(
   data_matrices = NULL,
   species_data_source = NULL,
   quantile_type = 7,
+  apply_assessment_factors = TRUE,
   debug = FALSE
 ) {
   if (is.null(original_data) || is.null(pSSD) || is.null(data_matrices)) {
@@ -3923,6 +3931,21 @@ prepare_plot_data <- function(
       "`dose_new_particles_kg`.",
       call. = FALSE
     )
+  }
+  if (!isTRUE(apply_assessment_factors)) {
+    original_data$af.time <- 1
+    original_data$af.noec <- 1
+  } else {
+    missing_af <- setdiff(c("af.time", "af.noec"), names(original_data))
+    if (length(missing_af) > 0) {
+      stop(
+        "Missing assessment-factor column(s): ",
+        paste(missing_af, collapse = ", "),
+        ". Set `apply_assessment_factors = FALSE` to treat assessment ",
+        "factors as unit multipliers.",
+        call. = FALSE
+      )
+    }
   }
 
   # Optional Debugging
@@ -4138,7 +4161,7 @@ prepare_plot_data <- function(
 
 #' Prepare species matrices (DP, DP.SD, UFt, UFdd) from an aligned dataset.
 #' @noRd
-prep_data <- function(data) {
+prep_data <- function(data, apply_assessment_factors = TRUE) {
   if (is.null(data)) {
     stop("prep_data: input data is NULL.", call. = FALSE)
   }
@@ -4187,6 +4210,16 @@ prep_data <- function(data) {
   } else if ("dose_new_particles_kg_sd" %in% colnames(data)) {
     dose_sd_column <- "dose_new_particles_kg_sd"
   }
+  missing_af <- setdiff(c("af.time", "af.noec"), names(data))
+  if (isTRUE(apply_assessment_factors) && length(missing_af) > 0) {
+    stop(
+      "Missing assessment-factor column(s): ",
+      paste(missing_af, collapse = ", "),
+      ". Set `apply_assessment_factors = FALSE` to treat assessment factors ",
+      "as unit multipliers.",
+      call. = FALSE
+    )
+  }
 
   safe_acast_matrix <- function(df, value_var) {
     mat <- reshape2::acast(
@@ -4232,13 +4265,19 @@ prep_data <- function(data) {
 
     UFt = safe_acast_matrix(
       data %>%
-        dplyr::mutate(id = row_number()) %>%
+        dplyr::mutate(
+          id = row_number(),
+          af.time = if (isTRUE(apply_assessment_factors)) af.time else 1
+        ) %>%
         dplyr::select(id, Species, af.time),
       "af.time"
     ),
     UFdd = safe_acast_matrix(
       data %>%
-        dplyr::mutate(id = row_number()) %>%
+        dplyr::mutate(
+          id = row_number(),
+          af.noec = if (isTRUE(apply_assessment_factors)) af.noec else 1
+        ) %>%
         dplyr::select(id, Species, af.noec),
       "af.noec"
     ),
@@ -4292,6 +4331,7 @@ run_pSSD_analysis <- function(
   cv_uf,
   data_name,
   rmore_method = "step",
+  apply_assessment_factors = TRUE,
   silent = FALSE,
   progress = NULL
 ) {
@@ -4320,7 +4360,8 @@ run_pSSD_analysis <- function(
       SIM = sim,
       CV.DP = cv_dp,
       CV.UF = cv_uf,
-      rmore_method = rmore_method # lognormal or step
+      rmore_method = rmore_method, # lognormal or step
+      apply_assessment_factors = apply_assessment_factors
     )
 
     if (!silent && i %in% checkpoints) {
@@ -4339,8 +4380,11 @@ run_pSSD_analysis <- function(
   }
 
   pSSD <- do.call(cbind, pSSD_list)
-  corr_endpoints <- data_matrices[["DP"]] /
-    (data_matrices[["UFt"]] * data_matrices[["UFdd"]])
+  corr_endpoints <- if (isTRUE(apply_assessment_factors)) {
+    data_matrices[["DP"]] / (data_matrices[["UFt"]] * data_matrices[["UFdd"]])
+  } else {
+    data_matrices[["DP"]]
+  }
 
   if (!silent) {
     cat(crayon::blue(sprintf(
@@ -4480,6 +4524,11 @@ is_missing_erm_data <- function(df) {
 #'   the aligned data.
 #' @param sim Number of PSSD simulations per combination.
 #' @param cv_uf Coefficient of variation for uncertainty factors.
+#' @param apply_assessment_factors Logical; when `TRUE` (default), `af.time`
+#'   and `af.noec` are used as assessment-factor matrices and aligned doses are
+#'   divided by their product before PSSD sampling. When `FALSE`, both factors
+#'   are treated as 1; this is useful for sensitivity checks or inputs already
+#'   expressed as NOEC-equivalent values.
 #' @param rmore_method Distribution method for sampling species-level NOEC
 #'   distributions in the PSSD++ step. `"step"` (default) uses a trapezoidal
 #'   piecewise-uniform approximation following Wigger et al. (2020), which is
@@ -4521,6 +4570,7 @@ make_all_pSSDs <- function(
   erm_registry = NULL,
   sim = 10,
   cv_uf = 0.5,
+  apply_assessment_factors = TRUE,
   rmore_method = "step",
   quantile_type = 8,
   debug_option = FALSE,
@@ -4763,6 +4813,7 @@ make_all_pSSDs <- function(
           quantile_type = quantile_type,
           cv_dp = NULL,
           cv_uf = cv_uf,
+          apply_assessment_factors = apply_assessment_factors,
           rmore_method = rmore_method,
           species_data_source = MC_sim_df,
           output_path = output_path,

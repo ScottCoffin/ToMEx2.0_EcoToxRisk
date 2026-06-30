@@ -1,3 +1,20 @@
+PSSDplusplus 0.3.1
+==================
+
+Minor update
+------------
+- Clarified package documentation for assessment factors (`af.time`,
+  `af.noec`, `UFt`, and `UFdd`), including where they are applied in PSSD++
+  sampling and where they are only shown in examples to recreate Mehinto et al.
+  threshold preparation.
+- Added `apply_assessment_factors` to `run_pssd_reprex()`, `make_all_pSSDs()`,
+  `do.pSSD_mod()`, and `do.pSSD()`. The default remains `TRUE`; setting it to
+  `FALSE` treats assessment factors as unit multipliers for sensitivity checks
+  or data already expressed as NOEC-equivalent values.
+- Made `UFt` and `UFdd` optional in the exported PSSD samplers. When omitted,
+  the samplers use unit matrices so unadjusted NOEC sampling can run without
+  assessment-factor inputs.
+
 PSSDplusplus 0.2.0
 ==================
 

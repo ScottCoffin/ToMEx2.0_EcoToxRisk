@@ -16,6 +16,7 @@ run_pssd_reprex(
   seed = NULL,
   quantile_type = 8,
   cv_uf = 0.5,
+  apply_assessment_factors = TRUE,
   rmore_method = "step"
 )
 }
@@ -42,6 +43,11 @@ run_pssd_reprex(
 \item{quantile_type}{Quantile type used when summarizing outputs.}
 
 \item{cv_uf}{Coefficient of variation for uncertainty factors.}
+
+\item{apply_assessment_factors}{Logical; when \code{TRUE} (default), the ToMEx
+assessment-factor columns \code{af.time} and \code{af.noec} are used in the PSSD++
+correction. When \code{FALSE}, they are treated as unit multipliers for
+sensitivity checks or NOEC-equivalent inputs.}
 
 \item{rmore_method}{Distribution method for sampling species-level NOEC
 distributions in the PSSD++ step. \code{"step"} (default) uses a trapezoidal

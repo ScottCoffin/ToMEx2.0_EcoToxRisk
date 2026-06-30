@@ -11,7 +11,10 @@
 provided, it is treated as \code{DP}.}
 
 \item{...}{Additional arguments used by the sampler. Expected arguments include
-\code{DP}, \code{UFt}, \code{UFdd}, \code{SIM}, \code{CV.DP}, and \code{CV.UF}.}
+\code{DP}, \code{UFt}, \code{UFdd}, \code{SIM}, \code{CV.DP}, \code{CV.UF}, and
+\code{apply_assessment_factors}. \code{UFt} and \code{UFdd} are optional assessment-factor
+matrices; omitted matrices, or \code{apply_assessment_factors = FALSE}, are
+treated as unit multipliers.}
 }
 \value{
 Matrix of simulated NOEC draws with species in rows and iterations in columns.
@@ -30,13 +33,10 @@ convention.
 \dontrun{
   DP  <- matrix(c(10, 20, 40), nrow = 3, ncol = 1,
                 dimnames = list(NULL, "Daphnia_magna"))
-  UFt  <- matrix(rep(1, 3), nrow = 3, ncol = 1,
-                 dimnames = list(NULL, "Daphnia_magna"))
-  UFdd <- matrix(rep(2, 3), nrow = 3, ncol = 1,
-                 dimnames = list(NULL, "Daphnia_magna"))
   result <- do.pSSD(
-    DP = DP, UFt = UFt, UFdd = UFdd,
-    SIM = 100, CV.DP = 0.3, CV.UF = 0.5
+    DP = DP,
+    SIM = 100, CV.DP = 0.3, CV.UF = 0.5,
+    apply_assessment_factors = FALSE
   )
 }
 }
