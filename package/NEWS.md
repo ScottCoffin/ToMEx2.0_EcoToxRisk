@@ -1,3 +1,12 @@
+PSSDplusplus 0.3.2
+==================
+
+New features
+------------
+- Added `hc5_from_endpoints()`, an exported ML-inference entry point that
+  accepts per-species linear-scale effect concentrations and computes an HCx
+  distribution with the same internal PSSD++ sampler used by `make_all_pSSDs()`.
+
 PSSDplusplus 0.3.1
 ==================
 
