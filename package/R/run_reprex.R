@@ -10,8 +10,14 @@
 #' @param sim Number of PSSD simulations per combination.
 #' @param n_sim Number of Monte Carlo alignment simulations.
 #' @param workers Number of workers for both alignment and PSSD phases.
+#'   Defaults to `1` (sequential), per CRAN policy that packages must not
+#'   default to using multiple cores. Parallel processing is strongly
+#'   recommended for practical runtimes on anything beyond the bundled mini
+#'   dataset: set `parallel = TRUE` and `workers = parallel::detectCores() - 1`
+#'   (or similar) for larger jobs.
 #' @param overwrite_cache Logical; force recalculation even if cache exists.
-#' @param parallel Logical; run PSSD combinations in parallel.
+#' @param parallel Logical; run PSSD combinations in parallel. Defaults to
+#'   `FALSE`; see `workers`.
 #' @param seed Optional integer seed for reproducibility.
 #' @param quantile_type Quantile type used when summarizing outputs.
 #' @param cv_uf Coefficient of variation for uncertainty factors.
@@ -40,6 +46,12 @@
 #'
 #'   # Use lognormal method (faster, less precise)
 #'   run_pssd_reprex(sim = 2, n_sim = 2, workers = 1, rmore_method = "lognormal")
+#'
+#'   # For larger jobs, parallel processing is strongly recommended:
+#'   run_pssd_reprex(
+#'     sim = 500, n_sim = 500,
+#'     parallel = TRUE, workers = max(1, parallel::detectCores() - 1)
+#'   )
 #' }
 run_pssd_reprex <- function(
   data_path = NULL,
@@ -47,9 +59,9 @@ run_pssd_reprex <- function(
   figure_dir = file.path(tempdir(), "pssd_figures"),
   sim = 10,
   n_sim = 10,
-  workers = max(1, parallel::detectCores() - 1),
+  workers = 1,
   overwrite_cache = FALSE,
-  parallel = TRUE,
+  parallel = FALSE,
   seed = NULL,
   quantile_type = 8,
   cv_uf = 0.5,

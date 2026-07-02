@@ -1623,6 +1623,13 @@ matrix_function <- function(
   include_marine_sediment = TRUE,
   include_freshwater_sediment = TRUE
 ) {
+  if (!.pssd_has_ns("sensobol")) {
+    stop(
+      "matrix_function() requires the 'sensobol' package, which is not ",
+      "installed. Install it with install.packages(\"sensobol\").",
+      call. = FALSE
+    )
+  }
   matrices <- c("A", "B", "AB", "BA")
   first <- total <- "azzini"
 
@@ -2575,7 +2582,11 @@ MC_sim_align_wrapper <- function(tox_data, params, simulation_id) {
 #' @param x1D_set Lower particle-size bound (um) for alignment.
 #' @param x2D_set Upper particle-size bound (um) for alignment.
 #' @param n_sim Number of alignment simulations to run.
-#' @param num_cores Number of workers (`\"auto\"` uses all cores minus one).
+#' @param num_cores Number of workers. Defaults to `1` (sequential), per CRAN
+#'   policy that packages must not default to using multiple cores. For large
+#'   jobs (`n_sim` in the hundreds or thousands), parallel processing is
+#'   strongly recommended for practical runtimes: set `num_cores = "auto"` to
+#'   use all but one available core, or supply an explicit integer.
 #' @param suppress_warnings Logical; silence alignment warnings.
 #'
 #' @return A data frame with aligned doses for each simulation.
@@ -2593,6 +2604,14 @@ MC_sim_align_wrapper <- function(tox_data, params, simulation_id) {
 #'     num_cores  = 1
 #'   )
 #'   head(mc_out)
+#'
+#'   # For larger jobs, parallel processing is strongly recommended:
+#'   mc_out_parallel <- MC_sim_align_parallel(
+#'     tox_data   = tomex2_mini,
+#'     param_matrix = mat,
+#'     n_sim      = 500,
+#'     num_cores  = "auto"
+#'   )
 #' }
 MC_sim_align_parallel <- function(
   tox_data = aoc_risk_paper, # data to be processed (raw ToMEx 2.0 as default)
@@ -2600,7 +2619,7 @@ MC_sim_align_parallel <- function(
   x1D_set = 1, # minimum particle size
   x2D_set = 5000, # maximum particle size
   n_sim = 10,
-  num_cores = "auto",
+  num_cores = 1,
   suppress_warnings = TRUE
 ) {
   # Bind helpers locally so foreach can export them across PSOCK clusters
@@ -2622,10 +2641,20 @@ MC_sim_align_parallel <- function(
   # very small jobs where overhead dominates.
   num_cores <- min(num_cores, n_sim)
   if (n_sim <= 20 && num_cores > 1) {
-    message(crayon::yellow(sprintf(
+    message(.pssd_yellow(sprintf(
       "n_sim = %d is small; using sequential processing to avoid PSOCK overhead.",
       n_sim
     )))
+    num_cores <- 1L
+  }
+  if (num_cores > 1 && !(.pssd_has_ns("doSNOW") && .pssd_has_ns("foreach"))) {
+    warning(
+      "num_cores > 1 requires the 'doSNOW' and 'foreach' packages, which ",
+      "are not installed. Falling back to sequential processing (num_cores = 1). ",
+      "Install them with install.packages(c(\"doSNOW\", \"foreach\")) to enable ",
+      "multi-core alignment.",
+      call. = FALSE
+    )
     num_cores <- 1L
   }
   param_df <- as.data.frame(param_matrix)
@@ -2647,8 +2676,8 @@ MC_sim_align_parallel <- function(
 
   # Sequential fallback to avoid PSOCK issues when running with 1 core
   if (num_cores <= 1) {
-    message(crayon::yellow("Using 1 core (sequential processing)"))
-    tictoc::tic("Sequential processing alignments")
+    message(.pssd_yellow("Using 1 core (sequential processing)"))
+    .pssd_tic("Sequential processing alignments")
 
     results_list <- lapply(seq_len(n_sim), function(i) {
       progress(i)
@@ -2664,8 +2693,8 @@ MC_sim_align_parallel <- function(
       )
     })
 
-    elapsed <- tictoc::toc()
-    message(crayon::green(paste0(
+    elapsed <- .pssd_toc()
+    message(.pssd_green(paste0(
       "Probabilistic alignments completed in ",
       round(elapsed$toc - elapsed$tic, 2),
       " sec"
@@ -2720,11 +2749,12 @@ MC_sim_align_parallel <- function(
   }
 
   # make cluster
+  `%dopar%` <- foreach::`%dopar%`
   cl <- parallel::makeCluster(num_cores)
   on.exit(try(parallel::stopCluster(cl), silent = TRUE), add = TRUE)
   doSNOW::registerDoSNOW(cl)
   # list number of cores used
-  message(crayon::yellow(paste0(
+  message(.pssd_yellow(paste0(
     "Using ",
     num_cores,
     " cores for parallel processing"
@@ -2734,13 +2764,13 @@ MC_sim_align_parallel <- function(
   results_list <- vector("list", n_sim)
   # Initialize vector to store sobol results
   results_parallel <- vector("list", n_sim)
-  tictoc::tic("Parallel processing alignments")
+  .pssd_tic("Parallel processing alignments")
 
   x1D_set = x1D_set
   x2D_set = x2D_set
   tox_data = tox_data
 
-  cat(crayon::yellow(paste0(
+  cat(.pssd_yellow(paste0(
     "Running alignments for ",
     n_sim,
     " simulation(s)"
@@ -2755,9 +2785,7 @@ MC_sim_align_parallel <- function(
       "tidyr",
       "purrr",
       "foreach",
-      "doParallel",
-      "truncnorm",
-      "sensobol"
+      "truncnorm"
     ),
     .options.snow = opts,
     .export = c(
@@ -2835,8 +2863,8 @@ MC_sim_align_parallel <- function(
       )
     }
 
-  elapsed <- tictoc::toc()
-  message(crayon::green(paste0(
+  elapsed <- .pssd_toc()
+  message(.pssd_green(paste0(
     "Probabilistic alignments completed in ",
     round(elapsed$toc - elapsed$tic, 2),
     " sec"
@@ -3381,6 +3409,14 @@ generate_plots_and_summary <- function(
   }
 
   # ---------- STEP 6: Arrange plots ----------
+  if (!.pssd_has_ns("ggpubr")) {
+    message(
+      "Package 'ggpubr' is not installed; returning the pSSD plot alone ",
+      "instead of a combined pSSD + PNEC panel. Install it with ",
+      "install.packages(\"ggpubr\") to get the arranged multi-panel figure."
+    )
+    arranged_plot <- pSSD_plot
+  } else {
   arranged_plot <- tryCatch(
     {
       if (debug) {
@@ -3427,6 +3463,7 @@ generate_plots_and_summary <- function(
       stop(e)
     }
   )
+  }
 
   # ---------- STEP 7: Save figures ----------
   tryCatch(
@@ -3485,8 +3522,17 @@ generate_color_palette <- function(data) {
   if (length(unique_groups) == 0) {
     return(stats::setNames(character(0), character(0)))
   }
-  #palette <- cols4all::c4a("seaborn.dark", n = length(unique_groups)) # Generate colors
-  palette <- cols4all::c4a("cols4all.area9d", n = length(unique_groups)) # Generate colors
+  if (.pssd_has_ns("cols4all")) {
+    #palette <- cols4all::c4a("seaborn.dark", n = length(unique_groups)) # Generate colors
+    palette <- cols4all::c4a("cols4all.area9d", n = length(unique_groups)) # Generate colors
+  } else {
+    message(
+      "Package 'cols4all' is not installed; using ggplot2's default hue ",
+      "palette instead. Install it with install.packages(\"cols4all\") for ",
+      "the manuscript color scheme."
+    )
+    palette <- scales::hue_pal()(length(unique_groups))
+  }
   names(palette) <- unique_groups # Assign names to the colors
   return(palette)
 }
@@ -3775,7 +3821,11 @@ pSSD_plot_fnx <- function(
     ggplot2::theme(
       plot.title = element_text(face = "bold", hjust = 0.5),
       plot.subtitle = element_text(hjust = 0.5, size = 14),
-      legend.text = ggtext::element_markdown(size = 12)
+      legend.text = if (.pssd_has_ns("ggtext")) {
+        ggtext::element_markdown(size = 12)
+      } else {
+        ggplot2::element_text(size = 12)
+      }
     )
 
   p <- safe_stage(p, "scales_theme")
@@ -3822,14 +3872,22 @@ make_PNEC_plot <- function(
   # Define the x-axis range dynamically
   x_range <- p999_val - p001_val # Replace max_x and min_x with your actual x-axis limits
 
-  # Create a data frame for the percentile labels
+  # Create a data frame for the percentile labels. Markdown emphasis/line
+  # breaks require ggtext; fall back to plain text (newline, no bold) when
+  # ggtext is not installed.
+  has_ggtext <- .pssd_has_ns("ggtext")
+  label_fmt <- if (has_ggtext) {
+    function(title, value) paste0("**", title, "** <br>", signif(value, 2))
+  } else {
+    function(title, value) paste0(title, "\n", signif(value, 2))
+  }
   label_data <- data.frame(
     x = c(p5_val, median_val, (p95_val - 0.001 * x_range)),
     #  y = c(0.00001, 0.00001, 0.00001),  # Adjust y position for labels
     label = c(
-      paste0("**5th %** <br>", signif(p5_val, 2)),
-      paste0("**Median** <br>", signif(median_val, 2)),
-      paste0("**95th %** <br>", signif(p95_val, 2))
+      label_fmt("5th %", p5_val),
+      label_fmt("Median", median_val),
+      label_fmt("95th %", p95_val)
     )
   )
 
@@ -3873,17 +3931,31 @@ make_PNEC_plot <- function(
     ) +
     # Add text labels for the percentiles above the distribution
     # Add text labels for the percentiles
-    ggtext::geom_richtext(
-      data = label_data,
-      aes(x = x, label = label),
-      y = 0.01,
-      size = 5,
-      color = "black",
-      vjust = -1,
-      hjust = -0.01,
-      fill = NA,
-      label.color = NA
-    ) +
+    (if (has_ggtext) {
+      ggtext::geom_richtext(
+        data = label_data,
+        aes(x = x, label = label),
+        y = 0.01,
+        size = 5,
+        color = "black",
+        vjust = -1,
+        hjust = -0.01,
+        fill = NA,
+        label.color = NA
+      )
+    } else {
+      ggplot2::geom_label(
+        data = label_data,
+        aes(x = x, label = label),
+        y = 0.01,
+        size = 5,
+        color = "black",
+        vjust = -1,
+        hjust = -0.01,
+        fill = NA,
+        label.size = 0
+      )
+    }) +
     ggplot2::theme_minimal(base_size = 15) +
     ggplot2::theme(
       #axis.text.y = element_blank(),
@@ -4343,7 +4415,7 @@ run_pSSD_analysis <- function(
   checkpoints <- checkpoints[checkpoints > 0]
 
   if (!silent) {
-    cat(crayon::blue(sprintf(
+    cat(.pssd_blue(sprintf(
       "Starting PSSD analysis with %d sims each...\n",
       num_iterations
     )))
@@ -4366,7 +4438,7 @@ run_pSSD_analysis <- function(
 
     if (!silent && i %in% checkpoints) {
       pct_done <- round(100 * i / num_iterations)
-      cat(crayon::yellow(sprintf(
+      cat(.pssd_yellow(sprintf(
         "Completed %d%% of simulations (%d/%d)\n",
         pct_done,
         i,
@@ -4387,7 +4459,7 @@ run_pSSD_analysis <- function(
   }
 
   if (!silent) {
-    cat(crayon::blue(sprintf(
+    cat(.pssd_blue(sprintf(
       "PSSD analysis complete for %s\n",
       data_name
     )))
@@ -4537,8 +4609,15 @@ is_missing_erm_data <- function(df) {
 #'   only when speed matters more than strict comparability to the manuscript.
 #' @param quantile_type Quantile type used when summarizing outputs.
 #' @param debug_option Logical; saves intermediate objects for debugging.
-#' @param parallel Logical; run combinations in parallel.
-#' @param workers Number of workers when `parallel = TRUE`.
+#' @param parallel Logical; run combinations in parallel. Defaults to `FALSE`
+#'   (sequential), per CRAN policy that packages must not default to using
+#'   multiple cores. Parallel processing is strongly recommended when running
+#'   many tier/environment/ERM combinations or high `sim` counts, since each
+#'   combination is fit independently: set `parallel = TRUE` and increase
+#'   `workers` accordingly.
+#' @param workers Number of workers when `parallel = TRUE`. Defaults to `1`.
+#'   For larger jobs, set this to `parallel::detectCores() - 1` (or similar)
+#'   to substantially reduce runtime.
 #' @param base_cache_dir Directory for cached PSSD objects.
 #' @param base_output_path Directory for figures.
 #' @param overwrite_cache Logical; recompute even if cache exists.
@@ -4561,6 +4640,19 @@ is_missing_erm_data <- function(df) {
 #'     parallel     = FALSE
 #'   )
 #'   names(pSSDs)
+#'
+#'   # For larger jobs (more combinations and/or higher sim), parallel
+#'   # processing is strongly recommended for practical runtimes:
+#'   pSSDs_parallel <- make_all_pSSDs(
+#'     MC_sim_df    = mc_out,
+#'     tiers        = c(1, 2, 3, 4),
+#'     environments = c("Freshwater", "Marine"),
+#'     erms         = c("Food Dilution", "Tissue Translocation"),
+#'     erm_registry = erm_registry,
+#'     sim          = 500,
+#'     parallel     = TRUE,
+#'     workers      = max(1, parallel::detectCores() - 1)
+#'   )
 #' }
 make_all_pSSDs <- function(
   MC_sim_df = NULL,
@@ -4574,8 +4666,8 @@ make_all_pSSDs <- function(
   rmore_method = "step",
   quantile_type = 8,
   debug_option = FALSE,
-  parallel = TRUE,
-  workers = max(1, parallel::detectCores() - 1),
+  parallel = FALSE,
+  workers = 1,
   base_cache_dir = file.path(tempdir(), "pssd_cache"),
   base_output_path = file.path(tempdir(), "pssd_figures"),
   overwrite_cache = FALSE,
@@ -4595,7 +4687,7 @@ make_all_pSSDs <- function(
     dir.create(base_cache_dir, recursive = TRUE)
   }
 
-  tictoc::tic("PSSD++ combinations")
+  .pssd_tic("PSSD++ combinations")
 
   combo_tbl <- expand.grid(
     tier = tiers,
@@ -4614,13 +4706,13 @@ make_all_pSSDs <- function(
   }
 
   if (parallel) {
-    cat(crayon::blue(sprintf(
+    cat(.pssd_blue(sprintf(
       "Running %d PSSD combinations in parallel (%d workers)\n",
       nrow(combo_tbl),
       workers
     )))
   } else {
-    cat(crayon::blue(sprintf(
+    cat(.pssd_blue(sprintf(
       "Running %d PSSD combinations sequentially\n",
       nrow(combo_tbl)
     )))
@@ -4636,17 +4728,34 @@ make_all_pSSDs <- function(
   global_color_palette <- generate_color_palette(all_species)
 
   use_progress <- isTRUE(progress)
+  if (use_progress && !.pssd_has_ns("progressr")) {
+    warning(
+      "progress = TRUE requires the 'progressr' package, which is not ",
+      "installed. Continuing without a progress bar. Install it with ",
+      "install.packages(\"progressr\").",
+      call. = FALSE
+    )
+    use_progress <- FALSE
+  }
   if (use_progress) {
     progressr::handlers(global = TRUE)
     progressr::handlers("txtprogressbar")
   }
 
-  old_plan <- future::plan()
-  on.exit(future::plan(old_plan), add = TRUE)
+  if (parallel && !(.pssd_has_ns("future") && .pssd_has_ns("future.apply"))) {
+    warning(
+      "parallel = TRUE requires the 'future' and 'future.apply' packages, ",
+      "which are not installed. Falling back to sequential processing. ",
+      "Install them with install.packages(c(\"future\", \"future.apply\")).",
+      call. = FALSE
+    )
+    parallel <- FALSE
+  }
+
   if (parallel) {
+    old_plan <- future::plan()
+    on.exit(future::plan(old_plan), add = TRUE)
     future::plan(future::multisession, workers = workers)
-  } else {
-    future::plan(future::sequential)
   }
 
   run_combo <- function(idx, p = NULL) {
@@ -4673,7 +4782,7 @@ make_all_pSSDs <- function(
     }
 
     if (file.exists(cache_file) && !overwrite_cache) {
-      cat(crayon::yellow(sprintf("Using cached: %s\n", safe_combo_id)))
+      cat(.pssd_yellow(sprintf("Using cached: %s\n", safe_combo_id)))
       res <- readRDS(cache_file)
       results_df <- NULL
       if (erm %in% names(erm_registry)) {
@@ -4700,12 +4809,12 @@ make_all_pSSDs <- function(
     }
 
     if (file.exists(cache_file) && overwrite_cache) {
-      cat(crayon::yellow(sprintf("Overwriting cached: %s\n", safe_combo_id)))
+      cat(.pssd_yellow(sprintf("Overwriting cached: %s\n", safe_combo_id)))
     }
 
     if (!erm %in% names(erm_registry)) {
       msg <- paste0("Unknown ERM: ", erm)
-      cat(crayon::red(sprintf("ERROR in %s: %s\n", safe_combo_id, msg)))
+      cat(.pssd_red(sprintf("ERROR in %s: %s\n", safe_combo_id, msg)))
       status_row <- make_status_row(
         combo_id = combo_id,
         tier = tier,
@@ -4721,7 +4830,7 @@ make_all_pSSDs <- function(
     results_df <- erm_registry[[erm]][[tier_key]]
     if (is_missing_erm_data(results_df)) {
       msg <- paste0("No data found for ERM=", erm, ", tier=", tier)
-      cat(crayon::yellow(sprintf("Skipping %s: %s\n", safe_combo_id, msg)))
+      cat(.pssd_yellow(sprintf("Skipping %s: %s\n", safe_combo_id, msg)))
       status_row <- make_status_row(
         combo_id = combo_id,
         tier = tier,
@@ -4740,7 +4849,7 @@ make_all_pSSDs <- function(
 
     counts <- extract_species_counts(results_df, environment)
     if (counts$n_rows == 0) {
-      cat(crayon::yellow(sprintf(
+      cat(.pssd_yellow(sprintf(
         "Skipping %s: no data after filtering\n",
         combo_id
       )))
@@ -4761,7 +4870,7 @@ make_all_pSSDs <- function(
     dose_col <- get_dose_column(results_df, environment)
     if (is.null(dose_col)) {
       msg <- "missing required dose column"
-      cat(crayon::yellow(sprintf("Skipping %s: %s\n", safe_combo_id, msg)))
+      cat(.pssd_yellow(sprintf("Skipping %s: %s\n", safe_combo_id, msg)))
       status_row <- make_status_row(
         combo_id = combo_id,
         tier = tier,
@@ -4777,7 +4886,7 @@ make_all_pSSDs <- function(
     }
 
     if (counts$n_species_with_data < min_species_required) {
-      cat(crayon::yellow(sprintf(
+      cat(.pssd_yellow(sprintf(
         "Skipping %s: fewer than %d species with data\n",
         combo_id,
         min_species_required
@@ -4824,7 +4933,7 @@ make_all_pSSDs <- function(
         )
 
         if (is.null(res)) {
-          cat(crayon::yellow(sprintf(
+          cat(.pssd_yellow(sprintf(
             "Skipping %s: no species with data after filtering\n",
             combo_id
           )))
@@ -4847,7 +4956,7 @@ make_all_pSSDs <- function(
         saveRDS(res, tmp)
         file.rename(tmp, cache_file)
 
-        cat(crayon::yellow(sprintf("Completed: %s\n", safe_combo_id)))
+        cat(.pssd_yellow(sprintf("Completed: %s\n", safe_combo_id)))
         status_row <- make_status_row(
           combo_id = combo_id,
           tier = tier,
@@ -4861,7 +4970,7 @@ make_all_pSSDs <- function(
         list(result = res, status = status_row)
       },
       error = function(e) {
-        cat(crayon::red(sprintf(
+        cat(.pssd_red(sprintf(
           "ERROR in %s: %s\n",
           combo_id,
           e$message
@@ -4929,11 +5038,11 @@ make_all_pSSDs <- function(
 
   if (!is.null(summary_tbl) && nrow(summary_tbl) > 0) {
     status_counts <- table(summary_tbl$status)
-    cat(crayon::blue(sprintf(
+    cat(.pssd_blue(sprintf(
       "\nPSSD++ summary (min species required = %d)\n",
       min_species_required
     )))
-    cat(crayon::blue(sprintf(
+    cat(.pssd_blue(sprintf(
       "Status counts: %s\n",
       paste(
         paste0(names(status_counts), "=", as.integer(status_counts)),
@@ -4942,14 +5051,14 @@ make_all_pSSDs <- function(
     )))
     issues <- summary_tbl[summary_tbl$status %in% c("skipped", "error"), ]
     if (nrow(issues) > 0) {
-      cat(crayon::yellow("Skipped/Error combinations:\n"))
+      cat(.pssd_yellow("Skipped/Error combinations:\n"))
       print(issues)
     }
   }
 
-  pSSD_time <- tictoc::toc()
+  pSSD_time <- .pssd_toc()
   total_runtime_sec <- pSSD_time$toc - pSSD_time$tic
-  cat(crayon::blue(sprintf(
+  cat(.pssd_blue(sprintf(
     "\nPSSD++ complete for all combinations. Total time: %.2f hours\n",
     total_runtime_sec / 3600
   )))

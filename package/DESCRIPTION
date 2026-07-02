@@ -1,7 +1,7 @@
 Package: PSSDplusplus
 Type: Package
 Title: Probabilistic Microplastic Ecotoxicity Workflow (PSSD++)
-Version: 0.3.3
+Version: 0.3.4
 Authors@R:
     person("Scott", "Coffin", role = c("aut", "cre"),
            email = "scott.l.coffin@gmail.com",
@@ -30,18 +30,9 @@ Imports:
     stringr,
     ggplot2,
     scales,
-    sensobol,
     truncnorm,
-    doParallel,
-    doSNOW,
-    foreach,
-    tictoc,
-    crayon,
     Matrix,
     reshape2,
-    future,
-    future.apply,
-    progressr,
     ssdtools (>= 0.3.7),
     magrittr,
     parallel,
@@ -49,12 +40,20 @@ Imports:
     utils,
     mc2d,
     trapezoid,
-    data.table,
+    ggrepel,
+    data.table
+Suggests:
+    sensobol,
+    doSNOW,
+    foreach,
+    future,
+    future.apply,
+    progressr,
+    tictoc,
+    crayon,
     ggpubr,
     cols4all,
-    ggrepel,
-    ggtext
-Suggests:
+    ggtext,
     gtsummary,
     knitr,
     plotly,
@@ -63,4 +62,4 @@ Suggests:
 VignetteBuilder: knitr, rmarkdown
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.0.0

@@ -10,9 +10,9 @@ run_pssd_reprex(
   figure_dir = file.path(tempdir(), "pssd_figures"),
   sim = 10,
   n_sim = 10,
-  workers = max(1, parallel::detectCores() - 1),
+  workers = 1,
   overwrite_cache = FALSE,
-  parallel = TRUE,
+  parallel = FALSE,
   seed = NULL,
   quantile_type = 8,
   cv_uf = 0.5,
@@ -32,11 +32,17 @@ run_pssd_reprex(
 
 \item{n_sim}{Number of Monte Carlo alignment simulations.}
 
-\item{workers}{Number of workers for both alignment and PSSD phases.}
+\item{workers}{Number of workers for both alignment and PSSD phases.
+Defaults to \code{1} (sequential), per CRAN policy that packages must not
+default to using multiple cores. Parallel processing is strongly
+recommended for practical runtimes on anything beyond the bundled mini
+dataset: set \code{parallel = TRUE} and \code{workers = parallel::detectCores() - 1}
+(or similar) for larger jobs.}
 
 \item{overwrite_cache}{Logical; force recalculation even if cache exists.}
 
-\item{parallel}{Logical; run PSSD combinations in parallel.}
+\item{parallel}{Logical; run PSSD combinations in parallel. Defaults to
+\code{FALSE}; see \code{workers}.}
 
 \item{seed}{Optional integer seed for reproducibility.}
 
@@ -74,5 +80,11 @@ repository, using the included ToMEx 2.0 ecotoxicity dataset.
 
   # Use lognormal method (faster, less precise)
   run_pssd_reprex(sim = 2, n_sim = 2, workers = 1, rmore_method = "lognormal")
+
+  # For larger jobs, parallel processing is strongly recommended:
+  run_pssd_reprex(
+    sim = 500, n_sim = 500,
+    parallel = TRUE, workers = max(1, parallel::detectCores() - 1)
+  )
 }
 }

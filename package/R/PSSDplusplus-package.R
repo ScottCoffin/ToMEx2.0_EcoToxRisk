@@ -15,15 +15,13 @@
 #'
 #' @references Coffin, S. et al. (2026). \emph{Journal of Hazardous Materials}
 #' 503, 141021. \doi{10.1016/j.jhazmat.2025.141021}
-#' @import dplyr tidyr purrr tibble stringr ggplot2 sensobol truncnorm doParallel doSNOW tictoc reshape2 future future.apply progressr ssdtools parallel utils mc2d trapezoid
+#' @import dplyr tidyr purrr tibble stringr ggplot2 truncnorm reshape2 ssdtools parallel utils mc2d trapezoid
 #' @importFrom magrittr %>%
 #' @importFrom graphics plot
 #' @importFrom grDevices colorRampPalette
 #' @importFrom utils txtProgressBar setTxtProgressBar
 #' @importFrom Matrix Matrix
-#' @importFrom crayon blue green red yellow
 #' @importFrom data.table as.data.table
-#' @importFrom foreach %dopar% foreach
 #' @importFrom scales math_format
 #' @importFrom stats quantile rnorm predict
 "_PACKAGE"

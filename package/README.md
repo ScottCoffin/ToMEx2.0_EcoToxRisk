@@ -28,11 +28,25 @@ library(PSSDplusplus)
 results <- run_pssd_reprex(
   sim = 10,
   n_sim = 10,
-  workers = max(1, parallel::detectCores() - 1),
   overwrite_cache = FALSE
 )
 
 results$pnec_summary
+```
+
+By default, `run_pssd_reprex()` and `make_all_pSSDs()` run sequentially
+(`parallel = FALSE`, `workers = 1`). For anything beyond quick tests on the
+bundled mini dataset, parallel processing is strongly recommended for
+practical runtimes:
+
+```r
+results <- run_pssd_reprex(
+  sim = 500,
+  n_sim = 500,
+  parallel = TRUE,
+  workers = max(1, parallel::detectCores() - 1),
+  overwrite_cache = FALSE
+)
 ```
 
 ## Key functions

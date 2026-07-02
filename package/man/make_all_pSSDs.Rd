@@ -16,8 +16,8 @@ make_all_pSSDs(
   rmore_method = "step",
   quantile_type = 8,
   debug_option = FALSE,
-  parallel = TRUE,
-  workers = max(1, parallel::detectCores() - 1),
+  parallel = FALSE,
+  workers = 1,
   base_cache_dir = file.path(tempdir(), "pssd_cache"),
   base_output_path = file.path(tempdir(), "pssd_figures"),
   overwrite_cache = FALSE,
@@ -57,9 +57,16 @@ only when speed matters more than strict comparability to the manuscript.}
 
 \item{debug_option}{Logical; saves intermediate objects for debugging.}
 
-\item{parallel}{Logical; run combinations in parallel.}
+\item{parallel}{Logical; run combinations in parallel. Defaults to \code{FALSE}
+(sequential), per CRAN policy that packages must not default to using
+multiple cores. Parallel processing is strongly recommended when running
+many tier/environment/ERM combinations or high \code{sim} counts, since each
+combination is fit independently: set \code{parallel = TRUE} and increase
+\code{workers} accordingly.}
 
-\item{workers}{Number of workers when \code{parallel = TRUE}.}
+\item{workers}{Number of workers when \code{parallel = TRUE}. Defaults to \code{1}.
+For larger jobs, set this to \code{parallel::detectCores() - 1} (or similar)
+to substantially reduce runtime.}
 
 \item{base_cache_dir}{Directory for cached PSSD objects.}
 
@@ -90,5 +97,18 @@ for each combination of tier, environment, and ERM.
     parallel     = FALSE
   )
   names(pSSDs)
+
+  # For larger jobs (more combinations and/or higher sim), parallel
+  # processing is strongly recommended for practical runtimes:
+  pSSDs_parallel <- make_all_pSSDs(
+    MC_sim_df    = mc_out,
+    tiers        = c(1, 2, 3, 4),
+    environments = c("Freshwater", "Marine"),
+    erms         = c("Food Dilution", "Tissue Translocation"),
+    erm_registry = erm_registry,
+    sim          = 500,
+    parallel     = TRUE,
+    workers      = max(1, parallel::detectCores() - 1)
+  )
 }
 }

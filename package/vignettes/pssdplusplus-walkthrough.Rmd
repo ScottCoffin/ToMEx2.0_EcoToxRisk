@@ -10,29 +10,12 @@ vignette: >
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(comment = "#>", collapse = TRUE, verbose = FALSE)
 
-required_pkgs <- c(
-  "sensobol",
-  "truncnorm",
-  "mc2d",
-  "magrittr",
-  "trapezoid",
-  "ggpubr",
-  "gtsummary",
-  "doParallel",
-  "doSNOW",
-  "tictoc",
-  "crayon",
-  "Matrix",
-  "reshape2",
-  "future",
-  "future.apply",
-  "progressr"
-)
-
-missing <- required_pkgs[!vapply(required_pkgs, requireNamespace, logical(1), quietly = TRUE)]
-if (length(missing)) {
-  stop("Missing required packages for this vignette: ",
-       paste(missing, collapse = ", "))
+# sensobol powers matrix_function()'s Sobol'/LHS sampling and is required for
+# this vignette's Monte Carlo workflow. All other optional packages used below
+# (ggpubr, cols4all, ggtext, doSNOW/foreach, future/future.apply, progressr,
+# tictoc, crayon) degrade gracefully when missing, so they are not required here.
+if (!requireNamespace("sensobol", quietly = TRUE)) {
+  stop("Missing required package for this vignette: sensobol")
 }
 has_plotly <- requireNamespace("plotly", quietly = TRUE)
 library(PSSDplusplus)
@@ -337,7 +320,7 @@ message("Starting MC_sim_align_parallel...")
 MC_sim_df <- MC_sim_align_parallel(
   tox_data = tox_data, # toxicity data (ToMEx 2.0 is default)
   param_matrix = param_matrix, # parameter matrix generated in prior cell
-  n_sim = 3, # size of parameter matrix (ensure this is the same as the size of the matrix generated)
+  n_sim = 10, # number of MC alignment draws per species (must not exceed nrow(param_matrix))
   x1D_set = 1, # minimum particle size to generate distributions to (in microns)
   x2D_set = 5000, # maximum particle size to generate distributions to (in microns)
   num_cores = num_cores # number of cores to use for parallel processing (specify )
@@ -528,7 +511,7 @@ tox_data_combined <- tox_data |> dplyr::mutate(env_f = "Freshwater")
 MC_sim_df_combined <- MC_sim_align_parallel(
   tox_data = tox_data_combined, # toxicity data (ToMEx 2.0 is default)
   param_matrix = param_matrix, # parameter matrix generated in prior cell
-  n_sim = 3, # size of parameter matrix (ensure this is the same as the size of the matrix generated)
+  n_sim = 10, # number of MC alignment draws per species (must not exceed nrow(param_matrix))
   x1D_set = 1, # minimum particle size to generate distributions to (in microns)
   x2D_set = 5000, # maximum particle size to generate distributions to (in microns)
   num_cores = num_cores # number of cores to use for parallel processing (specify )

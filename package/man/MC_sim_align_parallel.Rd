@@ -10,7 +10,7 @@ MC_sim_align_parallel(
   x1D_set = 1,
   x2D_set = 5000,
   n_sim = 10,
-  num_cores = "auto",
+  num_cores = 1,
   suppress_warnings = TRUE
 )
 }
@@ -25,7 +25,11 @@ MC_sim_align_parallel(
 
 \item{n_sim}{Number of alignment simulations to run.}
 
-\item{num_cores}{Number of workers (\verb{\\"auto\\"} uses all cores minus one).}
+\item{num_cores}{Number of workers. Defaults to \code{1} (sequential), per CRAN
+policy that packages must not default to using multiple cores. For large
+jobs (\code{n_sim} in the hundreds or thousands), parallel processing is
+strongly recommended for practical runtimes: set \code{num_cores = "auto"} to
+use all but one available core, or supply an explicit integer.}
 
 \item{suppress_warnings}{Logical; silence alignment warnings.}
 }
@@ -48,5 +52,13 @@ simulation-ready microplastic ecotoxicity data.
     num_cores  = 1
   )
   head(mc_out)
+
+  # For larger jobs, parallel processing is strongly recommended:
+  mc_out_parallel <- MC_sim_align_parallel(
+    tox_data   = tomex2_mini,
+    param_matrix = mat,
+    n_sim      = 500,
+    num_cores  = "auto"
+  )
 }
 }

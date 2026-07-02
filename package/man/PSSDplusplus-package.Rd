@@ -26,4 +26,9 @@ Coffin, S. et al. (2026). \emph{Journal of Hazardous Materials}
 \author{
 \strong{Maintainer}: Scott Coffin \email{scott.l.coffin@gmail.com} (\href{https://orcid.org/0000-0002-7035-1282}{ORCID})
 
+Authors:
+\itemize{
+  \item Scott Coffin \email{scott.l.coffin@gmail.com} (\href{https://orcid.org/0000-0002-7035-1282}{ORCID})
+}
+
 }

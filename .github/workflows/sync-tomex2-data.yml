@@ -1,0 +1,208 @@
+name: Sync ToMEx2 data
+
+# This workflow no longer auto-commits data, bumps the package version, or
+# cuts a GitHub release. Frequent, bot-driven version bumps are not
+# compatible with CRAN's release norms (CRAN does not expect resubmissions
+# more than roughly once every 1-2 months, and a bundled dataset that
+# silently drifts between releases undermines reproducibility). Instead,
+# this workflow checks upstream for changes, builds/checks the package
+# against the new data as a dry run, and emails the repo owner a status
+# report with a recommendation. Applying the sync (updating the data files,
+# bumping the version, committing, and releasing) remains a deliberate,
+# manual step.
+#
+# Required repository secrets for the email step (Settings > Secrets and
+# variables > Actions):
+#   MAIL_SERVER, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD
+# (e.g. an SMTP relay or a Gmail account with an app password).
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_sync:
+        description: "Set to true only after upstream aoc_z_tomex2.RDS is verified."
+        required: true
+        default: "false"
+
+# Paused 2026-07-01: upstream aoc_z_tomex2.RDS has known data issues.
+# Re-enable push/repository_dispatch/schedule triggers after upstream fixes are verified.
+# Since this workflow is now notification-only (no auto-commit/release), a
+# schedule trigger is lower-risk than before -- consider re-adding it once
+# upstream is stable.
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-tomex2-data
+  cancel-in-progress: false
+
+jobs:
+  check:
+    if: github.event.inputs.confirm_sync == 'true'
+    runs-on: ubuntu-latest
+
+    env:
+      SOURCE_REPO: SCCWRP/ToMEx_AquaticOrganisms
+      SOURCE_BRANCH: master
+      SOURCE_PATH: aoc_z_tomex2.RDS
+      RENV_CONFIG_AUTOLOADER_ENABLED: "false"
+      RENV_CONFIG_PAK_ENABLED: "false"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - name: Read upstream commit and release notes
+        id: upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          commit_json="$(gh api "repos/${SOURCE_REPO}/commits?path=${SOURCE_PATH}&sha=${SOURCE_BRANCH}&per_page=1")"
+          source_sha="$(jq -r '.[0].sha' <<<"${commit_json}")"
+          source_url="$(jq -r '.[0].html_url' <<<"${commit_json}")"
+          source_date="$(jq -r '.[0].commit.committer.date' <<<"${commit_json}")"
+          jq -r '.[0].commit.message' <<<"${commit_json}" > upstream-commit-message.txt
+
+          {
+            echo "source_sha=${source_sha}"
+            echo "source_url=${source_url}"
+            echo "source_date=${source_date}"
+          } >> "${GITHUB_OUTPUT}"
+
+          if release_json="$(gh api "repos/${SOURCE_REPO}/releases/latest" 2>/dev/null)"; then
+            {
+              echo "Upstream release: $(jq -r '.name // .tag_name' <<<"${release_json}")"
+              echo "Tag: $(jq -r '.tag_name' <<<"${release_json}")"
+              echo "URL: $(jq -r '.html_url' <<<"${release_json}")"
+              echo
+              jq -r '.body // ""' <<<"${release_json}"
+            } > upstream-release-notes.md
+          else
+            echo "No upstream GitHub release notes were found." > upstream-release-notes.md
+          fi
+
+      - name: Snapshot previous data file
+        run: cp data/input/aoc_z_tomex2.RDS previous-aoc_z_tomex2.RDS
+
+      - name: Download upstream data (dry run, no commit)
+        run: |
+          Rscript scripts/sync_tomex2_data.R \
+            --no-bump-version \
+            --source-url="https://raw.githubusercontent.com/${SOURCE_REPO}/${SOURCE_BRANCH}/${SOURCE_PATH}" \
+            --source-repo="${SOURCE_REPO}" \
+            --source-path="${SOURCE_PATH}" \
+            --source-commit="${{ steps.upstream.outputs.source_sha }}" \
+            --source-commit-url="${{ steps.upstream.outputs.source_url }}" \
+            --source-commit-date="${{ steps.upstream.outputs.source_date }}" \
+            --source-message-file=upstream-commit-message.txt \
+            --source-release-notes-file=upstream-release-notes.md
+
+      - name: Detect data changes
+        id: work
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- \
+            data/input/aoc_z_tomex2.RDS \
+            package/inst/extdata/aoc_z_tomex2.RDS \
+            package/data/tomex2.rda; then
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Write dataset size report
+        id: size
+        run: |
+          Rscript scripts/report_tomex2_size_change.R \
+            --previous=previous-aoc_z_tomex2.RDS \
+            --current=data/input/aoc_z_tomex2.RDS \
+            --output=tomex2-size-report.md
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        if: steps.work.outputs.changed == 'true'
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+          dependencies: c("all")
+          working-directory: package
+
+      - name: Dry-run build and check against new data
+        if: steps.work.outputs.changed == 'true'
+        id: build
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          version="$(awk -F':[[:space:]]*' '/^Version:/{print $2; exit}' package/DESCRIPTION)"
+          R CMD build package --no-build-vignettes
+          R CMD check "PSSDplusplus_${version}.tar.gz" --no-manual --no-build-vignettes
+
+      - name: Compose recommendation
+        id: recommend
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.work.outputs.changed }}" != "true" ]; then
+            recommendation="No upstream data changes detected. Nothing to do."
+          elif [ "${{ steps.build.outcome }}" = "failure" ]; then
+            recommendation="Upstream data changed AND the package failed R CMD build/check against it. Do NOT sync until the failures below are investigated."
+          else
+            recommendation="Upstream data changed and the package still builds/checks cleanly against it. Safe to manually apply this sync (update the bundled data, bump the version, update NEWS.md) and cut a new release when convenient. Recommend against auto-applying this on a CRAN-facing release -- CRAN does not expect resubmissions more than roughly once every 1-2 months, so batch data updates into periodic, deliberate releases rather than syncing on every upstream change."
+          fi
+          {
+            echo "recommendation<<EOF"
+            echo "${recommendation}"
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Build email body
+        if: always()
+        run: |
+          {
+            echo "# ToMEx2 upstream data sync report"
+            echo
+            echo "## Recommendation"
+            echo "${{ steps.recommend.outputs.recommendation }}"
+            echo
+            echo "## Upstream commit"
+            echo "- ${{ steps.upstream.outputs.source_sha }}"
+            echo "- ${{ steps.upstream.outputs.source_url }}"
+            echo
+            echo "## Dataset size/DOI check"
+            cat tomex2-size-report.md
+            echo
+            echo "## Package build/check against new data"
+            if [ "${{ steps.work.outputs.changed }}" = "true" ]; then
+              echo "Outcome: ${{ steps.build.outcome }}"
+            else
+              echo "Skipped (no data changes detected)."
+            fi
+            echo
+            echo "## Upstream commit message"
+            cat upstream-commit-message.txt
+            echo
+            echo "## Upstream release notes"
+            cat upstream-release-notes.md
+          } > email-body.md
+
+      - name: Email repo owner
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: >-
+            [PSSDplusplus] ToMEx2 data sync check:
+            ${{ steps.work.outputs.changed == 'true' && 'changes detected' || 'no changes' }}
+          to: scott.l.coffin@gmail.com
+          from: PSSDplusplus Data Sync Bot
+          body: file://email-body.md

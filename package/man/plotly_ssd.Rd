@@ -21,10 +21,10 @@ and units, e.g. \code{"particles/L"}). Default \code{"Concentration"}.}
 \item{erm_label}{Optional ERM name shown in the plot title (e.g.
 \code{"Food Dilution"}). Default \code{NULL}.}
 
-\item{lower_size}{Optional lower particle-size limit (µm) for the x-axis
+\item{lower_size}{Optional lower particle-size limit (um) for the x-axis
 title (e.g. \code{1}). Only used when \code{upper_size} is also supplied.}
 
-\item{upper_size}{Optional upper particle-size limit (µm) for the x-axis
+\item{upper_size}{Optional upper particle-size limit (um) for the x-axis
 title (e.g. \code{5000}). Formatted with comma separator.}
 }
 \value{

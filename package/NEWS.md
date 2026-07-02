@@ -1,3 +1,52 @@
+PSSDplusplus 0.3.4
+==================
+
+CRAN readiness
+--------------
+- Fixed the bundled vignette, which previously ran the full Monte Carlo +
+  PSSD++ pipeline against the entire ~13,000-row `tomex2` dataset and could
+  hang for 10+ minutes during `R CMD check`. The vignette now runs
+  end-to-end on the bundled `tomex2_mini` subset in about two minutes, with
+  `n_sim` raised from 3 to 10 for a more representative demonstration.
+- `MC_sim_align_parallel()`, `make_all_pSSDs()`, and `run_pssd_reprex()` no
+  longer default to `parallel::detectCores() - 1` workers. Per CRAN policy,
+  packages must not default to using multiple cores; these functions now
+  default to sequential execution (`num_cores = 1` / `parallel = FALSE`,
+  `workers = 1`). Parallel processing is still fully supported and strongly
+  recommended for large jobs -- see the updated `@param` docs, examples, and
+  README for how to opt in.
+- Moved `sensobol`, `doSNOW`, `foreach`, `future`, `future.apply`,
+  `progressr`, `tictoc`, `crayon`, `ggpubr`, `cols4all`, and `ggtext` from
+  `Imports` to `Suggests`, cutting mandatory non-base install-time
+  dependencies from 28 to 16. Removed the unused `doParallel` dependency
+  entirely. Each
+  formerly-mandatory package now degrades gracefully when not installed:
+  - `doSNOW`/`foreach` (multi-core alignment) and `future`/`future.apply`/
+    `progressr` (multi-core PSSD fitting/progress bars) fall back to
+    sequential processing with a warning if requested but unavailable.
+  - `crayon`/`tictoc` (colored console output/timing) silently degrade to
+    plain messages.
+  - `cols4all` (color palette) falls back to `scales::hue_pal()`.
+  - `ggtext` (rich-text plot labels) falls back to plain `ggplot2` text/label
+    geoms.
+  - `ggpubr` (multi-panel arranged plots) falls back to returning the
+    primary pSSD plot alone.
+  - `sensobol` remains required specifically for `matrix_function()` (its
+    Sobol'/LHS sampling engine) and now fails with an informative
+    `install.packages()` message rather than an install-time hard
+    dependency; `data.table` remains a hard `Import` because its `:=`
+    assignment syntax requires NAMESPACE-level registration to work
+    correctly and is not safely optional.
+  Verified via the full test suite and a targeted smoke test that
+  monkey-patches dependency detection to simulate each package being
+  absent, for both the deterministic (`align_data`/`make_tiered_SSDs`) and
+  full Monte Carlo + PSSD++ pipelines.
+- Reworked the ToMEx2 upstream data-sync GitHub Action so it no longer
+  auto-commits data, bumps the package version, or cuts a release on a
+  schedule. It now performs a dry-run build/check against any upstream data
+  change and emails the maintainer a status report and recommendation,
+  leaving the decision to apply and release a data update to the maintainer.
+
 PSSDplusplus 0.3.3
 ==================
 
