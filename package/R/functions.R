@@ -921,7 +921,7 @@ align_data <- function(
     dplyr::mutate(
       x2M_ingest = dplyr::case_when(
         is.na(max.size.ingest.um) ~ x2D_set,
-        max.size.ingest.um < x2D_set ~ max.size.ingest.um,
+        max.size.ingest.um <= x2D_set ~ max.size.ingest.um,
         max.size.ingest.um > x2D_set ~ x2D_set
       )
     ) %>% #set to 5,000 as upper limit or max size ingest, whichever is smaller
@@ -930,7 +930,7 @@ align_data <- function(
     dplyr::mutate(
       x2M_trans = dplyr::case_when(
         is.na(max.size.ingest.um) ~ upper.tissue.trans.size.um,
-        max.size.ingest.um < upper.tissue.trans.size.um ~ max.size.ingest.um,
+        max.size.ingest.um <= upper.tissue.trans.size.um ~ max.size.ingest.um,
         max.size.ingest.um >
           upper.tissue.trans.size.um ~ upper.tissue.trans.size.um
       )

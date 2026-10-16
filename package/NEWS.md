@@ -13,6 +13,9 @@ Bug fixes
   `align_data()`.
 - The internal Sobol wrapper now uses the same size bounds for alignment as
   for unit conversion.
+- `align_data()` no longer sets `x2M_ingest` / `x2M_trans` to `NA` for
+  records whose `max.size.ingest.um` exactly equals `x2D_set` /
+  `upper.tissue.trans.size.um`; the boundary value is now used.
 
 PSSDplusplus 0.3.4
 ==================
