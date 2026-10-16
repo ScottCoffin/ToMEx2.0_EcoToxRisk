@@ -1,3 +1,19 @@
+PSSDplusplus 0.3.5
+==================
+
+Bug fixes
+---------
+- `MC_sim_align_parallel()` now passes `x1D_set` and `x2D_set` through to
+  `align_data()` (#5). Previously these bounds were accepted but dropped, so
+  every alignment ran at the 1-5000 um defaults regardless of the values
+  supplied. Results at the default bounds are unchanged; analyses that set
+  other bounds should be re-run.
+- New `x1M_set` argument for `MC_sim_align_parallel()` (defaults to
+  `x1D_set`) sets the lower bound of the mass/volume/surface-area integrals in
+  `align_data()`.
+- The internal Sobol wrapper now uses the same size bounds for alignment as
+  for unit conversion.
+
 PSSDplusplus 0.3.4
 ==================
 

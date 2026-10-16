@@ -2052,9 +2052,21 @@ get_param_value <- function(params, primary, fallback = NULL) {
 
 #' Run one Sobol simulation: align data and derive SSD thresholds.
 #' @noRd
-model_wrapper_sobol_parallel <- function(params, simulation_id) {
-  # perform alignments using parameters for simulation
-  align_args <- list(df = aoc_aligned)
+model_wrapper_sobol_parallel <- function(
+  params,
+  simulation_id,
+  x1M_set = 1,
+  x1D_set = 1,
+  x2D_set = 5000
+) {
+  # perform alignments using parameters for simulation; size bounds must match
+  # those used by the convert_units_fxn() calls below
+  align_args <- list(
+    df = aoc_aligned,
+    x1M_set_input = x1M_set,
+    x1D_set_input = x1D_set,
+    x2D_set_input = x2D_set
+  )
   upper_val <- get_param_value(params, "upper.tissue.trans.size.um")
   if (!is.null(upper_val)) {
     align_args$upper.tissue.trans.size.um_input <- upper_val
@@ -2339,9 +2351,21 @@ model_wrapper_sobol_parallel <- function(params, simulation_id) {
 
 #' Align one simulation's toxicity data using a single row of the parameter matrix.
 #' @noRd
-MC_sim_align_wrapper <- function(tox_data, params, simulation_id) {
+MC_sim_align_wrapper <- function(
+  tox_data,
+  params,
+  simulation_id,
+  x1M_set = 1,
+  x1D_set = 1,
+  x2D_set = 5000
+) {
   # perform alignments using parameters for simulation
-  align_args <- list(df = tox_data)
+  align_args <- list(
+    df = tox_data,
+    x1M_set_input = x1M_set,
+    x1D_set_input = x1D_set,
+    x2D_set_input = x2D_set
+  )
   upper_val <- get_param_value(params, "upper.tissue.trans.size.um")
   if (!is.null(upper_val)) {
     align_args$upper.tissue.trans.size.um_input <- upper_val
@@ -2579,8 +2603,10 @@ MC_sim_align_wrapper <- function(tox_data, params, simulation_id) {
 #'
 #' @param tox_data Data frame of toxicity records (defaults to the bundled dataset).
 #' @param param_matrix Parameter matrix created by \link[=matrix_function]{matrix_function()}.
-#' @param x1D_set Lower particle-size bound (um) for alignment.
-#' @param x2D_set Upper particle-size bound (um) for alignment.
+#' @param x1D_set Lower particle-size bound (um) for alignment, passed to
+#'   \link[=align_data]{align_data()} as `x1D_set_input`.
+#' @param x2D_set Upper particle-size bound (um) for alignment, passed to
+#'   \link[=align_data]{align_data()} as `x2D_set_input`.
 #' @param n_sim Number of alignment simulations to run.
 #' @param num_cores Number of workers. Defaults to `1` (sequential), per CRAN
 #'   policy that packages must not default to using multiple cores. For large
@@ -2588,6 +2614,9 @@ MC_sim_align_wrapper <- function(tox_data, params, simulation_id) {
 #'   strongly recommended for practical runtimes: set `num_cores = "auto"` to
 #'   use all but one available core, or supply an explicit integer.
 #' @param suppress_warnings Logical; silence alignment warnings.
+#' @param x1M_set Lower particle-size bound (um) for the mass/volume/surface
+#'   area integrals, passed to \link[=align_data]{align_data()} as
+#'   `x1M_set_input`. Defaults to `x1D_set`.
 #'
 #' @return A data frame with aligned doses for each simulation.
 #' @export
@@ -2620,8 +2649,10 @@ MC_sim_align_parallel <- function(
   x2D_set = 5000, # maximum particle size
   n_sim = 10,
   num_cores = 1,
-  suppress_warnings = TRUE
+  suppress_warnings = TRUE,
+  x1M_set = x1D_set # lower size bound for mass/volume/SA integrals
 ) {
+  force(x1M_set)
   # Bind helpers locally so foreach can export them across PSOCK clusters
   get_param_value <- get_param_value
   add_param_if_present <- add_param_if_present
@@ -2689,7 +2720,10 @@ MC_sim_align_parallel <- function(
       MC_sim_align_wrapper(
         tox_data = tox_data,
         param_row,
-        simulation_id = simulation_id
+        simulation_id = simulation_id,
+        x1M_set = x1M_set,
+        x1D_set = x1D_set,
+        x2D_set = x2D_set
       )
     })
 
@@ -2766,6 +2800,7 @@ MC_sim_align_parallel <- function(
   results_parallel <- vector("list", n_sim)
   .pssd_tic("Parallel processing alignments")
 
+  x1M_set = x1M_set
   x1D_set = x1D_set
   x2D_set = x2D_set
   tox_data = tox_data
@@ -2802,6 +2837,7 @@ MC_sim_align_parallel <- function(
       "add_param_if_present",
       "get_param_value",
       "n_sim",
+      "x1M_set",
       "x1D_set",
       "x2D_set",
       "param_matrix",
@@ -2859,7 +2895,10 @@ MC_sim_align_parallel <- function(
       results_parallel[[i]] <- MC_sim_align_wrapper(
         tox_data = tox_data,
         param_matrix,
-        simulation_id = simulation_id
+        simulation_id = simulation_id,
+        x1M_set = x1M_set,
+        x1D_set = x1D_set,
+        x2D_set = x2D_set
       )
     }
 

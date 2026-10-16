@@ -11,7 +11,8 @@ MC_sim_align_parallel(
   x2D_set = 5000,
   n_sim = 10,
   num_cores = 1,
-  suppress_warnings = TRUE
+  suppress_warnings = TRUE,
+  x1M_set = x1D_set
 )
 }
 \arguments{
@@ -19,9 +20,11 @@ MC_sim_align_parallel(
 
 \item{param_matrix}{Parameter matrix created by \link[=matrix_function]{matrix_function()}.}
 
-\item{x1D_set}{Lower particle-size bound (um) for alignment.}
+\item{x1D_set}{Lower particle-size bound (um) for alignment, passed to
+\link[=align_data]{align_data()} as \code{x1D_set_input}.}
 
-\item{x2D_set}{Upper particle-size bound (um) for alignment.}
+\item{x2D_set}{Upper particle-size bound (um) for alignment, passed to
+\link[=align_data]{align_data()} as \code{x2D_set_input}.}
 
 \item{n_sim}{Number of alignment simulations to run.}
 
@@ -32,6 +35,10 @@ strongly recommended for practical runtimes: set \code{num_cores = "auto"} to
 use all but one available core, or supply an explicit integer.}
 
 \item{suppress_warnings}{Logical; silence alignment warnings.}
+
+\item{x1M_set}{Lower particle-size bound (um) for the mass/volume/surface
+area integrals, passed to \link[=align_data]{align_data()} as
+\code{x1M_set_input}. Defaults to \code{x1D_set}.}
 }
 \value{
 A data frame with aligned doses for each simulation.
