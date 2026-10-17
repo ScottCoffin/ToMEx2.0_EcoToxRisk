@@ -1,3 +1,30 @@
+PSSDplusplus 0.3.6
+==================
+
+Bug fixes
+---------
+- `align_data()` no longer assumes that a record with no mouth size can
+  ingest particles up to `x2D_set` (5000 um) (#6). That assumption drove the
+  Food Dilution HC5 down for several of the most sensitive species. Records
+  with neither `max.size.ingest.um` nor `body.length.cm` now get
+  `x2M_ingest = NA`, `ingestible = "unknown"` and an `NA` Food Dilution ERM,
+  so they are left out of Food Dilution SSDs. Their Tissue Translocation
+  alignment is unchanged. A message reports how many records and species were
+  excluded. New argument `missing_mouth = "x2D"` (also in
+  `MC_sim_align_parallel()`) restores the old behaviour.
+- `align_data()` now uses the Jams et al. (2020) body-length model
+  (`beta_log10_body_length_input`, `body_length_intercept_input`), which it
+  previously accepted but ignored. Mouth size is predicted from
+  `body.length.cm` (column `max.size.ingest.um.used`), so the sampled
+  coefficients in `MC_sim_align_parallel()` now propagate mouth-size
+  uncertainty. Records with a body length but no reported mouth size now get
+  one. At the default coefficients the predictions equal the precomputed
+  `max.size.ingest.um` in `tomex2`. New argument
+  `mouth_size_source = "reported"` prefers the reported mouth size instead.
+- `matrix_function()` now samples `sim.body.length.intercept` with
+  `se_body_length_intercept` (0.3222) instead of
+  `se_beta_log10_body_length` (0.1376).
+
 PSSDplusplus 0.3.5
 ==================
 

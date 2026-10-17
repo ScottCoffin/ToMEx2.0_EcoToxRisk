@@ -61,8 +61,8 @@ test_that("x2D_set only rescales counts for records ingesting below it", {
     narrow$CF_bio_ingest[below] / wide$CF_bio_ingest[below]
   )
 
-  # Records ingesting above 500 um (or NA -> x2D_set) have their volume term
-  # truncated at 500 um
+  # Records ingesting above 500 um have their volume term truncated at 500 um
+  # (records with no mouth size have NA food dilution, see #6)
   above <- (is.na(wide$max.size.ingest.um) | wide$max.size.ingest.um > 500) &
     !is.na(wide$particles.mL.food.dilution)
   expect_gt(sum(above), 0)
@@ -78,7 +78,8 @@ test_that("max.size.ingest.um equal to a bound is not dropped to NA", {
   aligned <- suppressWarnings(align_data(
     tox,
     x2D_set_input = bound,
-    upper.tissue.trans.size.um_input = bound
+    upper.tissue.trans.size.um_input = bound,
+    mouth_size_source = "reported"
   ))
   at_bound <- !is.na(aligned$max.size.ingest.um) &
     aligned$max.size.ingest.um == bound
