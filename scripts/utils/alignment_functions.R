@@ -325,7 +325,7 @@ preparation_fxn <- function(df, #dataframe input
     mutate(dose.um2.ug.kg.sediment.master = dose.um2.kg.sediment.master/(mass.per.particle.mg / 1000)) %>% 
     ################## BIOAVAILABILITY ##############
     #### Estimate ingestible plastic size
-    mutate(max.size.ingest.um = 1000 * (10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept)))#(Jâms, et al 2020 Nature paper)correction for cm to mm
+    mutate(max.size.ingest.um = coalesce(max.size.ingest.um, 1000 * (10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept))))#(Jâms, et al 2020 Nature paper)correction for cm to mm
     
   
   return(df_prepared)
@@ -447,7 +447,7 @@ alignment_fxn <- function(df_prepared, #dataframe input
     ############################
   ######### BIOAVAILABILITY##########
   #################################
-  mutate(max.size.ingest.um = 1000 * (10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept))) %>% #(Jâms, et al 2020 Nature paper)correction for cm to mm
+  mutate(max.size.ingest.um = coalesce(max.size.ingest.um, 1000 * (10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept)))) %>% #(Jâms, et al 2020 Nature paper)correction for cm to mm
     # max ingestible particle size for bioavailability restriction
     mutate(x2M_ingest = case_when(max.size.ingest.um < x2D_set ~ max.size.ingest.um, 
                                   max.size.ingest.um >= x2D_set ~ x2D_set), #if max ingestible size is bigger than default distribution size, then just use that

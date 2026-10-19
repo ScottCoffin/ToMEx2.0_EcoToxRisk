@@ -644,22 +644,17 @@ generate_data <- function(
 #'   and sets `ingestible = "unknown"`, so the record is left out of
 #'   food-dilution SSDs (tissue translocation is unaffected). `"x2D"` restores
 #'   the pre-0.3.6 behaviour of assuming ingestion up to `x2D_set`.
-#' @param mouth_size_source Which mouth size to use when both are available.
-#'   `"body_length"` (default) predicts it from `body.length.cm` with the
-#'   bioaccessibility model, so sampled `beta_log10_body_length_input` and
-#'   `body_length_intercept_input` propagate their uncertainty; the reported
-#'   `max.size.ingest.um` is used only when body length is missing.
-#'   `"reported"` uses `max.size.ingest.um` and predicts only when it is
-#'   missing.
 #' @param verbose Logical; report how many records (and species) were excluded
 #'   from food dilution because their mouth size is unknown.
 #'
 #' @details
-#' Maximum ingestible particle size (mouth size) is predicted from body length
-#' with the model of Jams et al. (2020):
+#' Maximum ingestible particle size (mouth size) is taken from the reported
+#' `max.size.ingest.um` whenever one exists. Only when it is missing is it
+#' predicted from `body.length.cm` with the model of Jams et al. (2020):
 #' \deqn{\log_{10}(\mathrm{mouth,\ mm}) = \beta \log_{10}(\mathrm{body\ length,\ mm}) - b}
 #' with \eqn{\beta} = `beta_log10_body_length_input` and \eqn{b} =
-#' `body_length_intercept_input`.
+#' `body_length_intercept_input`. The mouth size used is returned in
+#' `max.size.ingest.um.used`.
 #'
 #' @return The input data frame `df` augmented with ERM columns including
 #'   `EC_env_sa.particles.mL_trans` (surface-water tissue translocation, p/mL),
@@ -716,11 +711,9 @@ align_data <- function(
   a.m.sediment.marine_input = 1.50,
   a.ssa.sediment.marine_input = 2.54,
   missing_mouth = c("exclude", "x2D"),
-  mouth_size_source = c("body_length", "reported"),
   verbose = TRUE
 ) {
   missing_mouth <- match.arg(missing_mouth)
-  mouth_size_source <- match.arg(mouth_size_source)
 
   if (!"max.size.ingest.um" %in% names(df)) {
     df$max.size.ingest.um <- NA_real_
@@ -955,7 +948,8 @@ align_data <- function(
     ###############################################################################
     ###### Determine bioaccesible fractions for polydisperse particle mixtures ####
     ######################################################################################
-    # predict mouth size (um) from body length (Jams et al. 2020):
+    # mouth size (um): use the reported value; only when it is missing,
+    # predict from body length (Jams et al. 2020):
     # log10(mouth, mm) = beta * log10(body length, mm) - intercept
     dplyr::mutate(
       max.size.ingest.um.predicted = dplyr::if_else(
@@ -965,11 +959,10 @@ align_data <- function(
           1000,
         NA_real_
       ),
-      max.size.ingest.um.used = if (mouth_size_source == "body_length") {
-        dplyr::coalesce(max.size.ingest.um.predicted, max.size.ingest.um)
-      } else {
-        dplyr::coalesce(max.size.ingest.um, max.size.ingest.um.predicted)
-      }
+      max.size.ingest.um.used = dplyr::coalesce(
+        max.size.ingest.um,
+        max.size.ingest.um.predicted
+      )
     ) %>%
     # define upper size length for ingestion: mouth size capped at x2D_set.
     # Unknown mouth size is NA (excluded from food dilution) unless
@@ -2160,8 +2153,7 @@ model_wrapper_sobol_parallel <- function(
   x1M_set = 1,
   x1D_set = 1,
   x2D_set = 5000,
-  missing_mouth = "exclude",
-  mouth_size_source = "body_length"
+  missing_mouth = "exclude"
 ) {
   # perform alignments using parameters for simulation; size bounds must match
   # those used by the convert_units_fxn() calls below
@@ -2171,7 +2163,6 @@ model_wrapper_sobol_parallel <- function(
     x1D_set_input = x1D_set,
     x2D_set_input = x2D_set,
     missing_mouth = missing_mouth,
-    mouth_size_source = mouth_size_source,
     verbose = FALSE
   )
   upper_val <- get_param_value(params, "upper.tissue.trans.size.um")
@@ -2465,8 +2456,7 @@ MC_sim_align_wrapper <- function(
   x1M_set = 1,
   x1D_set = 1,
   x2D_set = 5000,
-  missing_mouth = "exclude",
-  mouth_size_source = "body_length"
+  missing_mouth = "exclude"
 ) {
   # perform alignments using parameters for simulation
   align_args <- list(
@@ -2475,7 +2465,6 @@ MC_sim_align_wrapper <- function(
     x1D_set_input = x1D_set,
     x2D_set_input = x2D_set,
     missing_mouth = missing_mouth,
-    mouth_size_source = mouth_size_source,
     verbose = FALSE
   )
   upper_val <- get_param_value(params, "upper.tissue.trans.size.um")
@@ -2729,11 +2718,11 @@ MC_sim_align_wrapper <- function(
 #' @param x1M_set Lower particle-size bound (um) for the mass/volume/surface
 #'   area integrals, passed to \link[=align_data]{align_data()} as
 #'   `x1M_set_input`. Defaults to `x1D_set`.
-#' @param missing_mouth,mouth_size_source Passed to
-#'   \link[=align_data]{align_data()}. By default, records with neither a
-#'   mouth size nor a body length are excluded from Food Dilution, and mouth
-#'   size is predicted from body length with each simulation's sampled
-#'   body-length coefficients.
+#' @param missing_mouth Passed to \link[=align_data]{align_data()}. By
+#'   default, records with neither a reported mouth size nor a body length are
+#'   excluded from Food Dilution. Reported mouth sizes are always used as is;
+#'   records with only a body length get a mouth size predicted with each
+#'   simulation's sampled body-length coefficients.
 #'
 #' @return A data frame with aligned doses for each simulation.
 #' @export
@@ -2768,12 +2757,10 @@ MC_sim_align_parallel <- function(
   num_cores = 1,
   suppress_warnings = TRUE,
   x1M_set = x1D_set, # lower size bound for mass/volume/SA integrals
-  missing_mouth = c("exclude", "x2D"),
-  mouth_size_source = c("body_length", "reported")
+  missing_mouth = c("exclude", "x2D")
 ) {
   force(x1M_set)
   missing_mouth <- match.arg(missing_mouth)
-  mouth_size_source <- match.arg(mouth_size_source)
   if (missing_mouth == "exclude") {
     report_missing_mouth(tox_data)
   }
@@ -2848,8 +2835,7 @@ MC_sim_align_parallel <- function(
         x1M_set = x1M_set,
         x1D_set = x1D_set,
         x2D_set = x2D_set,
-        missing_mouth = missing_mouth,
-        mouth_size_source = mouth_size_source
+        missing_mouth = missing_mouth
       )
     })
 
@@ -2967,7 +2953,6 @@ MC_sim_align_parallel <- function(
       "x1D_set",
       "x2D_set",
       "missing_mouth",
-      "mouth_size_source",
       "param_matrix",
       "param_df"
     ),
@@ -3027,8 +3012,7 @@ MC_sim_align_parallel <- function(
         x1M_set = x1M_set,
         x1D_set = x1D_set,
         x2D_set = x2D_set,
-        missing_mouth = missing_mouth,
-        mouth_size_source = mouth_size_source
+        missing_mouth = missing_mouth
       )
     }
 

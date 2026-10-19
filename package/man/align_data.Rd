@@ -45,7 +45,6 @@ align_data(
   a.m.sediment.marine_input = 1.5,
   a.ssa.sediment.marine_input = 2.54,
   missing_mouth = c("exclude", "x2D"),
-  mouth_size_source = c("body_length", "reported"),
   verbose = TRUE
 )
 }
@@ -173,14 +172,6 @@ and sets \code{ingestible = "unknown"}, so the record is left out of
 food-dilution SSDs (tissue translocation is unaffected). \code{"x2D"} restores
 the pre-0.3.6 behaviour of assuming ingestion up to \code{x2D_set}.}
 
-\item{mouth_size_source}{Which mouth size to use when both are available.
-\code{"body_length"} (default) predicts it from \code{body.length.cm} with the
-bioaccessibility model, so sampled \code{beta_log10_body_length_input} and
-\code{body_length_intercept_input} propagate their uncertainty; the reported
-\code{max.size.ingest.um} is used only when body length is missing.
-\code{"reported"} uses \code{max.size.ingest.um} and predicts only when it is
-missing.}
-
 \item{verbose}{Logical; report how many records (and species) were excluded
 from food dilution because their mouth size is unknown.}
 }
@@ -205,11 +196,13 @@ This is the per-simulation workhorse called by \code{\link[=MC_sim_align_paralle
 Call it directly when you want a single deterministic alignment using
 specific (e.g., default) parameter values.
 
-Maximum ingestible particle size (mouth size) is predicted from body length
-with the model of Jams et al. (2020):
+Maximum ingestible particle size (mouth size) is taken from the reported
+\code{max.size.ingest.um} whenever one exists. Only when it is missing is it
+predicted from \code{body.length.cm} with the model of Jams et al. (2020):
 \deqn{\log_{10}(\mathrm{mouth,\ mm}) = \beta \log_{10}(\mathrm{body\ length,\ mm}) - b}
 with \eqn{\beta} = \code{beta_log10_body_length_input} and \eqn{b} =
-\code{body_length_intercept_input}.
+\code{body_length_intercept_input}. The mouth size used is returned in
+\code{max.size.ingest.um.used}.
 }
 \seealso{
 \code{\link[=MC_sim_align_parallel]{MC_sim_align_parallel()}}, \code{\link[=make_tiered_SSDs]{make_tiered_SSDs()}}

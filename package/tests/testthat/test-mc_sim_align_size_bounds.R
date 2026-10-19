@@ -78,8 +78,7 @@ test_that("max.size.ingest.um equal to a bound is not dropped to NA", {
   aligned <- suppressWarnings(align_data(
     tox,
     x2D_set_input = bound,
-    upper.tissue.trans.size.um_input = bound,
-    mouth_size_source = "reported"
+    upper.tissue.trans.size.um_input = bound
   ))
   at_bound <- !is.na(aligned$max.size.ingest.um) &
     aligned$max.size.ingest.um == bound

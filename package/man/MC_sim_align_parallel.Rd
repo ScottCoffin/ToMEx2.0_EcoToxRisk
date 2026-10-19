@@ -13,8 +13,7 @@ MC_sim_align_parallel(
   num_cores = 1,
   suppress_warnings = TRUE,
   x1M_set = x1D_set,
-  missing_mouth = c("exclude", "x2D"),
-  mouth_size_source = c("body_length", "reported")
+  missing_mouth = c("exclude", "x2D")
 )
 }
 \arguments{
@@ -42,11 +41,11 @@ use all but one available core, or supply an explicit integer.}
 area integrals, passed to \link[=align_data]{align_data()} as
 \code{x1M_set_input}. Defaults to \code{x1D_set}.}
 
-\item{missing_mouth, mouth_size_source}{Passed to
-\link[=align_data]{align_data()}. By default, records with neither a
-mouth size nor a body length are excluded from Food Dilution, and mouth
-size is predicted from body length with each simulation's sampled
-body-length coefficients.}
+\item{missing_mouth}{Passed to \link[=align_data]{align_data()}. By
+default, records with neither a reported mouth size nor a body length are
+excluded from Food Dilution. Reported mouth sizes are always used as is;
+records with only a body length get a mouth size predicted with each
+simulation's sampled body-length coefficients.}
 }
 \value{
 A data frame with aligned doses for each simulation.

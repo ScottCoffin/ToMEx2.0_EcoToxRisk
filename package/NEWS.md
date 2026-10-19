@@ -14,13 +14,20 @@ Bug fixes
   `MC_sim_align_parallel()`) restores the old behaviour.
 - `align_data()` now uses the Jams et al. (2020) body-length model
   (`beta_log10_body_length_input`, `body_length_intercept_input`), which it
-  previously accepted but ignored. Mouth size is predicted from
-  `body.length.cm` (column `max.size.ingest.um.used`), so the sampled
-  coefficients in `MC_sim_align_parallel()` now propagate mouth-size
-  uncertainty. Records with a body length but no reported mouth size now get
-  one. At the default coefficients the predictions equal the precomputed
-  `max.size.ingest.um` in `tomex2`. New argument
-  `mouth_size_source = "reported"` prefers the reported mouth size instead.
+  previously accepted but ignored, but only for records with no reported
+  `max.size.ingest.um`. A reported mouth size is always used as is. Records
+  with a body length but no reported mouth size get a predicted one, and in
+  `MC_sim_align_parallel()` that prediction uses each simulation's sampled
+  coefficients. The mouth size used is returned in
+  `max.size.ingest.um.used`.
+- `tomex2` / `tomex2_mini` (and `inst/extdata/aoc_z_tomex2.RDS`): restored
+  the mouth sizes reported in ToMEx 1.0 (Koelmans et al. 2020). The ToMEx 2.0
+  data-prep pipeline had replaced them with body-length predictions for 13
+  species / life stages (2,760 records; e.g. *Danio rerio* 1.53 -> 0.4 mm,
+  *Daphnia magna* adult/juvenile 0.341 -> 0.115 mm, *Hyalella azteca*,
+  *Ceriodaphnia dubia*, *Daphnia pulex*, *Artemia* spp., *Gammarus fossarum*,
+  *Hydra attenuata*). Food Dilution alignments for these species change. See
+  `data-raw/restore_reported_mouth_size.R`.
 - `matrix_function()` now samples `sim.body.length.intercept` with
   `se_body_length_intercept` (0.3222) instead of
   `se_beta_log10_body_length` (0.1376).

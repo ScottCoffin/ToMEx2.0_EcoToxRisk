@@ -568,11 +568,15 @@ tomex2.0_aoc_setup <- tomex2.0_aoc_setup %>%
   select(-c(body.length.cm.y, body.length.cm.x)) %>% 
   #if tomex2 already has a body length source, keep that one, otherwise replace with an add-on value
   mutate(body.size.source = ifelse(is.na(body.size.source.x), body.size.source.y, body.size.source.x)) %>% 
-  select(-c(body.size.source.y, body.size.source.x)) %>% 
-  #annotate whether max size ingest was estimated or reported (all estiamted here)
-  mutate(#max.size.ingest.reported.estimated = "estimated",
-         #calculate maximum ingestible size (if not already in database)
-         max.size.ingest.mm = 10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept),#(Jâms, et al 2020 Nature paper)correction for cm to mm
+  select(-c(body.size.source.y, body.size.source.x))
+
+#Maximum ingestible size: flag reported values here; values are filled in after
+#ToMEx 1.0 and 2.0 are joined (see "Maximum ingestible size" below)
+if (!"max.size.ingest.mm" %in% names(tomex2.0_aoc_setup)) {
+  tomex2.0_aoc_setup$max.size.ingest.mm <- NA_real_
+}
+tomex2.0_aoc_setup <- tomex2.0_aoc_setup %>%
+  mutate(mouth.size.reported = !is.na(max.size.ingest.mm),
          max.size.ingest.um = 1000 * max.size.ingest.mm)
 
 
@@ -645,7 +649,10 @@ tomex2.0_aoc_setup <- tomex2.0_aoc_setup %>%
   select(all_of(names))
 
 aoc_setup <- aoc_setup %>%
-  mutate(sample.size = as.character(sample.size)) %>% 
+  #ToMEx 1.0 mouth sizes are either reported (Koelmans 2020) or estimated
+  mutate(mouth.size.reported = max.size.ingest.reported.estimated %in% "reported" &
+           !is.na(max.size.ingest.mm)) %>%
+  mutate(sample.size = as.character(sample.size)) %>%
   mutate(replicates = as.character(replicates)) %>% 
   mutate(media.sal.ppt = as.character(media.sal.ppt)) %>% 
   mutate(media.ph = as.character(media.ph)) %>% 
@@ -686,6 +693,26 @@ tomex2.0_aoc_setup_final$life_f =
                "juvenile" = "Juvenile")
 
 tomex2.0_aoc_setup_final$life_f = fct_na_value_to_level(tomex2.0_aoc_setup_final$life_f, "Not Reported")
+
+#### Maximum ingestible size (mouth size) ####
+#Use a reported value whenever there is one for the species / life stage
+#(ToMEx 1.0 / Koelmans 2020 or ToMEx 2.0). Only when none is reported, predict
+#it from body length (Jâms et al. 2020). See GitHub issue #6.
+reported_gape <- tomex2.0_aoc_setup_final %>%
+  filter(mouth.size.reported) %>%
+  group_by(species_f, life_f) %>%
+  summarise(max.size.ingest.mm.reported = first(max.size.ingest.mm), .groups = "drop")
+
+tomex2.0_aoc_setup_final <- tomex2.0_aoc_setup_final %>%
+  left_join(reported_gape, by = c("species_f", "life_f")) %>%
+  mutate(max.size.ingest.mm = case_when(
+           mouth.size.reported ~ max.size.ingest.mm, #reported for this record
+           !is.na(max.size.ingest.mm.reported) ~ max.size.ingest.mm.reported, #reported for species / life stage
+           T ~ 10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept)), #predicted (cm to mm)
+         max.size.ingest.reported.estimated = ifelse(
+           mouth.size.reported | !is.na(max.size.ingest.mm.reported), "reported", "estimated"),
+         max.size.ingest.um = 1000 * max.size.ingest.mm) %>%
+  select(-c(max.size.ingest.mm.reported, mouth.size.reported))
 
 #sex
 tomex2.0_aoc_setup_final$sex = fct_collapse(tomex2.0_aoc_setup_final$sex,

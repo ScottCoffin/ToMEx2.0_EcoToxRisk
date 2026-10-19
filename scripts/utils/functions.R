@@ -681,6 +681,19 @@ align_data <- function(
     ###############################################################################
     ###### Determine bioaccesible fractions for polydisperse particle mixtures ####
     ######################################################################################
+    # mouth size: use the reported value; only when it is missing, predict
+    # from body length (Jams et al. 2020; GitHub issue #6)
+    mutate(
+      max.size.ingest.um = coalesce(
+        max.size.ingest.um,
+        if_else(
+          !is.na(body.length.cm) & body.length.cm > 0,
+          1000 * 10^(beta_log10_body_length * log10(body.length.cm * 10) -
+            body_length_intercept),
+          NA_real_
+        )
+      )
+    ) %>%
     # define upper size length for ingestion
     mutate(
       x2M_ingest = case_when(
@@ -1383,7 +1396,7 @@ matrix_function <- function(
     sim.body.length.intercept := rnorm(
       .N,
       mean = params$body_length_intercept,
-      sd = params$se_beta_log10_body_length
+      sd = params$se_body_length_intercept
     )
   ]
   #mat[, "R.ave.sediment.marine" := rtruncnorm(.N, a = 0.0001, b= 0.9999, mean = 0.75, sd = 0.30)]

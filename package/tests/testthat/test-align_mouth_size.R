@@ -56,42 +56,42 @@ test_that("a body length with no mouth size gets the Jams et al. (2020) mouth si
   expect_false(row$ingestible == "unknown")
 })
 
-test_that("reported mouth sizes match the body-length model at default coefficients", {
+test_that("a reported mouth size is always used over the body-length prediction", {
   tox <- PSSDplusplus::tomex2_mini
-  aligned <- suppressWarnings(align_data(tox, verbose = FALSE))
-  ok <- !is.na(aligned$max.size.ingest.um)
-  expect_equal(
-    aligned$max.size.ingest.um.used[ok],
-    aligned$max.size.ingest.um[ok],
-    tolerance = 1e-6
+  i <- which(!is.na(tox$max.size.ingest.um) & !is.na(tox$body.length.cm) &
+    tox$Group != "Algae")[1]
+  # reported gape far from what body length predicts
+  tox$max.size.ingest.um[i] <- 0.2 * mouth_mm(tox$body.length.cm[i]) * 1000
+  aligned <- suppressWarnings(align_data(
+    tox,
+    beta_log10_body_length_input = 0.8,
+    body_length_intercept_input = 1.5,
+    verbose = FALSE
+  ))
+  # every reported value is used as is, whatever the coefficients
+  rep <- !is.na(aligned$max.size.ingest.um)
+  expect_identical(
+    aligned$max.size.ingest.um.used[rep],
+    aligned$max.size.ingest.um[rep]
   )
+  row <- aligned[aligned$unique_id == i, ]
+  expect_equal(row$x2M_ingest, tox$max.size.ingest.um[i])
 })
 
-test_that("sampled body-length coefficients propagate to the ingestible size", {
+test_that("sampled coefficients apply only to records without a reported mouth size", {
   tox <- PSSDplusplus::tomex2_mini
-  base <- suppressWarnings(align_data(tox, verbose = FALSE))
+  i <- which(is.na(tox$max.size.ingest.um) & tox$Group != "Algae")[1:2]
+  tox$body.length.cm[i] <- c(0.1, 2)
   shifted <- suppressWarnings(align_data(
     tox,
     beta_log10_body_length_input = 0.8,
     body_length_intercept_input = 1.5,
     verbose = FALSE
   ))
-  ok <- !is.na(tox$body.length.cm[base$unique_id])
+  rows <- shifted[match(i, shifted$unique_id), ]
   expect_equal(
-    shifted$max.size.ingest.um.used[ok],
-    mouth_mm(base$body.length.cm[ok], beta = 0.8, intercept = 1.5) * 1000
-  )
-  # "reported" ignores the coefficients when a mouth size is reported
-  reported <- suppressWarnings(align_data(
-    tox,
-    beta_log10_body_length_input = 0.8,
-    body_length_intercept_input = 1.5,
-    mouth_size_source = "reported",
-    verbose = FALSE
-  ))
-  expect_equal(
-    reported$max.size.ingest.um.used[ok],
-    reported$max.size.ingest.um[ok]
+    rows$max.size.ingest.um.used,
+    mouth_mm(c(0.1, 2), beta = 0.8, intercept = 1.5) * 1000
   )
 })
 
@@ -109,4 +109,29 @@ test_that("matrix_function samples the intercept with its own standard error", {
     param_default_values$se_body_length_intercept,
     tolerance = 0.1
   )
+})
+
+test_that("tomex2 keeps reported (Koelmans 2020) mouth sizes over predictions", {
+  data("tomex2", package = "PSSDplusplus", envir = environment())
+  reported <- data.frame(
+    Species = c("Danio rerio", "Danio rerio", "Daphnia magna",
+                "Daphnia magna", "Hyalella azteca", "Ceriodaphnia dubia"),
+    life = c("adult", "early", "adult", "juvenile", "adult", "early"),
+    mm = c(0.4, 0.4, 0.115, 0.115, 0.112, 0.0357)
+  )
+  for (k in seq_len(nrow(reported))) {
+    rows <- as.character(tomex2$Species) == reported$Species[k] &
+      as.character(tomex2$life_f) == reported$life[k]
+    expect_gt(sum(rows), 0)
+    expect_equal(
+      unique(tomex2$max.size.ingest.mm[rows]),
+      reported$mm[k],
+      tolerance = 0.01
+    )
+    expect_equal(
+      unique(tomex2$max.size.ingest.um[rows]),
+      reported$mm[k] * 1000,
+      tolerance = 0.01
+    )
+  }
 })
