@@ -125,6 +125,32 @@ SSA.inversefnx = function(sa, # average surface area
 ############### MASTER ALIGNMENT FUNCTION ###############
 ########################################################
 
+#### Jams et al. (2020) calibration domain (body-length model for maximum ingestible size) ####
+# The model is calibrated on animals >= 9 mm and is less robust (tends to over-predict)
+# below 30 mm. Rows whose mouth size is predicted for such animals are flagged and counted.
+jams_domain_fxn <- function(body.length.cm) {
+  mm <- body.length.cm * 10
+  dplyr::case_when(is.na(mm) ~ NA_character_,
+                   mm >= 30 ~ "within",
+                   mm >= 9 ~ "less_robust",
+                   TRUE ~ "outside_calibration")
+}
+
+warn_jams_domain_fxn <- function(df) {
+  predicted <- if ("max.size.ingest.basis" %in% names(df)) {
+    df$max.size.ingest.basis %in% "predicted (Jams et al. 2020)" | df$.mouth_predicted
+  } else df$.mouth_predicted
+  flagged <- predicted & !is.na(df$jams_domain) & df$jams_domain != "within"
+  if (any(flagged)) {
+    sp <- if ("species_f" %in% names(df)) df$species_f else df$Species
+    warning(sprintf(paste0("%d rows (%d species) use the Jams et al. (2020) body-length model for ",
+                           "animals < 30 mm (%d < 9 mm, outside its calibration); see jams_domain."),
+                    sum(flagged), length(unique(sp[flagged])),
+                    sum(flagged & df$jams_domain == "outside_calibration")), call. = FALSE)
+  }
+  df
+}
+
 preparation_fxn <- function(df, #dataframe input
                           beta_log10_body_length =  0.9341, # Jâms, et al 2020 Nature paper
                           body_length_intercept = 1.1200, # Jâms, et al 2020 Nature paper
@@ -325,7 +351,11 @@ preparation_fxn <- function(df, #dataframe input
     mutate(dose.um2.ug.kg.sediment.master = dose.um2.kg.sediment.master/(mass.per.particle.mg / 1000)) %>% 
     ################## BIOAVAILABILITY ##############
     #### Estimate ingestible plastic size
-    mutate(max.size.ingest.um = coalesce(max.size.ingest.um, 1000 * (10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept))))#(Jâms, et al 2020 Nature paper)correction for cm to mm
+    mutate(.mouth_predicted = is.na(max.size.ingest.um)) %>% 
+    mutate(max.size.ingest.um = coalesce(max.size.ingest.um, 1000 * (10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept)))) %>% #(Jams et al. 2020) only when no reported size
+    mutate(jams_domain = jams_domain_fxn(body.length.cm)) %>% 
+    warn_jams_domain_fxn() %>% 
+    select(-.mouth_predicted)#(Jâms, et al 2020 Nature paper)correction for cm to mm
     
   
   return(df_prepared)
@@ -447,7 +477,11 @@ alignment_fxn <- function(df_prepared, #dataframe input
     ############################
   ######### BIOAVAILABILITY##########
   #################################
-  mutate(max.size.ingest.um = coalesce(max.size.ingest.um, 1000 * (10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept)))) %>% #(Jâms, et al 2020 Nature paper)correction for cm to mm
+  mutate(.mouth_predicted = is.na(max.size.ingest.um)) %>% 
+    mutate(max.size.ingest.um = coalesce(max.size.ingest.um, 1000 * (10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept)))) %>% #(Jams et al. 2020) only when no reported size
+    mutate(jams_domain = jams_domain_fxn(body.length.cm)) %>% 
+    warn_jams_domain_fxn() %>% 
+    select(-.mouth_predicted) %>% #(Jâms, et al 2020 Nature paper)correction for cm to mm
     # max ingestible particle size for bioavailability restriction
     mutate(x2M_ingest = case_when(max.size.ingest.um < x2D_set ~ max.size.ingest.um, 
                                   max.size.ingest.um >= x2D_set ~ x2D_set), #if max ingestible size is bigger than default distribution size, then just use that

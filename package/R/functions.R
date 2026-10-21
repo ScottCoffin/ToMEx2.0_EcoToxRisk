@@ -644,17 +644,36 @@ generate_data <- function(
 #'   and sets `ingestible = "unknown"`, so the record is left out of
 #'   food-dilution SSDs (tissue translocation is unaffected). `"x2D"` restores
 #'   the pre-0.3.6 behaviour of assuming ingestion up to `x2D_set`.
+#' @param mouth_size_source Kept for compatibility with the 0.3.6 development
+#'   version. Only `"reported"` is supported: a reported (measured) mouth size
+#'   is always used as is and never perturbed, and the body-length model, with
+#'   its sampled coefficients, applies only to records without one (including
+#'   values the database itself predicted, `max.size.ingest.basis` beginning
+#'   `"predicted"`). `"body_length"` is deprecated: it gives a warning and is
+#'   treated as `"reported"`.
 #' @param verbose Logical; report how many records (and species) were excluded
-#'   from food dilution because their mouth size is unknown.
+#'   from food dilution because their mouth size is unknown, and warn when
+#'   mouth sizes are predicted for animals below the robust range of the
+#'   body-length model (< 30 mm).
 #'
 #' @details
-#' Maximum ingestible particle size (mouth size) is taken from the reported
-#' `max.size.ingest.um` whenever one exists. Only when it is missing is it
-#' predicted from `body.length.cm` with the model of Jams et al. (2020):
+#' Maximum ingestible particle size (mouth size) is taken from
+#' `max.size.ingest.um` whenever the data report one. A value the database
+#' predicted itself (`max.size.ingest.basis` beginning `"predicted"`, as for
+#' most [tomex2] records) is not treated as reported. Otherwise an optional
+#' `max.size.ingest.override.um` column (a measured gape or documented ceiling)
+#' is used, and only then is it predicted from `body.length.cm` with the model
+#' of Jams et al. (2020):
 #' \deqn{\log_{10}(\mathrm{mouth,\ mm}) = \beta \log_{10}(\mathrm{body\ length,\ mm}) - b}
 #' with \eqn{\beta} = `beta_log10_body_length_input` and \eqn{b} =
 #' `body_length_intercept_input`. The mouth size used is returned in
-#' `max.size.ingest.um.used`.
+#' `max.size.ingest.um.used` and its origin in `max.size.ingest.basis.used`.
+#'
+#' The Jams et al. (2020) model is calibrated on animals >= 9 mm and is less
+#' robust (tends to over-predict) below 30 mm. `jams_domain` classifies each
+#' record's `body.length.cm` as `"within"` (>= 30 mm), `"less_robust"` (9 to
+#' < 30 mm) or `"outside_calibration"` (< 9 mm); with `verbose = TRUE` a
+#' warning counts records whose mouth size is predicted outside `"within"`.
 #'
 #' @return The input data frame `df` augmented with ERM columns including
 #'   `EC_env_sa.particles.mL_trans` (surface-water tissue translocation, p/mL),
@@ -711,15 +730,23 @@ align_data <- function(
   a.m.sediment.marine_input = 1.50,
   a.ssa.sediment.marine_input = 2.54,
   missing_mouth = c("exclude", "x2D"),
+  mouth_size_source = c("reported", "body_length"),
   verbose = TRUE
 ) {
   missing_mouth <- match.arg(missing_mouth)
+  mouth_size_source <- resolve_mouth_size_source(mouth_size_source)
 
   if (!"max.size.ingest.um" %in% names(df)) {
     df$max.size.ingest.um <- NA_real_
   }
   if (!"body.length.cm" %in% names(df)) {
     df$body.length.cm <- NA_real_
+  }
+  if (!"max.size.ingest.override.um" %in% names(df)) {
+    df$max.size.ingest.override.um <- NA_real_
+  }
+  if (!"max.size.ingest.basis" %in% names(df)) {
+    df$max.size.ingest.basis <- NA_character_
   }
   if (verbose && missing_mouth == "exclude") {
     report_missing_mouth(df)
@@ -948,9 +975,13 @@ align_data <- function(
     ###############################################################################
     ###### Determine bioaccesible fractions for polydisperse particle mixtures ####
     ######################################################################################
-    # mouth size (um): use the reported value; only when it is missing,
+    # mouth size (um): a reported value wins; else an override; only then
     # predict from body length (Jams et al. 2020):
-    # log10(mouth, mm) = beta * log10(body length, mm) - intercept
+    # log10(mouth, mm) = beta * log10(body length, mm) - intercept.
+    # Values the database itself predicted (max.size.ingest.basis "predicted
+    # ...") are not reported: they are re-predicted here so the sampled
+    # coefficients propagate (at the defaults they are identical).
+    # Reported (measured) mouth sizes are used as is and never perturbed.
     dplyr::mutate(
       max.size.ingest.um.predicted = dplyr::if_else(
         !is.na(body.length.cm) & body.length.cm > 0,
@@ -959,10 +990,28 @@ align_data <- function(
           1000,
         NA_real_
       ),
+      max.size.ingest.um.reported = dplyr::if_else(
+        !is.na(max.size.ingest.basis) &
+          startsWith(max.size.ingest.basis, "predicted"),
+        NA_real_,
+        max.size.ingest.um
+      ),
       max.size.ingest.um.used = dplyr::coalesce(
-        max.size.ingest.um,
-        max.size.ingest.um.predicted
-      )
+        max.size.ingest.um.reported,
+        max.size.ingest.override.um,
+        max.size.ingest.um.predicted,
+        max.size.ingest.um
+      ),
+      max.size.ingest.basis.used = dplyr::case_when(
+        !is.na(max.size.ingest.um.reported) ~
+          dplyr::coalesce(max.size.ingest.basis, "data"),
+        !is.na(max.size.ingest.override.um) ~ "override",
+        !is.na(max.size.ingest.um.predicted) ~ "predicted (Jams et al. 2020)",
+        !is.na(max.size.ingest.um) ~
+          dplyr::coalesce(max.size.ingest.basis, "data"),
+        TRUE ~ "unresolved"
+      ),
+      jams_domain = jams_domain(body.length.cm)
     ) %>%
     # define upper size length for ingestion: mouth size capped at x2D_set.
     # Unknown mouth size is NA (excluded from food dilution) unless
@@ -1551,7 +1600,81 @@ align_data <- function(
     dplyr::filter(size.length.um.used.for.conversions >= x1D_set) %>%
     dplyr::select(-is_sediment)
 
+  if (verbose) {
+    report_jams_domain(aoc_final, warn = TRUE)
+  }
+
   aoc_final
+}
+
+#' Calibration domain of the Jams et al. (2020) body-length model
+#'
+#' Classifies body lengths by where they fall relative to the calibration of
+#' the Jams et al. (2020) model that predicts maximum ingestible particle size
+#' from body length. The calibration spans animals from 9 mm, and its authors
+#' report that predictions for animals under 30 mm are less robust and tend to
+#' over-predict.
+#'
+#' @param body.length.cm Numeric vector of body lengths (cm).
+#' @return Character vector: `"within"` (>= 30 mm), `"less_robust"` (9 to
+#'   < 30 mm), `"outside_calibration"` (< 9 mm) or `NA` (no length).
+#' @references Jams IB, Windsor FM, Poudevigne-Durance T, Ormerod SJ, Durance I
+#'   (2020). Estimating the size distribution of plastics ingested by animals.
+#'   Nature Communications 11:1594. \doi{10.1038/s41467-020-15406-6}
+#' @examples
+#' jams_domain(c(5, 2, 0.5, NA))
+#' @export
+jams_domain <- function(body.length.cm) {
+  mm <- body.length.cm * 10
+  dplyr::case_when(
+    is.na(mm) ~ NA_character_,
+    mm >= 30 ~ "within",
+    mm >= 9 ~ "less_robust",
+    TRUE ~ "outside_calibration"
+  )
+}
+
+#' Count (and optionally warn about) records whose mouth size is predicted by
+#' the Jams et al. (2020) model for animals < 30 mm.
+#' @noRd
+report_jams_domain <- function(df, warn = TRUE) {
+  basis <- if ("max.size.ingest.basis.used" %in% names(df)) {
+    df$max.size.ingest.basis.used
+  } else if ("max.size.ingest.basis" %in% names(df)) {
+    df$max.size.ingest.basis
+  } else {
+    rep(NA_character_, nrow(df))
+  }
+  domain <- if ("jams_domain" %in% names(df)) {
+    df$jams_domain
+  } else {
+    jams_domain(df$body.length.cm)
+  }
+  flagged <- basis %in% "predicted (Jams et al. 2020)" &
+    domain %in% c("less_robust", "outside_calibration")
+  if ("Group" %in% names(df)) {
+    flagged <- flagged & !(df$Group %in% "Algae")
+  }
+  n <- sum(flagged)
+  if (n > 0) {
+    species <- if ("Species" %in% names(df)) {
+      length(unique(df$Species[flagged]))
+    } else {
+      NA_integer_
+    }
+    msg <- sprintf(
+      paste0(
+        "%d record(s) (%s species) have a mouth size predicted by the Jams et al. ",
+        "(2020) body-length model for animals < 30 mm (%d < 9 mm, outside its ",
+        "calibration); these predictions are less robust (see jams_domain)."
+      ),
+      n,
+      species,
+      sum(flagged & domain %in% "outside_calibration")
+    )
+    if (warn) warning(msg, call. = FALSE) else message(msg)
+  }
+  invisible(flagged)
 }
 
 #' Message how many records lack a mouth size and a body length, and so are
@@ -1570,6 +1693,10 @@ report_missing_mouth <- function(df) {
     rep(NA_real_, nrow(df))
   }
   missing <- is.na(mouth) & (is.na(body) | body <= 0)
+  if ("vivo_f" %in% names(df)) {
+    # in vitro records are excluded from every SSD anyway (ssd_eligible())
+    missing <- missing & as.character(df$vivo_f) %in% "In Vivo"
+  }
   if ("Group" %in% names(df)) {
     missing <- missing & !(df$Group %in% "Algae")
   }
@@ -2153,7 +2280,8 @@ model_wrapper_sobol_parallel <- function(
   x1M_set = 1,
   x1D_set = 1,
   x2D_set = 5000,
-  missing_mouth = "exclude"
+  missing_mouth = "exclude",
+  mouth_size_source = "reported"
 ) {
   # perform alignments using parameters for simulation; size bounds must match
   # those used by the convert_units_fxn() calls below
@@ -2163,6 +2291,7 @@ model_wrapper_sobol_parallel <- function(
     x1D_set_input = x1D_set,
     x2D_set_input = x2D_set,
     missing_mouth = missing_mouth,
+    mouth_size_source = mouth_size_source,
     verbose = FALSE
   )
   upper_val <- get_param_value(params, "upper.tissue.trans.size.um")
@@ -2413,6 +2542,7 @@ model_wrapper_sobol_parallel <- function(
       particles_kg_ox_stress = aoc_aligned$particles.kg.ox.stress,
       particles_kg_food_dilution = aoc_aligned$particles.kg.food.dilution,
       ingestible = aoc_aligned$ingestible,
+      vivo_f = aoc_aligned$vivo_f,
       ingestible_poly = aoc_aligned$ingestible_poly,
       translocatable = aoc_aligned$translocatable,
       translocatable_poly = aoc_aligned$translocatable_poly,
@@ -2456,7 +2586,8 @@ MC_sim_align_wrapper <- function(
   x1M_set = 1,
   x1D_set = 1,
   x2D_set = 5000,
-  missing_mouth = "exclude"
+  missing_mouth = "exclude",
+  mouth_size_source = "reported"
 ) {
   # perform alignments using parameters for simulation
   align_args <- list(
@@ -2465,6 +2596,7 @@ MC_sim_align_wrapper <- function(
     x1D_set_input = x1D_set,
     x2D_set_input = x2D_set,
     missing_mouth = missing_mouth,
+    mouth_size_source = mouth_size_source,
     verbose = FALSE
   )
   upper_val <- get_param_value(params, "upper.tissue.trans.size.um")
@@ -2671,6 +2803,7 @@ MC_sim_align_wrapper <- function(
       particles_kg_ox_stress = aligned_tox_data$particles.kg.ox.stress,
       particles_kg_food_dilution = aligned_tox_data$particles.kg.food.dilution,
       ingestible = aligned_tox_data$ingestible,
+      vivo_f = aligned_tox_data$vivo_f,
       ingestible_poly = aligned_tox_data$ingestible_poly,
       translocatable = aligned_tox_data$translocatable,
       translocatable_poly = aligned_tox_data$translocatable_poly,
@@ -2723,6 +2856,17 @@ MC_sim_align_wrapper <- function(
 #'   excluded from Food Dilution. Reported mouth sizes are always used as is;
 #'   records with only a body length get a mouth size predicted with each
 #'   simulation's sampled body-length coefficients.
+#' @param mouth_size_source Passed to \link[=align_data]{align_data()}. Only
+#'   `"reported"` is supported; `"body_length"` is deprecated (warning, then
+#'   treated as `"reported"`). Reported mouth sizes are never perturbed.
+#' @param checkpoint_dir Optional directory for checkpoints. When given, the
+#'   simulations run in chunks of `checkpoint_every`; each finished chunk is
+#'   saved (atomically) and, on a re-run with the same inputs, loaded instead
+#'   of recomputed, so a crashed or interrupted run resumes where it stopped.
+#'   Chunk files are keyed by a fingerprint of all inputs, so changed data or
+#'   parameters are never mixed with old results. `NULL` (default) keeps
+#'   everything in memory.
+#' @param checkpoint_every Number of simulations per checkpoint chunk.
 #'
 #' @return A data frame with aligned doses for each simulation.
 #' @export
@@ -2757,13 +2901,55 @@ MC_sim_align_parallel <- function(
   num_cores = 1,
   suppress_warnings = TRUE,
   x1M_set = x1D_set, # lower size bound for mass/volume/SA integrals
-  missing_mouth = c("exclude", "x2D")
+  missing_mouth = c("exclude", "x2D"),
+  mouth_size_source = c("reported", "body_length"),
+  checkpoint_dir = NULL,
+  checkpoint_every = 500
 ) {
   force(x1M_set)
   missing_mouth <- match.arg(missing_mouth)
+  # warn once here; the per-simulation alignments get "reported"
+  mouth_size_source <- resolve_mouth_size_source(mouth_size_source)
+
+  # Checkpointed run: process chunks of simulations, saving each one, and
+  # reuse chunks saved by an earlier (interrupted) run with the same inputs
+  if (!is.null(checkpoint_dir)) {
+    dir.create(checkpoint_dir, recursive = TRUE, showWarnings = FALSE)
+    param_all <- as.data.frame(param_matrix)[seq_len(min(n_sim, nrow(param_matrix))), , drop = FALSE]
+    if (n_sim > nrow(param_all)) {
+      stop("n_sim exceeds nrow(param_matrix).", call. = FALSE)
+    }
+    # ids must stay unique across chunks
+    if (!"simulation_id" %in% names(param_all)) {
+      param_all$simulation_id <- paste0("sim", seq_len(nrow(param_all)))
+    }
+    key <- substr(.pssd_fingerprint(tox_data, param_all, x1D_set, x2D_set, x1M_set, missing_mouth), 1, 12)
+    starts <- seq(1, n_sim, by = checkpoint_every)
+    chunks <- lapply(starts, function(a) {
+      b <- min(a + checkpoint_every - 1, n_sim)
+      f <- file.path(checkpoint_dir, sprintf("mc_align_%s_%06d-%06d.rds", key, a, b))
+      if (file.exists(f)) {
+        message(.pssd_blue(sprintf("Checkpoint: reusing simulations %d-%d", a, b)))
+        return(readRDS(f))
+      }
+      out <- MC_sim_align_parallel(
+        tox_data = tox_data, param_matrix = param_all[a:b, , drop = FALSE],
+        x1D_set = x1D_set, x2D_set = x2D_set, n_sim = b - a + 1,
+        num_cores = num_cores, suppress_warnings = suppress_warnings,
+        x1M_set = x1M_set, missing_mouth = missing_mouth
+      )
+      .pssd_save_atomic(out, f)
+      message(.pssd_green(sprintf("Checkpoint: saved simulations %d-%d", a, b)))
+      out
+    })
+    return(do.call(rbind, chunks))
+  }
   if (missing_mouth == "exclude") {
     report_missing_mouth(tox_data)
   }
+  # alignment warnings are suppressed per simulation; report the
+  # body-length model domain once here
+  report_jams_domain(tox_data, warn = FALSE)
   # Bind helpers locally so foreach can export them across PSOCK clusters
   get_param_value <- get_param_value
   add_param_if_present <- add_param_if_present
@@ -2835,7 +3021,8 @@ MC_sim_align_parallel <- function(
         x1M_set = x1M_set,
         x1D_set = x1D_set,
         x2D_set = x2D_set,
-        missing_mouth = missing_mouth
+        missing_mouth = missing_mouth,
+        mouth_size_source = mouth_size_source
       )
     })
 
@@ -2871,6 +3058,7 @@ MC_sim_align_parallel <- function(
           af.noec = x$af.noec,
           ingestible = factor(x$ingestible),
           ingestible_poly = x$ingestible_poly,
+          vivo_f = if (is.null(x$vivo_f)) NA_character_ else as.character(x$vivo_f),
           translocatable = factor(x$translocatable),
           translocatable_poly = factor(x$translocatable_poly)
         )
@@ -2898,6 +3086,8 @@ MC_sim_align_parallel <- function(
   `%dopar%` <- foreach::`%dopar%`
   cl <- parallel::makeCluster(num_cores)
   on.exit(try(parallel::stopCluster(cl), silent = TRUE), add = TRUE)
+  # workers are fresh R sessions: use this session's libraries (same package versions)
+  parallel::clusterCall(cl, function(p) invisible(.libPaths(p)), .libPaths())
   doSNOW::registerDoSNOW(cl)
   # list number of cores used
   message(.pssd_yellow(paste0(
@@ -2953,6 +3143,7 @@ MC_sim_align_parallel <- function(
       "x1D_set",
       "x2D_set",
       "missing_mouth",
+      "mouth_size_source",
       "param_matrix",
       "param_df"
     ),
@@ -3012,7 +3203,8 @@ MC_sim_align_parallel <- function(
         x1M_set = x1M_set,
         x1D_set = x1D_set,
         x2D_set = x2D_set,
-        missing_mouth = missing_mouth
+        missing_mouth = missing_mouth,
+        mouth_size_source = mouth_size_source
       )
     }
 
@@ -3052,6 +3244,7 @@ MC_sim_align_parallel <- function(
         af.noec = x$af.noec,
         ingestible = factor(x$ingestible),
         ingestible_poly = x$ingestible_poly,
+        vivo_f = if (is.null(x$vivo_f)) NA_character_ else as.character(x$vivo_f),
         translocatable = factor(x$translocatable),
         translocatable_poly = factor(x$translocatable_poly)
       )
@@ -3677,7 +3870,12 @@ generate_color_palette <- function(data) {
   }
   if (.pssd_has_ns("cols4all")) {
     #palette <- cols4all::c4a("seaborn.dark", n = length(unique_groups)) # Generate colors
-    palette <- cols4all::c4a("cols4all.area9d", n = length(unique_groups)) # Generate colors
+    # area9d has 9 colours; beyond that, fall back to evenly spaced hues
+    palette <- if (length(unique_groups) <= 9) {
+      cols4all::c4a("cols4all.area9d", n = length(unique_groups)) # Generate colors
+    } else {
+      scales::hue_pal()(length(unique_groups))
+    }
   } else {
     message(
       "Package 'cols4all' is not installed; using ggplot2's default hue ",
@@ -4755,11 +4953,12 @@ is_missing_erm_data <- function(df) {
 #'   are treated as 1; this is useful for sensitivity checks or inputs already
 #'   expressed as NOEC-equivalent values.
 #' @param rmore_method Distribution method for sampling species-level NOEC
-#'   distributions in the PSSD++ step. `"step"` (default) uses a trapezoidal
-#'   piecewise-uniform approximation following Wigger et al. (2020), which is
-#'   consistent with published results. `"lognormal"` uses a log-normal
-#'   short-cut that is faster but assumes symmetric log-scale variability; use
-#'   only when speed matters more than strict comparability to the manuscript.
+#'   distributions in the PSSD++ step. `"step"` (default) uses the trapezoidal
+#'   piecewise-uniform approximation of Wigger et al. (2020). `"lognormal"`
+#'   samples a log-normal distribution fitted to each species' values; it is
+#'   the method used for the published thresholds (Coffin et al. 2026, SI),
+#'   gives nearly identical summary statistics, and is many times faster, but
+#'   smooths multimodal species distributions.
 #' @param quantile_type Quantile type used when summarizing outputs.
 #' @param debug_option Logical; saves intermediate objects for debugging.
 #' @param parallel Logical; run combinations in parallel. Defaults to `FALSE`
@@ -4771,9 +4970,15 @@ is_missing_erm_data <- function(df) {
 #' @param workers Number of workers when `parallel = TRUE`. Defaults to `1`.
 #'   For larger jobs, set this to `parallel::detectCores() - 1` (or similar)
 #'   to substantially reduce runtime.
-#' @param base_cache_dir Directory for cached PSSD objects.
+#' @param base_cache_dir Directory for cached PSSD objects. Each combination
+#'   is saved as soon as it finishes, so a run that stops can be resumed by
+#'   calling again with the same directory; a cached combination is reused only
+#'   if it was computed from the same inputs (data, `sim`, `cv_uf`,
+#'   `rmore_method`, `quantile_type`, `apply_assessment_factors`). The default
+#'   (a session temporary directory) does not survive a crash or a new
+#'   session; give a persistent directory for long runs.
 #' @param base_output_path Directory for figures.
-#' @param overwrite_cache Logical; recompute even if cache exists.
+#' @param overwrite_cache Logical; recompute even if a matching cache exists.
 #' @param progress Logical; show progress bars. If NULL, disables in RStudio or
 #'   knitr.
 #'
@@ -4908,7 +5113,8 @@ make_all_pSSDs <- function(
   if (parallel) {
     old_plan <- future::plan()
     on.exit(future::plan(old_plan), add = TRUE)
-    future::plan(future::multisession, workers = workers)
+    # workers use this session's libraries, so they load the same package versions
+    future::plan(future::multisession, workers = workers, rscript_libs = .libPaths())
   }
 
   run_combo <- function(idx, p = NULL) {
@@ -4934,19 +5140,33 @@ make_all_pSSDs <- function(
       dir.create(output_path, recursive = TRUE)
     }
 
-    if (file.exists(cache_file) && !overwrite_cache) {
-      cat(.pssd_yellow(sprintf("Using cached: %s\n", safe_combo_id)))
-      res <- readRDS(cache_file)
-      results_df <- NULL
-      if (erm %in% names(erm_registry)) {
-        tier_key <- if (tier %in% c(1, 2)) "base" else "t3_t4"
-        results_df <- erm_registry[[erm]][[tier_key]]
-        if (!is_missing_erm_data(results_df) &&
-          "environment" %in% names(results_df)) {
-          results_df <- results_df %>%
-            dplyr::filter(environment == !!environment)
-        }
+    # inputs of this combination: a cached result is reused only if they match
+    combo_input <- NULL
+    if (erm %in% names(erm_registry)) {
+      tier_key <- if (tier %in% c(1, 2)) "base" else "t3_t4"
+      combo_input <- erm_registry[[erm]][[tier_key]]
+      if (!is_missing_erm_data(combo_input) &&
+        "environment" %in% names(combo_input)) {
+        combo_input <- combo_input %>%
+          dplyr::filter(environment == !!environment)
       }
+    }
+    fingerprint <- .pssd_fingerprint(
+      combo_input, sim, cv_uf, apply_assessment_factors, rmore_method, quantile_type
+    )
+    cached_ok <- FALSE
+    if (file.exists(cache_file) && !overwrite_cache) {
+      res <- readRDS(cache_file)
+      cached_ok <- identical(attr(res, "pssd_fingerprint"), fingerprint)
+      if (!cached_ok) {
+        cat(.pssd_yellow(sprintf(
+          "Cache for %s was made with different inputs; recomputing\n", safe_combo_id
+        )))
+      }
+    }
+    if (cached_ok) {
+      cat(.pssd_yellow(sprintf("Using cached: %s\n", safe_combo_id)))
+      results_df <- combo_input
       counts <- extract_species_counts(results_df, environment)
       status_row <- make_status_row(
         combo_id = combo_id,
@@ -5104,10 +5324,9 @@ make_all_pSSDs <- function(
           return(list(result = NULL, status = status_row))
         }
 
-        # Atomic cache write
-        tmp <- paste0(cache_file, ".tmp")
-        saveRDS(res, tmp)
-        file.rename(tmp, cache_file)
+        # Atomic cache write, tagged with the inputs it was computed from
+        attr(res, "pssd_fingerprint") <- fingerprint
+        .pssd_save_atomic(res, cache_file)
 
         cat(.pssd_yellow(sprintf("Completed: %s\n", safe_combo_id)))
         status_row <- make_status_row(
@@ -5355,4 +5574,39 @@ summarize_PNECs <- function(pSSDs = NULL) {
     dplyr::select(-HCX)
 
   return(PNEC_summary_table_wide)
+}
+
+#' Validate `mouth_size_source`; reported mouth sizes are never replaced.
+#' @noRd
+resolve_mouth_size_source <- function(mouth_size_source = c("reported", "body_length")) {
+  mouth_size_source <- match.arg(mouth_size_source)
+  if (mouth_size_source == "body_length") {
+    warning(
+      "mouth_size_source = \"body_length\" is deprecated and ignored: reported ",
+      "(measured) mouth sizes are always used as is; the body-length model ",
+      "(and its sampled coefficients) applies only to records without one.",
+      call. = FALSE
+    )
+  }
+  "reported"
+}
+
+#' Fingerprint of the inputs of a long computation (for checkpoints/caches).
+#' @noRd
+.pssd_fingerprint <- function(...) {
+  f <- tempfile(fileext = ".rds")
+  on.exit(unlink(f), add = TRUE)
+  saveRDS(list(..., version = as.character(utils::packageVersion("PSSDplusplus"))),
+          f, compress = FALSE)
+  unname(tools::md5sum(f))
+}
+
+#' Save an object so that a crash never leaves a partial file behind.
+#' @noRd
+.pssd_save_atomic <- function(object, file) {
+  tmp <- paste0(file, ".tmp")
+  saveRDS(object, tmp)
+  if (file.exists(file)) unlink(file)
+  if (!file.rename(tmp, file)) stop("Could not write ", file, call. = FALSE)
+  invisible(file)
 }

@@ -1,3 +1,4 @@
+if (!exists("normalize_vivo")) source(file.path(dirname(sys.frame(1)$ofile), "vivo_functions.R")) # normalize_vivo()
 ##### RDA MAKER ####
 # preps dataframe for use in RShiny app #
 
@@ -651,8 +652,7 @@ aoc_setup <- aoc_v1 %>% # start with original dataset
     bio.org == "tissue" ~ "Tissue",
     bio.org == "organism"~"Organism",
     bio.org == "population"~ "Population")))%>%
-  mutate(vivo_f = factor(case_when(invitro.invivo == "invivo"~"In Vivo",
-                                   invitro.invivo == "invitro"~"In Vitro")))%>% ##Renames for widget (Not using a widget right now, but saving for human health database)
+  mutate(vivo_f = factor(normalize_vivo(invitro.invivo, doi = doi), levels = c("In Vivo", "In Vitro")))%>% #shared normalizer (vivo_functions.R) ##Renames for widget (Not using a widget right now, but saving for human health database)
   mutate(life_f = factor(case_when(life.stage == "Early"~"Early",
                                    life.stage == "Juvenile"~"Juvenile",
                                    life.stage == "Adult"~"Adult",
@@ -698,7 +698,7 @@ aoc_setup <- aoc_v1 %>% # start with original dataset
   )) %>% 
   #calculate maximum ingestible size (if not already in database)
   mutate(max.size.ingest.mm = ifelse(is.na(max.size.ingest.mm), 
-                                     10^(beta_log10_body_length * log10(body.length.cm) - body_length_intercept) * 10,  #(Jamm et al 2020 Nature paper)correction for cm to mm
+                                     10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept),  #(Jams et al. 2020) body length converted cm -> mm before the log (was log10(cm) * 10, ~16% too large)
                                      max.size.ingest.mm)) %>%  # if already present, just use that
   mutate(max.size.ingest.um = 1000 * max.size.ingest.mm) %>%  #makes it less confusing below
   #Make factor for experiment type

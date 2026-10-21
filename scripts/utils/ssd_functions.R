@@ -1,3 +1,4 @@
+if (!exists("ssd_eligible")) source(file.path(dirname(sys.frame(1)$ofile), "vivo_functions.R")) # ssd_eligible()
 ##### SSD FUNCTIONS #####
 
 library(ssdtools)
@@ -161,6 +162,7 @@ SSD_function_t3_4 <- function(filtered.data, hcx){
 filter_environment_data <- function(data, env_filter, upper.tissue.trans.size.um, x1D_set, x2D_set) {
   # Filter and process data for Tissue Translocation
   filtered_data_small_default_t1_2 <- data %>%
+    ssd_eligible() %>% #in vivo only (vivo_functions.R)
     ungroup() %>% 
     mutate(dose_new = particles.mL.ox.stress / (af.time * af.noec)) %>%
     drop_na(dose_new) %>%
@@ -182,6 +184,7 @@ filter_environment_data <- function(data, env_filter, upper.tissue.trans.size.um
   
    # Filter and process data for Food Dilution
   filtered_data_large_default_t1_2 <- data %>%
+    ssd_eligible() %>% #in vivo only (vivo_functions.R)
     filter(Group != "Algae") %>%
     mutate(dose_new = particles.mL.food.dilution / (af.time * af.noec)) %>%
     drop_na(dose_new) %>%
@@ -233,6 +236,7 @@ process_environment_data <- function(data,
   
   # Filter and process data for Tissue Translocation
   filtered_data_small_default_t1_2 <- data %>%
+    ssd_eligible() %>% #in vivo only (vivo_functions.R)
     ungroup() %>% 
     mutate(dose_new = particles.mL.ox.stress / (af.time * af.noec)) %>%
     drop_na(dose_new) %>%
@@ -261,6 +265,7 @@ process_environment_data <- function(data,
   
   # Filter and process data for Food Dilution
   filtered_data_large_default_t1_2 <- data %>%
+    ssd_eligible() %>% #in vivo only (vivo_functions.R)
     filter(Group != "Algae") %>%
     mutate(dose_new = particles.mL.food.dilution / (af.time * af.noec)) %>%
     drop_na(dose_new) %>%

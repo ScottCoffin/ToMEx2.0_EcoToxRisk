@@ -1,0 +1,6 @@
+doi,species_f,org_f,vivo_f,max.size.ingest.mm,note
+10.1016/j.fsi.2021.04.014,Oncorhynchus mykiss,Fish,In Vitro,,primary anterior-kidney cell cultures (in vitro)
+10.1016/j.marpolbul.2021.112369,Pseudechinus huttoni,Echinoderm,In Vitro,0.038,whole larvae exposed; database coding corrected to In Vivo
+10.1016/j.envpol.2021.117653,Centropristis striata,Fish,In Vivo,2.35,in vivo PHA swelling assay in juveniles
+10.1007/s13273-021-00162-5,Moina macrocopa,Crustacea,In Vivo,0.122,in vivo 14-d exposure
+10.9999/no-status,Species missing,Fish,,1.0,no in vitro/in vivo status

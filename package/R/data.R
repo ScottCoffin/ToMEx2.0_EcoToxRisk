@@ -2,15 +2,58 @@
 #'
 #' Microplastics ecotoxicity records used throughout the PSSD++ workflow.
 #' Data are bundled as a plain data frame identical to the source RDS shipped
-#' in `inst/extdata/aoc_z_tomex2.RDS`.
+#' in `inst/extdata/aoc_z_tomex2.RDS`, which is `aoc_z_tomex2.RDS` built by
+#' `ToMEx2.0_Onboarding/ToMEx2.0_Data_Tidying.R` in the ToMEx 2.0 database
+#' repository (SCCWRP/ToMEx_AquaticOrganisms, release v2.0.1 of 2026-06-30,
+#' plus the body-length corrections of PSSDplusplus 0.4.0; see
+#' `data-raw/update_tomex2.R`).
 #'
-#' @format A data frame with the fields described in the ToMEx 2.0 metadata.
+#' Body length and maximum ingestible particle size (mouth size) are resolved
+#' per test record:
+#' \describe{
+#'   \item{`body.length.cm`}{Body length used for the test organisms: a
+#'     row-level correction (measured in the study, a stage-matched literature
+#'     value, or a flagged imputation), else the record's own value, else a
+#'     species x life-stage reference. Never a default size; `NA` when
+#'     unresolved.}
+#'   \item{`body.length.cm.database`}{The database value before row-level
+#'     corrections.}
+#'   \item{`body.length.basis`}{Where `body.length.cm` comes from, e.g.
+#'     `"study-measured"`, `"literature stage reference"`, `"imputed"`,
+#'     `"study-reported (ToMEx 1.0)"`, `"ToMEx 2.0 template"`,
+#'     `"literature (Koelmans et al. 2020)"`, `"adult species reference"`,
+#'     `"adult reference (stage mismatch)"` (an adult size on an early or
+#'     juvenile record) or `"unresolved"`.}
+#'   \item{`body.length.tier`}{Evidence tier of a row-level correction: A (from
+#'     the study), B (direction certain, value from a related source) or C
+#'     (imputed).}
+#'   \item{`max.size.ingest.mm`, `max.size.ingest.um`}{Maximum ingestible
+#'     particle size: a reported mouth size (the record's, else one reported
+#'     for the same species and life stage), else an override, else the
+#'     Jams et al. (2020) prediction from `body.length.cm`; `NA` when
+#'     unresolved.}
+#'   \item{`max.size.ingest.basis`}{`"reported (record)"`,
+#'     `"reported (species, life stage)"`, `"override"`,
+#'     `"predicted (Jams et al. 2020)"` or `"unresolved"`.}
+#'   \item{`jams_domain`}{Calibration domain of the Jams et al. (2020) model
+#'     for `body.length.cm`: `"within"` (>= 30 mm), `"less_robust"`
+#'     (9 to < 30 mm) or `"outside_calibration"` (< 9 mm).}
+#'   \item{`vivo_f`, `vivo_f.database`}{In vivo / in vitro status after and
+#'     before record-level corrections. Only in vivo records are eligible for
+#'     SSDs ([ssd_eligible()]).}
+#'   \item{`ssd_exclusion_reason`}{`NA` (eligible), `"in vitro"`,
+#'     `"vivo status missing"`, or `"food dilution only: unresolved body
+#'     length or mouth size"`.}
+#' }
+#'
+#' @format A data frame with the fields described in the ToMEx 2.0 metadata,
+#'   plus the body-length and ingestible-size fields above.
 #' @usage data(tomex2)
 "tomex2"
 
 #' Minimal ToMEx 2.0 subset for fast testing and examples
 #'
-#' A 218-row subset of \code{\link{tomex2}} containing 5 freshwater and 5
+#' A small subset of \code{\link{tomex2}} containing 5 freshwater and 5
 #' marine species (\emph{Daphnia magna}, \emph{Hyalella azteca},
 #' \emph{Ceriodaphnia dubia}, \emph{Danio rerio}, \emph{Oncorhynchus mykiss},
 #' \emph{Paracentrotus lividus}, \emph{Artemia franciscana},
@@ -21,8 +64,7 @@
 #' Intended for \code{\\dontrun} examples and interactive exploration without
 #' the computational cost of the full dataset.
 #'
-#' @format A data frame with 218 rows and 177 columns (identical structure to
-#'   \code{\link{tomex2}}).
+#' @format A data frame with the same columns as \code{\link{tomex2}}.
 #' @usage data(tomex2_mini)
 #' @seealso \code{\link{tomex2}} for the full dataset,
 #'   \code{\link{matrix_function}} and \code{\link{MC_sim_align_parallel}} for

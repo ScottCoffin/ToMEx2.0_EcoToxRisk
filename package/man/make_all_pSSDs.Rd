@@ -47,11 +47,12 @@ are treated as 1; this is useful for sensitivity checks or inputs already
 expressed as NOEC-equivalent values.}
 
 \item{rmore_method}{Distribution method for sampling species-level NOEC
-distributions in the PSSD++ step. \code{"step"} (default) uses a trapezoidal
-piecewise-uniform approximation following Wigger et al. (2020), which is
-consistent with published results. \code{"lognormal"} uses a log-normal
-short-cut that is faster but assumes symmetric log-scale variability; use
-only when speed matters more than strict comparability to the manuscript.}
+distributions in the PSSD++ step. \code{"step"} (default) uses the trapezoidal
+piecewise-uniform approximation of Wigger et al. (2020). \code{"lognormal"}
+samples a log-normal distribution fitted to each species' values; it is
+the method used for the published thresholds (Coffin et al. 2026, SI),
+gives nearly identical summary statistics, and is many times faster, but
+smooths multimodal species distributions.}
 
 \item{quantile_type}{Quantile type used when summarizing outputs.}
 
@@ -68,11 +69,17 @@ combination is fit independently: set \code{parallel = TRUE} and increase
 For larger jobs, set this to \code{parallel::detectCores() - 1} (or similar)
 to substantially reduce runtime.}
 
-\item{base_cache_dir}{Directory for cached PSSD objects.}
+\item{base_cache_dir}{Directory for cached PSSD objects. Each combination
+is saved as soon as it finishes, so a run that stops can be resumed by
+calling again with the same directory; a cached combination is reused only
+if it was computed from the same inputs (data, \code{sim}, \code{cv_uf},
+\code{rmore_method}, \code{quantile_type}, \code{apply_assessment_factors}). The default
+(a session temporary directory) does not survive a crash or a new
+session; give a persistent directory for long runs.}
 
 \item{base_output_path}{Directory for figures.}
 
-\item{overwrite_cache}{Logical; recompute even if cache exists.}
+\item{overwrite_cache}{Logical; recompute even if a matching cache exists.}
 
 \item{progress}{Logical; show progress bars. If NULL, disables in RStudio or
 knitr.}

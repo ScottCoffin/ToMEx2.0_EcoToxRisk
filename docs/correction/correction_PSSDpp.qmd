@@ -1,0 +1,296 @@
+---
+title: "Correction: probabilistic (MC + SSD and PSSD++) components"
+subtitle: "Coffin et al. (2026) A probabilistic risk framework for microplastics integrating uncertainty across toxicological and environmental variability. J. Hazard. Mater. 503, 141021"
+date: today
+format:
+  html:
+    toc: true
+    embed-resources: true
+    df-print: kable
+  docx: default
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+suppressPackageStartupMessages({ library(dplyr); library(tidyr); library(knitr) })
+here <- function(...) file.path(rprojroot::find_root("ToMEx2.0_EcoToxRisk.Rproj"), ...)
+res_dir <- here("docs/correction/results")
+ladder_files <- list.files(res_dir, "^ladder_nmc[0-9]+_sim[0-9]+(_[A-Z0-9-]+)?[.]rds$", full.names = TRUE)
+nmc_of <- function(f) as.integer(sub(".*nmc([0-9]+)_.*", "\\1", f))
+ladder <- NULL
+if (length(ladder_files)) {
+  # use the largest run; split production runs (one file per group of steps) are combined
+  keep <- ladder_files[nmc_of(ladder_files) == max(nmc_of(ladder_files))]
+  parts <- lapply(keep, readRDS)
+  ladder <- parts[[1]]
+  ladder$results <- bind_rows(lapply(parts, `[[`, "results")) %>% distinct(step, Tier, Environment, ERM, .keep_all = TRUE)
+  ladder$run_time_min <- sum(sapply(parts, `[[`, "run_time_min"))
+}
+mcssd <- if (file.exists(file.path(res_dir, "mcssd_attribution.rds"))) readRDS(file.path(res_dir, "mcssd_attribution.rds")) else NULL
+nboot <- if (file.exists(file.path(res_dir, "nboot_impact.rds"))) readRDS(file.path(res_dir, "nboot_impact.rds")) else NULL
+production <- !is.null(ladder) && ladder$n_mc >= 9000 && ladder$sim >= 300
+cov <- if (file.exists(file.path(res_dir, "cov_misjoin.rds"))) readRDS(file.path(res_dir, "cov_misjoin.rds")) else NULL
+fmt <- function(x) ifelse(is.na(x), "NA", formatC(signif(x, 2), format = "fg", big.mark = ",", digits = 2))
+```
+
+::: {.callout-warning}
+```{r status, results = "asis"}
+if (production) {
+  cat("Numbers below are from the production run (", ladder$n_mc, " Monte Carlo simulations, ",
+      ladder$sim, " PSSD++ simulations).", sep = "")
+} else if (!is.null(ladder)) {
+  cat("**Draft.** The attribution table below was computed with a small number of simulations (",
+      ladder$n_mc, " Monte Carlo, ", ladder$sim, " PSSD++) to verify the scripts. It shows the ",
+      "direction and approximate size of each change, not final values. The production run ",
+      "(9,424 Monte Carlo and 300 PSSD++ simulations, as in the article) is listed in the ",
+      "repository to-do (AGENTS.md); re-render this document when it is complete.", sep = "")
+}
+```
+:::
+
+## Summary
+
+While packaging the analysis code of this article as the R package PSSDplusplus (v0.4.0) and responding to a reported issue ([ToMEx2.0_EcoToxRisk#6](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/issues/6)), we found errors in the code that aligned toxicity data to the food dilution and tissue translocation ecologically relevant metrics (ERMs) in the Monte Carlo (MC) simulations, and in the preparation of the input data. These errors affect the MC + SSD and PSSD++ thresholds (Table 2, Figs. 5–7) and the record-level uncertainty statistics derived from the MC simulations. The traditional SSD thresholds are affected by the input-data errors and are corrected in the ToMEx 2.0 database and web application ([SCCWRP/ToMEx_AquaticOrganisms#5](https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5)).
+
+We separate **errors** (the code did not do what the article describes) from **refinements** (corrections to individual data records that improve, but do not fix, the analysis). The corrected thresholds are given in Table C2 and the conclusions are discussed at the end of this note.
+
+**Table C1.** Corrections, their type, and the results affected.
+
+| ID | Correction | Type | Affects |
+|---|---|---|---|
+| E1 | Records without a mouth size were assumed to ingest particles up to 5 mm | Code error | Food dilution: SSD, MC + SSD, PSSD++ |
+| E2 | In vitro (cell culture) records were included in SSDs | Code error | Tissue translocation (freshwater): all methods |
+| E3 | Reported mouth sizes were replaced by body-length predictions | Data-preparation error | Food dilution and tissue translocation: all methods |
+| E4 | Sampled body-length model coefficients were never applied | Code error | MC + SSD and PSSD++ uncertainty; Fig. 1B, Fig. 7 |
+| E5 | Sampled particle shape ratios were not applied to tested particles | Code error | MC + SSD and PSSD++ (freshwater fragments) |
+| E6 | Record-level MC statistics were merged to the wrong records | Code error | Intraspecies CoV statistics, CoV analyses (SI) |
+| R1 | ToMEx 2.0 database v2.0.1 and record-level body-length and in vivo / in vitro corrections | Data refinement | All methods |
+
+## Errors
+
+### E1. Missing mouth sizes defaulted to 5 mm
+
+The food dilution ERM integrates the volume of ingestible particles from the lower size limit (1 µm) up to the largest particle an organism can ingest, its mouth size. For records with neither a reported mouth size nor a body length from which to predict one, the alignment code set the mouth size to the upper limit of the assessed size range (`x2D_set`, 5,000 µm). Particle volume spans about 11 orders of magnitude over 1–5,000 µm, so this assumption inflated the mean ingestible particle volume by orders of magnitude for small animals and drove their aligned food dilution concentrations, and therefore the thresholds, down. Several of the most sensitive species were affected (e.g., *Moina macrocopa*, larval *Pseudechinus huttoni*, the ciliate *Strombidium sulcatum*). Assuming that a rotifer or a ciliate ingests 5 mm particles is not defensible. These records are now excluded from the food dilution SSDs and reported; tissue translocation is unaffected. Where a body length could be documented, it was added to the database (R1), so the species are retained.
+
+### E2. In vitro records entered the SSDs
+
+No SSD code path filtered on the in vivo / in vitro field, so records from cell cultures (e.g., rainbow trout anterior-kidney cells; 10.1016/j.fsi.2021.04.014) entered the freshwater tissue translocation SSD. Cell cultures are not organisms and do not belong in an SSD of species sensitivities. All SSD inputs are now restricted to in vivo records. One study coded "In Vitro" in the database exposed whole live larvae (*P. huttoni*, Richardson et al. 2021) and was corrected to in vivo.
+
+### E3. Reported mouth sizes were overwritten
+
+The ToMEx 2.0 data preparation recomputed every mouth size from body length with the allometric model of Jâms et al. (2020), replacing the measured mouth sizes compiled in ToMEx 1.0 (Koelmans et al. 2020) for 13 species and life stages (2,769 records in v2.0.1; predicted → reported, e.g., *Danio rerio* 1.53 → 0.40 mm, adult *Daphnia magna* 0.341 → 0.115 mm, *Gammarus fossarum* 0.56 → 0.125 mm). A measured value is better evidence than a prediction, and the model is not calibrated for animals below 9 mm. Reported mouth sizes are now always used, and the model only when none is reported.
+
+### E4. Body-length model uncertainty was not propagated
+
+The MC simulations were described as sampling the coefficients of the body-length to mouth-size model (Fig. 1B), and their influence was shown in Fig. 7. In the code, the sampled coefficients never reached the alignment: the alignment function ignored them (ToMEx2.0_EcoToxRisk#6), and the simulation wrapper also read them under names that did not exist in the parameter matrix, so every simulation used the fixed coefficients. Any relationship between these parameters and the thresholds in Fig. 7 therefore reflects sampling noise, not an effect, and the statement in Section 3.4.1 that they "had weak negative relationships to the threshold" is withdrawn. The corrected simulations propagate the coefficient uncertainty to predicted mouth sizes only; reported (measured) mouth sizes are used as is in every simulation.
+
+### E5. Particle-shape uncertainty did not reach tested particles
+
+For tested fragments without a reported width, the width is estimated from the length and the length-to-width ratio (R), and the height from the width and the height-to-width ratio. The MC simulations sampled both ratios but re-aligned data that had already been aligned with the default ratios; because widths and heights are only estimated when missing, they kept their default values in every simulation. The sampled ratios therefore did not affect the tested particles (freshwater fragments: up to about 2-fold per simulation), and their influence on the freshwater thresholds in Fig. 7 was understated. Each simulation now aligns the original records.
+
+### E6. Record-level MC statistics were merged to the wrong records
+
+To summarise the uncertainty of each aligned toxicity value, the per-record mean, standard deviation and coefficient of variation (CoV) over the MC simulations were merged back to the records by an identifier. Because of the re-alignment in E5, the MC output numbered records 1 to *n* over the aligned subset while the record table kept the original row numbers, so the merge attached each record's statistics to a different record.
+
+```{r cov-text, results = "asis"}
+if (!is.null(cov)) cat(sprintf(
+  "Of the %d records, %d received another record's statistics and %d received none. ",
+  cov$n_records, cov$published_join_wrong_species, cov$published_join_unmatched))
+```
+
+The MC + SSD and PSSD++ thresholds were not affected, because they use the per-simulation values directly, but the CoV statistics were (Table C3).
+
+## Refinements
+
+### R1. Database v2.0.1 and record-level corrections
+
+The ToMEx 2.0 database was updated to release v2.0.1 (30 June 2026), which corrected individual records (e.g., life stages, exposure durations, effect metrics). In addition, body lengths that were not those of the tested animals were corrected at record level from the original studies, each with an evidence tier (A, measured in the study; B, derived from the study; C, imputed): e.g., *Pinctada margaritifera* 9.8 → 5.9 cm, *Mytilus galloprovincialis* 15 → 5.0–6.54 cm, larval *Crepidula onyx* 6 → 0.0624 cm, *Moina macrocopa* added (0.1665 cm), *P. huttoni* added (0.0478 cm). Body lengths are applied only to the life stage they describe and are never set to a default. These changes are listed with sources in the database repository and in PR #5.
+
+## Impact on the PSSD++ thresholds
+
+Starting from the published configuration, each step below adds one correction and re-runs the MC alignment and PSSD++ with the same parameter matrix and random seeds, so the change between consecutive steps is attributable to that correction. All steps use the log-normal approximation of the species-level distributions described in the Supplementary Information, as in the published analysis.
+
+```{r ladder-table}
+if (!is.null(ladder)) {
+  published <- tribble(
+    ~Tier, ~Environment, ~ERM, ~Median, ~Q5, ~Q95,
+    "Tier3", "Marine", "Food Dilution", 0.140, 0.01, 1.2,
+    "Tier3", "Marine", "Tissue Translocation", 320, 74, 1400,
+    "Tier3", "Freshwater", "Food Dilution", 31, 0.14, 1500,
+    "Tier3", "Freshwater", "Tissue Translocation", 2150, 167, 38000,
+    "Tier4", "Marine", "Food Dilution", 0.64, 0.081, 5.0,
+    "Tier4", "Marine", "Tissue Translocation", 710, 190, 2500,
+    "Tier4", "Freshwater", "Food Dilution", 140, 6.3, 1800,
+    "Tier4", "Freshwater", "Tissue Translocation", 6400, 420, 56000)
+  wide <- ladder$results %>%
+    mutate(col = paste(Environment, ifelse(ERM == "Food Dilution", "FD", "TT"))) %>%
+    select(step, label, category, Tier, col, Median) %>%
+    pivot_wider(names_from = col, values_from = Median) %>%
+    arrange(Tier, step)
+  pub_row <- published %>% mutate(col = paste(Environment, ifelse(ERM == "Food Dilution", "FD", "TT"))) %>%
+    select(Tier, col, Median) %>% pivot_wider(names_from = col, values_from = Median) %>%
+    mutate(step = "Table 2", label = "Published value", category = "")
+  tab <- bind_rows(pub_row, wide) %>% arrange(Tier, step != "Table 2", step) %>%
+    mutate(across(c(starts_with("Marine"), starts_with("Freshwater")), fmt)) %>%
+    select(Tier, Step = step, Change = label, Type = category,
+           `Marine FD` = `Marine FD`, `Marine TT` = `Marine TT`,
+           `Freshwater FD` = `Freshwater FD`, `Freshwater TT` = `Freshwater TT`)
+  kable(tab, caption = sprintf(
+    "Table C2. Median PSSD++ thresholds (particles/L; Tier 3 = HC5, Tier 4 = HC10) after each correction. FD = food dilution, TT = tissue translocation. %s",
+    if (production) "" else "Draft values from a reduced number of simulations."))
+}
+```
+
+```{r s0-check, results = "asis"}
+if (!is.null(ladder)) {
+  s0 <- ladder$results %>% filter(step == "S0") %>% inner_join(published, by = c("Tier", "Environment", "ERM"), suffix = c("", ".pub"))
+  rr <- s0$Median / s0$Median.pub
+  cat(sprintf(paste0("**Check of the baseline.** Step S0 reproduces the published PSSD++ medians to within a factor of %.2f-%.2f ",
+                     "(median ratio %.2f) across the eight thresholds%s, which confirms that the attribution starts from the published analysis.\n\n"),
+              min(rr), max(rr), median(rr), if (production) "" else " despite the reduced number of simulations"))
+  cat(paste0("**Notes.** In vitro exclusion (S2) changes the PSSD++ thresholds only through *P. huttoni*, which the database ",
+             "then coded as in vitro; the rainbow trout cell-culture records do not reach Tiers 3 and 4, which require organism- or ",
+             "population-level endpoints. The record is corrected to in vivo in R1 (S4). Propagating particle-shape uncertainty (S6) ",
+             "changes the aligned values of freshwater fragments but not the median thresholds, because those records are not among the most ",
+             "sensitive species.\n"))
+}
+```
+
+```{r ladder-ratios}
+if (!is.null(ladder)) {
+  r <- ladder$results %>% arrange(step) %>%
+    group_by(Tier, Environment, ERM) %>%
+    mutate(fold = Median / lag(Median)) %>% ungroup() %>% filter(step != "S0") %>%
+    mutate(col = paste(Environment, ifelse(ERM == "Food Dilution", "FD", "TT"))) %>%
+    select(Tier, step, label, col, fold) %>% pivot_wider(names_from = col, values_from = fold) %>%
+    arrange(Tier, step) %>% mutate(across(where(is.numeric), ~ sprintf("%.2f", .x)))
+  kable(r, caption = "Fold change of the median threshold caused by each step (relative to the previous step).")
+}
+```
+
+## Impact of E4 and E5 on the MC + SSD thresholds
+
+```{r mcssd}
+if (!is.null(mcssd)) {
+  m <- mcssd$summary %>% mutate(cfg = case_when(
+      coef == "fixed" & shape == "frozen" ~ "As published",
+      coef == "sampled" & shape == "frozen" ~ "+ E4",
+      coef == "fixed" & shape == "propagated" ~ "+ E5",
+      TRUE ~ "+ E4 + E5"),
+    col = paste(environment, ERM)) %>%
+    select(Tier, cfg, col, median) %>% pivot_wider(names_from = col, values_from = median) %>%
+    mutate(cfg = factor(cfg, c("As published", "+ E4", "+ E5", "+ E4 + E5"))) %>% arrange(Tier, cfg) %>%
+    mutate(across(where(is.numeric), fmt))
+  kable(m, col.names = c("Tier", "Simulations", names(m)[-(1:2)]),
+        caption = sprintf("Table C5. Median MC + SSD thresholds (particles/L) over %d randomly drawn Monte Carlo simulations with the current data, with the body-length coefficients fixed or sampled (E4) and particle shape frozen at the default ratios or propagated (E5).", mcssd$k_sims))
+}
+```
+
+Propagating body-length and particle-shape uncertainty changes the median MC + SSD thresholds only modestly; the largest changes are in the marine thresholds (E4), where many species have predicted mouth sizes. The other corrections (E1-E3, R1) change the MC + SSD thresholds as they change the traditional SSD thresholds.
+
+## Impact on the intraspecies coefficients of variation
+
+```{r cov-table}
+if (!is.null(cov)) {
+  kable(cov$summary %>% mutate(across(c(min, median, max), ~ signif(.x, 2))) %>%
+          select(Join = join, Environment = environment, ERM, `Records` = n, Min = min, Median = median, Max = max),
+        caption = "Table C3. Coefficient of variation of the aligned toxicity values over the published MC simulations, by record, merged as published and to the correct records.")
+  kable(cov$spearman %>% mutate(rho = round(rho, 2), p = signif(p, 2)) %>% select(Join = join, ERM, `Spearman rho (CoV vs mouth size)` = rho, p),
+        caption = "Spearman correlation between the coefficient of variation and the mouth size of the tested species.")
+}
+```
+
+```{r cov-range, results = "asis"}
+if (!is.null(cov)) {
+  cat(sprintf(
+    "Correcting the merge alone leaves the overall range of the coefficients of variation (%.2f–%.1f) stated in Section 2.4.2 unchanged, because it permuted the values among records rather than changing them; the statistics by environment and ERM, and the association with mouth size, change as shown. ",
+    cov$range_all$min[2], cov$range_all$max[2]))
+  if (nrow(cov$range_all) >= 3) cat(sprintf(
+    "With the corrected simulations (E4, E5), which propagate body-length and particle-shape uncertainty, the coefficients of variation range from %.2f to %.1f; the sentence in Section 2.4.2 should read \"between %.2f and %.1f\".",
+    cov$range_all$min[3], cov$range_all$max[3], cov$range_all$min[3], cov$range_all$max[3]))
+}
+```
+
+## Related issues outside PSSD++
+
+### Number of bootstrap samples (Tier 1 and SSD confidence intervals)
+
+Tier 1 is the lower 95 % confidence limit of the HC5, and the SSD thresholds in Table 2 carry 95 % bootstrap intervals; both were estimated from 10 bootstrap samples, as in the ToMEx 2.0 web application. HC point estimates (Tiers 2–4 and all MC + SSD medians except Tier 1) do not depend on the number of bootstrap samples. Repeating the MC + SSD analysis with 1,000 samples is computationally prohibitive, and the thresholds are not re-estimated; instead we tested the effect of 10 versus 1,000 samples directly (`docs/correction/R/nboot_impact.R`).
+
+```{r nboot-det}
+if (!is.null(nboot)) {
+  d <- nboot$deterministic %>% mutate(ERM = ifelse(grepl("Tissue", metric), "TT", "FD"),
+                                       stat = case_when(grepl("Default", metric) ~ "value", grepl("95th", metric) ~ "upper", grepl("5th", metric) ~ "lower")) %>%
+    select(environment, Tier, ERM, stat, nboot, value) %>%
+    pivot_wider(names_from = nboot, values_from = value, names_prefix = "n") %>%
+    mutate(ratio = n1000 / n10)
+  kable(d %>% filter(!(Tier == "Tier1" & stat != "value")) %>% arrange(environment, ERM, Tier, stat) %>%
+          mutate(n10 = fmt(n10), n1000 = fmt(n1000), ratio = sprintf("%.2f", ratio)) %>%
+          select(Environment = environment, ERM, Tier, Statistic = stat, `nboot = 10` = n10, `nboot = 1000` = n1000, Ratio = ratio),
+        caption = "Table C4. Traditional SSD thresholds (particles/L; current data and code) with 10 and 1,000 bootstrap samples (seed 99). 'value' is the threshold (Tier 1 = lower confidence limit of the HC5; Tiers 2-4 = HC point estimates); 'lower'/'upper' are the bounds of the 95 % interval.")
+}
+```
+
+```{r nboot-seed, results = "asis"}
+if (!is.null(nboot)) {
+  sp <- nboot$seed_spread %>% group_by(environment, ERM) %>%
+    summarise(lo = min(t1_nboot10), hi = max(t1_nboot10), .groups = "drop") %>% mutate(fold = hi / lo)
+  t1d <- nboot$deterministic %>% filter(Tier == "Tier1", grepl("Default", metric)) %>%
+    mutate(ERM = ifelse(grepl("Tissue", metric), "TT", "FD")) %>% select(environment, ERM, nboot, value) %>%
+    pivot_wider(names_from = nboot, values_from = value, names_prefix = "n")
+  cat(sprintf("With 10 bootstrap samples, the Tier 1 threshold depends strongly on the random seed: across 20 seeds it varied %s-fold. ",
+              paste(sprintf("%.1f", range(sp$fold)), collapse = "- to ")))
+  cat("For the seed used in the analysis, the Tier 1 values with 1,000 samples were ",
+      paste(sprintf("%s %s %s → %s", t1d$environment, t1d$ERM, fmt(t1d$n10), fmt(t1d$n1000)), collapse = "; "),
+      " particles/L.\n\n", sep = "")
+}
+if (!is.null(nboot)) {
+  m <- nboot$mc %>% mutate(ratio = t1_nboot1000 / t1_nboot10)
+  ms <- m %>% group_by(environment, ERM) %>%
+    summarise(med10 = median(t1_nboot10, na.rm = TRUE), med1000 = median(t1_nboot1000, na.rm = TRUE),
+              lo_ratio = quantile(ratio, 0.05, na.rm = TRUE), hi_ratio = quantile(ratio, 0.95, na.rm = TRUE), .groups = "drop")
+  cat(sprintf("For MC + SSD, Tier 1 was recomputed with 10 and 1,000 bootstrap samples for %d randomly drawn Monte Carlo simulations (paired). ", nboot$k_sims))
+  cat("The median Tier 1 over these simulations changed from ",
+      paste(sprintf("%s %s %s → %s", ms$environment, ms$ERM, fmt(ms$med10), fmt(ms$med1000)), collapse = "; "),
+      " particles/L; per simulation the ratio (1,000/10 samples) ranged ",
+      paste(sprintf("%.2f–%.2f (%s %s)", ms$lo_ratio, ms$hi_ratio, ms$environment, ms$ERM), collapse = ", "),
+      " (5th–95th percentiles).\n\n", sep = "")
+}
+```
+
+Ten bootstrap samples have two consequences. The limits are noisy, which matters for a single (traditional) SSD; for MC + SSD this noise largely averages out in the median over thousands of simulations. They are also biased: a 95 % interval from 10 values is bounded by the most extreme of only 10 draws and cannot reach into the tails, so lower limits tend to be too high, i.e. less protective. This bias does not average out over simulations. Tier 1 thresholds (traditional SSD and MC + SSD) and the lower bounds of the SSD intervals in Table 2 should therefore be read as upper estimates; HC point estimates (Tiers 2–4) are unaffected. The analysis keeps 10 bootstrap samples, consistent with the ToMEx 2.0 web application.
+
+### Version of ssdtools
+
+ The SSDs were fitted with ssdtools 0.3.7, as stated. Later versions (≥ 2.0) average the fitted distributions differently by default (the HC5 of the model-averaged mixture distribution, rather than the weighted mean of each distribution's HC5), which lowers Tier 2–4 HC5s for these data by 0–47 %; with the earlier averaging they reproduce our values to within 1 %. This is a change of method in ssdtools, not an error in the version we used, and the thresholds are not changed on that account.
+
+## Effect on the conclusions
+
+*To be completed after the production run.*
+
+## Reproducibility
+
+All corrections are implemented in PSSDplusplus v0.4.0 and in the analysis scripts of <https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk>; the database corrections are in [SCCWRP/ToMEx_AquaticOrganisms#5](https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5). From the repository root:
+
+```sh
+# stepwise attribution (Table C2); small check, then production
+Rscript docs/correction/R/pssd_correction_ladder.R 30 20
+# production: one step per process, nothing else running (~60 GB each);
+# re-running a command resumes from its checkpoints
+for s in S0 S1 S2 S3 S4 S5 S6; do Rscript docs/correction/R/pssd_correction_ladder.R 9424 300 $s; done
+# bootstrap sample size (Table C4)
+Rscript docs/correction/R/nboot_impact.R 20 4
+# record-level CoV statistics as published and correctly merged (Table C3)
+Rscript docs/correction/R/cov_misjoin_impact.R
+quarto render docs/correction/correction_PSSDpp.qmd
+```
+
+The attribution reads the published input data from the repository history (commit `0d44be7`), the input with reported mouth sizes restored (`3bcc930`), and the current input (`data/input/aoc_z_tomex2.RDS`). The CoV comparison reads the published MC output, archived outside git in `scripts/monte carlo/output/pre_issue6/`.
+
+```{r session}
+if (!is.null(ladder)) cat(sprintf("Attribution run: PSSDplusplus %s, %d MC and %d PSSD++ simulations, %.0f min, %s.\n",
+  ladder$package_version, ladder$n_mc, ladder$sim, ladder$run_time_min, format(ladder$date, "%Y-%m-%d")))
+```

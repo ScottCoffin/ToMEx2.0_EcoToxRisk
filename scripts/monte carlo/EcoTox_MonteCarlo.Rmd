@@ -46,6 +46,8 @@ library(ssdtools)
 # load custom SSD and alignment functions
 source("../utils/ssd_functions.R")
 source("../utils/functions.R")
+source("../utils/vivo_functions.R") # ssd_eligible(): in vitro records never reach an SSD
+source("../utils/plotting_functions.R") # parameter_histograms_function()
 # List all objects in the global environment
 all_objects <- ls()
 
@@ -65,6 +67,7 @@ source("../utils/ToMEx2.0_Data_Tidying_functions.R") #functionalized data tidyin
 ## Data Import
 ```{r}
 aoc_risk_paper <- readRDS("../../data/input/aoc_z_tomex2.RDS") %>%  #dataset is prepped in shiny repo
+  ssd_eligible() %>% #in vivo only (vivo_functions.R)
   dplyr::rename(environment = env_f) %>% 
   mutate(AF.total = af.time * af.noec) %>%  #calculate composite AF
   drop_na(effect.metric) %>% 
@@ -791,12 +794,28 @@ library(doSNOW)
 # Set up parallel processing
 num_cores <- min(12, detectCores())  # Adjust the number of cores as needed
 cl <- makeCluster(num_cores)
+# workers are fresh R sessions: give them this session's library paths and
+# refuse to run unless they load the same ssdtools (0.3.7). Otherwise a worker
+# can silently load another version from the default library and change every
+# SSD threshold (this happened in a 0.4.0 re-run).
+parallel::clusterCall(cl, function(p) invisible(.libPaths(p)), .libPaths())
+worker_ssdtools <- unique(unlist(parallel::clusterEvalQ(cl, as.character(utils::packageVersion("ssdtools")))))
+stopifnot("parallel workers must use ssdtools 0.3.7" =
+            identical(worker_ssdtools, as.character(packageVersion("ssdtools"))) &&
+            identical(worker_ssdtools, "0.3.7"))
 registerDoSNOW(cl)
 
 # Set up a progress bar
 pb <- txtProgressBar(min = 0, max = n_row_sobol, style = 3)
-progress <- function(n) setTxtProgressBar(pb, n)
-opts <- list(progress = progress)
+
+# Checkpoints: simulations run in chunks; each finished chunk is saved and
+# reused if the run is restarted with the same parameter matrix and data
+chunk_size <- 500
+ckpt_dir <- "output/sobol_checkpoints"
+dir.create(ckpt_dir, showWarnings = FALSE)
+key_file <- tempfile()
+saveRDS(list(mat, aoc_risk_paper, x1D_set, x2D_set, nboot), key_file, compress = FALSE)
+ckpt_key <- substr(unname(tools::md5sum(key_file)), 1, 12)
 
 # Initialize vector to store sobol results
 sobol_results <- vector("list", n_row_sobol)
@@ -806,16 +825,29 @@ sobol_results_parallel <- vector("list", n_row_sobol)
 
 tic("Sensitivity Analysis Begins")
 
-# Run sensitivity analysis in parallel
-sobol_results <- foreach(i = 1:n_row_sobol,
+# Run sensitivity analysis in parallel, chunk by chunk. A top-level for loop
+# (not a function) keeps foreach's automatic export of the helper functions.
+chunk_starts <- seq(1, n_row_sobol, by = chunk_size)
+sobol_chunks <- vector("list", length(chunk_starts))
+for (k in seq_along(chunk_starts)) {
+  a <- chunk_starts[k]
+  b <- min(a + chunk_size - 1, n_row_sobol)
+  ckpt_file <- file.path(ckpt_dir, sprintf("sobol_%s_%06d-%06d.rds", ckpt_key, a, b))
+  if (file.exists(ckpt_file)) {
+    sobol_chunks[[k]] <- readRDS(ckpt_file)
+    setTxtProgressBar(pb, b)
+    next
+  }
+  opts <- list(progress = function(n) setTxtProgressBar(pb, a - 1 + n))
+  chunk <- foreach(i = a:b,
                                   .packages = c("tidyverse", "doParallel", "truncnorm", "sensobol", "ssdtools"),
                                   .options.snow = opts,
                                   .export = c("model_wrapper_sobol_parallel",
-                                              "aoc_aligned",
+                                              "aoc_aligned", "aoc_risk_paper", # wrapper aligns the unaligned records
                                               "align_data",
                                               "filter_environment_data", "generate_structure_checks",
                                               "mux_polyfnx", "CFfnx",
-                                              "process_environment_data",  "sensitivity_t1",
+                                              "process_environment_data", "ssd_eligible", "sensitivity_t1",
                                               "SSD_function_t1", "SSD_function_t2",
                                               "SSD_function_t3_4", "summarize_and_print", "update_particle_length",
                                               "volumefnx", "SAfnx", "massfnx", "SSA.inversefnx",
@@ -851,6 +883,11 @@ sobol_results <- foreach(i = 1:n_row_sobol,
    sobol_results_parallel[[i]] <- model_wrapper_sobol_parallel(params, 
                                                                simulation_id = simulation_id)
    }
+  saveRDS(chunk, paste0(ckpt_file, ".tmp")) # atomic: never a partial checkpoint
+  file.rename(paste0(ckpt_file, ".tmp"), ckpt_file)
+  sobol_chunks[[k]] <- chunk
+}
+sobol_results <- do.call(rbind, sobol_chunks)
 
 toc(log = T) #end timer and log output
 sobol_time <- unlist(tic.log(format = T))
@@ -1410,6 +1447,16 @@ skimr::skim(cov_results_sobol)
 
 ```{r include=FALSE}
 # Step 3: merge with full dataset and deterministic dataset
+# unique_id must refer to the same record in both (the wrapper aligns the
+# unaligned records, so its unique_id matches aoc_aligned_test's)
+id_check <- results_df_sobol %>%
+  distinct(unique_id, species) %>%
+  mutate(unique_id = as.character(unique_id)) %>%
+  left_join(aoc_aligned_test %>% ungroup() %>%
+              transmute(unique_id = as.character(unique_id), Species = as.character(Species)),
+            by = "unique_id")
+stopifnot("MC results and aoc_aligned_test disagree on unique_id" =
+            all(as.character(id_check$species) == id_check$Species))
 aoc_MC_sobol <- merge(aoc_aligned_test,
                 cov_results_sobol, by = "unique_id", all.x = TRUE)
 

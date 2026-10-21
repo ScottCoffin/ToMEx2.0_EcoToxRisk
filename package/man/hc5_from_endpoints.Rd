@@ -18,7 +18,9 @@ hc5_from_endpoints(
 \item{endpoints}{A data frame with columns \code{Species} and \code{ec}. \code{Species}
 identifies species, and \code{ec} is a positive numeric effect concentration on
 the linear scale, in particles/L. Optional column \code{ec_sd} supplies
-endpoint-level standard deviations on the same scale for \code{DP.SD}.}
+endpoint-level standard deviations on the same scale for \code{DP.SD}.
+If a \code{vivo_f} column is present, in vitro records are dropped
+(\code{\link[=ssd_eligible]{ssd_eligible()}}).}
 
 \item{sim}{Integer number of Monte Carlo iterations.}
 

@@ -163,6 +163,8 @@ utils::globalVariables(c(
   "max.size.ingest.um",
   "max.size.ingest.um.predicted",
   "max.size.ingest.um.used",
+  "max.size.ingest.override.um",
+  "max.size.ingest.basis",
   "x_LL_sa_trans",
   "x_LL_v_ingest",
   "x_UL_sa_trans",

@@ -56,11 +56,12 @@ correction. When \code{FALSE}, they are treated as unit multipliers for
 sensitivity checks or NOEC-equivalent inputs.}
 
 \item{rmore_method}{Distribution method for sampling species-level NOEC
-distributions in the PSSD++ step. \code{"step"} (default) uses a trapezoidal
-piecewise-uniform approximation following Wigger et al. (2020), which is
-consistent with published results. \code{"lognormal"} uses a log-normal
-short-cut that is faster but assumes symmetric log-scale variability; use
-only when speed matters more than strict comparability to the manuscript.}
+distributions in the PSSD++ step. \code{"step"} (default) uses the trapezoidal
+piecewise-uniform approximation of Wigger et al. (2020). \code{"lognormal"}
+samples a log-normal distribution fitted to each species' values; it is
+the method used for the published thresholds (Coffin et al. 2026, SI),
+gives nearly identical summary statistics, and is many times faster, but
+smooths multimodal species distributions.}
 }
 \value{
 A list containing the aligned data, PSSD outputs, and summary table.
@@ -78,7 +79,7 @@ repository, using the included ToMEx 2.0 ecotoxicity dataset.
   result <- run_pssd_reprex(sim = 2, n_sim = 2, workers = 1, seed = 42)
   result$pnec_summary
 
-  # Use lognormal method (faster, less precise)
+  # Log-normal species distributions (the method of the published analysis; faster)
   run_pssd_reprex(sim = 2, n_sim = 2, workers = 1, rmore_method = "lognormal")
 
   # For larger jobs, parallel processing is strongly recommended:

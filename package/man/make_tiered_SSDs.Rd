@@ -4,12 +4,13 @@
 \alias{make_tiered_SSDs}
 \title{Fit a tiered SSD with the tier supplied as a parameter}
 \usage{
-make_tiered_SSDs(filtered.data, tier, hcx = NULL, nboot = 10)
+make_tiered_SSDs(filtered.data, tier, hcx = NULL, nboot = 10, seed = 99)
 }
 \arguments{
 \item{filtered.data}{A data frame of aligned toxicity data. Must contain
 \code{dose_new}, \code{Species}, \code{Group}. Tiers 3-4 additionally require \code{bio_f}
-and \code{risk.13}.}
+and \code{risk.13}. If a \code{vivo_f} column is present, in vitro records are
+dropped (\code{\link[=ssd_eligible]{ssd_eligible()}}).}
 
 \item{tier}{Integer 1-4 specifying the tier to apply.}
 
@@ -18,6 +19,11 @@ and \code{risk.13}.}
 
 \item{nboot}{Number of bootstrap iterations for confidence intervals.
 Default \code{10}; use 1000+ for publication results.}
+
+\item{seed}{Random seed for the fit and bootstrap. Default \code{99}, as in the
+manuscript pipeline, so confidence limits (and the Tier 1 threshold) are
+reproducible; the caller's RNG state is restored afterwards. \code{NULL} uses
+the current RNG stream.}
 }
 \value{
 An object of class \code{"tiered_SSD"} (a list) containing:

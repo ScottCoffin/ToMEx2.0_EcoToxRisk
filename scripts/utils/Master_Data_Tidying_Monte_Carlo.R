@@ -1,3 +1,10 @@
+#### LEGACY (not part of the manuscript pipeline) ####
+# Older copy of the SCCWRP Monte Carlo data-prep script; its source() paths
+# (scripts/monte carlo/*.R) no longer exist in this repository. The maintained
+# pipeline is scripts/monte carlo/EcoTox_MonteCarlo.Rmd with scripts/utils/*.R.
+# SSD inputs below are restricted to in vivo data (ssd_eligible()).
+source("scripts/utils/vivo_functions.R")
+
 ####### MASTER DATA TIDYING - MONTE CARLO  ########
 ###### 04-25-2024 #####
 ### This script runs the data preparations in a Monte Carlo fashion ##
@@ -104,6 +111,7 @@ p.ave = 1.10 #average density in marine surface water
 aoc_aligned_test <- tomex2.0_aoc_z_final  %>% 
   ungroup() %>% 
   rename(environment = env_f) %>% 
+  ssd_eligible() %>% #in vivo only (vivo_functions.R)
   ### First filter the data ####
 ## First filter data with global filters
   filter(!environment %in% c("Terrestrial", "Not Reported"),
@@ -122,7 +130,7 @@ aoc_aligned_test <- tomex2.0_aoc_z_final  %>%
 # define upper size length for Translocation 
 #set to 83um for upper limit or max size ingest, whichever is smaller
 mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size.um, 
-                             max.size.ingest.um  < upper.tissue.trans.size.um ~  max.size.ingest.um,
+                             max.size.ingest.um  <= upper.tissue.trans.size.um ~  max.size.ingest.um,
                              max.size.ingest.um  > upper.tissue.trans.size.um ~ upper.tissue.trans.size.um)) %>% 
   
   # calculate effect threshold for particles
@@ -173,8 +181,8 @@ mutate(x_LL_sa_trans = SAfnx(a = X1D_set, #length
   
   ##### FOOD DILUTION ####
 # define upper size length for ingestion 
-mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ x2D_set, 
-                              max.size.ingest.um < x2D_set ~ max.size.ingest.um,
+mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ NA_real_, #unknown mouth size: excluded from food dilution (no 5 mm default) 
+                              max.size.ingest.um <= x2D_set ~ max.size.ingest.um,
                               max.size.ingest.um > x2D_set ~ x2D_set
 )) %>%  #set to 5,000 as upper limit or max size ingest, whichever is smaller
   # calculate effect threshold for particles
@@ -416,6 +424,7 @@ model_wrapper <- function(params, iteration){
   aoc_MC_iter <- tomex2.0_aoc_z_final  %>% 
     ungroup() %>% 
     rename(environment = env_f) %>% 
+    ssd_eligible() %>% #in vivo only (vivo_functions.R)
     ### First filter the data ####
   ## First filter data with global filters
   filter(!environment %in% c("Terrestrial", "Not Reported"),
@@ -497,8 +506,8 @@ model_wrapper <- function(params, iteration){
     
     ##### FOOD DILUTION ####
   # define upper size length for ingestion 
-  mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ x2D_set, 
-                                max.size.ingest.um < x2D_set ~ max.size.ingest.um,
+  mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ NA_real_, #unknown mouth size: excluded from food dilution (no 5 mm default) 
+                                max.size.ingest.um <= x2D_set ~ max.size.ingest.um,
                                 max.size.ingest.um > x2D_set ~ x2D_set
   )) %>%  #set to 5,000 as upper limit or max size ingest, whichever is smaller
     # calculate effect threshold for particles
@@ -943,6 +952,7 @@ model_wrapper_sobol <- function(params, iteration, N, sobol_results, save_interv
   aoc_MC_iter <- tomex2.0_aoc_z_final  %>% 
     ungroup() %>% 
     rename(environment = env_f) %>% 
+    ssd_eligible() %>% #in vivo only (vivo_functions.R)
     ### First filter the data ####
   ## First filter data with global filters
   filter(!environment %in% c("Terrestrial", "Not Reported"),
@@ -1025,8 +1035,8 @@ model_wrapper_sobol <- function(params, iteration, N, sobol_results, save_interv
     
     ##### FOOD DILUTION ####
   # define upper size length for ingestion 
-  mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ x2D_set, 
-                                max.size.ingest.um < x2D_set ~ max.size.ingest.um,
+  mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ NA_real_, #unknown mouth size: excluded from food dilution (no 5 mm default) 
+                                max.size.ingest.um <= x2D_set ~ max.size.ingest.um,
                                 max.size.ingest.um > x2D_set ~ x2D_set
   )) %>%  #set to 5,000 as upper limit or max size ingest, whichever is smaller
     # calculate effect threshold for particles
