@@ -4979,6 +4979,12 @@ is_missing_erm_data <- function(df) {
 #'   session; give a persistent directory for long runs.
 #' @param base_output_path Directory for figures.
 #' @param overwrite_cache Logical; recompute even if a matching cache exists.
+#' @param combo_seed Logical. `TRUE` (default) runs each combination with its
+#'   own seed, `2026 + sum(utf8ToInt(combo_id))` (as `scripts/ToMEx2_EcoTox.Rmd`
+#'   does), so results are reproducible and independent of the order of
+#'   combinations or of serial vs parallel runs; the caller's random number
+#'   state is restored afterwards. `FALSE` draws from the caller's random
+#'   number stream (the behaviour before 0.4.0).
 #' @param progress Logical; show progress bars. If NULL, disables in RStudio or
 #'   knitr.
 #'
@@ -5029,7 +5035,8 @@ make_all_pSSDs <- function(
   base_cache_dir = file.path(tempdir(), "pssd_cache"),
   base_output_path = file.path(tempdir(), "pssd_figures"),
   overwrite_cache = FALSE,
-  progress = NULL
+  progress = NULL,
+  combo_seed = TRUE
 ) {
   if (is.null(MC_sim_df) || nrow(MC_sim_df) == 0) {
     stop("MC_sim_df must be provided explicitly.", call. = FALSE)
@@ -5280,6 +5287,16 @@ make_all_pSSDs <- function(
         n_species_with_data = counts$n_species_with_data
       )
       return(list(result = NULL, status = status_row))
+    }
+
+    # seed per combination (as in the manuscript pipeline): results do not
+    # depend on the order of combinations or on serial vs parallel runs; the
+    # caller's random number state is restored afterwards
+    if (isTRUE(combo_seed)) {
+      had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+      if (had_seed) old_seed <- get(".Random.seed", envir = globalenv())
+      on.exit(if (had_seed) assign(".Random.seed", old_seed, envir = globalenv()), add = TRUE)
+      set.seed(2026 + sum(utf8ToInt(combo_id)))
     }
 
     result <- tryCatch(

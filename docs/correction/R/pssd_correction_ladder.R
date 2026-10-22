@@ -24,8 +24,10 @@
 # Usage (repo root):
 #   Rscript docs/correction/R/pssd_correction_ladder.R [n_mc] [sim] [steps]
 #   small check : n_mc = 30,   sim = 20   (minutes)
-#   production  : n_mc = 9424, sim = 300  (~3+ h and ~60 GB per step: run
-#                 one step at a time, e.g. "S0", with nothing else running)
+#   correction  : n_mc = 1000, sim = 300 (one step per process: ~30-110 min
+#                 and up to ~70 GB for the early steps; run one at a time).
+#                 At n_mc = 9424 the results agree within 4% (S0-S2 checked)
+#                 but S0 takes ~12 h.
 # Each run writes docs/correction/results/ladder_nmc<n>_sim<s>[_<steps>].rds;
 # the correction document combines all files with the same n_mc and sim.
 #
@@ -123,15 +125,25 @@ run_step <- function(s) {
   t34 <- function(d) d %>% filter(risk.13 != 1, bio_f %in% c("Organism", "Population"))
   reg <- list("Food Dilution" = list(base = food, t3_t4 = t34(food)),
               "Tissue Translocation" = list(base = tissue, t3_t4 = t34(tissue)))
-  # each combination is cached as it finishes (and reused only for identical inputs)
-  set.seed(7)
-  invisible(utils::capture.output(p <- suppressWarnings(suppressMessages(make_all_pSSDs(
-    MC_sim_df = mc, tiers = 3, environments = c("Freshwater", "Marine"),
-    erms = c("Food Dilution", "Tissue Translocation"), erm_registry = reg, sim = sim,
-    cv_uf = 0.5, rmore_method = s$method, quantile_type = 8, parallel = FALSE,
-    base_cache_dir = file.path(work, "pssd"), base_output_path = file.path(tempdir(), "ladder_figs"),
-    overwrite_cache = FALSE)))))
-  summarize_PNECs(p) %>%
+  # one combination at a time (memory is freed in between; a single call for
+  # all four grew to >100 GB at production size), each with its own seed as in
+  # ToMEx2_EcoTox.Rmd, and cached as it finishes (reused only for identical inputs)
+  combos <- expand.grid(environment = c("Freshwater", "Marine"),
+                        erm = c("Food Dilution", "Tissue Translocation"), stringsAsFactors = FALSE)
+  pnecs <- bind_rows(lapply(seq_len(nrow(combos)), function(k) {
+    combo_id <- paste0("Tier3_", combos$environment[k], "_", combos$erm[k])
+    set.seed(2026 + sum(utf8ToInt(combo_id)))
+    invisible(utils::capture.output(p <- suppressWarnings(suppressMessages(make_all_pSSDs(
+      MC_sim_df = mc, tiers = 3, environments = combos$environment[k], erms = combos$erm[k],
+      erm_registry = reg, sim = sim, cv_uf = 0.5, rmore_method = s$method, quantile_type = 8,
+      parallel = FALSE, base_cache_dir = file.path(work, "pssd"),
+      base_output_path = file.path(tempdir(), "ladder_figs"), overwrite_cache = FALSE)))))
+    out <- summarize_PNECs(p)
+    rm(p)
+    invisible(gc())
+    out
+  }))
+  pnecs %>%
     transmute(step = s$step, Tier, Environment, ERM, Median, Q5, Q95,
               n_records_fd = n_distinct(food$unique_id), n_records_tt = n_distinct(tissue$unique_id))
 }

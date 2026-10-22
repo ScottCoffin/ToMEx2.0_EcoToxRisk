@@ -21,7 +21,8 @@ make_all_pSSDs(
   base_cache_dir = file.path(tempdir(), "pssd_cache"),
   base_output_path = file.path(tempdir(), "pssd_figures"),
   overwrite_cache = FALSE,
-  progress = NULL
+  progress = NULL,
+  combo_seed = TRUE
 )
 }
 \arguments{
@@ -83,6 +84,13 @@ session; give a persistent directory for long runs.}
 
 \item{progress}{Logical; show progress bars. If NULL, disables in RStudio or
 knitr.}
+
+\item{combo_seed}{Logical. \code{TRUE} (default) runs each combination with its
+own seed, \code{2026 + sum(utf8ToInt(combo_id))} (as \code{scripts/ToMEx2_EcoTox.Rmd}
+does), so results are reproducible and independent of the order of
+combinations or of serial vs parallel runs; the caller's random number
+state is restored afterwards. \code{FALSE} draws from the caller's random
+number stream (the behaviour before 0.4.0).}
 }
 \value{
 A named list of PSSD results (one per combination).

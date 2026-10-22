@@ -42,7 +42,6 @@ vignettes/*.pdf
 # pkgdown site (none at the root); keep the correction materials
 docs/*
 !docs/correction/
-docs/correction/*.html
 
 # translation temp files
 po/*~

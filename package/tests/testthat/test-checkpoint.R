@@ -94,3 +94,37 @@ test_that("make_all_pSSDs() resumes from its cache and never reuses stale result
   expect_false(any(grepl("Using cached", third$log)))
   expect_length(list.files(cache, recursive = TRUE, pattern = "\\.tmp$"), 0)
 })
+
+test_that("make_all_pSSDs() seeds each combination: order- and caller-seed independent", {
+  x <- mini_inputs(3)
+  mc <- quiet(MC_sim_align_parallel(x$tox, x$pm, n_sim = 3, num_cores = 1))
+  mk <- function(col) {
+    d <- mc[!is.na(mc[[col]]) & mc[[col]] > 0, ]
+    d$dose_new_particles_L <- d[[col]]
+    d
+  }
+  food <- mk("particles_L_food_dilution"); food <- food[food$Group != "Algae", ]
+  tissue <- mk("particles_L_ox_stress")
+  reg <- list("Food Dilution" = list(base = food, t3_t4 = food),
+              "Tissue Translocation" = list(base = tissue, t3_t4 = tissue))
+  run <- function(erms, seed, combo_seed = TRUE) {
+    set.seed(seed)
+    before <- .Random.seed
+    utils::capture.output(p <- suppressWarnings(suppressMessages(make_all_pSSDs(
+      MC_sim_df = mc, tiers = 3, environments = "Freshwater", erms = erms, erm_registry = reg,
+      sim = 2, rmore_method = "lognormal", parallel = FALSE, combo_seed = combo_seed,
+      base_cache_dir = withr::local_tempdir(.local_envir = parent.frame(2)),
+      base_output_path = withr::local_tempdir(.local_envir = parent.frame(2))))))
+    list(s = summarize_PNECs(p), rng_unchanged = identical(.Random.seed, before))
+  }
+  a <- run(c("Food Dilution", "Tissue Translocation"), seed = 1)
+  skip_if(nrow(a$s) == 0, "no PSSD++ combination ran on the mini data")
+  b <- run(c("Tissue Translocation", "Food Dilution"), seed = 999)
+  key <- function(s) s[order(s$ERM, s$Tier), , drop = FALSE]
+  expect_equal(key(a$s), key(b$s), ignore_attr = TRUE)
+  expect_true(a$rng_unchanged)
+  # combo_seed = FALSE draws from the caller's stream (results depend on the seed)
+  c1 <- run(c("Food Dilution", "Tissue Translocation"), seed = 1, combo_seed = FALSE)
+  c2 <- run(c("Food Dilution", "Tissue Translocation"), seed = 2, combo_seed = FALSE)
+  expect_false(isTRUE(all.equal(key(c1$s), key(c2$s))))
+})

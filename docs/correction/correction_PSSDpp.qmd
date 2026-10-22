@@ -31,7 +31,10 @@ if (length(ladder_files)) {
 }
 mcssd <- if (file.exists(file.path(res_dir, "mcssd_attribution.rds"))) readRDS(file.path(res_dir, "mcssd_attribution.rds")) else NULL
 nboot <- if (file.exists(file.path(res_dir, "nboot_impact.rds"))) readRDS(file.path(res_dir, "nboot_impact.rds")) else NULL
-production <- !is.null(ladder) && ladder$n_mc >= 9000 && ladder$sim >= 300
+# the attribution is final with >= 1,000 MC and 300 PSSD++ simulations; the
+# corrected thresholds themselves (Table C0) come from the full production run
+production <- !is.null(ladder) && ladder$n_mc >= 1000 && ladder$sim >= 300 &&
+  all(paste0("S", 0:6) %in% ladder$results$step)
 cov <- if (file.exists(file.path(res_dir, "cov_misjoin.rds"))) readRDS(file.path(res_dir, "cov_misjoin.rds")) else NULL
 fmt <- function(x) ifelse(is.na(x), "NA", formatC(signif(x, 2), format = "fg", big.mark = ",", digits = 2))
 ```
@@ -39,13 +42,16 @@ fmt <- function(x) ifelse(is.na(x), "NA", formatC(signif(x, 2), format = "fg", b
 ::: {.callout-warning}
 ```{r status, results = "asis"}
 if (production) {
-  cat("Numbers below are from the production run (", ladder$n_mc, " Monte Carlo simulations, ",
-      ladder$sim, " PSSD++ simulations).", sep = "")
+  cat("The corrected thresholds (Table C0) are from the full production run of the analysis (9,424 Monte Carlo ",
+      "and 300 PSSD++ simulations, as in the article). The stepwise attribution (Table C2) uses ",
+      format(ladder$n_mc, big.mark = ","), " Monte Carlo and ", ladder$sim, " PSSD++ simulations per step, ",
+      "which keeps its seven steps computationally feasible; it apportions the change between the corrections ",
+      "and is not a source of corrected values.", sep = "")
 } else if (!is.null(ladder)) {
   cat("**Draft.** The attribution table below was computed with a small number of simulations (",
       ladder$n_mc, " Monte Carlo, ", ladder$sim, " PSSD++) to verify the scripts. It shows the ",
-      "direction and approximate size of each change, not final values. The production run ",
-      "(9,424 Monte Carlo and 300 PSSD++ simulations, as in the article) is listed in the ",
+      "direction and approximate size of each change, not final values. The final attribution ",
+      "(1,000 Monte Carlo and 300 PSSD++ simulations per step) is listed in the ",
       "repository to-do (AGENTS.md); re-render this document when it is complete.", sep = "")
 }
 ```
@@ -68,6 +74,48 @@ We separate **errors** (the code did not do what the article describes) from **r
 | E5 | Sampled particle shape ratios were not applied to tested particles | Code error | MC + SSD and PSSD++ (freshwater fragments) |
 | E6 | Record-level MC statistics were merged to the wrong records | Code error | Intraspecies CoV statistics, CoV analyses (SI) |
 | R1 | ToMEx 2.0 database v2.0.1 and record-level body-length and in vivo / in vitro corrections | Data refinement | All methods |
+
+## Corrected Table 2
+
+```{r table2}
+root <- here()
+f_ssd <- file.path(root, "output/data/all_thresholds_combined_quality.csv")
+f_mc <- file.path(root, "scripts/monte carlo/output/simple_thresholds_table_sobol.csv")
+f_pssd <- file.path(root, "data/output/PNEC_summary_table_wide.rds")
+if (all(file.exists(c(f_ssd, f_mc, f_pssd)))) {
+  published <- tribble(
+    ~Environment, ~Tier, ~ERM, ~SSD, ~MC, ~PSSD,
+    "Marine", "Tier1", "FD", 4.8e-5, 1.0e-5, NA,   "Marine", "Tier1", "TT", 0.82, 0.81, NA,
+    "Marine", "Tier2", "FD", 2.6e-3, 2.6e-3, NA,   "Marine", "Tier2", "TT", 13, 13, NA,
+    "Marine", "Tier3", "FD", 0.30, 0.28, 0.140,    "Marine", "Tier3", "TT", 490, 480, 320,
+    "Marine", "Tier4", "FD", 1.5, 1.3, 0.64,       "Marine", "Tier4", "TT", 1600, 1550, 710,
+    "Freshwater", "Tier1", "FD", 0.4, 0.4, NA,     "Freshwater", "Tier1", "TT", 93, 100, NA,
+    "Freshwater", "Tier2", "FD", 4.9, 4.1, NA,     "Freshwater", "Tier2", "TT", 720, 710, NA,
+    "Freshwater", "Tier3", "FD", 42, 36, 31,       "Freshwater", "Tier3", "TT", 4800, 4600, 2150,
+    "Freshwater", "Tier4", "FD", 140, 120, 140,    "Freshwater", "Tier4", "TT", 9500, 9500, 6400) %>%
+    pivot_longer(c(SSD, MC, PSSD), names_to = "Method", values_to = "published")
+  ssd <- read.csv(f_ssd, check.names = FALSE, row.names = 1) %>% filter(label == "risk and tech") %>%
+    transmute(Environment, Tier, FD = `Food Dilution (Default)`, TT = `Tissue Translocation (Default)`) %>%
+    pivot_longer(c(FD, TT), names_to = "ERM", values_to = "corrected") %>% mutate(Method = "SSD")
+  mcw <- read.csv(f_mc, check.names = FALSE, row.names = 1)
+  mc <- mcw %>% pivot_longer(-Tier, names_to = "col", values_to = "txt") %>%
+    mutate(Environment = ifelse(grepl("Marine", col), "Marine", "Freshwater"),
+           ERM = ifelse(grepl("Food", col), "FD", "TT"),
+           corrected = as.numeric(gsub(",", "", sub(" .*", "", txt))), Method = "MC") %>%
+    select(Environment, Tier, ERM, corrected, Method)
+  ps <- readRDS(f_pssd) %>% transmute(Environment, Tier, ERM = ifelse(grepl("Food", ERM), "FD", "TT"),
+                                      corrected = Median, Method = "PSSD")
+  t2 <- published %>% left_join(bind_rows(ssd, mc, ps), by = c("Environment", "Tier", "ERM", "Method")) %>%
+    filter(!(is.na(published) & is.na(corrected))) %>%
+    mutate(Method = recode(Method, SSD = "SSD", MC = "MC + SSD", PSSD = "PSSD++"),
+           fold = corrected / published,
+           ERM = recode(ERM, FD = "Food dilution", TT = "Tissue translocation")) %>%
+    arrange(desc(Environment), ERM, Tier, factor(Method, c("SSD", "MC + SSD", "PSSD++")))
+  kable(t2 %>% transmute(Environment, ERM, Tier, Method, Published = fmt(published), Corrected = fmt(corrected),
+                         `Fold change` = ifelse(is.na(fold), "", sprintf("%.2g", fold))),
+        caption = "Table C0. Median thresholds (particles/L, aligned to 1-5000 um) in Table 2 as published and as corrected (all corrections E1-E6 and R1; current data and code, production run). Tier 1 is the lower 95 % confidence limit of the HC5 (see the note on bootstrap samples below). Uncertainty intervals of the corrected values are in the analysis outputs.")
+}
+```
 
 ## Errors
 
@@ -151,11 +199,31 @@ if (!is.null(ladder)) {
   cat(sprintf(paste0("**Check of the baseline.** Step S0 reproduces the published PSSD++ medians to within a factor of %.2f-%.2f ",
                      "(median ratio %.2f) across the eight thresholds%s, which confirms that the attribution starts from the published analysis.\n\n"),
               min(rr), max(rr), median(rr), if (production) "" else " despite the reduced number of simulations"))
+  full_files <- list.files(file.path(res_dir, "fullsize_check"), "^ladder_nmc[0-9]+_sim300_S[0-9]+[.]rds$", full.names = TRUE)
+  if (length(full_files)) {
+    full <- bind_rows(lapply(full_files, function(f) readRDS(f)$results))
+    chk <- inner_join(full, ladder$results, by = c("step", "Tier", "Environment", "ERM"), suffix = c(".full", ".att"))
+    cat(sprintf(paste0("**Check of the reduced simulation count.** Steps %s were also run with the full 9,424 Monte Carlo ",
+                       "simulations; the %d medians agree with the %s-simulation results to within %.0f%% (median difference %.0f%%).\n\n"),
+                paste(sort(unique(chk$step)), collapse = ", "), nrow(chk), format(ladder$n_mc, big.mark = ","),
+                100 * max(abs(chk$Median.att / chk$Median.full - 1)), 100 * median(abs(chk$Median.att / chk$Median.full - 1))))
+  }
+  f_render <- here("data/output/PNEC_summary_table_wide.rds")
+  if (file.exists(f_render) && "S6" %in% ladder$results$step) {
+    rr6 <- ladder$results %>% filter(step == "S6") %>%
+      inner_join(readRDS(f_render) %>% select(Tier, Environment, ERM, Median), by = c("Tier", "Environment", "ERM"),
+                 suffix = c("", ".render"))
+    cat(sprintf(paste0("**Check of the end point.** The fully corrected step (S6) reproduces the medians of the production ",
+                       "run of the analysis (Table C0) to within %.0f%% (median difference %.0f%%).\n\n"),
+                100 * max(abs(rr6$Median / rr6$Median.render - 1)), 100 * median(abs(rr6$Median / rr6$Median.render - 1))))
+  }
   cat(paste0("**Notes.** In vitro exclusion (S2) changes the PSSD++ thresholds only through *P. huttoni*, which the database ",
              "then coded as in vitro; the rainbow trout cell-culture records do not reach Tiers 3 and 4, which require organism- or ",
              "population-level endpoints. The record is corrected to in vivo in R1 (S4). Propagating particle-shape uncertainty (S6) ",
-             "changes the aligned values of freshwater fragments but not the median thresholds, because those records are not among the most ",
-             "sensitive species.\n"))
+             "changes the aligned values of freshwater fragments, which are mostly not among the most sensitive species. ",
+             "In steps S1-S3 the freshwater food dilution Tier 3 and Tier 4 values are equal: removing the 5 mm default leaves ",
+             "six freshwater species with a known mouth size, too few for the HC5 and HC10 to differ (see the note on the ",
+             "quantile method below); the record-level corrections in R1 (S4) restore eight species.\n"))
 }
 ```
 
@@ -263,24 +331,33 @@ if (!is.null(nboot)) {
 
 Ten bootstrap samples have two consequences. The limits are noisy, which matters for a single (traditional) SSD; for MC + SSD this noise largely averages out in the median over thousands of simulations. They are also biased: a 95 % interval from 10 values is bounded by the most extreme of only 10 draws and cannot reach into the tails, so lower limits tend to be too high, i.e. less protective. This bias does not average out over simulations. Tier 1 thresholds (traditional SSD and MC + SSD) and the lower bounds of the SSD intervals in Table 2 should therefore be read as upper estimates; HC point estimates (Tiers 2–4) are unaffected. The analysis keeps 10 bootstrap samples, consistent with the ToMEx 2.0 web application.
 
+### Quantile method for the PSSD++ HCx (Supplementary Information)
+
+The Supplementary Information states that using quantile type 8 instead of type 1 "ensures that distinct values are produced for every HCx (e.g., HC5, HC10), even with limited data". This holds only above a minimum number of species. With *n* species, type 8 places the *p*th quantile at rank (*n* + ⅓)*p* + ⅓, and ranks below 1 return the most sensitive species: the HC10 equals the HC5 (both the most sensitive species) when there are six or fewer species, and the HC5 equals the most sensitive species' value in each simulation when there are 13 or fewer. The Tier 3 and 4 PSSD++ thresholds are based on 7–13 species per environment and ERM, so their HC5 values are effectively those of the most sensitive species, while the HC10 values differ from them. The method is unchanged.
+
 ### Version of ssdtools
 
  The SSDs were fitted with ssdtools 0.3.7, as stated. Later versions (≥ 2.0) average the fitted distributions differently by default (the HC5 of the model-averaged mixture distribution, rather than the weighted mean of each distribution's HC5), which lowers Tier 2–4 HC5s for these data by 0–47 %; with the earlier averaging they reproduce our values to within 1 %. This is a change of method in ssdtools, not an error in the version we used, and the thresholds are not changed on that account.
 
 ## Effect on the conclusions
 
-*To be completed after the production run.*
+::: {.callout-note}
+Draft for the authors' review.
+:::
+
+The corrections change the food dilution thresholds substantially and the tissue translocation thresholds little (Table C0). Food dilution thresholds increase for every method, tier and environment: by about 5- to 55-fold in freshwater and 11- to 50-fold in marine waters (more for the marine MC + SSD Tier 1 value). The published food dilution thresholds were therefore too low, i.e. more protective than the data support. The largest contribution is the removal of the 5 mm default ingestible size for organisms without a mouth size (E1), which had assigned the most sensitive small species very low aligned effect concentrations (about 21-fold in freshwater and 4-fold in marine waters at Tier 3; Table C2). The database refinements (R1) partly offset this in freshwater, where documented body lengths return sensitive species such as *Moina macrocopa* to the food dilution SSD, and increase the marine values; the other corrections change the PSSD++ thresholds by up to about 30 %. Tissue translocation thresholds change by less than 2-fold.
+
+Most qualitative conclusions are unchanged: marine thresholds remain lower than freshwater thresholds, and food dilution thresholds remain lower than tissue translocation thresholds, for all tiers and methods. Two comparisons between methods change in degree. Traditional SSD and MC + SSD medians are within about 10–20 % of each other at Tiers 3 and 4, but up to about 45 % apart in marine waters at Tiers 1 and 2 (e.g. marine tissue translocation Tier 2: 16 vs 11 particles/L), because the MC + SSD now propagates the uncertainty of predicted mouth sizes (E4). PSSD++ gives the lowest median in six of the eight Tier 3 and 4 cases rather than all; the exceptions are freshwater food dilution Tier 4 (essentially equal to MC + SSD) and freshwater tissue translocation Tier 4 (12,000 vs 8,300–9,200 particles/L). Statements that quote threshold values or ratios, in particular for food dilution (e.g. the range "1 × 10⁻⁵ to 137 particles/L" and "PSSD++ thresholds were consistently lower by up to 2-fold" in Section 3.3, the marine-to-freshwater ratios in Section 3.4.2, and "0.5–2.5 orders of magnitude" in Section 4.3.3), should be replaced with values from the corrected results. Risk characterisations that used the published food dilution thresholds overstate the risk from food dilution by the factors in Table C0.
 
 ## Reproducibility
 
 All corrections are implemented in PSSDplusplus v0.4.0 and in the analysis scripts of <https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk>; the database corrections are in [SCCWRP/ToMEx_AquaticOrganisms#5](https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5). From the repository root:
 
 ```sh
-# stepwise attribution (Table C2); small check, then production
-Rscript docs/correction/R/pssd_correction_ladder.R 30 20
-# production: one step per process, nothing else running (~60 GB each);
-# re-running a command resumes from its checkpoints
-for s in S0 S1 S2 S3 S4 S5 S6; do Rscript docs/correction/R/pssd_correction_ladder.R 9424 300 $s; done
+# stepwise attribution (Table C2): one step per process (steps are independent
+# and can run in parallel, a few GB each); re-running a command resumes from
+# its checkpoints
+for s in S0 S1 S2 S3 S4 S5 S6; do Rscript docs/correction/R/pssd_correction_ladder.R 1000 300 $s; done
 # bootstrap sample size (Table C4)
 Rscript docs/correction/R/nboot_impact.R 20 4
 # record-level CoV statistics as published and correctly merged (Table C3)

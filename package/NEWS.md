@@ -178,6 +178,12 @@ New features
   name was reused, so a run with changed data or settings could silently
   return old results. Pass a persistent `base_cache_dir` for long runs; the
   default temporary directory does not survive a crash.
+- `make_all_pSSDs()` gains `combo_seed = TRUE`: each PSSD++ combination runs
+  with its own seed, `2026 + sum(utf8ToInt(combo_id))`, as in the manuscript
+  pipeline, so results are reproducible and independent of the order of
+  combinations and of serial vs parallel runs (the caller's random number
+  state is restored). `combo_seed = FALSE` draws from the caller's stream, as
+  before.
 - New `tomex2` columns: `body.length.basis`, `body.length.tier`,
   `body.length.cm.database` (value before correction), `max.size.ingest.basis`
   ("reported (record)", "reported (species, life stage)", "override",
@@ -302,8 +308,18 @@ The analysis scripts in this repository (`scripts/`), used for Coffin et al.
   identical PNEC distributions from identical inputs and seeds. The PSSD++
   plotting grid differs by design (the package spans the observed range).
 
-<!-- Effect on results: to be added after the full re-run (deterministic SSD,
-MC + SSD and PSSD++), before the 0.4.0 release is finalized. -->
+Effect on results
+-----------------
+Re-running the manuscript pipeline with all corrections (production run,
+2026-10-21; details and attribution in `docs/correction/`):
+- Food Dilution thresholds increase for every method, tier and environment:
+  about 5- to 55-fold in freshwater and 11- to 50-fold in marine waters
+  (e.g. PSSD++ Tier 3 HC5: freshwater 31 -> 220, marine 0.14 -> 1.6
+  particles/L). The main cause is the removal of the 5 mm default for missing
+  mouth sizes.
+- Tissue Translocation thresholds change by less than 2-fold.
+- Analyses run with PSSDplusplus < 0.4.0 that used Food Dilution thresholds
+  should be re-run.
 
 PSSDplusplus 0.3.5
 ==================

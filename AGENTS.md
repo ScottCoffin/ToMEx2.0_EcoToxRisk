@@ -50,11 +50,11 @@ exist).
 | `functions.R::generate_plots_and_summary()`, `prep_data()`, `prepare_plot_data()` | `functions.R` same names; `scripts/PSSD/{rmore,do.pssd}.r` |
 | `vivo.R::ssd_eligible()`, `normalize_vivo()` | `vivo_functions.R` |
 
-Known, intended differences: the package's PSSD++ plotting grid (`$quantiles$iv`)
-spans the observed range instead of 10^-5–10^10 (plots only), and
-`make_all_pSSDs()` runs combinations environment-first, while the Rmd loop is
-ERM-first, so a single shared seed gives different draws after the first
-combination.
+Known, intended difference: the package's PSSD++ plotting grid
+(`$quantiles$iv`) spans the observed range instead of 10^-5–10^10 (plots
+only). Both seed each PSSD++ combination with `2026 + sum(utf8ToInt(combo_id))`
+(`make_all_pSSDs(combo_seed = TRUE)`, the default), so they give identical
+draws whatever the order of combinations or the caller's seed.
 
 ## Verify a change
 
@@ -97,8 +97,8 @@ identical results; repeat it if you touch those paths.
   MC Rmd stops unless every worker has ssdtools 0.3.7. Setting `R_LIBS`
   before launching R also works.
 - **Seeds.** SSD fits use `set.seed(99)` (Tier 1 = HC5 lower confidence limit
-  from only `nboot = 10` bootstraps, so it is seed-sensitive). PSSD++ draws
-  from the global stream; set a seed before the loop.
+  from only `nboot = 10` bootstraps, so it is seed-sensitive). Each PSSD++
+  combination is seeded from its name (Rmd loop and `make_all_pSSDs()`).
 - **`unique_id`** is the row number of the data *passed to* `align_data()`,
   assigned before its internal filtering. Re-aligning already-aligned data
   renumbers rows (and freezes widths/heights filled from the default R.ave and
@@ -122,6 +122,14 @@ identical results; repeat it if you touch those paths.
   machine (not alongside the MC, a render or another PSSD++ run), or the
   system runs out of commit memory and other jobs crash. Run combinations as separate
   processes (memory, not cores, is the limit: ~64 GB for 300 sims).
+- **Render the PSSD++ loop in separate processes.** In one `rmarkdown::render`
+  session the loop's memory grew to ~180 GB committed by the fourth
+  combination (2026-10-21) and the machine started paging heavily. Run the
+  Rmd up to the loop, save the workspace, run each combination in its own R
+  process with `pssd_only <- "<combo_id>"` (the loop skips the others), then
+  render: the loop loads the cached combinations (same inputs, same
+  fingerprint). Each combination has its own seed (`2026 + sum(utf8ToInt(combo_id))`),
+  so results are identical either way.
 - **Checkpointing (resume after a crash: re-run the same command).** MC Sobol
   loop: `scripts/monte carlo/output/sobol_checkpoints/` (every 500 sims);
   manuscript PSSD++: `output/pssd_cache/<method>_<sim>sims/` (per
@@ -144,31 +152,30 @@ identical results; repeat it if you touch those paths.
 
 Order matters; each step needs the previous one.
 
-- [ ] **Re-run the MC** (`scripts/monte carlo/EcoTox_MonteCarlo.Rmd`). The
-      2026-10-21 06:27 run is invalid (its parallel workers loaded ssdtools
-      2.5.0; outputs moved out of the repo); re-started 06:56 with the worker
-      check and checkpoints. Re-render and attribution follow automatically
-      (one job at a time).
+- [x] **Re-run the MC**: done 2026-10-21 12:03 (worker check passed; an
+      earlier 06:27 run was invalid, its workers loaded ssdtools 2.5.0).
 - [x] `nboot` decision: stays 10 (analysis, package, Shiny app); the effect
       of 1000 is tested on a subsample by `docs/correction/R/nboot_impact.R`
       and reported in the correction (Table C4).
-- [ ] **Re-render `scripts/ToMEx2_EcoTox.Rmd`** after the MC. PSSD++ uses
-      `rmore_method = "lognormal"`, the published method (described in the SI;
-      ~40 min per combination). A `"step"` run (~90 h in total) is optional
-      and not needed for the correction.
-- [ ] **Production attribution** (lognormal, ~3+ h per step; one step at a
-      time with nothing else running, see memory note):
-      `Rscript docs/correction/R/pssd_correction_ladder.R 9424 300 S0` ... `S6`,
-      then `quarto render docs/correction/correction_PSSDpp.qmd`.
-      The document switches from "draft" to final automatically.
+- [x] **Re-render `scripts/ToMEx2_EcoTox.Rmd`**: done 2026-10-21 15:23
+      (PSSD++ combinations in separate processes, then the render from the
+      cache; no chunk errors). A `"step"` PSSD++ run (~90 h) is optional.
+- [x] **Attribution**: done 2026-10-22 with 1,000 MC x 300 PSSD++ sims per
+      step (decided with the author), steps run one at a time. Full-size
+      (9,424) S0-S2 agree within 4% (`docs/correction/results/fullsize_check/`);
+      S6 reproduces the production render within 9%. Correction rendered.
 - [x] `docs/correction/R/cov_misjoin_impact.R` on the published MC output.
 - [x] CoV statistics of the corrected MC added to the correction.
 - [ ] **Archive the published outputs** that are not in git
       (`scripts/monte carlo/output/pre_issue6/`, `output/pssd_cache_pre_issue6/`)
       to a permanent repository (e.g. Zenodo) and cite them in the correction.
       Needs the author's account.
-- [ ] Fill in "Effect on the conclusions" in the correction and the
-      "Effect on results" placeholder in `package/NEWS.md`; finalize 0.4.0.
+- [x] Draft "Effect on the conclusions" (correction) and "Effect on results"
+      (`package/NEWS.md`) from the production render. **Authors to review.**
+- [x] **Release 0.4.0**: code (58114b0) plus regenerated outputs and the
+      final correction committed on branch `v0.4.0-corrections` and pushed
+      2026-10-22. Next: review/merge into `main` (closes #6); authors to review
+      the drafted conclusions; archive the published outputs (item above).
 
 ## Open technical debt
 

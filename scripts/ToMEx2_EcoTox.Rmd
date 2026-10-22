@@ -5014,7 +5014,7 @@ base_cache_dir <- "../output/pssd_cache/"
 cache_dir <- paste0(base_cache_dir, rmore_method, "_", sim, "sims") 
 
 # Create cache directory if it doesn't exist
-if (!dir.exists(cache_dir)) dir.create(cache_dir)
+if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE) # parent may not exist yet
 
 # Initialize tracking
 total_iterations <- length(tiers) * length(environments) * length(erms)
@@ -5034,6 +5034,8 @@ for (tier in tiers) {
       iteration_start_time <- Sys.time()
       
       combo_id <- paste0("Tier", tier, "_", environment, "_", erm)
+      # optional: run only some combinations (e.g. one per R process, to limit memory)
+      if (exists("pssd_only") && !combo_id %in% pssd_only) next
       cache_file <- file.path(cache_dir, paste0(combo_id, ".rds"))
 
       # a cached combination is reused only if it was computed from the same
@@ -5059,6 +5061,9 @@ for (tier in tiers) {
       tryCatch({
         results_df <- get_results_df(tier, environment, erm)
         
+        # seed per combination (from its name): reproducible, and identical whether the
+        # combinations run in one session or in separate processes
+        set.seed(2026 + sum(utf8ToInt(combo_id)))
         result <- generate_plots_and_summary(
           tier = tier,
           environment = environment,
