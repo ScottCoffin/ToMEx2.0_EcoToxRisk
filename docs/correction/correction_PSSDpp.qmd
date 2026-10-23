@@ -361,7 +361,7 @@ Rscript docs/correction/R/cov_misjoin_impact.R
 quarto render docs/correction/correction_PSSDpp.qmd
 ```
 
-The attribution reads the published input data from the repository history (commit `0d44be7`), the input with reported mouth sizes restored (`3bcc930`), and the current input (`data/input/aoc_z_tomex2.RDS`). The CoV comparison reads the published MC output, archived outside git in `scripts/monte carlo/output/pre_issue6/`.
+The attribution reads the published input data from the repository history (commit `0d44be7`), the input with reported mouth sizes restored (`3bcc930`), and the current input (`data/input/aoc_z_tomex2.RDS`). The CoV comparison reads the published MC output. The intermediate outputs of the published analysis (Monte Carlo results and PSSD++ results, December 2025), which are too large for the code repository, are archived at Zenodo: <https://doi.org/10.5281/zenodo.23582905>; unpack `monte_carlo_output_published/` to `scripts/monte carlo/output/pre_issue6/` to rerun the comparison.
 
 ```{r session}
 if (!is.null(ladder)) cat(sprintf("Attribution run: PSSDplusplus %s, %d MC and %d PSSD++ simulations, %.0f min, %s.\n",

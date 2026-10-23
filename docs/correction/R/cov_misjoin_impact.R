@@ -8,7 +8,8 @@
 # the correct record (the k-th MC record is the k-th row of aoc_aligned_test;
 # verified by species), and compares the CoV statistics reported in the paper.
 #
-# Inputs: the published MC outputs (December 2025), kept outside git in
+# Inputs: the published MC outputs (December 2025), archived at
+#   https://doi.org/10.5281/zenodo.23582905 (folder monte_carlo_output_published/); place them in
 #   scripts/monte carlo/output/pre_issue6/{results_df_sobol,aoc_MC_sobol}.rds
 # Usage (repo root): Rscript docs/correction/R/cov_misjoin_impact.R [out.rds]
 

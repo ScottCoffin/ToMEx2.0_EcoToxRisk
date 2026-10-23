@@ -166,18 +166,14 @@ Order matters; each step needs the previous one.
       S6 reproduces the production render within 9%. Correction rendered.
 - [x] `docs/correction/R/cov_misjoin_impact.R` on the published MC output.
 - [x] CoV statistics of the corrected MC added to the correction.
-- [ ] **Archive the published outputs** that are not in git
-      (`scripts/monte carlo/output/pre_issue6/`, `output/pssd_cache_pre_issue6/`).
-      Bundle ready (2026-10-22): `../ToMEx2.0_EcoToxRisk_published_outputs_2025-12.zip`
-      (541 MB; README + MD5SUMS). Author uploads it to Zenodo; then replace the
-      "archived outside git" sentence in the correction's Reproducibility
-      section with the DOI.
+- [x] **Archive the published outputs**: Zenodo, https://doi.org/10.5281/zenodo.23582905
+      (`monte_carlo_output_published/` = `scripts/monte carlo/output/pre_issue6/`,
+      `pssd_cache_published/` = `output/pssd_cache_pre_issue6/`); cited in the correction.
 - [x] "Effect on the conclusions" (correction) and "Effect on results"
       (`package/NEWS.md`): approved by the author 2026-10-22.
 - [x] **Release 0.4.0**: code (58114b0) plus regenerated outputs and the
       final correction committed on branch `v0.4.0-corrections` and pushed
-      2026-10-22. Next: review/merge into `main` (closes #6); archive the published
-      outputs (item above).
+      2026-10-22. Next: review/merge into `main` (closes #6).
 
 ## Open technical debt
 
