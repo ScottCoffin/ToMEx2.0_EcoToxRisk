@@ -171,9 +171,10 @@ Order matters; each step needs the previous one.
       `pssd_cache_published/` = `output/pssd_cache_pre_issue6/`); cited in the correction.
 - [x] "Effect on the conclusions" (correction) and "Effect on results"
       (`package/NEWS.md`): approved by the author 2026-10-22.
-- [x] **Release 0.4.0**: code (58114b0) plus regenerated outputs and the
-      final correction committed on branch `v0.4.0-corrections` and pushed
-      2026-10-22. Next: review/merge into `main` (closes #6).
+- [x] **Release 0.4.0**: merged into `main` via PR #7 (merge commit 46f3e60,
+      closes #6) and published as GitHub release `v0.4.0` (tarball attached),
+      2026-10-23. Still open elsewhere: SCCWRP/ToMEx_AquaticOrganisms#5 (draft;
+      needs a maintainer review and merge).
 
 ## Open technical debt
 
@@ -186,4 +187,3 @@ Order matters; each step needs the previous one.
 - `scripts/` functions should take explicit arguments instead of globals;
   converting the script pipeline to call the package would remove the mirror
   entirely.
-- 0.4.0 release: see the to-do list above.
