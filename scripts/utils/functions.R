@@ -1,4 +1,16 @@
 ##### FUNCTIONS #####
+# Mirrors package/R/functions.R (PSSDplusplus): change both and run
+# scripts/tests/test_align_data_equivalence.R. See AGENTS.md at the repo root.
+#
+# Several functions here read globals defined by the calling Rmd rather than
+# arguments; define them (and list them in foreach .export) before calling:
+#   model_wrapper_sobol_parallel(): aoc_risk_paper (default tox_data), x1D_set,
+#     x2D_set, sim.upper.tissue.trans.size.um, nboot (via ssd_functions.R)
+#   get_results_df(): erm_registry
+#   generate_plots_and_summary(): global_color_palette (default color_palette)
+#   SSD_function_t*() in ssd_functions.R: nboot
+# matrix_function() is defined twice below; the second definition is the one
+# in effect (its column names use dots, e.g. sim.beta.log10.body.length).
 
 ### Generalizable function that works on any value (alpha == 1 and == 2 are limits!)
 mux_polyfnx <- function(a.x, x_UL, x_LL) {
@@ -610,6 +622,10 @@ align_data <- function(
       mutate(environment = env_f)
   }
 
+  if (!"max.size.ingest.basis" %in% names(df)) {
+    df$max.size.ingest.basis <- NA_character_
+  }
+
   df <- df %>%
     ungroup() %>% #if data grouped - bad things happen
     #assign user  input values
@@ -681,33 +697,43 @@ align_data <- function(
     ###############################################################################
     ###### Determine bioaccesible fractions for polydisperse particle mixtures ####
     ######################################################################################
-    # mouth size: use the reported value; only when it is missing, predict
-    # from body length (Jams et al. 2020; GitHub issue #6)
+    # mouth size: use the reported value; only when none is reported, predict
+    # from body length (Jams et al. 2020; GitHub issue #6). Values the database
+    # predicted itself (max.size.ingest.basis "predicted ...") are re-predicted
+    # so sampled coefficients propagate (identical at the defaults).
     mutate(
       max.size.ingest.um = coalesce(
-        max.size.ingest.um,
+        if_else(
+          !is.na(max.size.ingest.basis) &
+            startsWith(max.size.ingest.basis, "predicted"),
+          NA_real_,
+          max.size.ingest.um
+        ),
         if_else(
           !is.na(body.length.cm) & body.length.cm > 0,
           1000 * 10^(beta_log10_body_length * log10(body.length.cm * 10) -
             body_length_intercept),
           NA_real_
-        )
+        ),
+        max.size.ingest.um
       )
     ) %>%
-    # define upper size length for ingestion
+    # define upper size length for ingestion: mouth size capped at x2D_set.
+    # Unknown mouth size (no reported size, no body length) is NA, so the
+    # record is excluded from food dilution (GitHub issue #6)
     mutate(
       x2M_ingest = case_when(
-        is.na(max.size.ingest.um) ~ x2D_set,
-        max.size.ingest.um < x2D_set ~ max.size.ingest.um,
+        is.na(max.size.ingest.um) ~ NA_real_,
+        max.size.ingest.um <= x2D_set ~ max.size.ingest.um,
         max.size.ingest.um > x2D_set ~ x2D_set
       )
-    ) %>% #set to 5,000 as upper limit or max size ingest, whichever is smaller
+    ) %>%
     # define upper size length for Translocation
     #set to 88um for upper limit or max size ingest, whichever is smaller
     mutate(
       x2M_trans = case_when(
         is.na(max.size.ingest.um) ~ upper.tissue.trans.size.um,
-        max.size.ingest.um < upper.tissue.trans.size.um ~ max.size.ingest.um,
+        max.size.ingest.um <= upper.tissue.trans.size.um ~ max.size.ingest.um,
         max.size.ingest.um >
           upper.tissue.trans.size.um ~ upper.tissue.trans.size.um
       )
@@ -1193,7 +1219,9 @@ align_data <- function(
       translocatable = case_when(
         !is.na(translocatable_poly) ~ translocatable_poly,
         T ~ translocatable
-      )
+      ),
+      # mouth size unknown: not alignable for ingestion
+      ingestible = if_else(is.na(x2M_ingest), "unknown", ingestible)
     ) %>%
     #rowwise() %>%
     mutate(unique_id = row_number()) %>%
@@ -1205,6 +1233,7 @@ align_data <- function(
     mutate(
       particles.mL.food.dilution = case_when(
         Group == "Algae" ~ NA,
+        is.na(x2M_ingest) ~ NA,
         T ~ particles.mL.food.dilution
       )
     ) %>%
@@ -1446,13 +1475,16 @@ matrix_function <- function(
 
 
 #### MC-SIM Align Data and generate thresholds (preps data for PSSD++ AND runs MC-SIM SSD method)
-model_wrapper_sobol_parallel <- function(params, simulation_id) {
-  # perform alignments using parameters for simulation
+model_wrapper_sobol_parallel <- function(params, simulation_id, tox_data = aoc_risk_paper) {
+  # perform alignments using parameters for simulation. Align the unaligned
+  # records (as PSSDplusplus::MC_sim_align_parallel() does): re-aligning
+  # already-aligned data would keep widths/heights filled with the default
+  # R.ave and H:W ratio instead of this simulation's sampled values
   aoc_MC_iter <- align_data(
-    aoc_aligned,
+    tox_data,
     upper.tissue.trans.size.um_input = params$upper.tissue.trans.size.um[1],
-    body_length_intercept_input = params$sim_body_length_intercept[1],
-    beta_log10_body_length_input = params$sim_beta_log10_body_length[1],
+    body_length_intercept_input = (params[["sim.body.length.intercept"]] %||% params[["sim_body_length_intercept"]] %||% 1.12)[1],
+    beta_log10_body_length_input = (params[["sim.beta.log10.body.length"]] %||% params[["sim_beta_log10_body_length"]] %||% 0.9341)[1],
     R.ave.marine_input = params$R.ave.water.marine[1],
     H_W_ratio.marine_input = params$H_W_ratio.marine[1],
     alpha.marine_input = params$alpha.marine[1],
@@ -1538,8 +1570,8 @@ MC_sim_align_wrapper <- function(tox_data, params, simulation_id) {
   aligned_tox_data <- align_data(
     tox_data,
     upper.tissue.trans.size.um_input = params$upper.tissue.trans.size.um[1],
-    body_length_intercept_input = params$sim_body_length_intercept[1],
-    beta_log10_body_length_input = params$sim_beta_log10_body_length[1],
+    body_length_intercept_input = (params[["sim.body.length.intercept"]] %||% params[["sim_body_length_intercept"]] %||% 1.12)[1],
+    beta_log10_body_length_input = (params[["sim.beta.log10.body.length"]] %||% params[["sim_beta_log10_body_length"]] %||% 0.9341)[1],
     R.ave.marine_input = params$R.ave.water.marine[1],
     H_W_ratio.marine_input = params$H_W_ratio.marine[1],
     alpha.marine_input = params$alpha.marine[1],
@@ -1607,6 +1639,8 @@ MC_sim_align_parallel <- function(
   }
   # make cluster
   cl <- makeCluster(num_cores)
+  # workers are fresh R sessions: use this session's libraries (same package versions)
+  parallel::clusterCall(cl, function(p) invisible(.libPaths(p)), .libPaths())
   registerDoSNOW(cl)
   # list number of cores used
   message(crayon::yellow(paste0(
@@ -2188,7 +2222,12 @@ generate_plots_and_summary <- function(
 generate_color_palette <- function(data) {
   unique_groups <- unique(data$Group) # Extract unique levels of Group
   #palette <- cols4all::c4a("seaborn.dark", n = length(unique_groups)) # Generate colors
-  palette <- cols4all::c4a("cols4all.area9d", n = length(unique_groups)) # Generate colors
+  # area9d has 9 colours; beyond that, fall back to evenly spaced hues
+  palette <- if (length(unique_groups) <= 9) {
+    cols4all::c4a("cols4all.area9d", n = length(unique_groups)) # Generate colors
+  } else {
+    scales::hue_pal()(length(unique_groups))
+  }
   names(palette) <- unique_groups # Assign names to the colors
   return(palette)
 }
@@ -3173,7 +3212,8 @@ make_all_pSSDs <- function(
       nrow(combo_tbl),
       workers
     ))
-    future::plan(multisession, workers = workers)
+    # workers use this session's libraries, so they load the same package versions
+    future::plan(multisession, workers = workers, rscript_libs = .libPaths())
   } else {
     silent = FALSE # sequential progress update
     cat("⚙️ Running PSSD combinations sequentially\n")

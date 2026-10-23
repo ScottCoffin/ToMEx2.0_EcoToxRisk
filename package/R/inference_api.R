@@ -9,6 +9,8 @@
 #'   identifies species, and `ec` is a positive numeric effect concentration on
 #'   the linear scale, in particles/L. Optional column `ec_sd` supplies
 #'   endpoint-level standard deviations on the same scale for `DP.SD`.
+#'   If a `vivo_f` column is present, in vitro records are dropped
+#'   ([ssd_eligible()]).
 #' @param sim Integer number of Monte Carlo iterations.
 #' @param cv_dp Numeric coefficient of variation for endpoint uncertainty.
 #' @param cv_uf Numeric coefficient of variation for uncertainty factors.
@@ -53,6 +55,10 @@ hc5_from_endpoints <- function(
       paste(missing_cols, collapse = ", "),
       call. = FALSE
     )
+  }
+  # SSDs use in vivo data only
+  if ("vivo_f" %in% names(endpoints)) {
+    endpoints <- ssd_eligible(endpoints)
   }
   if (!is.numeric(endpoints$ec) || any(!is.finite(endpoints$ec)) ||
       any(endpoints$ec <= 0)) {

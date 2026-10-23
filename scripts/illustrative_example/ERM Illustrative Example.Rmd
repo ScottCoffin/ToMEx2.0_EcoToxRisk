@@ -165,10 +165,10 @@ aoc_z <- aoc_z %>%
     x1M_set = x1M_set,
     upper.tissue.trans.size.um = upper.tissue.trans.size.um,
     # max ingestible particle size for bioavailability restriction
-    x2M_ingest = case_when(max.size.ingest.um < x2D_set ~ max.size.ingest.um, 
+    x2M_ingest = case_when(max.size.ingest.um <= x2D_set ~ max.size.ingest.um, 
                            max.size.ingest.um >= x2D_set ~ x2D_set), #if max ingestible size is bigger than default distribution size, then just use that
     # max translocatable particle size for bioavailability restriction
-    x2M_trans = case_when(max.size.ingest.um < upper.tissue.trans.size.um ~  max.size.ingest.um,
+    x2M_trans = case_when(max.size.ingest.um <= upper.tissue.trans.size.um ~  max.size.ingest.um,
                           max.size.ingest.um >= upper.tissue.trans.size.um ~ upper.tissue.trans.size.um)) %>%  #if max ingestible size is
   filter(tier_zero_tech_f == "Red Criteria Passed",
          tier_zero_risk_f == "Red Criteria Passed") %>% 
@@ -481,10 +481,10 @@ POD <- POD %>%
     x1M_set = x1M_set,
     upper.tissue.trans.size.um = upper.tissue.trans.size.um,
     # max ingestible particle size for bioavailability restriction
-    x2M_ingest = case_when(max.size.ingest.um < x2D_set ~ max.size.ingest.um, 
+    x2M_ingest = case_when(max.size.ingest.um <= x2D_set ~ max.size.ingest.um, 
                            max.size.ingest.um >= x2D_set ~ x2D_set), #if max ingestible size is bigger than default distribution size, then just use that
     # max translocatable particle size for bioavailability restriction
-    x2M_trans = case_when(max.size.ingest.um < upper.tissue.trans.size.um ~  max.size.ingest.um,
+    x2M_trans = case_when(max.size.ingest.um <= upper.tissue.trans.size.um ~  max.size.ingest.um,
                           max.size.ingest.um >= upper.tissue.trans.size.um ~ upper.tissue.trans.size.um)) %>%  #if max ingestible size is bigger than translocatable size, then use the translocatable size
   # determine mu_p_poly for ingestion
   mutate(mu.p.poly_ingest = mux_polyfnx(a.x = alpha, 
@@ -1500,14 +1500,14 @@ aoc_final <- df %>%
   ###### Determine bioaccesible fractions for polydisperse particle mixtures ####
 ######################################################################################
 # define upper size length for ingestion 
-  mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ x2D_set, 
-                                max.size.ingest.um < x2D_set ~ max.size.ingest.um,
+  mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ NA_real_, #unknown mouth size: excluded from food dilution (no 5 mm default) 
+                                max.size.ingest.um <= x2D_set ~ max.size.ingest.um,
                                 max.size.ingest.um > x2D_set ~ x2D_set
                                 )) %>%  #set to 5,000 as upper limit or max size ingest, whichever is smaller
   # define upper size length for Translocation 
 #set to 88um for upper limit or max size ingest, whichever is smaller
 mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size.um, 
-                             max.size.ingest.um  < upper.tissue.trans.size.um ~  max.size.ingest.um,
+                             max.size.ingest.um  <= upper.tissue.trans.size.um ~  max.size.ingest.um,
                              max.size.ingest.um  > upper.tissue.trans.size.um ~ upper.tissue.trans.size.um)) %>% 
   # tag ingestible/translocatable for monodisperse
       mutate(ingestible = case_when(

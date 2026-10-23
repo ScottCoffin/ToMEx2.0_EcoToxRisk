@@ -13,7 +13,10 @@ MC_sim_align_parallel(
   num_cores = 1,
   suppress_warnings = TRUE,
   x1M_set = x1D_set,
-  missing_mouth = c("exclude", "x2D")
+  missing_mouth = c("exclude", "x2D"),
+  mouth_size_source = c("reported", "body_length"),
+  checkpoint_dir = NULL,
+  checkpoint_every = 500
 )
 }
 \arguments{
@@ -46,6 +49,20 @@ default, records with neither a reported mouth size nor a body length are
 excluded from Food Dilution. Reported mouth sizes are always used as is;
 records with only a body length get a mouth size predicted with each
 simulation's sampled body-length coefficients.}
+
+\item{mouth_size_source}{Passed to \link[=align_data]{align_data()}. Only
+\code{"reported"} is supported; \code{"body_length"} is deprecated (warning, then
+treated as \code{"reported"}). Reported mouth sizes are never perturbed.}
+
+\item{checkpoint_dir}{Optional directory for checkpoints. When given, the
+simulations run in chunks of \code{checkpoint_every}; each finished chunk is
+saved (atomically) and, on a re-run with the same inputs, loaded instead
+of recomputed, so a crashed or interrupted run resumes where it stopped.
+Chunk files are keyed by a fingerprint of all inputs, so changed data or
+parameters are never mixed with old results. \code{NULL} (default) keeps
+everything in memory.}
+
+\item{checkpoint_every}{Number of simulations per checkpoint chunk.}
 }
 \value{
 A data frame with aligned doses for each simulation.

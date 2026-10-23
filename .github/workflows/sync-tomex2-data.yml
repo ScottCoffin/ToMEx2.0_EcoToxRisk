@@ -25,6 +25,9 @@ on:
         default: "false"
 
 # Paused 2026-07-01: upstream aoc_z_tomex2.RDS has known data issues.
+# PSSDplusplus 0.4.0 data depend on SCCWRP/ToMEx_AquaticOrganisms#5 (reported mouth
+# sizes, body-length corrections, in vitro exclusion). Do not sync from upstream
+# until that PR is merged; sync_tomex2_data.R refuses data without its fields.
 # Re-enable push/repository_dispatch/schedule triggers after upstream fixes are verified.
 # Since this workflow is now notification-only (no auto-commit/release), a
 # schedule trigger is lower-risk than before -- consider re-adding it once

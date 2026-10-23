@@ -45,6 +45,7 @@ align_data(
   a.m.sediment.marine_input = 1.5,
   a.ssa.sediment.marine_input = 2.54,
   missing_mouth = c("exclude", "x2D"),
+  mouth_size_source = c("reported", "body_length"),
   verbose = TRUE
 )
 }
@@ -172,8 +173,18 @@ and sets \code{ingestible = "unknown"}, so the record is left out of
 food-dilution SSDs (tissue translocation is unaffected). \code{"x2D"} restores
 the pre-0.3.6 behaviour of assuming ingestion up to \code{x2D_set}.}
 
+\item{mouth_size_source}{Kept for compatibility with the 0.3.6 development
+version. Only \code{"reported"} is supported: a reported (measured) mouth size
+is always used as is and never perturbed, and the body-length model, with
+its sampled coefficients, applies only to records without one (including
+values the database itself predicted, \code{max.size.ingest.basis} beginning
+\code{"predicted"}). \code{"body_length"} is deprecated: it gives a warning and is
+treated as \code{"reported"}.}
+
 \item{verbose}{Logical; report how many records (and species) were excluded
-from food dilution because their mouth size is unknown.}
+from food dilution because their mouth size is unknown, and warn when
+mouth sizes are predicted for animals below the robust range of the
+body-length model (< 30 mm).}
 }
 \value{
 The input data frame \code{df} augmented with ERM columns including
@@ -196,13 +207,23 @@ This is the per-simulation workhorse called by \code{\link[=MC_sim_align_paralle
 Call it directly when you want a single deterministic alignment using
 specific (e.g., default) parameter values.
 
-Maximum ingestible particle size (mouth size) is taken from the reported
-\code{max.size.ingest.um} whenever one exists. Only when it is missing is it
-predicted from \code{body.length.cm} with the model of Jams et al. (2020):
+Maximum ingestible particle size (mouth size) is taken from
+\code{max.size.ingest.um} whenever the data report one. A value the database
+predicted itself (\code{max.size.ingest.basis} beginning \code{"predicted"}, as for
+most \link{tomex2} records) is not treated as reported. Otherwise an optional
+\code{max.size.ingest.override.um} column (a measured gape or documented ceiling)
+is used, and only then is it predicted from \code{body.length.cm} with the model
+of Jams et al. (2020):
 \deqn{\log_{10}(\mathrm{mouth,\ mm}) = \beta \log_{10}(\mathrm{body\ length,\ mm}) - b}
 with \eqn{\beta} = \code{beta_log10_body_length_input} and \eqn{b} =
 \code{body_length_intercept_input}. The mouth size used is returned in
-\code{max.size.ingest.um.used}.
+\code{max.size.ingest.um.used} and its origin in \code{max.size.ingest.basis.used}.
+
+The Jams et al. (2020) model is calibrated on animals >= 9 mm and is less
+robust (tends to over-predict) below 30 mm. \code{jams_domain} classifies each
+record's \code{body.length.cm} as \code{"within"} (>= 30 mm), \code{"less_robust"} (9 to
+< 30 mm) or \code{"outside_calibration"} (< 9 mm); with \code{verbose = TRUE} a
+warning counts records whose mouth size is predicted outside \code{"within"}.
 }
 \seealso{
 \code{\link[=MC_sim_align_parallel]{MC_sim_align_parallel()}}, \code{\link[=make_tiered_SSDs]{make_tiered_SSDs()}}

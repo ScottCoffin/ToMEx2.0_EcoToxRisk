@@ -5,7 +5,8 @@
 \alias{tomex2}
 \title{ToMEx 2.0 ecotoxicity dataset}
 \format{
-A data frame with the fields described in the ToMEx 2.0 metadata.
+A data frame with the fields described in the ToMEx 2.0 metadata,
+plus the body-length and ingestible-size fields above.
 }
 \usage{
 data(tomex2)
@@ -13,6 +14,48 @@ data(tomex2)
 \description{
 Microplastics ecotoxicity records used throughout the PSSD++ workflow.
 Data are bundled as a plain data frame identical to the source RDS shipped
-in \code{inst/extdata/aoc_z_tomex2.RDS}.
+in \code{inst/extdata/aoc_z_tomex2.RDS}, which is \code{aoc_z_tomex2.RDS} built by
+\code{ToMEx2.0_Onboarding/ToMEx2.0_Data_Tidying.R} in the ToMEx 2.0 database
+repository (SCCWRP/ToMEx_AquaticOrganisms, release v2.0.1 of 2026-06-30,
+plus the body-length corrections of PSSDplusplus 0.4.0; see
+\code{data-raw/update_tomex2.R}).
+}
+\details{
+Body length and maximum ingestible particle size (mouth size) are resolved
+per test record:
+\describe{
+\item{\code{body.length.cm}}{Body length used for the test organisms: a
+row-level correction (measured in the study, a stage-matched literature
+value, or a flagged imputation), else the record's own value, else a
+species x life-stage reference. Never a default size; \code{NA} when
+unresolved.}
+\item{\code{body.length.cm.database}}{The database value before row-level
+corrections.}
+\item{\code{body.length.basis}}{Where \code{body.length.cm} comes from, e.g.
+\code{"study-measured"}, \code{"literature stage reference"}, \code{"imputed"},
+\code{"study-reported (ToMEx 1.0)"}, \code{"ToMEx 2.0 template"},
+\code{"literature (Koelmans et al. 2020)"}, \code{"adult species reference"},
+\code{"adult reference (stage mismatch)"} (an adult size on an early or
+juvenile record) or \code{"unresolved"}.}
+\item{\code{body.length.tier}}{Evidence tier of a row-level correction: A (from
+the study), B (direction certain, value from a related source) or C
+(imputed).}
+\item{\code{max.size.ingest.mm}, \code{max.size.ingest.um}}{Maximum ingestible
+particle size: a reported mouth size (the record's, else one reported
+for the same species and life stage), else an override, else the
+Jams et al. (2020) prediction from \code{body.length.cm}; \code{NA} when
+unresolved.}
+\item{\code{max.size.ingest.basis}}{\code{"reported (record)"},
+\code{"reported (species, life stage)"}, \code{"override"},
+\code{"predicted (Jams et al. 2020)"} or \code{"unresolved"}.}
+\item{\code{jams_domain}}{Calibration domain of the Jams et al. (2020) model
+for \code{body.length.cm}: \code{"within"} (>= 30 mm), \code{"less_robust"}
+(9 to < 30 mm) or \code{"outside_calibration"} (< 9 mm).}
+\item{\code{vivo_f}, \code{vivo_f.database}}{In vivo / in vitro status after and
+before record-level corrections. Only in vivo records are eligible for
+SSDs (\code{\link[=ssd_eligible]{ssd_eligible()}}).}
+\item{\code{ssd_exclusion_reason}}{\code{NA} (eligible), \code{"in vitro"},
+\code{"vivo status missing"}, or \code{"food dilution only: unresolved body length or mouth size"}.}
+}
 }
 \keyword{datasets}

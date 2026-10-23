@@ -26,11 +26,12 @@
 #'   correction. When `FALSE`, they are treated as unit multipliers for
 #'   sensitivity checks or NOEC-equivalent inputs.
 #' @param rmore_method Distribution method for sampling species-level NOEC
-#'   distributions in the PSSD++ step. `"step"` (default) uses a trapezoidal
-#'   piecewise-uniform approximation following Wigger et al. (2020), which is
-#'   consistent with published results. `"lognormal"` uses a log-normal
-#'   short-cut that is faster but assumes symmetric log-scale variability; use
-#'   only when speed matters more than strict comparability to the manuscript.
+#'   distributions in the PSSD++ step. `"step"` (default) uses the trapezoidal
+#'   piecewise-uniform approximation of Wigger et al. (2020). `"lognormal"`
+#'   samples a log-normal distribution fitted to each species' values; it is
+#'   the method used for the published thresholds (Coffin et al. 2026, SI),
+#'   gives nearly identical summary statistics, and is many times faster, but
+#'   smooths multimodal species distributions.
 #'
 #' @return A list containing the aligned data, PSSD outputs, and summary table.
 #' @export
@@ -44,7 +45,7 @@
 #'   result <- run_pssd_reprex(sim = 2, n_sim = 2, workers = 1, seed = 42)
 #'   result$pnec_summary
 #'
-#'   # Use lognormal method (faster, less precise)
+#'   # Log-normal species distributions (the method of the published analysis; faster)
 #'   run_pssd_reprex(sim = 2, n_sim = 2, workers = 1, rmore_method = "lognormal")
 #'
 #'   # For larger jobs, parallel processing is strongly recommended:
@@ -93,6 +94,7 @@ run_pssd_reprex <- function(
   }
 
   aoc_risk_paper <- aoc_risk_paper %>%
+    ssd_eligible() %>% # in vivo only: in vitro records never reach an SSD
     dplyr::rename(environment = env_f) %>%
     dplyr::mutate(AF.total = af.time * af.noec) %>%
     tidyr::drop_na(effect.metric) %>%

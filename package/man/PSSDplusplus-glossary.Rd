@@ -145,8 +145,11 @@ Koelmans et al. (2020).
 \item{Food dilution ERM}{
 MPs are modelled as caloric dilutants in the organism's diet. The
 alignment converts lab doses to environmentally relevant particle
-volumes per litre (particles/L) based on ingestible particle sizes
-(determined by species body length via an allometric model).
+volumes per litre (particles/L) based on ingestible particle sizes:
+a reported mouth size where available, otherwise predicted from the
+body length of the tested animals with the Jams et al. (2020)
+allometric model. Records with neither are excluded (never given a
+default size).
 }
 \item{Tissue translocation ERM}{
 MPs are modelled as particles that cross the gut epithelium into
@@ -157,8 +160,13 @@ probability of translocation.
 \item{Bioaccessibility}{
 The fraction of environmental MPs that can be absorbed by an organism
 based on particle size, shape, and species physiology. Two
-bioaccessibility limits are used: (1) ingestion (body-length-based
-allometric model) and (2) tissue translocation (logistic regression).
+bioaccessibility limits are used: (1) ingestion (reported mouth size,
+else the body-length-based allometric model) and (2) tissue
+translocation (logistic regression).
+}
+\item{In vivo / in vitro}{
+SSDs use in vivo data only (whole organisms exposed). In vitro records
+(e.g. cell cultures) are excluded from every SSD; see \code{\link[=ssd_eligible]{ssd_eligible()}}.
 }
 \item{Translocation}{
 Movement of particles from the digestive tract into tissues or the

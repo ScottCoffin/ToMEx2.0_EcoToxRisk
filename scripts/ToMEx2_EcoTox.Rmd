@@ -115,6 +115,7 @@ theme.dark <- theme_minimal(base_size = 15) +
 
 ```{r}
 source("utils/functions.R")
+source("utils/vivo_functions.R") # ssd_eligible(): in vitro records never reach an SSD
 source("utils/alignment_functions.R")
 ```
 
@@ -434,14 +435,14 @@ aoc_final <- df %>%
   ###### Determine bioaccesible fractions for polydisperse particle mixtures ####
 ######################################################################################
 # define upper size length for ingestion 
-  mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ x2D_set, 
-                                max.size.ingest.um < x2D_set ~ max.size.ingest.um,
+  mutate(x2M_ingest = case_when(is.na(max.size.ingest.um) ~ NA_real_, #unknown mouth size: excluded from food dilution (no 5 mm default) 
+                                max.size.ingest.um <= x2D_set ~ max.size.ingest.um,
                                 max.size.ingest.um > x2D_set ~ x2D_set
                                 )) %>%  #set to 5,000 as upper limit or max size ingest, whichever is smaller
   # define upper size length for Translocation 
 #set to 88um for upper limit or max size ingest, whichever is smaller
 mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size.um, 
-                             max.size.ingest.um  < upper.tissue.trans.size.um ~  max.size.ingest.um,
+                             max.size.ingest.um  <= upper.tissue.trans.size.um ~  max.size.ingest.um,
                              max.size.ingest.um  > upper.tissue.trans.size.um ~ upper.tissue.trans.size.um)) %>% 
   # tag ingestible/translocatable for monodisperse
       mutate(ingestible = case_when(
@@ -732,8 +733,9 @@ aoc_final
 ```{r}
 #saveRDS(aoc_final,"G:/My Drive/MooreInstitute/Projects/ToMEx2.0_EcoToxRisk/data/output/aoc_final.RDS")
 
-## dataset for thresholds
+## dataset for thresholds (in vivo only: every SSD below derives from aoc_final)
 aoc_final <- aoc_intermediate_alphas %>% 
+  ssd_eligible() %>% 
   filter(!environment %in% c("Terrestrial", "Not Reported"),
          Group != "Bacterium",
          Group != "Plant",
@@ -1904,6 +1906,7 @@ body_length_intercept <- 1.1200
 RUN THESE IN CONSOLE
 ```{r}
 source("utils/functions.R")
+source("utils/vivo_functions.R") # ssd_eligible(): in vitro records never reach an SSD
 ##### STEP 1: DERIVE VALUES TO RUN PROBABILISTICALLY #####
 source("utils/ssd_functions.R")
 source("utils/RDAmaker_functions.R") #get ToMEx1.0 fxn
@@ -4974,7 +4977,7 @@ cat("Size of results_df after sampling:", comma(nrow(results_df_test)), "\n")
 
 # overwrite results_df with test set to avoid having to alter downstream code
 results_df <- results_df_test
-# this set is 173 times smaller
+# (subsampling above is commented out: results_df_test is the full MC output)
 ```
 
 *For Loop PSSD+ with Caching*
@@ -4986,6 +4989,13 @@ results_df <- results_df_test
 
 
 ```{r warning=FALSE}
+# Data for PSSD++ by ERM and tier group, as read by get_results_df() in utils/functions.R
+# (same structure as in PSSDplusplus::run_pssd_reprex(); get_results_df() filters by environment)
+erm_registry <- list(
+  "Food Dilution" = list(base = results_df_food, t3_t4 = results_df_food_t3_t4),
+  "Tissue Translocation" = list(base = results_df_tissue, t3_t4 = results_df_tissue_t3_t4)
+)
+
 # Define parameters
 tiers <- c(3)
 environments <- c("Freshwater", "Marine")
@@ -4996,7 +5006,7 @@ sim <- 300 # Number of simulations to run (300 default for PSSD++ based on 64 GB
 num_iterations <- sim
 cv_uf <- 0.5
 #rmore_method <- "step" #'step' (original Wigger Trapezoidal) or 'lognormal' (shortcut developed here=)
-rmore_method <- "step" #'step' (original Wigger Trapezoidal) or 'lognormal' (shortcut developed here=)
+rmore_method <- "lognormal" # published method (SI: log-normal approximation of species NOEC distributions; ~40 min per combination). "step" = original Wigger et al. (2020) trapezoidal (~90 h in total)
 quantile_type <- 8 #linear interpolation for the median-unbiased estimate to determine the values (i - 3/8) / (n + ¼; where i is the rank, and n is the number of observations). This ensures that distinct values are produced for every HCx (e.g., HC5, HC10), even with limited data.
 species_data_source <- aoc_aligned
 debug_option = FALSE #debugging option provides intermediate outputs and diagnostics to assist the user if the function provides unexcpected or incomplete results. This option can significantly increase processing time, so it's advised to run this with the minimum number of simulations (i.e., sim = 3)
@@ -5004,7 +5014,7 @@ base_cache_dir <- "../output/pssd_cache/"
 cache_dir <- paste0(base_cache_dir, rmore_method, "_", sim, "sims") 
 
 # Create cache directory if it doesn't exist
-if (!dir.exists(cache_dir)) dir.create(cache_dir)
+if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE) # parent may not exist yet
 
 # Initialize tracking
 total_iterations <- length(tiers) * length(environments) * length(erms)
@@ -5012,7 +5022,7 @@ iteration_times <- numeric(total_iterations)
 iteration_count <- 0
 
 tictoc::tic("PSSD++ For Loop Begins...")
-beepr::beep(sound = 6)
+# beepr::beep(sound = 6)
 
 # Start loop
 results <- list()
@@ -5024,12 +5034,24 @@ for (tier in tiers) {
       iteration_start_time <- Sys.time()
       
       combo_id <- paste0("Tier", tier, "_", environment, "_", erm)
+      # optional: run only some combinations (e.g. one per R process, to limit memory)
+      if (exists("pssd_only") && !combo_id %in% pssd_only) next
       cache_file <- file.path(cache_dir, paste0(combo_id, ".rds"))
 
+      # a cached combination is reused only if it was computed from the same
+      # inputs (an older cache, e.g. from before a Monte Carlo re-run, is recomputed)
+      fp_file <- tempfile()
+      saveRDS(list(get_results_df(tier, environment, erm), sim, cv_uf, rmore_method, quantile_type),
+              fp_file, compress = FALSE)
+      fingerprint <- unname(tools::md5sum(fp_file))
       if (file.exists(cache_file)) {
-        cat(blue(sprintf("\n🔁 [%s] Skipping (cached): %s\n", format(iteration_start_time, "%H:%M:%S"), combo_id)))
-        results[[combo_id]] <- readRDS(cache_file)
-        next
+        cached <- readRDS(cache_file)
+        if (identical(attr(cached, "pssd_fingerprint"), fingerprint)) {
+          cat(blue(sprintf("\n🔁 [%s] Skipping (cached): %s\n", format(iteration_start_time, "%H:%M:%S"), combo_id)))
+          results[[combo_id]] <- cached
+          next
+        }
+        cat(yellow(sprintf("\n♻️ Cache for %s was made with different inputs; recomputing\n", combo_id)))
       }
 
       cat(green(sprintf("\n⏳ [%s] Starting: Tier %d | Environment: %s | ERM: %s\n", 
@@ -5039,6 +5061,9 @@ for (tier in tiers) {
       tryCatch({
         results_df <- get_results_df(tier, environment, erm)
         
+        # seed per combination (from its name): reproducible, and identical whether the
+        # combinations run in one session or in separate processes
+        set.seed(2026 + sum(utf8ToInt(combo_id)))
         result <- generate_plots_and_summary(
           tier = tier,
           environment = environment,
@@ -5057,7 +5082,9 @@ for (tier in tiers) {
           debug = debug_option
         )
         
-        saveRDS(result, cache_file)
+        attr(result, "pssd_fingerprint") <- fingerprint
+        saveRDS(result, paste0(cache_file, ".tmp")) # atomic: never a partial cache file
+        file.rename(paste0(cache_file, ".tmp"), cache_file)
         results[[combo_id]] <- result
         
         iteration_end_time <- Sys.time()
@@ -5073,7 +5100,7 @@ for (tier in tiers) {
         )))
         
       }, error = function(e) {
-        beepr::beep(sound = 7)  # ⚠️ Distinct error sound
+        # beepr::beep(sound = 7)  # ⚠️ Distinct error sound
         cat(red(sprintf("❌ ERROR in %s: %s\n", combo_id, e$message)))
       })
     }
@@ -5083,8 +5110,8 @@ for (tier in tiers) {
 
 # Wrap up
 pSSD_time <- tictoc::toc()
-beepr::beep(sound = 4)
-beepr::beep(sound = 5)
+# beepr::beep(sound = 4)
+# beepr::beep(sound = 5)
 
 total_runtime_sec <- pSSD_time$toc - pSSD_time$tic
 cat(blue(sprintf("\n🎉 PSSD++ complete for all combinations! Total time: %.2f hours\n", total_runtime_sec / 3600)))
@@ -5617,6 +5644,6 @@ for (i in seq_along(dataframe_names)) {
 saveWorkbook(wb, "../output/data/supplemental_information.xlsx", overwrite = TRUE)
 
 cat("Data frames have been written to ../output/data/supplemental_information.xlsx with custom sheet names\n")
-beepr::beep(sound = 7)
+# beepr::beep(sound = 7)
 ```
 

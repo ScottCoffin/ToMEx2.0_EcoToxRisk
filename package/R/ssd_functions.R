@@ -1,5 +1,35 @@
 # SSD helper functions ----------------------------------------------------
 
+# Evaluate `expr` with the random seed set to `seed` (the published thresholds
+# fix the bootstrap with set.seed(99) before every SSD fit), then restore the
+# caller's RNG state. `seed = NULL` uses the current RNG stream.
+#
+# ssdtools 0.3.7 fits through fitdistrplus, which looks up each distribution's
+# d/p/q functions (e.g. dlgumbel, dllogis) on the search path. If ssdtools is
+# loaded but not attached, those distributions silently drop out of the model
+# average and the HCx changes (FW Food Dilution Tier 2: 10.8 instead of 59.6
+# particles/L), so ssdtools is attached before every fit.
+with_ssd_seed <- function(seed, expr) {
+  if (!"package:ssdtools" %in% search()) {
+    suppressPackageStartupMessages(attachNamespace("ssdtools"))
+  }
+  if (is.null(seed)) {
+    return(expr)
+  }
+  had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  if (had_seed) old_seed <- get(".Random.seed", envir = globalenv())
+  on.exit(
+    if (had_seed) {
+      assign(".Random.seed", old_seed, envir = globalenv())
+    } else {
+      rm(".Random.seed", envir = globalenv())
+    },
+    add = TRUE
+  )
+  set.seed(seed)
+  expr
+}
+
 #' Fit a Tier 1 SSD and return the HC5 lower confidence limit
 #'
 #' Collapses endpoints to the 25th percentile per species-group combination,
@@ -25,7 +55,7 @@
 #'
 #' @seealso [SSD_function_t2_3()], [SSD_function_t3_4()], [make_tiered_SSDs()]
 #' @noRd
-SSD_function_t1 <- function(filtered.data, hcxlcl, nboot = 10) {
+SSD_function_t1 <- function(filtered.data, hcxlcl, nboot = 10, seed = 99) {
   collapsed <- filtered.data %>%
     dplyr::group_by(Species, Group) %>%
     dplyr::summarize(Conc = stats::quantile(dose_new, 0.25), .groups = "drop")
@@ -47,14 +77,19 @@ SSD_function_t1 <- function(filtered.data, hcxlcl, nboot = 10) {
     ))
   }
 
-  dists <- ssdtools::ssd_fit_dists(
+  fit <- with_ssd_seed(seed, {
+    dists <- ssdtools::ssd_fit_dists(
     collapsed,
     left = "Conc",
     dists = c("llogis", "lnorm", "gamma", "lgumbel"),
     computable = FALSE,
     silent = FALSE
   )
-  preds <- stats::predict(dists, average = TRUE, nboot = nboot, ci = TRUE)
+    preds <- stats::predict(dists, average = TRUE, nboot = nboot, ci = TRUE)
+    list(dists = dists, preds = preds)
+  })
+  dists <- fit$dists
+  preds <- fit$preds
 
   list(
     hc5lcl = c(preds$lcl[hcxlcl]),
@@ -83,7 +118,7 @@ SSD_function_t1 <- function(filtered.data, hcxlcl, nboot = 10) {
 #' @seealso [SSD_function_t1()], [SSD_function_t2_3()], [SSD_function_t3_4()],
 #'   [make_tiered_SSDs()]
 #' @noRd
-SSD_function_t2 <- function(filtered.data, hcx, nboot = 10) {
+SSD_function_t2 <- function(filtered.data, hcx, nboot = 10, seed = 99) {
   collapsed <- filtered.data %>%
     dplyr::group_by(Species, Group) %>%
     dplyr::summarize(Conc = stats::quantile(dose_new, 0.25), .groups = "drop")
@@ -107,14 +142,19 @@ SSD_function_t2 <- function(filtered.data, hcx, nboot = 10) {
     ))
   }
 
-  dists <- ssdtools::ssd_fit_dists(
+  fit <- with_ssd_seed(seed, {
+    dists <- ssdtools::ssd_fit_dists(
     collapsed,
     left = "Conc",
     dists = c("llogis", "lnorm", "gamma", "lgumbel"),
     computable = FALSE,
     silent = FALSE
   )
-  preds <- stats::predict(dists, average = TRUE, nboot = nboot, ci = TRUE)
+    preds <- stats::predict(dists, average = TRUE, nboot = nboot, ci = TRUE)
+    list(dists = dists, preds = preds)
+  })
+  dists <- fit$dists
+  preds <- fit$preds
 
   list(
     hcx_est = c(preds$est[hcx]),
@@ -146,7 +186,7 @@ SSD_function_t2 <- function(filtered.data, hcx, nboot = 10) {
 #'
 #' @seealso [SSD_function_t1()], [SSD_function_t2_3()], [make_tiered_SSDs()]
 #' @noRd
-SSD_function_t3_4 <- function(filtered.data, hcx, nboot = 10) {
+SSD_function_t3_4 <- function(filtered.data, hcx, nboot = 10, seed = 99) {
   collapsed <- filtered.data %>%
     dplyr::filter(risk.13 != 1, bio_f %in% c("Organism", "Population")) %>%
     dplyr::group_by(Species, Group) %>%
@@ -172,14 +212,19 @@ SSD_function_t3_4 <- function(filtered.data, hcx, nboot = 10) {
     ))
   }
 
-  dists <- ssdtools::ssd_fit_dists(
+  fit <- with_ssd_seed(seed, {
+    dists <- ssdtools::ssd_fit_dists(
     collapsed,
     left = "Conc",
     dists = c("llogis", "lnorm", "gamma", "lgumbel"),
     computable = FALSE,
     silent = FALSE
   )
-  preds <- stats::predict(dists, average = TRUE, nboot = nboot, ci = TRUE)
+    preds <- stats::predict(dists, average = TRUE, nboot = nboot, ci = TRUE)
+    list(dists = dists, preds = preds)
+  })
+  dists <- fit$dists
+  preds <- fit$preds
 
   list(
     hcx_est = c(preds$est[hcx]),
@@ -203,8 +248,8 @@ SSD_function_t3_4 <- function(filtered.data, hcx, nboot = 10) {
 #' @seealso [SSD_function_t1()], [SSD_function_t2()], [SSD_function_t3_4()],
 #'   [make_tiered_SSDs()]
 #' @noRd
-SSD_function_t2_3 <- function(filtered.data, hcx, nboot = 10) {
-  SSD_function_t2(filtered.data = filtered.data, hcx = hcx, nboot = nboot)
+SSD_function_t2_3 <- function(filtered.data, hcx, nboot = 10, seed = 99) {
+  SSD_function_t2(filtered.data = filtered.data, hcx = hcx, nboot = nboot, seed = seed)
 }
 
 #' Fit a tiered SSD with the tier supplied as a parameter
@@ -238,12 +283,17 @@ SSD_function_t2_3 <- function(filtered.data, hcx, nboot = 10) {
 #'
 #' @param filtered.data A data frame of aligned toxicity data. Must contain
 #'   `dose_new`, `Species`, `Group`. Tiers 3-4 additionally require `bio_f`
-#'   and `risk.13`.
+#'   and `risk.13`. If a `vivo_f` column is present, in vitro records are
+#'   dropped ([ssd_eligible()]).
 #' @param tier Integer 1-4 specifying the tier to apply.
 #' @param hcx Integer percentile for the hazard concentration. Defaults to 5
 #'   (HC5) for tiers 1-3 and 10 (HC10) for tier 4.
 #' @param nboot Number of bootstrap iterations for confidence intervals.
 #'   Default `10`; use 1000+ for publication results.
+#' @param seed Random seed for the fit and bootstrap. Default `99`, as in the
+#'   manuscript pipeline, so confidence limits (and the Tier 1 threshold) are
+#'   reproducible; the caller's RNG state is restored afterwards. `NULL` uses
+#'   the current RNG stream.
 #'
 #' @return An object of class `"tiered_SSD"` (a list) containing:
 #'   \describe{
@@ -289,7 +339,11 @@ SSD_function_t2_3 <- function(filtered.data, hcx, nboot = 10) {
 #' @seealso [align_data()], [autoplot.tiered_SSD()], [print.tiered_SSD()]
 #' @importFrom ggplot2 autoplot
 #' @export
-make_tiered_SSDs <- function(filtered.data, tier, hcx = NULL, nboot = 10) {
+make_tiered_SSDs <- function(filtered.data, tier, hcx = NULL, nboot = 10, seed = 99) {
+  # SSDs use in vivo data only
+  if ("vivo_f" %in% names(filtered.data)) {
+    filtered.data <- ssd_eligible(filtered.data)
+  }
   tier <- as.integer(tier)
   if (!tier %in% 1L:4L) stop("`tier` must be 1, 2, 3, or 4.")
   if (is.null(hcx)) hcx <- if (tier == 4L) 10L else 5L
@@ -341,14 +395,19 @@ make_tiered_SSDs <- function(filtered.data, tier, hcx = NULL, nboot = 10) {
   n_ssd <- nrow(collapsed_ssd)
   collapsed_ssd$frac <- (seq_len(n_ssd) - 0.5) / n_ssd
 
-  dists <- ssdtools::ssd_fit_dists(
+  fit <- with_ssd_seed(seed, {
+    dists <- ssdtools::ssd_fit_dists(
     collapsed,
     left       = "Conc",
     dists      = c("llogis", "lnorm", "gamma", "lgumbel"),
     computable = FALSE,
     silent     = FALSE
   )
-  preds <- stats::predict(dists, average = TRUE, nboot = nboot, ci = TRUE)
+    preds <- stats::predict(dists, average = TRUE, nboot = nboot, ci = TRUE)
+    list(dists = dists, preds = preds)
+  })
+  dists <- fit$dists
+  preds <- fit$preds
   if (!"dist" %in% names(preds)) preds$dist <- "average"
 
   # HC row for plot annotation (row hcx = hcx-th percentile; proportion col = hcx/100)
@@ -736,7 +795,8 @@ process_environment_data <- function(data,
                                      upper.tissue.trans.size.um = 88,
                                      x1D_set = 1,
                                      x2D_set = 5000,
-                                     nboot = 10) {
+                                     nboot = 10,
+                                     seed = 99) {
   is_sediment <- any(grepl("sediment", env_filter, ignore.case = TRUE))
   particles_ox_col <- if (is_sediment) {
     "particles.kg.ox.stress"
@@ -771,10 +831,13 @@ process_environment_data <- function(data,
 
   filtered_data_small_default_t1_2 <- data %>%
     dplyr::ungroup() %>%
+    ssd_eligible() %>% # in vivo only
     dplyr::mutate(
       dose_new = .data[[particles_ox_col]] / (af.time * af.noec)
     ) %>%
     tidyr::drop_na(dose_new) %>%
+    # particles/mL -> particles/L for surface water (as for food dilution)
+    dplyr::mutate(dose_new = dose_new * unit_multiplier) %>%
     dplyr::filter(
       dose_new > 0,
       dplyr::between(size.length.um.used.for.conversions, x1D_set, upper.tissue.trans.size.um),
@@ -790,6 +853,7 @@ process_environment_data <- function(data,
     dplyr::filter(risk.13 != 1, bio_f %in% c("Organism", "Population"))
 
   filtered_data_large_default_t1_2 <- data %>%
+    ssd_eligible() %>% # in vivo only
     dplyr::filter(Group != "Algae") %>%
     dplyr::mutate(
       dose_new = .data[[particles_food_col]] / (af.time * af.noec)
@@ -811,15 +875,15 @@ process_environment_data <- function(data,
   filtered_data_large_default_t3_4 <- filtered_data_large_default_t1_2 %>%
     dplyr::filter(risk.13 != 1, bio_f %in% c("Organism", "Population"))
 
-  small_default_t1 <- SSD_function_t1(filtered_data_small_default_t1_2, hcxlcl = 5, nboot = nboot)
-  small_default_t2 <- SSD_function_t2(filtered_data_small_default_t1_2, hcx = 5, nboot = nboot)
-  small_default_t3 <- SSD_function_t3_4(filtered_data_small_default_t3_4, hcx = 5, nboot = nboot)
-  small_default_t4 <- SSD_function_t3_4(filtered_data_small_default_t3_4, hcx = 10, nboot = nboot)
+  small_default_t1 <- SSD_function_t1(filtered_data_small_default_t1_2, hcxlcl = 5, nboot = nboot, seed = seed)
+  small_default_t2 <- SSD_function_t2(filtered_data_small_default_t1_2, hcx = 5, nboot = nboot, seed = seed)
+  small_default_t3 <- SSD_function_t3_4(filtered_data_small_default_t3_4, hcx = 5, nboot = nboot, seed = seed)
+  small_default_t4 <- SSD_function_t3_4(filtered_data_small_default_t3_4, hcx = 10, nboot = nboot, seed = seed)
 
-  large_default_t1 <- SSD_function_t1(filtered_data_large_default_t1_2, hcxlcl = 5, nboot = nboot)
-  large_default_t2 <- SSD_function_t2(filtered_data_large_default_t1_2, hcx = 5, nboot = nboot)
-  large_default_t3 <- SSD_function_t3_4(filtered_data_large_default_t3_4, hcx = 5, nboot = nboot)
-  large_default_t4 <- SSD_function_t3_4(filtered_data_large_default_t3_4, hcx = 10, nboot = nboot)
+  large_default_t1 <- SSD_function_t1(filtered_data_large_default_t1_2, hcxlcl = 5, nboot = nboot, seed = seed)
+  large_default_t2 <- SSD_function_t2(filtered_data_large_default_t1_2, hcx = 5, nboot = nboot, seed = seed)
+  large_default_t3 <- SSD_function_t3_4(filtered_data_large_default_t3_4, hcx = 5, nboot = nboot, seed = seed)
+  large_default_t4 <- SSD_function_t3_4(filtered_data_large_default_t3_4, hcx = 10, nboot = nboot, seed = seed)
 
   tibble::tibble(
     Tier = c("Tier1", "Tier2", "Tier3", "Tier4"),

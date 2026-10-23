@@ -26,11 +26,26 @@ library(readr)
 # R.ave.sediment.marine <- 0.75
 # R.ave.sediment.freshwater <- 0.70
 
+#### Body length and maximum ingestible size (mouth size) ####
+#Shared with SCCWRP/ToMEx_AquaticOrganisms (body_length_functions.R; keep identical).
+local({
+  here <- tryCatch(dirname(normalizePath(sys.frame(1)$ofile)), error = function(e) NULL)
+  candidates <- c(if (!is.null(here)) file.path(here, "body_length_functions.R"),
+                  "utils/body_length_functions.R", "../utils/body_length_functions.R",
+                  "scripts/utils/body_length_functions.R")
+  source(candidates[file.exists(candidates)][1])
+  source(sub("body_length_functions.R", "vivo_functions.R", candidates[file.exists(candidates)][1], fixed = TRUE))
+}, envir = environment())
+
 ToMEx2.0fxn <- function(aoc_setup, #ToMEx 1.0 dataset
                         tomex2.0, #ToMEx 2.0 dataset
                         bodysize_addons, #datasets as input
                         R.ave.water.marine, R.ave.water.freshwater, R.ave.sediment.freshwater, R.ave.sediment.marine,
-                        beta_log10_body_length, body_length_intercept){
+                        beta_log10_body_length, body_length_intercept,
+                        body_length_measured = NULL, #row-level body-length corrections (body_length_measured.csv)
+                        vivo_corrections = NULL, #record-level in vitro/in vivo corrections (vivo_corrections.csv)
+                        unresolved_path = NULL, #optional CSV listing rows with no resolved size
+                        strict = FALSE){ #TRUE: stop if any test organism has no resolved size
 
 tomex2.0_aoc_setup <- tomex2.0 %>%
    #Remove effect metrics when there are less than 3 treatments
@@ -93,12 +108,9 @@ tomex2.0_aoc_setup <- tomex2.0 %>%
    mutate(organism.group = factor(organism.group)) %>% 
    rename(org_f = organism.group) %>% 
    #Factor in vitro in vivo
-   mutate(in.vitro.in.vivo = factor(case_when(
-     in.vitro.in.vivo == "In Vivo" ~ "In Vivo",
-     in.vitro.in.vivo == "In Vitro" ~ "In Vitro",
-     in.vitro.in.vivo == "in vivo" ~ "In Vivo",
-     in.vitro.in.vivo == "in vitro" ~ "In Vivo",
-   ))) %>% 
+   #(shared normalizer; previously lowercase "in vitro" was recoded to "In Vivo")
+   mutate(in.vitro.in.vivo = factor(normalize_vivo(in.vitro.in.vivo, doi = doi),
+                                    levels = c("In Vivo", "In Vitro"))) %>% 
    rename(vivo_f = in.vitro.in.vivo) %>%
    #Factor life stage
    mutate(life.stage = factor(life.stage)) %>%  
@@ -542,33 +554,24 @@ tomex2.0_aoc_setup <- tomex2.0 %>%
     distinct(species_f, life_f, body.length.cm, body.size.source) %>%   
     #remove values that are updated in the gape_size.csv
     filter(!species_f %in% c("Carassius auratus", "Hediste diversicolor", "Lumbriculus variegatus", "Tubifex NA", 
-                             "Ostrea edulis", "Oryzias latipes", "Potamopyrgus antipodarum", "Sparus aurata"))
+                             "Ostrea edulis", "Oryzias latipes", "Potamopyrgus antipodarum", "Sparus aurata")) %>%
+    filter(!(species_f == "Oryzias melastigma" & body.length.cm %in% c(2.1, 2.2)))
 
   # bodysize_addons <- read_csv("scripts/monte carlo/ref data/gape_size.csv",
   #                             show_col_types = FALSE) #copied from aq_mp_tox_shiny main folder
-  #add life stage column
-  bodysize_addons$life_f <- as.factor("Adult")
-    
-  bodysize_addons_updated <- bodysize_addons %>% 
-    mutate(species_f = as.factor(species_f))
-  
-  bodysize_summary_complete <- bind_rows(bodysize_summary, bodysize_addons_updated) %>% 
-    drop_na(body.length.cm) %>% 
+  #species x life-stage reference lengths (gape_size.csv; adult entries unless life.stage given)
+  gape_lookup <- bodysize_addons
+  if (!"life.stage" %in% names(gape_lookup)) gape_lookup$life.stage <- "Adult"
+  if (!"max.size.ingest.override.um" %in% names(gape_lookup)) gape_lookup$max.size.ingest.override.um <- NA_real_
+
+  bodysize_addons_updated <- gape_lookup %>%
+    transmute(species_f = as.factor(species_f), life_f = as.factor(life.stage),
+              body.length.cm, body.size.source)
+
+  bodysize_summary_complete <- bind_rows(bodysize_summary, bodysize_addons_updated) %>%
+    drop_na(body.length.cm) %>%
     distinct(species_f,life_f, .keep_all = T)
-
-  #if there is a value for body size in the tomex2.0 database, mark it as "reported"
-tomex2.0_aoc_setup_final$body.size.source <- ifelse(!is.na(tomex2.0_aoc_setup_final$body.length.cm), "reported", NA)  
-    
-#Join summary to tidy ToMEx 2.0 data frame
-
-tomex2.0_aoc_setup <- tomex2.0_aoc_setup %>% 
-  left_join(bodysize_summary_complete, by = c("species_f", "life_f")) %>% 
-  #if tomex2 already has a body length, keep that one, otherwise replace with an add-on value
-  mutate(body.length.cm = ifelse(is.na(body.length.cm.x), body.length.cm.y, body.length.cm.x)) %>% 
-  select(-c(body.length.cm.y, body.length.cm.x)) %>% 
-  #if tomex2 already has a body length source, keep that one, otherwise replace with an add-on value
-  mutate(body.size.source = ifelse(is.na(body.size.source.x), body.size.source.y, body.size.source.x)) %>% 
-  select(-c(body.size.source.y, body.size.source.x))
+  #(joined to ToMEx 1.0 + 2.0 after they are combined; see "Body lengths" below)
 
 #Maximum ingestible size: flag reported values here; values are filled in after
 #ToMEx 1.0 and 2.0 are joined (see "Maximum ingestible size" below)
@@ -674,10 +677,30 @@ aoc_setup$doi <- gsub('doi.org/','',aoc_setup$doi)
 aoc_setup$doi <- gsub('https://','',aoc_setup$doi)
 
 aoc_setup <- aoc_setup %>%
-  select(all_of(names)) #If this throws an error, aoc_setup doesn't have all the column names as tomex2.0 df
+  select(all_of(unique(c(names, "body.size.source")))) #If this throws an error, aoc_setup doesn't have all the column names as tomex2.0 df
 
 #Join rows
 tomex2.0_aoc_setup_final <- bind_rows(aoc_setup, tomex2.0_aoc_setup)
+
+#### Body lengths (missing in both ToMEx 1.0 and 2.0) ####
+#remember which records carried their own body length, and which are ToMEx 1.0
+tomex2.0_aoc_setup_final <- tomex2.0_aoc_setup_final %>%
+  mutate(.record_length = !is.na(body.length.cm),
+         .tomex1 = source != "ToMEx 2.0")
+#if there is a value for body size in the database, mark it as "reported"
+#(keep the ToMEx 1.0 sources, e.g., fishbase.org or "study"; they were previously overwritten)
+tomex2.0_aoc_setup_final$body.size.source <- ifelse(is.na(tomex2.0_aoc_setup_final$body.size.source) &
+                                                      !is.na(tomex2.0_aoc_setup_final$body.length.cm),
+                                                    "reported", as.character(tomex2.0_aoc_setup_final$body.size.source))
+
+tomex2.0_aoc_setup_final <- tomex2.0_aoc_setup_final %>%
+  left_join(bodysize_summary_complete, by = c("species_f", "life_f")) %>%
+  #if the database already has a body length, keep that one, otherwise replace with an add-on value
+  mutate(body.length.cm = ifelse(is.na(body.length.cm.x), body.length.cm.y, body.length.cm.x)) %>%
+  select(-c(body.length.cm.y, body.length.cm.x)) %>%
+  #if the database already has a body length source, keep that one, otherwise replace with an add-on value
+  mutate(body.size.source = ifelse(is.na(body.size.source.x), body.size.source.y, body.size.source.x)) %>%
+  select(-c(body.size.source.y, body.size.source.x))
 
 tomex2.0_aoc_setup_final %>% 
   mutate(source = as.factor(source))
@@ -694,25 +717,47 @@ tomex2.0_aoc_setup_final$life_f =
 
 tomex2.0_aoc_setup_final$life_f = fct_na_value_to_level(tomex2.0_aoc_setup_final$life_f, "Not Reported")
 
-#### Maximum ingestible size (mouth size) ####
-#Use a reported value whenever there is one for the species / life stage
-#(ToMEx 1.0 / Koelmans 2020 or ToMEx 2.0). Only when none is reported, predict
-#it from body length (Jâms et al. 2020). See GitHub issue #6.
-reported_gape <- tomex2.0_aoc_setup_final %>%
-  filter(mouth.size.reported) %>%
-  group_by(species_f, life_f) %>%
-  summarise(max.size.ingest.mm.reported = first(max.size.ingest.mm), .groups = "drop")
+#### Body length and maximum ingestible size (mouth size) ####
+#See body_length_functions.R. Body length: row-level corrections, then the record's own value,
+#then the species x life-stage reference joined above; never a default size. Mouth size:
+#reported (record, else species x life stage), then an override, then the Jams et al. (2020)
+#prediction, else unresolved (excluded from food dilution downstream).
 
+#record-level corrections of in vitro / in vivo status
+if (!is.null(vivo_corrections)) {
+  if (is.character(vivo_corrections)) vivo_corrections <- read_vivo_corrections(vivo_corrections)
+  tomex2.0_aoc_setup_final <- apply_vivo_corrections(tomex2.0_aoc_setup_final, vivo_corrections)
+}
+
+#DOI typo in the database (Kaposi et al. 2014)
 tomex2.0_aoc_setup_final <- tomex2.0_aoc_setup_final %>%
-  left_join(reported_gape, by = c("species_f", "life_f")) %>%
-  mutate(max.size.ingest.mm = case_when(
-           mouth.size.reported ~ max.size.ingest.mm, #reported for this record
-           !is.na(max.size.ingest.mm.reported) ~ max.size.ingest.mm.reported, #reported for species / life stage
-           T ~ 10^(beta_log10_body_length * log10(body.length.cm * 10) - body_length_intercept)), #predicted (cm to mm)
-         max.size.ingest.reported.estimated = ifelse(
-           mouth.size.reported | !is.na(max.size.ingest.mm.reported), "reported", "estimated"),
-         max.size.ingest.um = 1000 * max.size.ingest.mm) %>%
-  select(-c(max.size.ingest.mm.reported, mouth.size.reported))
+  mutate(doi = ifelse(doi == "0.1021/es404295e", "10.1021/es404295e", doi))
+
+if (is.null(body_length_measured)) {
+  warning("ToMEx2.0fxn(): no body_length_measured supplied; row-level body-length corrections not applied.",
+          call. = FALSE)
+} else {
+  if (is.character(body_length_measured)) body_length_measured <- read_body_length_measured(body_length_measured)
+  tomex2.0_aoc_setup_final <- apply_body_length_measured(tomex2.0_aoc_setup_final, body_length_measured)
+}
+tomex2.0_aoc_setup_final <- classify_body_length_basis(tomex2.0_aoc_setup_final,
+                                                       record_length = tomex2.0_aoc_setup_final$.record_length,
+                                                       tomex1 = tomex2.0_aoc_setup_final$.tomex1) %>%
+  select(-c(.record_length, .tomex1))
+
+tomex2.0_aoc_setup_final <- assign_max_size_ingest(tomex2.0_aoc_setup_final,
+                                                   beta_log10_body_length = beta_log10_body_length,
+                                                   body_length_intercept = body_length_intercept,
+                                                   overrides = gape_lookup %>%
+                                                     transmute(species_f, life_f = life.stage,
+                                                               max.size.ingest.override.um))
+
+#report (do not default) test organisms with no resolved size
+report_unresolved_body_length(tomex2.0_aoc_setup_final, path = unresolved_path, strict = strict)
+warn_jams_domain(tomex2.0_aoc_setup_final)
+
+#SSD eligibility: in vitro records never reach an SSD (ssd_eligible()); reasons kept per record
+tomex2.0_aoc_setup_final$ssd_exclusion_reason <- ssd_exclusion_reason(tomex2.0_aoc_setup_final)
 
 #sex
 tomex2.0_aoc_setup_final$sex = fct_collapse(tomex2.0_aoc_setup_final$sex,

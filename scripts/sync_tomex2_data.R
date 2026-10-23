@@ -78,6 +78,23 @@ if (nrow(new_data) == 0L || ncol(new_data) == 0L) {
   stop("Downloaded data frame is empty.")
 }
 
+# PSSDplusplus >= 0.4.0 requires the body-length, mouth-size and in vivo fields
+# added in SCCWRP/ToMEx_AquaticOrganisms#5. Refuse upstream data that lack them
+# (syncing from a source without that PR would silently undo the corrections).
+required_cols <- c("body.length.cm", "body.length.basis", "max.size.ingest.mm",
+                   "max.size.ingest.basis", "jams_domain", "vivo_f", "ssd_exclusion_reason")
+missing_cols <- setdiff(required_cols, names(new_data))
+if (length(missing_cols) > 0) {
+  stop("Upstream data lack required column(s): ", paste(missing_cols, collapse = ", "),
+       ". Rebuild with ToMEx2.0_Data_Tidying.R from SCCWRP/ToMEx_AquaticOrganisms#5 or later.")
+}
+if (any(new_data$max.size.ingest.basis %in% "unresolved" & !is.na(new_data$max.size.ingest.mm))) {
+  stop("Upstream data give a mouth size to records marked unresolved (a default size?).")
+}
+if (any(as.character(new_data$vivo_f) %in% "In Vitro" & is.na(new_data$ssd_exclusion_reason))) {
+  stop("Upstream data mark in vitro records as SSD-eligible.")
+}
+
 root_rds <- file.path(repo_root, "data", "input", "aoc_z_tomex2.RDS")
 package_rds <- file.path(repo_root, "package", "inst", "extdata", "aoc_z_tomex2.RDS")
 package_rda <- file.path(repo_root, "package", "data", "tomex2.rda")

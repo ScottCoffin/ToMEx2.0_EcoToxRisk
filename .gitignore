@@ -39,8 +39,9 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# pkgdown site
-docs/
+# pkgdown site (none at the root); keep the correction materials
+docs/*
+!docs/correction/
 
 # translation temp files
 po/*~
@@ -330,3 +331,12 @@ package/renv.lock
 1-s2.0-S0304389425039421-main (2).pdf
 1-s2.0-S0304389425039421-main (2).md
 images/
+
+# 0.4.0 re-run: backups and temporary render copy (not tracked)
+output/pssd_cache_pre_issue6/
+scripts/.ToMEx2_EcoTox_rerun.Rmd
+
+# checkpoints of long runs (0.4.0)
+scripts/monte carlo/output/sobol_checkpoints/
+docs/correction/results/checkpoints/
+docs/correction/results/*.log
