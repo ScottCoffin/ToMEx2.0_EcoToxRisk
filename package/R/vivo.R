@@ -49,7 +49,7 @@ normalize_vivo <- function(x, doi = NULL, strict = FALSE) {
 #' SSDs use in vivo data only: in vitro records (e.g. cell cultures) have no
 #' organism-level exposure, body length or mouth size. Every code path that
 #' builds SSD input in this package calls this function
-#' ([process_environment_data()], [make_tiered_SSDs()], [run_pssd_reprex()]).
+#' (the internal `process_environment_data()`, [make_tiered_SSDs()], [run_pssd_reprex()]).
 #'
 #' @param df Data frame with a `vivo_f` column (`"In Vivo"` / `"In Vitro"`).
 #' @param strict Logical; error if any record has no in vitro/in vivo status

@@ -19,7 +19,7 @@ ssd_eligible(df, strict = FALSE)
 SSDs use in vivo data only: in vitro records (e.g. cell cultures) have no
 organism-level exposure, body length or mouth size. Every code path that
 builds SSD input in this package calls this function
-(\code{\link[=process_environment_data]{process_environment_data()}}, \code{\link[=make_tiered_SSDs]{make_tiered_SSDs()}}, \code{\link[=run_pssd_reprex]{run_pssd_reprex()}}).
+(the internal \code{process_environment_data()}, \code{\link[=make_tiered_SSDs]{make_tiered_SSDs()}}, \code{\link[=run_pssd_reprex]{run_pssd_reprex()}}).
 }
 \examples{
 ssd_eligible(data.frame(vivo_f = c("In Vivo", "In Vitro", NA), x = 1:3))
