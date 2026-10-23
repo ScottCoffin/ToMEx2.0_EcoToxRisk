@@ -167,15 +167,17 @@ Order matters; each step needs the previous one.
 - [x] `docs/correction/R/cov_misjoin_impact.R` on the published MC output.
 - [x] CoV statistics of the corrected MC added to the correction.
 - [ ] **Archive the published outputs** that are not in git
-      (`scripts/monte carlo/output/pre_issue6/`, `output/pssd_cache_pre_issue6/`)
-      to a permanent repository (e.g. Zenodo) and cite them in the correction.
-      Needs the author's account.
-- [x] Draft "Effect on the conclusions" (correction) and "Effect on results"
-      (`package/NEWS.md`) from the production render. **Authors to review.**
+      (`scripts/monte carlo/output/pre_issue6/`, `output/pssd_cache_pre_issue6/`).
+      Bundle ready (2026-10-22): `../ToMEx2.0_EcoToxRisk_published_outputs_2025-12.zip`
+      (541 MB; README + MD5SUMS). Author uploads it to Zenodo; then replace the
+      "archived outside git" sentence in the correction's Reproducibility
+      section with the DOI.
+- [x] "Effect on the conclusions" (correction) and "Effect on results"
+      (`package/NEWS.md`): approved by the author 2026-10-22.
 - [x] **Release 0.4.0**: code (58114b0) plus regenerated outputs and the
       final correction committed on branch `v0.4.0-corrections` and pushed
-      2026-10-22. Next: review/merge into `main` (closes #6); authors to review
-      the drafted conclusions; archive the published outputs (item above).
+      2026-10-22. Next: review/merge into `main` (closes #6); archive the published
+      outputs (item above).
 
 ## Open technical debt
 
