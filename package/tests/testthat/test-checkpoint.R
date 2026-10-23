@@ -7,6 +7,7 @@ quiet <- function(expr) {
 }
 
 mini_inputs <- function(n = 5) {
+  skip_if_not_installed("sensobol") # matrix_function()
   set.seed(11)
   pm <- matrix_function(n_sobol = 1, params = param_default_values)
   pm <- pm[seq_len(n), ]

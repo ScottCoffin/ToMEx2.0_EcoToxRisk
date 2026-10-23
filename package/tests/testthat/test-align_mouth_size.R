@@ -158,6 +158,7 @@ test_that("reported mouth sizes are never perturbed; 'body_length' is deprecated
 })
 
 test_that("MC_sim_align_parallel() propagates body-length coefficients per simulation", {
+  skip_if_not_installed("sensobol") # matrix_function()
   tox <- PSSDplusplus::tomex2_mini
   set.seed(1)
   pm <- matrix_function(n_sobol = 3, params = param_default_values)
@@ -194,6 +195,7 @@ test_that("MC_sim_align_parallel() propagates body-length coefficients per simul
 })
 
 test_that("matrix_function samples the intercept with its own standard error", {
+  skip_if_not_installed("sensobol")
   set.seed(42)
   pm <- matrix_function(
     n_sobol = 2000,

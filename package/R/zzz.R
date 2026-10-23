@@ -1,6 +1,7 @@
 utils::globalVariables(c(
   ".",
   "max.size.ingest.um.reported",
+  "id",
   "value",
   ".N",
   ".x",
