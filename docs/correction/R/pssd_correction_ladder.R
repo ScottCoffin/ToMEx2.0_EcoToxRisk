@@ -17,6 +17,16 @@
 #                                                           (code error)
 #   S6 + particle-shape uncertainty propagated to tested particles
 #                                                           (code error)
+#   S7 + polydisperse particle geometry fixed (ToMEx2.0_EcoToxRisk#8: smallest
+#      particle's width lost for spheres/fibers/fragments; fiber widths)
+#      [particle counts of mass-dosed tests as converted by the database]
+#                                                           (code error, E7)
+#   S8 + particle counts of mass-dosed tests from the dosed mass with the
+#      alignment's own geometry and size distribution      (code error, E8)
+#
+# S0-S6 use the geometry of PSSDplusplus 0.4.0 and must be run with 0.4.0
+# (GitHub release v0.4.0); S7-S8 need 0.4.1 or later
+# (align_data(particle_count_source = "database" / "mass")). The script checks this.
 #
 # All steps use the log-normal species distributions of the published
 # analysis (rmore_method = "lognormal"; described in the SI).
@@ -87,9 +97,23 @@ steps <- tribble(
   "S3", "Reported mouth sizes restored",                   "data-preparation error","reported_mouth", "exclude",      TRUE,          FALSE,        FALSE,         "lognormal",
   "S4", "Database v2.0.1 + record-level corrections",      "data refinement",       "current",        "exclude",      TRUE,          FALSE,        FALSE,         "lognormal",
   "S5", "Body-length model uncertainty propagated",        "code error",            "current",        "exclude",      TRUE,          TRUE,         FALSE,         "lognormal",
-  "S6", "Particle-shape uncertainty propagated",           "code error",            "current",        "exclude",      TRUE,          TRUE,         TRUE,          "lognormal"
+  "S6", "Particle-shape uncertainty propagated",           "code error",            "current",        "exclude",      TRUE,          TRUE,         TRUE,          "lognormal",
+  "S7", "Polydisperse particle geometry fixed",            "code error",            "current",        "exclude",      TRUE,          TRUE,         TRUE,          "lognormal",
+  "S8", "Mass-dosed particle counts from the dosed mass",  "code error",            "current",        "exclude",      TRUE,          TRUE,         TRUE,          "lognormal"
 )
+# the geometry fix (S7) is in the code, not a switch: S0-S6 need 0.4.0, S7-S8 >= 0.4.1;
+# S7 keeps the database's particle counts of mass-dosed tests, S8 recomputes them
+steps$package <- ifelse(steps$step %in% c("S7", "S8"), ">= 0.4.1", "0.4.0")
+steps$counts <- c(S7 = "database", S8 = "mass")[steps$step] # NA for S0-S6 (argument absent in 0.4.0)
 if (!is.null(only)) steps <- steps[steps$step %in% only, ]
+pkg_v <- utils::packageVersion("PSSDplusplus")
+for (i in seq_len(nrow(steps))) {
+  done <- file.path("docs/correction/results/checkpoints", sprintf("nmc%d_sim%d", n_mc, sim), paste0(steps$step[i], ".rds"))
+  ok <- if (steps$package[i] == "0.4.0") pkg_v == "0.4.0" else pkg_v >= "0.4.1"
+  if (!ok && !file.exists(done)) {
+    stop(sprintf("step %s needs PSSDplusplus %s (installed: %s)", steps$step[i], steps$package[i], pkg_v), call. = FALSE)
+  }
+}
 
 set.seed(20261020)
 pm_sampled <- matrix_function(n_sobol = ceiling(n_mc / 16) + 1, params = param_default_values,
@@ -106,12 +130,15 @@ run_step <- function(s) {
   # published MC re-aligned already-aligned data: widths/heights stay at the
   # default R.ave / H:W ratio (shape uncertainty not propagated)
   tox_in <- if (s$shape_uncert) tox else
-    suppressWarnings(align_data(tox, missing_mouth = s$missing_mouth, verbose = FALSE))
+    suppressWarnings(do.call(align_data, c(list(tox, missing_mouth = s$missing_mouth, verbose = FALSE),
+                                            if (!is.na(s$counts)) list(particle_count_source = s$counts))))
   pm <- if (s$coef_uncert) pm_sampled else pm_fixed
-  invisible(utils::capture.output(mc <- suppressWarnings(suppressMessages(MC_sim_align_parallel(
-    tox_data = tox_in, param_matrix = pm, n_sim = n_mc, x1D_set = 1, x2D_set = 5000,
-    num_cores = 1, missing_mouth = s$missing_mouth,
-    checkpoint_dir = file.path(work, "mc"), checkpoint_every = 500)))))
+  mc_args <- list(tox_data = tox_in, param_matrix = pm, n_sim = n_mc, x1D_set = 1, x2D_set = 5000,
+                  num_cores = 1, missing_mouth = s$missing_mouth,
+                  checkpoint_dir = file.path(work, "mc"), checkpoint_every = 500)
+  if (!is.na(s$counts)) mc_args$particle_count_source <- s$counts
+  invisible(utils::capture.output(mc <- suppressWarnings(suppressMessages(
+    do.call(MC_sim_align_parallel, mc_args)))))
   # results_df_sobol post-processing (EcoTox_MonteCarlo.Rmd) and PSSD++ filters
   mc <- mc %>%
     mutate(ingestible = ifelse(!is.na(ingestible_poly), as.character(ingestible_poly), as.character(ingestible)),

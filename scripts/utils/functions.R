@@ -331,53 +331,55 @@ generate_structure_checks <- function(data) {
 #Where $\mu_{x,poly}$ is derived using the following equation: $\mu_{x,poly} = \frac{1 - a_{x}}{2 - a_{x}}  \frac{X^{2-a_x}_{UL} - X^{2-a_x}_{LL}}{X^{1-a_x}_{UL} - X^{1-a_x}_{LL}}$
 #In this case, the limits LL and UL in $\mu_{x,poly}$ relate to the values of the ERM at the 1 and 5,000 um size limits, respectively (i.e., SA, V, and M), rather than to bioavailability limits. Compartment-specific alpha values are used based on Table S4 of Kooi et al 2021.
 
-convert_units_fxn <- function(thresholds_df, environment, params) {
-  if (environment == "Marine") {
-    a.sa.input = params$a.sa.marine
-    a.m.input = params$a.m.marine
-    a.v.input = params$a.v.marine
+convert_units_fxn <- function(thresholds_df, environment, params,
+                              x1D = x1D_set, x2D = x2D_set) {
+  env <- as.character(environment)
+  pick <- function(stem, default) {
+    v <- params[[stem]]
+    if (is.null(v) || length(v) == 0 || is.na(v[1])) default else as.numeric(v[1])
   }
-  if (environment == "Freshwater") {
-    a.sa.input = params$a.sa.freshwater
-    a.m.input = params$a.m.freshwater
-    a.v.input = params$a.v.freshwater
+  if (grepl("sediment", env, ignore.case = TRUE) && grepl("marine", env, ignore.case = TRUE)) {
+    a.sa.input <- pick("a.sa.sediment.marine", 1.75)
+    a.m.input <- pick("a.m.sediment.marine", 1.50)
+    a.v.input <- pick("a.v.sediment.marine", 1.50)
+    p.input <- pick("p.ave.sediment.marine", 1.16)
+  } else if (grepl("sediment", env, ignore.case = TRUE)) {
+    a.sa.input <- pick("a.sa.sediment.freshwater", 1.89)
+    a.m.input <- pick("a.m.sediment.freshwater", 1.56)
+    a.v.input <- pick("a.v.sediment.freshwater", 1.53)
+    p.input <- pick("p.ave.sediment.freshwater", 1.15)
+  } else if (grepl("marine", env, ignore.case = TRUE)) {
+    a.sa.input <- pick("a.sa.marine", 1.50)
+    a.m.input <- pick("a.m.marine", 1.32)
+    a.v.input <- pick("a.v.marine", 1.48)
+    p.input <- pick("p.ave.marine", 1.10)
+  } else {
+    a.sa.input <- pick("a.sa.freshwater", 2.00)
+    a.m.input <- pick("a.m.freshwater", 1.65)
+    a.v.input <- pick("a.v.freshwater", 1.68)
+    p.input <- pick("p.ave.freshwater", 1.04)
   }
+  # The power-law means are taken between the values of each ERM (surface
+  # area, volume, mass) of the smallest and the largest particle of the default
+  # size range (x1D, x2D um; spheres, environmental density), as the
+  # alignment's environmental limits are. (Before 0.4.1 the length limits
+  # 1 and 5000 were passed as if they were areas, volumes and masses.)
+  sa_LL <- SAfnx(length = x1D, width = x1D, height = x1D)
+  sa_UL <- SAfnx(length = x2D, width = x2D, height = x2D)
+  v_LL <- volumefnx(length = x1D, width = x1D, height = x1D)
+  v_UL <- volumefnx(length = x2D, width = x2D, height = x2D)
+  m_LL <- massfnx(v = v_LL, p = p.input) # ug
+  m_UL <- massfnx(v = v_UL, p = p.input) # ug
+  mu_sa <- mux_polyfnx(a.x = a.sa.input, x_UL = sa_UL, x_LL = sa_LL) # um2 per particle
+  mu_v <- mux_polyfnx(a.x = a.v.input, x_UL = v_UL, x_LL = v_LL) # um3 per particle
+  mu_m <- mux_polyfnx(a.x = a.m.input, x_UL = m_UL, x_LL = m_LL) # ug per particle
 
-  # report the units they're aligned to (um3/L and um2/L)
   thresholds_df %>%
-    # convert tissue translocation thresholds
     mutate(
-      tissue_translocation_um2.L = `Tissue Translocation (Default)` *
-        mux_polyfnx(
-          a.x = a.sa.input, #alpha for marine surface water for surface area
-          x_UL = x2D_set, #upper limit of default range
-          x_LL = x1D_set # lower limit of default range
-        )
-    ) %>%
-    mutate(
-      tissue_translocation_ug.L = `Tissue Translocation (Default)` *
-        mux_polyfnx(
-          a.x = a.m.input, #alpha for marine surface water for mass
-          x_UL = x2D_set, #upper limit of default range
-          x_LL = x1D_set # lower limit of default range
-        )
-    ) %>%
-    ## convert food dilution thresholds
-    mutate(
-      food_dilution_um3.L = `Food Dilution (Default)` *
-        mux_polyfnx(
-          a.x = a.v.input, #alpha for marine surface water for surface area
-          x_UL = x2D_set, #upper limit of default range
-          x_LL = x1D_set # lower limit of default range
-        )
-    ) %>%
-    mutate(
-      food_dilution_ug.L = `Food Dilution (Default)` *
-        mux_polyfnx(
-          a.x = a.m.input, #alpha for marine surface water for mass
-          x_UL = x2D_set, #upper limit of default range
-          x_LL = x1D_set # lower limit of default range
-        )
+      tissue_translocation_um2.L = `Tissue Translocation (Default)` * mu_sa,
+      tissue_translocation_ug.L = `Tissue Translocation (Default)` * mu_m,
+      food_dilution_um3.L = `Food Dilution (Default)` * mu_v,
+      food_dilution_ug.L = `Food Dilution (Default)` * mu_m
     )
 }
 
@@ -597,8 +599,10 @@ align_data <- function(
   a.m.freshwater_input = 1.65, # upper limit fora_m for mass for freshwater surface water in table S4
   a.ssa.freshwater_input = 2.71, # A_SSA for freshwater surface water
   beta_log10_body_length_input = 0.9341, # Jâms, et al 2020 Nature paper
-  body_length_intercept_input = 1.1200 # Jâms, et al 2020 Nature paper
+  body_length_intercept_input = 1.1200, # Jâms, et al 2020 Nature paper
+  particle_count_source = c("mass", "database") # mass-dosed tests: count from the mass (0.4.1) or the database's conversion
 ) {
+  particle_count_source <- match.arg(particle_count_source)
   #10 #um #set size for x2M)
 
   # Check if columns exist and conditionally create them
@@ -624,6 +628,20 @@ align_data <- function(
 
   if (!"max.size.ingest.basis" %in% names(df)) {
     df$max.size.ingest.basis <- NA_character_
+  }
+  # dose columns used to recompute particle counts of mass-dosed tests
+  for (col in c("dose.mg.L.master", "density.g.cm3")) {
+    if (!col %in% names(df)) df[[col]] <- NA_real_
+  }
+  if (!"dose.particles.mL.master.converted.reported" %in% names(df)) {
+    df$dose.particles.mL.master.converted.reported <- NA_character_
+  }
+  # reported particle widths (mm), used for fiber diameters
+  for (col in c(
+    "size.width.min.mm.measured", "size.width.min.mm.nominal",
+    "size.width.max.mm.measured", "size.width.max.mm.nominal"
+  )) {
+    if (!col %in% names(df)) df[[col]] <- NA_real_
   }
 
   df <- df %>%
@@ -844,10 +862,30 @@ align_data <- function(
       )
     ) %>%
     ##### ----- WIDTH ------ ###
+    ## Fiber diameter (um), the same rule for every fiber dimension: the
+    ## reported minimum/maximum width (measured, else nominal), else the
+    ## reported width, else 15 um (Kooi et al. 2021). The database's
+    ## size.width.{min,max}.um.used.for.conversions are not measurements (the
+    ## ToMEx tidying sets them to R.ave x length), so they are not used here.
+    mutate(
+      fiber.width.min.um = coalesce(
+        size.width.min.mm.measured * 1000,
+        size.width.min.mm.nominal * 1000,
+        size.width.um.used.for.conversions,
+        15
+      ),
+      fiber.width.max.um = coalesce(
+        size.width.max.mm.measured * 1000,
+        size.width.max.mm.nominal * 1000,
+        size.width.um.used.for.conversions,
+        15
+      )
+    ) %>%
     ## Monodisperse ##
     mutate(
       size.width.um.used.for.conversions = case_when(
-        is.na(size.width.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
+        # 15 um fiber default, never wider than long
+        is.na(size.width.um.used.for.conversions) & shape_f == "Fiber" ~ pmin(15, size.length.um.used.for.conversions),
         is.na(size.width.um.used.for.conversions) &
           shape_f == "Sphere" ~ size.length.um.used.for.conversions, # W = L for spheres
         is.na(size.width.um.used.for.conversions) &
@@ -859,34 +897,42 @@ align_data <- function(
       )
     ) %>%
     ### Polydisperse ###
-    # Min is always same #
-    # calculate size parameters using compartment characteristics
+    # Widths follow the (bioaccessible) lengths: W = L for spheres; the
+    # environment's width:length ratio for fragments and unreported shapes
+    # (Kooi et al. 2021); the fiber diameter, never wider than the fiber is
+    # long. Any other shape keeps the width supplied.
+    # Min #
     mutate(
       size.width.min.um.used.for.conversions = case_when(
-        shape_f == "sphere" ~ size.length.min.um.used.for.conversions, #all dims same
-        shape_f == "fiber" ~ R.ave * size.length.min.um.used.for.conversions, #median holds for all particles (Kooi et al 2021)
-        shape_f == "Not Reported" ~ R.ave *
-          size.length.min.um.used.for.conversions, # average width to length ratio in the marine environment (kooi et al 2021)
-        shape_f == "fragment" ~ R.ave * size.length.min.um.used.for.conversions
+        shape_f == "Sphere" ~ size.length.min.um.used.for.conversions,
+        shape_f == "Fiber" ~ pmin(
+          fiber.width.min.um,
+          size.length.min.um.used.for.conversions
+        ),
+        shape_f %in% c("Fragment", "Not Reported") ~ R.ave *
+          size.length.min.um.used.for.conversions,
+        TRUE ~ size.width.min.um.used.for.conversions
       )
-    ) %>% # average width to length ratio in the marine environment (kooi et al 2021)
+    ) %>%
     ### Max depends on ingest/trans limits ###
     # TRANS #
     mutate(
       size.width.max.um.trans = case_when(
-        is.na(size.width.max.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
-        shape_f == "Sphere" ~ size.length.max.um.trans, # W = L for spheres
-        shape_f == "Fragment" ~ size.length.max.um.trans * R.ave, #use average width:length ratio for fragments
-        T ~ size.width.max.um.used.for.conversions # if available, use as-is (fibers only)
+        shape_f == "Sphere" ~ size.length.max.um.trans,
+        shape_f == "Fiber" ~ pmin(fiber.width.max.um, size.length.max.um.trans),
+        shape_f %in% c("Fragment", "Not Reported") ~ size.length.max.um.trans *
+          R.ave,
+        TRUE ~ size.width.max.um.used.for.conversions
       )
     ) %>%
     # INGEST #
     mutate(
       size.width.max.um.ingest = case_when(
-        is.na(size.width.max.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
-        shape_f == "Sphere" ~ size.length.max.um.ingest, # W = L for spheres
-        shape_f == "Fragment" ~ size.length.max.um.ingest * R.ave, #use average width:length ratio for fragments
-        T ~ size.width.max.um.used.for.conversions # if available, use as-is (fibers only)
+        shape_f == "Sphere" ~ size.length.max.um.ingest,
+        shape_f == "Fiber" ~ pmin(fiber.width.max.um, size.length.max.um.ingest),
+        shape_f %in% c("Fragment", "Not Reported") ~ size.length.max.um.ingest *
+          R.ave,
+        TRUE ~ size.width.max.um.used.for.conversions
       )
     ) %>%
     ###### ------ HEIGHT ----- #####
@@ -927,6 +973,7 @@ align_data <- function(
     mutate(
       particle.volume.um3 = volumefnx(
         R = R.ave,
+        H_W_ratio = H_W_ratio,
         length = size.length.um.used.for.conversions,
         width = size.width.um.used.for.conversions,
         height = size.height.um.used.for.conversions
@@ -936,6 +983,7 @@ align_data <- function(
     mutate(
       particle.volume.um3.min = volumefnx(
         R = R.ave,
+        H_W_ratio = H_W_ratio,
         length = size.length.min.um.used.for.conversions,
         width = size.width.min.um.used.for.conversions,
         height = size.height.min.um.used.for.conversions
@@ -947,6 +995,7 @@ align_data <- function(
     mutate(
       particle.volume.um3.max.trans = volumefnx(
         R = R.ave,
+        H_W_ratio = H_W_ratio,
         length = size.length.max.um.trans,
         width = size.width.max.um.trans,
         height = size.height.max.um.trans
@@ -957,6 +1006,7 @@ align_data <- function(
     mutate(
       particle.volume.um3.max.ingest = volumefnx(
         R = R.ave,
+        H_W_ratio = H_W_ratio,
         length = size.length.max.um.ingest,
         width = size.width.max.um.ingest,
         height = size.height.max.um.ingest
@@ -1036,6 +1086,44 @@ align_data <- function(
       ) *
         1e-3
     ) %>% #equation uses g/cm3
+    ## Particle concentration of tests dosed by mass (PSSDplusplus 0.4.1; mirrors
+    ## align_data(particle_count_source = "mass")). The database converted mg/L to
+    ## particles with its own geometry (H:W 0.67; a polydisperse material as one
+    ## particle of the midpoint length); the count must follow from the mass and the
+    ## mean particle mass under this alignment's geometry and size distribution, so
+    ## the aligned volume dose equals mass / density. The bioaccessible doses are
+    ## then recomputed from it.
+    mutate(
+      .w_max_full = case_when(
+        shape_f == "Sphere" ~ size.length.max.um.used.for.conversions,
+        shape_f == "Fiber" ~ pmin(fiber.width.max.um, size.length.max.um.used.for.conversions),
+        TRUE ~ R.ave * size.length.max.um.used.for.conversions
+      ),
+      .h_max_full = if_else(shape_f == "Sphere", size.length.max.um.used.for.conversions,
+                            .w_max_full * H_W_ratio),
+      .v_max_full = volumefnx(length = size.length.max.um.used.for.conversions,
+                              width = .w_max_full, height = .h_max_full),
+      .mean_v_full = case_when(
+        polydispersity != "polydisperse" ~ particle.volume.um3,
+        TRUE ~ mux_polyfnx(a.x = a.v, x_LL = particle.volume.um3.min, x_UL = .v_max_full)
+      ),
+      mean.mass.per.particle.mg = massfnx(v = .mean_v_full, p = density.g.cm3) * 1e-3,
+      .count_from_mass = particle_count_source == "mass" &
+        as.character(dose.particles.mL.master.converted.reported) %in% "converted" &
+        !is.na(dose.mg.L.master) & is.finite(mean.mass.per.particle.mg) & mean.mass.per.particle.mg > 0,
+      dose.particles.mL.master = if_else(.count_from_mass,
+                                         dose.mg.L.master / mean.mass.per.particle.mg / 1000,
+                                         dose.particles.mL.master),
+      dose.particles.mL.trans = case_when(
+        translocatable_poly == "translocatable (some)" ~ CF_bioavailable_trans * dose.particles.mL.master,
+        TRUE ~ dose.particles.mL.master
+      ),
+      dose.particles.mL.ingest = case_when(
+        ingestible_poly == "ingestible (some)" ~ CF_bioavailable_ingest * dose.particles.mL.master,
+        TRUE ~ dose.particles.mL.master
+      )
+    ) %>%
+    select(-.w_max_full, -.h_max_full, -.v_max_full, -.mean_v_full, -.count_from_mass) %>%
     ################################################################
     ########################## ALIGNMENTS ##########################
     ###################################################################
@@ -1238,7 +1326,8 @@ align_data <- function(
       )
     ) %>%
     # ensure particles are within valid range
-    filter(size.length.um.used.for.conversions >= x1D_set)
+    filter(size.length.um.used.for.conversions >= x1D_set) %>%
+    select(-fiber.width.min.um, -fiber.width.max.um)
 
   aoc_final
 }

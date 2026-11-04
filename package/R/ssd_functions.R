@@ -840,7 +840,7 @@ process_environment_data <- function(data,
     dplyr::mutate(dose_new = dose_new * unit_multiplier) %>%
     dplyr::filter(
       dose_new > 0,
-      dplyr::between(size.length.um.used.for.conversions, x1D_set, upper.tissue.trans.size.um),
+      size.length.um.used.for.conversions >= x1D_set, # upper size: bioaccessibility labels (partially bioaccessible polydisperse records stay)
       translocatable != "not translocatable",
       shape_f != "Not Reported",
       poly_f != "Not Reported",
@@ -862,7 +862,7 @@ process_environment_data <- function(data,
     dplyr::filter(dose_new > 0) %>%
     dplyr::mutate(dose_new = dose_new * unit_multiplier) %>%
     dplyr::filter(
-      dplyr::between(size.length.um.used.for.conversions, x1D_set, x2D_set),
+      size.length.um.used.for.conversions >= x1D_set, # upper size: bioaccessibility labels (partially bioaccessible polydisperse records stay)
       ingestible != "not ingestible",
       poly_f != "Not Reported",
       shape_f != "Not Reported",

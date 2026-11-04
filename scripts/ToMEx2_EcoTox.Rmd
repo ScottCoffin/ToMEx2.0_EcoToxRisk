@@ -358,8 +358,10 @@ align_data <- function(df,
                        a.m.freshwater_input = 1.65, # upper limit fora_m for mass for freshwater surface water in table S4 
                        a.ssa.freshwater_input = 2.71, # A_SSA for freshwater surface water
                        beta_log10_body_length_input = 0.9341, # Jâms, et al 2020 Nature paper
-                       body_length_intercept_input = 1.1200 # Jâms, et al 2020 Nature paper
+                       body_length_intercept_input = 1.1200, # Jâms, et al 2020 Nature paper
+                       particle_count_source = c("mass", "database") # mass-dosed tests (0.4.1)
                        ){ #10 #um #set size for x2M)
+  particle_count_source <- match.arg(particle_count_source)
   
   # Check if columns exist and conditionally create them
     if (!"dose.mg.kg.sed.measured" %in% names(df)) {
@@ -381,6 +383,19 @@ align_data <- function(df,
     df <- df %>% 
       mutate(environment = env_f)
     }
+  
+  # dose columns used to recompute particle counts of mass-dosed tests
+  for (col in c("dose.mg.L.master", "density.g.cm3")) {
+    if (!col %in% names(df)) df[[col]] <- NA_real_
+  }
+  if (!"dose.particles.mL.master.converted.reported" %in% names(df)) {
+    df$dose.particles.mL.master.converted.reported <- NA_character_
+  }
+  # reported particle widths (mm), used for fiber diameters
+  for (col in c("size.width.min.mm.measured", "size.width.min.mm.nominal",
+                "size.width.max.mm.measured", "size.width.max.mm.nominal")) {
+    if (!col %in% names(df)) df[[col]] <- NA_real_
+  }
   
   df <- df %>% 
     ungroup() %>%  #if data grouped - bad things happen
@@ -493,36 +508,46 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
          size.length.max.um.ingest = case_when(ingestible_poly == "ingestible (some)" ~ x2M_ingest,
                                                T ~ size.length.max.um.used.for.conversions)) %>% 
   ##### ----- WIDTH ------ ###
+  ## Fiber diameter (um), the same rule for every fiber dimension: the reported
+  ## minimum/maximum width (measured, else nominal), else the reported width,
+  ## else 15 um (Kooi et al. 2021). The database's size.width.{min,max}.um.used.for.conversions
+  ## are not measurements (the ToMEx tidying sets them to R.ave x length).
+  mutate(fiber.width.min.um = coalesce(size.width.min.mm.measured * 1000, size.width.min.mm.nominal * 1000,
+                                       size.width.um.used.for.conversions, 15),
+         fiber.width.max.um = coalesce(size.width.max.mm.measured * 1000, size.width.max.mm.nominal * 1000,
+                                       size.width.um.used.for.conversions, 15)) %>% 
    ## Monodisperse ##
      mutate(size.width.um.used.for.conversions = case_when(
-        is.na(size.width.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
+        # 15 um fiber default, never wider than long
+        is.na(size.width.um.used.for.conversions) & shape_f == "Fiber" ~ pmin(15, size.length.um.used.for.conversions),
         is.na(size.width.um.used.for.conversions) & shape_f == "Sphere" ~ size.length.um.used.for.conversions, # W = L for spheres
         is.na(size.width.um.used.for.conversions) & shape_f == "Fragment" ~ size.length.um.used.for.conversions * R.ave, #use average width:length ratio for fragments
         is.na(size.width.um.used.for.conversions) & shape_f == "Not Reported" ~ size.length.um.used.for.conversions * R.ave, #Assume fragment
         T ~ size.width.um.used.for.conversions # if available, use as-is
       )) %>% 
   ### Polydisperse ###
-    # Min is always same #
-  # calculate size parameters using compartment characteristics
+  # Widths follow the (bioaccessible) lengths: W = L for spheres; the environment's
+  # width:length ratio for fragments and unreported shapes (Kooi et al. 2021); the
+  # fiber diameter, never wider than the fiber is long. Other shapes keep the width supplied.
     mutate(size.width.min.um.used.for.conversions = case_when(
-      shape_f == "sphere" ~ size.length.min.um.used.for.conversions, #all dims same
-      shape_f == "fiber" ~ R.ave * size.length.min.um.used.for.conversions, #median holds for all particles (Kooi et al 2021)
-      shape_f == "Not Reported" ~ R.ave * size.length.min.um.used.for.conversions, # average width to length ratio in the marine environment (kooi et al 2021)
-      shape_f == "fragment" ~ R.ave * size.length.min.um.used.for.conversions)) %>% # average width to length ratio in the marine environment (kooi et al 2021)
+      shape_f == "Sphere" ~ size.length.min.um.used.for.conversions,
+      shape_f == "Fiber" ~ pmin(fiber.width.min.um, size.length.min.um.used.for.conversions),
+      shape_f %in% c("Fragment", "Not Reported") ~ R.ave * size.length.min.um.used.for.conversions,
+      TRUE ~ size.width.min.um.used.for.conversions)) %>% 
   ### Max depends on ingest/trans limits ###
   # TRANS #
     mutate(size.width.max.um.trans = case_when(
-    is.na(size.width.max.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
-    shape_f == "Sphere" ~ size.length.max.um.trans, # W = L for spheres
-    shape_f == "Fragment" ~ size.length.max.um.trans * R.ave, #use average width:length ratio for fragments
-    T ~ size.width.max.um.used.for.conversions # if available, use as-is (fibers only)
+    shape_f == "Sphere" ~ size.length.max.um.trans,
+    shape_f == "Fiber" ~ pmin(fiber.width.max.um, size.length.max.um.trans),
+    shape_f %in% c("Fragment", "Not Reported") ~ size.length.max.um.trans * R.ave,
+    TRUE ~ size.width.max.um.used.for.conversions
     )) %>% 
   # INGEST #
    mutate(size.width.max.um.ingest = case_when(
-    is.na(size.width.max.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
-    shape_f == "Sphere" ~ size.length.max.um.ingest, # W = L for spheres
-    shape_f == "Fragment" ~ size.length.max.um.ingest * R.ave, #use average width:length ratio for fragments
-    T ~ size.width.max.um.used.for.conversions # if available, use as-is (fibers only)
+    shape_f == "Sphere" ~ size.length.max.um.ingest,
+    shape_f == "Fiber" ~ pmin(fiber.width.max.um, size.length.max.um.ingest),
+    shape_f %in% c("Fragment", "Not Reported") ~ size.length.max.um.ingest * R.ave,
+    TRUE ~ size.width.max.um.used.for.conversions
     )) %>% 
   ###### ------ HEIGHT ----- ##### 
  ## Monodisperse ##
@@ -551,26 +576,26 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
   ###### re-calculate size, surface area, volume, mass based on user-defined R.ave ####
   #### Monodisperse ##
       # calculate volume for monodisperse particles #
-      mutate(particle.volume.um3 = volumefnx(R = R.ave,
+      mutate(particle.volume.um3 = volumefnx(R = R.ave, H_W_ratio = H_W_ratio,
                                              length = size.length.um.used.for.conversions, 
                                              width = size.width.um.used.for.conversions,
                                              height = size.height.um.used.for.conversions
       )) %>% 
   #### Polydisperse ##
-  mutate(particle.volume.um3.min = volumefnx(R = R.ave, 
+  mutate(particle.volume.um3.min = volumefnx(R = R.ave, H_W_ratio = H_W_ratio,
                                                  length = size.length.min.um.used.for.conversions,
                                                  width = size.width.min.um.used.for.conversions, 
                                                  height = size.height.min.um.used.for.conversions)) %>% 
   ### Trans ##
       # calculate min and max volume when polydisperse particles are used (being sure to use ingestion-restricted sizes)
        # calculate max volume when polydisperse particles are used (translocation-limited)
-  mutate(particle.volume.um3.max.trans = volumefnx(R = R.ave,
+  mutate(particle.volume.um3.max.trans = volumefnx(R = R.ave, H_W_ratio = H_W_ratio,
                                                    length = size.length.max.um.trans,
                                                    width = size.width.max.um.trans, 
                                                    height = size.height.max.um.trans)) %>%
   ### Ingest  ##
  # calculate max volume when polydisperse particles are used (ingestlocation-limited)
-  mutate(particle.volume.um3.max.ingest = volumefnx(R = R.ave,
+  mutate(particle.volume.um3.max.ingest = volumefnx(R = R.ave, H_W_ratio = H_W_ratio,
                                                    length = size.length.max.um.ingest,
                                                    width = size.width.max.um.ingest, 
                                                    height = size.height.max.um.ingest)) %>% 
@@ -608,6 +633,44 @@ mutate(x2M_trans = case_when(is.na(max.size.ingest.um) ~ upper.tissue.trans.size
       mutate(mass.per.particle.mg.max.trans = massfnx(v = particle.volume.um3.max.trans, p = density.g.cm3) * 1e-3) %>%   #equation uses g/cm3
   # Ingest
       mutate(mass.per.particle.mg.max.ingest = massfnx(v = particle.volume.um3.max.ingest, p = density.g.cm3) * 1e-3) %>%   #equation uses g/cm3
+    ## Particle concentration of tests dosed by mass (PSSDplusplus 0.4.1; mirrors
+    ## align_data(particle_count_source = "mass")). The database converted mg/L to
+    ## particles with its own geometry (H:W 0.67; a polydisperse material as one
+    ## particle of the midpoint length); the count must follow from the mass and the
+    ## mean particle mass under this alignment's geometry and size distribution, so
+    ## the aligned volume dose equals mass / density. The bioaccessible doses are
+    ## then recomputed from it.
+    mutate(
+      .w_max_full = case_when(
+        shape_f == "Sphere" ~ size.length.max.um.used.for.conversions,
+        shape_f == "Fiber" ~ pmin(fiber.width.max.um, size.length.max.um.used.for.conversions),
+        TRUE ~ R.ave * size.length.max.um.used.for.conversions
+      ),
+      .h_max_full = if_else(shape_f == "Sphere", size.length.max.um.used.for.conversions,
+                            .w_max_full * H_W_ratio),
+      .v_max_full = volumefnx(length = size.length.max.um.used.for.conversions,
+                              width = .w_max_full, height = .h_max_full),
+      .mean_v_full = case_when(
+        polydispersity != "polydisperse" ~ particle.volume.um3,
+        TRUE ~ mux_polyfnx(a.x = a.v, x_LL = particle.volume.um3.min, x_UL = .v_max_full)
+      ),
+      mean.mass.per.particle.mg = massfnx(v = .mean_v_full, p = density.g.cm3) * 1e-3,
+      .count_from_mass = particle_count_source == "mass" &
+        as.character(dose.particles.mL.master.converted.reported) %in% "converted" &
+        !is.na(dose.mg.L.master) & is.finite(mean.mass.per.particle.mg) & mean.mass.per.particle.mg > 0,
+      dose.particles.mL.master = if_else(.count_from_mass,
+                                         dose.mg.L.master / mean.mass.per.particle.mg / 1000,
+                                         dose.particles.mL.master),
+      dose.particles.mL.trans = case_when(
+        translocatable_poly == "translocatable (some)" ~ CF_bioavailable_trans * dose.particles.mL.master,
+        TRUE ~ dose.particles.mL.master
+      ),
+      dose.particles.mL.ingest = case_when(
+        ingestible_poly == "ingestible (some)" ~ CF_bioavailable_ingest * dose.particles.mL.master,
+        TRUE ~ dose.particles.mL.master
+      )
+    ) %>%
+    select(-.w_max_full, -.h_max_full, -.v_max_full, -.mean_v_full, -.count_from_mass) %>%
    ################################################################
   ########################## ALIGNMENTS ##########################
 ###################################################################
@@ -723,7 +786,8 @@ mutate(mu.p.mono = 1) %>% #mu_x_mono is always 1 for particles to particles
     T ~ particles.mL.food.dilution
     )) %>% 
   # ensure particles are within valid range
-  filter(size.length.um.used.for.conversions >= x1D_set) 
+  filter(size.length.um.used.for.conversions >= x1D_set) %>% 
+  select(-fiber.width.min.um, -fiber.width.max.um)
 
 aoc_final
 }
@@ -912,7 +976,7 @@ filtered.data.small.default_t1.2 <- aligned_data %>%
          drop_na(dose_new) %>% #this removes NA effect metrics
   mutate(dose_new = dose_new * 1000) %>% #convert particles/mL to particles/L
   filter(dose_new > 0) %>% 
-  filter(between(size.length.um.used.for.conversions, x1D_set, x2M_trans),
+  filter(size.length.um.used.for.conversions >= x1D_set, # upper size: bioaccessibility labels (partially bioaccessible polydisperse records stay)
          translocatable != "not translocatable",
          shape_f != "Not Reported",
          poly_f != "Not Reported",
@@ -939,7 +1003,7 @@ filtered.data.large.default_t1.2 <- aligned_data %>%
          drop_na(dose_new) %>% 
          mutate(dose_new = dose_new * 1000) %>% #convert particles/mL to particles/L
   filter(dose_new > 0) %>% 
-  filter(between(size.length.um.used.for.conversions, x1D_set, x2M_ingest),
+  filter(size.length.um.used.for.conversions >= x1D_set, # upper size: bioaccessibility labels (partially bioaccessible polydisperse records stay)
          ingestible != "not ingestible",
          poly_f != "Not Reported",
          shape_f != "Not Reported",
@@ -4619,7 +4683,7 @@ filtered.data.small.default_t1.2_MC <- aoc_risk_paper_MC %>%
          mutate(dose_new_particles_L = mean_particles_L_ox_stress) %>% 
          mutate(dose_new_particles_L_sd = sd_particles_L_ox_stress) %>% 
          drop_na(dose_new_particles_L) %>% 
-  filter(between(size.length.um.used.for.conversions, x1D_set, x2M_trans),
+  filter(size.length.um.used.for.conversions >= x1D_set, # upper size: bioaccessibility labels (partially bioaccessible polydisperse records stay)
          shape_f != "Not Reported",
          poly_f != "Not Reported",
          !environment %in% c("Terrestrial", "Not Reported"),
@@ -4637,7 +4701,7 @@ filtered.data.large.default_t1.2_MC <- aoc_risk_paper_MC %>%
   filter(ingestible %in% c("ingestible", "ingestible (all)", "ingestible (some)")) %>% 
    # remove algae, as food dilution MOE doesn't make sense for algae
   filter(Group != "Algae") %>% 
-    filter(between(size.length.um.used.for.conversions, x1D_set, x2M_trans),
+    filter(size.length.um.used.for.conversions >= x1D_set, # upper size: bioaccessibility labels (partially bioaccessible polydisperse records stay)
          poly_f != "Not Reported",
          shape_f != "Not Reported",
          !environment %in% c("Terrestrial", "Not Reported"),

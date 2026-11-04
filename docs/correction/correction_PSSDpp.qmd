@@ -59,7 +59,7 @@ if (production) {
 
 ## Summary
 
-While packaging the analysis code of this article as the R package PSSDplusplus (v0.4.0) and responding to a reported issue ([ToMEx2.0_EcoToxRisk#6](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/issues/6)), we found errors in the code that aligned toxicity data to the food dilution and tissue translocation ecologically relevant metrics (ERMs) in the Monte Carlo (MC) simulations, and in the preparation of the input data. These errors affect the MC + SSD and PSSD++ thresholds (Table 2, Figs. 5–7) and the record-level uncertainty statistics derived from the MC simulations. The traditional SSD thresholds are affected by the input-data errors and are corrected in the ToMEx 2.0 database and web application ([SCCWRP/ToMEx_AquaticOrganisms#5](https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5)).
+While packaging the analysis code of this article as the R package PSSDplusplus (v0.4.0, with a further fix in v0.4.1) and responding to reported issues ([ToMEx2.0_EcoToxRisk#6](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/issues/6), [#8](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/issues/8)), we found errors in the code that aligned toxicity data to the food dilution and tissue translocation ecologically relevant metrics (ERMs) in the Monte Carlo (MC) simulations, and in the preparation of the input data. These errors affect the MC + SSD and PSSD++ thresholds (Table 2, Figs. 5–7) and the record-level uncertainty statistics derived from the MC simulations. The traditional SSD thresholds are affected by the input-data errors and are corrected in the ToMEx 2.0 database and web application ([SCCWRP/ToMEx_AquaticOrganisms#5](https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5)).
 
 We separate **errors** (the code did not do what the article describes) from **refinements** (corrections to individual data records that improve, but do not fix, the analysis). The corrected thresholds are given in Table C2 and the conclusions are discussed at the end of this note.
 
@@ -73,6 +73,7 @@ We separate **errors** (the code did not do what the article describes) from **r
 | E4 | Sampled body-length model coefficients were never applied | Code error | MC + SSD and PSSD++ uncertainty; Fig. 1B, Fig. 7 |
 | E5 | Sampled particle shape ratios were not applied to tested particles | Code error | MC + SSD and PSSD++ (freshwater fragments) |
 | E6 | Record-level MC statistics were merged to the wrong records | Code error | Intraspecies CoV statistics, CoV analyses (SI) |
+| E7 | The smallest particle of polydisperse test materials lost its width; fiber widths were inconsistent | Code error | Food dilution and tissue translocation: all methods (polydisperse records) |
 | R1 | ToMEx 2.0 database v2.0.1 and record-level body-length and in vivo / in vitro corrections | Data refinement | All methods |
 
 ## Corrected Table 2
@@ -113,7 +114,7 @@ if (all(file.exists(c(f_ssd, f_mc, f_pssd)))) {
     arrange(desc(Environment), ERM, Tier, factor(Method, c("SSD", "MC + SSD", "PSSD++")))
   kable(t2 %>% transmute(Environment, ERM, Tier, Method, Published = fmt(published), Corrected = fmt(corrected),
                          `Fold change` = ifelse(is.na(fold), "", sprintf("%.2g", fold))),
-        caption = "Table C0. Median thresholds (particles/L, aligned to 1-5000 um) in Table 2 as published and as corrected (all corrections E1-E6 and R1; current data and code, production run). Tier 1 is the lower 95 % confidence limit of the HC5 (see the note on bootstrap samples below). Uncertainty intervals of the corrected values are in the analysis outputs.")
+        caption = "Table C0. Median thresholds (particles/L, aligned to 1-5000 um) in Table 2 as published and as corrected (all corrections E1-E7 and R1; current data and code, production run). Tier 1 is the lower 95 % confidence limit of the HC5 (see the note on bootstrap samples below). Uncertainty intervals of the corrected values are in the analysis outputs.")
 }
 ```
 
@@ -150,6 +151,42 @@ if (!is.null(cov)) cat(sprintf(
 ```
 
 The MC + SSD and PSSD++ thresholds were not affected, because they use the per-simulation values directly, but the CoV statistics were (Table C3).
+
+### E7. Geometry of polydisperse test materials
+
+For a polydisperse test material, the alignment needs the mean volume (food dilution) or surface area (tissue translocation) of its bioaccessible particles, computed from the smallest and the largest bioaccessible particle. The code assigned the smallest particle's width by matching the shape names in lower case ("sphere", "fiber", "fragment"), whereas the database codes them capitalised, and had no fallback. The width was therefore lost for every polydisperse sphere, fiber and fragment and later filled with the length-to-width ratio of fragments, so the smallest sphere was treated as an ellipsoid (volume 0.67 of the sphere's in freshwater, 0.77 in marine waters), and the smallest particle's height used a fixed 0.67 × width rather than the environment's (or the sampled) height-to-width ratio (fragment volume 0.87 of the intended value in marine waters). For fibers, the largest bioaccessible particle kept the database width, which is the length-to-width ratio times the *untruncated* maximum length, so a partially ingestible fiber could be several times wider than long. Fibers now have one diameter at both ends (reported width, else 15 µm), never more than their length. Monodisperse records are unaffected. This error was found after v0.4.0 and is fixed in v0.4.1.
+
+```{r e7-table}
+v040 <- here("docs/correction/results/v0.4.0_production")
+f_new <- c(SSD = here("output/data/all_thresholds_combined_quality.csv"),
+           MC = here("scripts/monte carlo/output/simple_thresholds_table_sobol.csv"),
+           PSSD = here("data/output/PNEC_summary_table_wide.rds"))
+f_old <- c(SSD = file.path(v040, "all_thresholds_combined_quality.csv"),
+           MC = file.path(v040, "simple_thresholds_table_sobol.csv"),
+           PSSD = file.path(v040, "PNEC_summary_table_wide.rds"))
+read_thr <- function(f) {
+  ssd <- read.csv(f["SSD"], check.names = FALSE, row.names = 1) %>% filter(label == "risk and tech") %>%
+    transmute(Environment, Tier, FD = `Food Dilution (Default)`, TT = `Tissue Translocation (Default)`) %>%
+    pivot_longer(c(FD, TT), names_to = "ERM", values_to = "value") %>% mutate(Method = "SSD")
+  mc <- read.csv(f["MC"], check.names = FALSE, row.names = 1) %>% pivot_longer(-Tier, names_to = "col", values_to = "txt") %>%
+    mutate(Environment = ifelse(grepl("Marine", col), "Marine", "Freshwater"), ERM = ifelse(grepl("Food", col), "FD", "TT"),
+           value = as.numeric(gsub(",", "", sub(" .*", "", txt))), Method = "MC") %>%
+    select(Environment, Tier, ERM, value, Method)
+  ps <- readRDS(f["PSSD"]) %>% transmute(Environment, Tier, ERM = ifelse(grepl("Food", ERM), "FD", "TT"), value = Median, Method = "PSSD")
+  bind_rows(ssd, mc, ps)
+}
+if (all(file.exists(c(f_new, f_old)))) {
+  e7 <- inner_join(read_thr(f_old), read_thr(f_new), by = c("Environment", "Tier", "ERM", "Method"), suffix = c(".old", ".new")) %>%
+    mutate(ratio = value.new / value.old,
+           Method = recode(Method, SSD = "SSD", MC = "MC + SSD", PSSD = "PSSD++"),
+           ERM = recode(ERM, FD = "Food dilution", TT = "Tissue translocation")) %>%
+    select(Environment, ERM, Tier, Method, ratio) %>%
+    pivot_wider(names_from = Method, values_from = ratio) %>%
+    arrange(desc(Environment), ERM, Tier) %>%
+    mutate(across(where(is.numeric), ~ ifelse(is.na(.x), "", sprintf("%.2f", .x))))
+  kable(e7, caption = "Table C6. Effect of E7 alone: ratio of the production thresholds with PSSDplusplus v0.4.1 to those with v0.4.0 (same data, parameter matrix and seeds; all other corrections applied in both).")
+}
+```
 
 ## Refinements
 
@@ -209,12 +246,13 @@ if (!is.null(ladder)) {
                 100 * max(abs(chk$Median.att / chk$Median.full - 1)), 100 * median(abs(chk$Median.att / chk$Median.full - 1))))
   }
   f_render <- here("data/output/PNEC_summary_table_wide.rds")
-  if (file.exists(f_render) && "S6" %in% ladder$results$step) {
-    rr6 <- ladder$results %>% filter(step == "S6") %>%
+  last_step <- max(ladder$results$step)
+  if (file.exists(f_render) && last_step %in% c("S6", "S7")) {
+    rr6 <- ladder$results %>% filter(step == last_step) %>%
       inner_join(readRDS(f_render) %>% select(Tier, Environment, ERM, Median), by = c("Tier", "Environment", "ERM"),
                  suffix = c("", ".render"))
-    cat(sprintf(paste0("**Check of the end point.** The fully corrected step (S6) reproduces the medians of the production ",
-                       "run of the analysis (Table C0) to within %.0f%% (median difference %.0f%%).\n\n"),
+    cat(sprintf(paste0("**Check of the end point.** The fully corrected step (%s) reproduces the medians of the production ",
+                       "run of the analysis (Table C0) to within %.0f%% (median difference %.0f%%).\n\n"), last_step,
                 100 * max(abs(rr6$Median / rr6$Median.render - 1)), 100 * median(abs(rr6$Median / rr6$Median.render - 1))))
   }
   cat(paste0("**Notes.** In vitro exclusion (S2) changes the PSSD++ thresholds only through *P. huttoni*, which the database ",
@@ -347,13 +385,15 @@ Most qualitative conclusions are unchanged: marine thresholds remain lower than 
 
 ## Reproducibility
 
-All corrections are implemented in PSSDplusplus v0.4.0 and in the analysis scripts of <https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk>; the database corrections are in [SCCWRP/ToMEx_AquaticOrganisms#5](https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5). From the repository root:
+All corrections are implemented in PSSDplusplus v0.4.1 (E1-E6 and R1 already in v0.4.0) and in the analysis scripts of <https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk>; the database corrections are in [SCCWRP/ToMEx_AquaticOrganisms#5](https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5). From the repository root:
 
 ```sh
 # stepwise attribution (Table C2): one step per process (steps are independent
 # and can run in parallel, a few GB each); re-running a command resumes from
 # its checkpoints
+# S0-S6 with PSSDplusplus 0.4.0 (release v0.4.0), S7 with 0.4.1
 for s in S0 S1 S2 S3 S4 S5 S6; do Rscript docs/correction/R/pssd_correction_ladder.R 1000 300 $s; done
+Rscript docs/correction/R/pssd_correction_ladder.R 1000 300 S7
 # bootstrap sample size (Table C4)
 Rscript docs/correction/R/nboot_impact.R 20 4
 # record-level CoV statistics as published and correctly merged (Table C3)

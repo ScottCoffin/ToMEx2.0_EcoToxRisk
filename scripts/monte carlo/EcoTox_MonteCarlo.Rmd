@@ -1,6 +1,5 @@
 ---
 title: "EcoTox_MonteCarlo"
-output: html_document
 date: "2025-06-19"
 output:
   html_document:
@@ -44,9 +43,9 @@ library(ssdtools)
 ```{r}
 #rm(list = ls())
 # load custom SSD and alignment functions
+source("../utils/vivo_functions.R") # ssd_eligible(): in vitro records never reach an SSD (first: ssd_functions.R needs it)
 source("../utils/ssd_functions.R")
 source("../utils/functions.R")
-source("../utils/vivo_functions.R") # ssd_eligible(): in vitro records never reach an SSD
 source("../utils/plotting_functions.R") # parameter_histograms_function()
 # List all objects in the global environment
 all_objects <- ls()
@@ -478,7 +477,7 @@ aoc_aligned %>%
     drop_na(dose_new) %>%
     filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
-    filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
+    filter(size.length.um.used.for.conversions >= x1D_set, # upper size: bioaccessibility labels (partially bioaccessible polydisperse records stay)
            ingestible != "not ingestible",
            shape_f != "Not Reported",
            poly_f != "Not Reported",
@@ -814,7 +813,13 @@ chunk_size <- 500
 ckpt_dir <- "output/sobol_checkpoints"
 dir.create(ckpt_dir, showWarnings = FALSE)
 key_file <- tempfile()
-saveRDS(list(mat, aoc_risk_paper, x1D_set, x2D_set, nboot), key_file, compress = FALSE)
+# the key covers the code too: a fix to the alignment or SSD functions must not
+# reuse checkpoints computed with the old code
+code_fingerprint <- lapply(c("model_wrapper_sobol_parallel", "align_data", "process_environment_data",
+                             "SSD_function_t1", "SSD_function_t2", "SSD_function_t3_4",
+                             "volumefnx", "SAfnx", "mux_polyfnx", "CFfnx", "ssd_eligible"),
+                           function(f) deparse(get(f), control = NULL))
+saveRDS(list(mat, aoc_risk_paper, x1D_set, x2D_set, nboot, code_fingerprint), key_file, compress = FALSE)
 ckpt_key <- substr(unname(tools::md5sum(key_file)), 1, 12)
 
 # Initialize vector to store sobol results

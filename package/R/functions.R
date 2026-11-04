@@ -254,63 +254,55 @@ generate_structure_checks <- function(data) {
 
 #' Convert particles/L thresholds to surface-area, volume, and mass units.
 #' @noRd
-convert_units_fxn <- function(thresholds_df, environment, params) {
+convert_units_fxn <- function(thresholds_df, environment, params,
+                              x1D = 1, x2D = 5000) {
   env <- as.character(environment)
-  if (grepl("sediment", env, ignore.case = TRUE)) {
-    if (grepl("marine", env, ignore.case = TRUE)) {
-      a.sa.input <- params$a.sa.sediment.marine
-      a.m.input <- params$a.m.sediment.marine
-      a.v.input <- params$a.v.sediment.marine
-    } else if (grepl("fresh", env, ignore.case = TRUE)) {
-      a.sa.input <- params$a.sa.sediment.freshwater
-      a.m.input <- params$a.m.sediment.freshwater
-      a.v.input <- params$a.v.sediment.freshwater
-    }
-  } else if (grepl("marine", env, ignore.case = TRUE)) {
-    a.sa.input <- params$a.sa.marine
-    a.m.input <- params$a.m.marine
-    a.v.input <- params$a.v.marine
-  } else if (grepl("fresh", env, ignore.case = TRUE)) {
-    a.sa.input <- params$a.sa.freshwater
-    a.m.input <- params$a.m.freshwater
-    a.v.input <- params$a.v.freshwater
+  pick <- function(stem, default) {
+    v <- params[[stem]]
+    if (is.null(v) || length(v) == 0 || is.na(v[1])) default else as.numeric(v[1])
   }
+  if (grepl("sediment", env, ignore.case = TRUE) && grepl("marine", env, ignore.case = TRUE)) {
+    a.sa.input <- pick("a.sa.sediment.marine", 1.75)
+    a.m.input <- pick("a.m.sediment.marine", 1.50)
+    a.v.input <- pick("a.v.sediment.marine", 1.50)
+    p.input <- pick("p.ave.sediment.marine", 1.16)
+  } else if (grepl("sediment", env, ignore.case = TRUE)) {
+    a.sa.input <- pick("a.sa.sediment.freshwater", 1.89)
+    a.m.input <- pick("a.m.sediment.freshwater", 1.56)
+    a.v.input <- pick("a.v.sediment.freshwater", 1.53)
+    p.input <- pick("p.ave.sediment.freshwater", 1.15)
+  } else if (grepl("marine", env, ignore.case = TRUE)) {
+    a.sa.input <- pick("a.sa.marine", 1.50)
+    a.m.input <- pick("a.m.marine", 1.32)
+    a.v.input <- pick("a.v.marine", 1.48)
+    p.input <- pick("p.ave.marine", 1.10)
+  } else {
+    a.sa.input <- pick("a.sa.freshwater", 2.00)
+    a.m.input <- pick("a.m.freshwater", 1.65)
+    a.v.input <- pick("a.v.freshwater", 1.68)
+    p.input <- pick("p.ave.freshwater", 1.04)
+  }
+  # The power-law means are taken between the values of each ERM (surface
+  # area, volume, mass) of the smallest and the largest particle of the default
+  # size range (x1D, x2D um; spheres, environmental density), as the
+  # alignment's environmental limits are. (Before 0.4.1 the length limits
+  # 1 and 5000 were passed as if they were areas, volumes and masses.)
+  sa_LL <- SAfnx(length = x1D, width = x1D, height = x1D)
+  sa_UL <- SAfnx(length = x2D, width = x2D, height = x2D)
+  v_LL <- volumefnx(length = x1D, width = x1D, height = x1D)
+  v_UL <- volumefnx(length = x2D, width = x2D, height = x2D)
+  m_LL <- massfnx(v = v_LL, p = p.input) # ug
+  m_UL <- massfnx(v = v_UL, p = p.input) # ug
+  mu_sa <- mux_polyfnx(a.x = a.sa.input, x_UL = sa_UL, x_LL = sa_LL) # um2 per particle
+  mu_v <- mux_polyfnx(a.x = a.v.input, x_UL = v_UL, x_LL = v_LL) # um3 per particle
+  mu_m <- mux_polyfnx(a.x = a.m.input, x_UL = m_UL, x_LL = m_LL) # ug per particle
 
-  # report the units they're aligned to (um3/L and um2/L)
   thresholds_df %>%
-    # convert tissue translocation thresholds
     dplyr::mutate(
-      tissue_translocation_um2.L = `Tissue Translocation (Default)` *
-        mux_polyfnx(
-          a.x = a.sa.input, #alpha for marine surface water for surface area
-          x_UL = x2D_set, #upper limit of default range
-          x_LL = x1D_set # lower limit of default range
-        )
-    ) %>%
-    dplyr::mutate(
-      tissue_translocation_ug.L = `Tissue Translocation (Default)` *
-        mux_polyfnx(
-          a.x = a.m.input, #alpha for marine surface water for mass
-          x_UL = x2D_set, #upper limit of default range
-          x_LL = x1D_set # lower limit of default range
-        )
-    ) %>%
-    ## convert food dilution thresholds
-    dplyr::mutate(
-      food_dilution_um3.L = `Food Dilution (Default)` *
-        mux_polyfnx(
-          a.x = a.v.input, #alpha for marine surface water for surface area
-          x_UL = x2D_set, #upper limit of default range
-          x_LL = x1D_set # lower limit of default range
-        )
-    ) %>%
-    dplyr::mutate(
-      food_dilution_ug.L = `Food Dilution (Default)` *
-        mux_polyfnx(
-          a.x = a.m.input, #alpha for marine surface water for mass
-          x_UL = x2D_set, #upper limit of default range
-          x_LL = x1D_set # lower limit of default range
-        )
+      tissue_translocation_um2.L = `Tissue Translocation (Default)` * mu_sa,
+      tissue_translocation_ug.L = `Tissue Translocation (Default)` * mu_m,
+      food_dilution_um3.L = `Food Dilution (Default)` * mu_v,
+      food_dilution_ug.L = `Food Dilution (Default)` * mu_m
     )
 }
 
@@ -651,6 +643,15 @@ generate_data <- function(
 #'   values the database itself predicted, `max.size.ingest.basis` beginning
 #'   `"predicted"`). `"body_length"` is deprecated: it gives a warning and is
 #'   treated as `"reported"`.
+#' @param particle_count_source For tests dosed by mass, whose particle
+#'   concentration the database converted from the mass concentration
+#'   (`dose.particles.mL.master.converted.reported == "converted"`, and the
+#'   sediment equivalent): `"mass"` (default) recomputes the particle
+#'   concentration from the dosed mass and the mean particle mass implied by
+#'   this alignment's own particle geometry and size distribution, so the
+#'   aligned volume (or mass) dose equals the dosed mass / density; `"database"`
+#'   keeps the database's conversion (PSSDplusplus <= 0.4.0, for comparison
+#'   only). Reported particle concentrations are always used as reported.
 #' @param verbose Logical; report how many records (and species) were excluded
 #'   from food dilution because their mouth size is unknown, and warn when
 #'   mouth sizes are predicted for animals below the robust range of the
@@ -675,14 +676,50 @@ generate_data <- function(
 #' < 30 mm) or `"outside_calibration"` (< 9 mm); with `verbose = TRUE` a
 #' warning counts records whose mouth size is predicted outside `"within"`.
 #'
+#' **Particle geometry.** Particles are ellipsoids of length L, width W and
+#' height H. Spheres: W = H = L. Fragments and unreported shapes: W =
+#' `R.ave` x L and H = `H_W_ratio` x W (environment-specific, Kooi et al.
+#' 2021). Fibers: W is the fiber diameter, the reported minimum/maximum width
+#' (`size.width.{min,max}.mm.{measured,nominal}`), else the reported width
+#' (`size.width.um.used.for.conversions`), else 15 µm, never more than L; H =
+#' `H_W_ratio` x W. For polydisperse materials the same rules give the smallest
+#' particle and the largest bioaccessible particle (whose length is truncated at
+#' the mouth size or translocation limit). `shape_f` must be one of `"Sphere"`,
+#' `"Fiber"`, `"Fragment"`, `"Not Reported"` (case-sensitive); other shapes keep
+#' the widths supplied, with a warning. (Before 0.4.1 the smallest particle's
+#' width was lost for spheres, fibers and fragments; see NEWS.)
+#'
+#' **Size distribution of polydisperse test materials.** By default a
+#' polydisperse material is assumed to follow the environmental power-law
+#' length distribution between its reported minimum and maximum lengths
+#' (`alpha`, `a.v`, `a.sa`): no study in ToMEx reports its test material's
+#' distribution. A record can instead supply a measured, number-based length
+#' distribution in optional columns: `size.dist.family` (`"powerlaw"` or
+#' `"lognormal"`), with `size.dist.alpha` (power law) or
+#' `size.dist.median.um` and `size.dist.gsd` (log-normal; or `size.D10.um`,
+#' `size.D50.um`, `size.D90.um`). The distribution, truncated at the reported
+#' minimum and maximum lengths, then gives the bioaccessible fraction of
+#' particles (replacing the power-law correction factor) and the mean
+#' ingestible volume and translocatable surface area, integrated with the
+#' geometry above. Records without these columns are aligned exactly as
+#' before. Tests that dose several particle types together can be aligned
+#' component by component with [align_mixture()]. All these fields (and the
+#' reported width fields that set fiber diameters) are described in
+#' `docs/test_material_fields.md` of the ToMEx2.0_EcoToxRisk repository.
+#'
 #' @return The input data frame `df` augmented with ERM columns including
 #'   `EC_env_sa.particles.mL_trans` (surface-water tissue translocation, p/mL),
 #'   `EC_env_v.particles.mL_ingest` (surface-water food dilution, p/mL),
 #'   `EC_env_sa.particles.kg_trans` (sediment tissue translocation, p/kg),
 #'   `EC_env_v.particles.kg_ingest` (sediment food dilution, p/kg), plus
-#'   classification columns `translocatable` and `ingestible`.
+#'   classification columns `translocatable` and `ingestible`,
+#'   `poly_size_method` (`"monodisperse"`, `"assumed_env_powerlaw"`,
+#'   `"measured_powerlaw"` or `"measured_lognormal"`) and
+#'   `poly_volume_factor_ingest` (mean ingestible particle volume / smallest
+#'   particle volume, for polydisperse records: large values flag alignments
+#'   that rest heavily on the assumed size distribution).
 #'
-#' @seealso [MC_sim_align_parallel()], [make_tiered_SSDs()]
+#' @seealso [MC_sim_align_parallel()], [make_tiered_SSDs()], [align_mixture()]
 #' @export
 align_data <- function(
   df, #ToMEx database
@@ -731,9 +768,11 @@ align_data <- function(
   a.ssa.sediment.marine_input = 2.54,
   missing_mouth = c("exclude", "x2D"),
   mouth_size_source = c("reported", "body_length"),
+  particle_count_source = c("mass", "database"),
   verbose = TRUE
 ) {
   missing_mouth <- match.arg(missing_mouth)
+  particle_count_source <- match.arg(particle_count_source)
   mouth_size_source <- resolve_mouth_size_source(mouth_size_source)
 
   if (!"max.size.ingest.um" %in% names(df)) {
@@ -747,6 +786,28 @@ align_data <- function(
   }
   if (!"max.size.ingest.basis" %in% names(df)) {
     df$max.size.ingest.basis <- NA_character_
+  }
+  # reported particle widths (mm), used for fiber diameters
+  for (col in c(
+    "size.width.min.mm.measured", "size.width.min.mm.nominal",
+    "size.width.max.mm.measured", "size.width.max.mm.nominal"
+  )) {
+    if (!col %in% names(df)) df[[col]] <- NA_real_
+  }
+  # dose columns used to recompute particle counts of mass-dosed tests
+  for (col in c("dose.mg.L.master", "dose.mg.kg.sediment.master", "density.g.cm3")) {
+    if (!col %in% names(df)) df[[col]] <- NA_real_
+  }
+  for (col in c("dose.particles.mL.master.converted.reported",
+                "dose.particles.kg.sediment.master.converted.reported")) {
+    if (!col %in% names(df)) df[[col]] <- NA_character_
+  }
+  # optional measured size distribution of a polydisperse test material
+  # (size.dist.* columns; see poly_size_dist.R). Records without one use the
+  # environmental power law, as before.
+  df <- .poly_dist_resolve(df)
+  if (verbose) {
+    report_unknown_shapes(df)
   }
   if (verbose && missing_mouth == "exclude") {
     report_missing_mouth(df)
@@ -1087,6 +1148,13 @@ align_data <- function(
     # correct for partially translocatable particles
     dplyr::mutate(
       CF_bioavailable_trans = dplyr::case_when(
+        # measured size distribution: its number fraction below the limit
+        translocatable_poly == "translocatable (some)" & !is.na(.sd_family) ~
+          .poly_dist_fraction(.sd_family, .sd_alpha, .sd_meanlog, .sd_sdlog,
+            lmin = size.length.min.um.used.for.conversions,
+            lmax = size.length.max.um.used.for.conversions,
+            limit = x2M_trans
+          ),
         translocatable_poly == "translocatable (some)" ~ CFfnx(
           a = alpha,
           x1D = size.length.min.um.used.for.conversions,
@@ -1100,6 +1168,12 @@ align_data <- function(
     # correct for partially ingestible particles
     dplyr::mutate(
       CF_bioavailable_ingest = dplyr::case_when(
+        ingestible_poly == "ingestible (some)" & !is.na(.sd_family) ~
+          .poly_dist_fraction(.sd_family, .sd_alpha, .sd_meanlog, .sd_sdlog,
+            lmin = size.length.min.um.used.for.conversions,
+            lmax = size.length.max.um.used.for.conversions,
+            limit = x2M_ingest
+          ),
         ingestible_poly == "ingestible (some)" ~ CFfnx(
           a = alpha,
           x1D = size.length.min.um.used.for.conversions,
@@ -1126,10 +1200,31 @@ align_data <- function(
       )
     ) %>%
     ##### ----- WIDTH ------ ###
+    ## Fiber diameter (um), the same rule for every fiber dimension: the
+    ## reported minimum/maximum width (measured, else nominal), else the
+    ## reported width, else 15 um (Kooi et al. 2021). The database's
+    ## size.width.{min,max}.um.used.for.conversions are not measurements (the
+    ## ToMEx tidying sets them to R.ave x length), so they are not used here.
+    dplyr::mutate(
+      fiber.width.min.um = dplyr::coalesce(
+        size.width.min.mm.measured * 1000,
+        size.width.min.mm.nominal * 1000,
+        size.width.um.used.for.conversions,
+        15
+      ),
+      fiber.width.max.um = dplyr::coalesce(
+        size.width.max.mm.measured * 1000,
+        size.width.max.mm.nominal * 1000,
+        size.width.um.used.for.conversions,
+        15
+      )
+    ) %>%
     ## Monodisperse ##
     dplyr::mutate(
       size.width.um.used.for.conversions = dplyr::case_when(
-        is.na(size.width.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
+        # 15 um fiber default (see the fiber diameter rule above), never wider than long
+        is.na(size.width.um.used.for.conversions) & shape_f == "Fiber" ~
+          pmin(15, size.length.um.used.for.conversions),
         is.na(size.width.um.used.for.conversions) &
           shape_f == "Sphere" ~ size.length.um.used.for.conversions, # W = L for spheres
         is.na(size.width.um.used.for.conversions) &
@@ -1141,34 +1236,42 @@ align_data <- function(
       )
     ) %>%
     ### Polydisperse ###
-    # Min is always same #
-    # calculate size parameters using compartment characteristics
+    # Widths follow the (bioaccessible) lengths: W = L for spheres; the
+    # environment's width:length ratio for fragments and unreported shapes
+    # (Kooi et al. 2021); the fiber diameter, never wider than the fiber is
+    # long. Any other shape keeps the width supplied.
+    # Min #
     dplyr::mutate(
       size.width.min.um.used.for.conversions = dplyr::case_when(
-        shape_f == "sphere" ~ size.length.min.um.used.for.conversions, #all dims same
-        shape_f == "fiber" ~ R.ave * size.length.min.um.used.for.conversions, #median holds for all particles (Kooi et al 2021)
-        shape_f == "Not Reported" ~ R.ave *
-          size.length.min.um.used.for.conversions, # average width to length ratio in the marine environment (kooi et al 2021)
-        shape_f == "fragment" ~ R.ave * size.length.min.um.used.for.conversions
+        shape_f == "Sphere" ~ size.length.min.um.used.for.conversions,
+        shape_f == "Fiber" ~ pmin(
+          fiber.width.min.um,
+          size.length.min.um.used.for.conversions
+        ),
+        shape_f %in% c("Fragment", "Not Reported") ~ R.ave *
+          size.length.min.um.used.for.conversions,
+        TRUE ~ size.width.min.um.used.for.conversions
       )
-    ) %>% # average width to length ratio in the marine environment (kooi et al 2021)
+    ) %>%
     ### Max depends on ingest/trans limits ###
     # TRANS #
     dplyr::mutate(
       size.width.max.um.trans = dplyr::case_when(
-        is.na(size.width.max.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
-        shape_f == "Sphere" ~ size.length.max.um.trans, # W = L for spheres
-        shape_f == "Fragment" ~ size.length.max.um.trans * R.ave, #use average width:length ratio for fragments
-        T ~ size.width.max.um.used.for.conversions # if available, use as-is (fibers only)
+        shape_f == "Sphere" ~ size.length.max.um.trans,
+        shape_f == "Fiber" ~ pmin(fiber.width.max.um, size.length.max.um.trans),
+        shape_f %in% c("Fragment", "Not Reported") ~ size.length.max.um.trans *
+          R.ave,
+        TRUE ~ size.width.max.um.used.for.conversions
       )
     ) %>%
     # INGEST #
     dplyr::mutate(
       size.width.max.um.ingest = dplyr::case_when(
-        is.na(size.width.max.um.used.for.conversions) & shape_f == "Fiber" ~ 15, # assume 15 um width for fibers unless already known (kooi et al. 2021)
-        shape_f == "Sphere" ~ size.length.max.um.ingest, # W = L for spheres
-        shape_f == "Fragment" ~ size.length.max.um.ingest * R.ave, #use average width:length ratio for fragments
-        T ~ size.width.max.um.used.for.conversions # if available, use as-is (fibers only)
+        shape_f == "Sphere" ~ size.length.max.um.ingest,
+        shape_f == "Fiber" ~ pmin(fiber.width.max.um, size.length.max.um.ingest),
+        shape_f %in% c("Fragment", "Not Reported") ~ size.length.max.um.ingest *
+          R.ave,
+        TRUE ~ size.width.max.um.used.for.conversions
       )
     ) %>%
     ###### ------ HEIGHT ----- #####
@@ -1209,6 +1312,7 @@ align_data <- function(
     dplyr::mutate(
       particle.volume.um3 = volumefnx(
         R = R.ave,
+        H_W_ratio = H_W_ratio,
         length = size.length.um.used.for.conversions,
         width = size.width.um.used.for.conversions,
         height = size.height.um.used.for.conversions
@@ -1218,6 +1322,7 @@ align_data <- function(
     dplyr::mutate(
       particle.volume.um3.min = volumefnx(
         R = R.ave,
+        H_W_ratio = H_W_ratio,
         length = size.length.min.um.used.for.conversions,
         width = size.width.min.um.used.for.conversions,
         height = size.height.min.um.used.for.conversions
@@ -1229,6 +1334,7 @@ align_data <- function(
     dplyr::mutate(
       particle.volume.um3.max.trans = volumefnx(
         R = R.ave,
+        H_W_ratio = H_W_ratio,
         length = size.length.max.um.trans,
         width = size.width.max.um.trans,
         height = size.height.max.um.trans
@@ -1239,6 +1345,7 @@ align_data <- function(
     dplyr::mutate(
       particle.volume.um3.max.ingest = volumefnx(
         R = R.ave,
+        H_W_ratio = H_W_ratio,
         length = size.length.max.um.ingest,
         width = size.width.max.um.ingest,
         height = size.height.max.um.ingest
@@ -1318,6 +1425,69 @@ align_data <- function(
       ) *
         1e-3
     ) %>% #equation uses g/cm3
+    ## Particle concentration of tests dosed by mass. The database converted
+    ## mg/L (mg/kg) to particles with its own geometry (H:W 0.67; for a
+    ## polydisperse material, a single particle of the midpoint length). The
+    ## count must instead follow from the mass and the mean particle mass under
+    ## THIS alignment's geometry and size distribution (whole reported range),
+    ## so that the aligned volume dose equals mass / density in every simulation.
+    dplyr::mutate(
+      .w_max_full = dplyr::case_when(
+        shape_f == "Sphere" ~ size.length.max.um.used.for.conversions,
+        shape_f == "Fiber" ~ pmin(fiber.width.max.um, size.length.max.um.used.for.conversions),
+        TRUE ~ R.ave * size.length.max.um.used.for.conversions
+      ),
+      .h_max_full = dplyr::if_else(
+        shape_f == "Sphere",
+        size.length.max.um.used.for.conversions,
+        .w_max_full * H_W_ratio
+      ),
+      .v_max_full = volumefnx(
+        length = size.length.max.um.used.for.conversions,
+        width = .w_max_full,
+        height = .h_max_full
+      ),
+      .mean_v_full = dplyr::case_when(
+        polydispersity != "polydisperse" ~ particle.volume.um3,
+        !is.na(.sd_family) ~ .poly_dist_mean(
+          .sd_family, .sd_alpha, .sd_meanlog, .sd_sdlog,
+          lower = size.length.min.um.used.for.conversions,
+          upper = size.length.max.um.used.for.conversions,
+          shape = shape_f, R = R.ave, H_W_ratio = H_W_ratio,
+          fiber_width = sqrt(fiber.width.min.um * fiber.width.max.um),
+          metric = "volume"
+        ),
+        TRUE ~ mux_polyfnx(a.x = a.v, x_LL = particle.volume.um3.min, x_UL = .v_max_full)
+      ),
+      mean.mass.per.particle.mg = massfnx(v = .mean_v_full, p = density.g.cm3) * 1e-3,
+      .count_from_mass_water = particle_count_source == "mass" &
+        as.character(dose.particles.mL.master.converted.reported) %in% "converted" &
+        !is.na(dose.mg.L.master) & is.finite(mean.mass.per.particle.mg) &
+        mean.mass.per.particle.mg > 0,
+      .count_from_mass_sed = particle_count_source == "mass" & is_sediment &
+        as.character(dose.particles.kg.sediment.master.converted.reported) %in% "converted" &
+        !is.na(dose.mg.kg.sediment.master) & is.finite(mean.mass.per.particle.mg) &
+        mean.mass.per.particle.mg > 0,
+      dose.particles.mL.master = dplyr::if_else(
+        .count_from_mass_water,
+        dose.mg.L.master / mean.mass.per.particle.mg / 1000, # mg/L -> particles/mL
+        dose.particles.mL.master
+      ),
+      dose.particles.kg.master = dplyr::if_else(
+        .count_from_mass_sed,
+        dose.mg.kg.sediment.master / mean.mass.per.particle.mg,
+        dose.particles.kg.master
+      ),
+      particle_count_basis = dplyr::case_when(
+        .count_from_mass_water | .count_from_mass_sed ~ "from mass (alignment geometry)",
+        as.character(dose.particles.mL.master.converted.reported) %in% "converted" |
+          (is_sediment & as.character(dose.particles.kg.sediment.master.converted.reported) %in% "converted") ~
+          "from mass (database conversion)",
+        TRUE ~ "as reported"
+      ),
+      # particle mass used below when a sediment test has only a mass dose
+      .count_mass_mg = if (particle_count_source == "mass") mean.mass.per.particle.mg else mass.per.particle.mg
+    ) %>%
     # ensure sediment particle doses exist (convert mass-based if needed)
     dplyr::mutate(
       dose.particles.kg.master = dplyr::case_when(
@@ -1325,14 +1495,14 @@ align_data <- function(
         is_sediment & !is.na(dose.particles.kg.sediment.master) ~
           dose.particles.kg.sediment.master,
         is_sediment & !is.na(dose.mg.kg.sediment.master) &
-          mass.per.particle.mg > 0 ~
-          dose.mg.kg.sediment.master / mass.per.particle.mg,
+          .count_mass_mg > 0 ~
+          dose.mg.kg.sediment.master / .count_mass_mg,
         is_sediment & !is.na(dose.mg.kg.sed.measured) &
-          mass.per.particle.mg > 0 ~
-          dose.mg.kg.sed.measured / mass.per.particle.mg,
+          .count_mass_mg > 0 ~
+          dose.mg.kg.sed.measured / .count_mass_mg,
         is_sediment & !is.na(dose.mg.kg.sed.nominal) &
-          mass.per.particle.mg > 0 ~
-          dose.mg.kg.sed.nominal / mass.per.particle.mg,
+          .count_mass_mg > 0 ~
+          dose.mg.kg.sed.nominal / .count_mass_mg,
         TRUE ~ dose.particles.kg.master
       )
     ) %>%
@@ -1432,6 +1602,15 @@ align_data <- function(
     dplyr::mutate(
       mu.sa.mono.trans = dplyr::case_when(
         polydispersity == "monodisperse" ~ particle.surface.area.um2, # use reported surface area in monodisperse
+        # measured size distribution: integrate over it
+        polydispersity == "polydisperse" & !is.na(.sd_family) ~ .poly_dist_mean(
+          .sd_family, .sd_alpha, .sd_meanlog, .sd_sdlog,
+          lower = size.length.min.um.used.for.conversions,
+          upper = size.length.max.um.trans,
+          shape = shape_f, R = R.ave, H_W_ratio = H_W_ratio,
+          fiber_width = sqrt(fiber.width.min.um * fiber.width.max.um),
+          metric = "surface_area"
+        ),
         polydispersity == "polydisperse" ~ mux_polyfnx(
           a.x = a.sa,
           x_LL = particle.surface.area.um2.min,
@@ -1522,6 +1701,15 @@ align_data <- function(
     dplyr::mutate(
       mu.v.mono.ingest = dplyr::case_when(
         polydispersity == "monodisperse" ~ particle.volume.um3, # use reported volume in monodisperse
+        # measured size distribution: integrate over it
+        polydispersity == "polydisperse" & !is.na(.sd_family) ~ .poly_dist_mean(
+          .sd_family, .sd_alpha, .sd_meanlog, .sd_sdlog,
+          lower = size.length.min.um.used.for.conversions,
+          upper = size.length.max.um.ingest,
+          shape = shape_f, R = R.ave, H_W_ratio = H_W_ratio,
+          fiber_width = sqrt(fiber.width.min.um * fiber.width.max.um),
+          metric = "volume"
+        ),
         polydispersity == "polydisperse" ~ mux_polyfnx(
           a.x = a.v,
           x_LL = particle.volume.um3.min,
@@ -1547,6 +1735,22 @@ align_data <- function(
         CF_bio_ingest
     ) %>%
 
+    # how the polydisperse test material was described, and how far its mean
+    # ingestible particle volume sits above its smallest particle (a large
+    # factor means the alignment rests on the assumed size distribution)
+    dplyr::mutate(
+      poly_size_method = dplyr::case_when(
+        polydispersity != "polydisperse" ~ "monodisperse",
+        .sd_family == "powerlaw" ~ "measured_powerlaw",
+        .sd_family == "lognormal" ~ "measured_lognormal",
+        TRUE ~ "assumed_env_powerlaw"
+      ),
+      poly_volume_factor_ingest = dplyr::if_else(
+        polydispersity == "polydisperse",
+        mu.v.mono.ingest / particle.volume.um3.min,
+        NA_real_
+      )
+    ) %>%
     ###### CLEANUP #####
     dplyr::mutate(
       translocatable = ifelse(
@@ -1598,7 +1802,12 @@ align_data <- function(
     ) %>%
     # ensure particles are within valid range
     dplyr::filter(size.length.um.used.for.conversions >= x1D_set) %>%
-    dplyr::select(-is_sediment)
+    dplyr::select(
+      -is_sediment, -fiber.width.min.um, -fiber.width.max.um,
+      -.sd_family, -.sd_alpha, -.sd_meanlog, -.sd_sdlog,
+      -.w_max_full, -.h_max_full, -.v_max_full, -.mean_v_full,
+      -.count_from_mass_water, -.count_from_mass_sed, -.count_mass_mg
+    )
 
   if (verbose) {
     report_jams_domain(aoc_final, warn = TRUE)
@@ -1719,6 +1928,30 @@ report_missing_mouth <- function(df) {
     species
   ))
   invisible(n)
+}
+
+
+#' Warn about shapes the geometry rules do not cover.
+#' Recognised: "Sphere", "Fiber", "Fragment", "Not Reported" (case-sensitive,
+#' as in ToMEx). Other shapes keep the widths supplied in the data.
+#' @noRd
+report_unknown_shapes <- function(df) {
+  if (!"shape_f" %in% names(df)) {
+    return(invisible(character(0)))
+  }
+  known <- c("Sphere", "Fiber", "Fragment", "Not Reported")
+  shapes <- unique(as.character(df$shape_f))
+  unknown <- setdiff(shapes[!is.na(shapes)], known)
+  if (length(unknown) > 0) {
+    warning(
+      "shape_f value(s) not recognised by align_data(): ",
+      paste(dQuote(unknown, FALSE), collapse = ", "),
+      ". Recognised: ", paste(dQuote(known, FALSE), collapse = ", "),
+      " (case-sensitive). Their particle widths are used as supplied.",
+      call. = FALSE
+    )
+  }
+  invisible(unknown)
 }
 
 
@@ -2587,7 +2820,8 @@ MC_sim_align_wrapper <- function(
   x1D_set = 1,
   x2D_set = 5000,
   missing_mouth = "exclude",
-  mouth_size_source = "reported"
+  mouth_size_source = "reported",
+  particle_count_source = "mass"
 ) {
   # perform alignments using parameters for simulation
   align_args <- list(
@@ -2597,6 +2831,7 @@ MC_sim_align_wrapper <- function(
     x2D_set_input = x2D_set,
     missing_mouth = missing_mouth,
     mouth_size_source = mouth_size_source,
+    particle_count_source = particle_count_source,
     verbose = FALSE
   )
   upper_val <- get_param_value(params, "upper.tissue.trans.size.um")
@@ -2859,6 +3094,8 @@ MC_sim_align_wrapper <- function(
 #' @param mouth_size_source Passed to \link[=align_data]{align_data()}. Only
 #'   `"reported"` is supported; `"body_length"` is deprecated (warning, then
 #'   treated as `"reported"`). Reported mouth sizes are never perturbed.
+#' @param particle_count_source Passed to \link[=align_data]{align_data()}:
+#'   `"mass"` (default) or `"database"` (comparison only).
 #' @param checkpoint_dir Optional directory for checkpoints. When given, the
 #'   simulations run in chunks of `checkpoint_every`; each finished chunk is
 #'   saved (atomically) and, on a re-run with the same inputs, loaded instead
@@ -2903,11 +3140,13 @@ MC_sim_align_parallel <- function(
   x1M_set = x1D_set, # lower size bound for mass/volume/SA integrals
   missing_mouth = c("exclude", "x2D"),
   mouth_size_source = c("reported", "body_length"),
+  particle_count_source = c("mass", "database"),
   checkpoint_dir = NULL,
   checkpoint_every = 500
 ) {
   force(x1M_set)
   missing_mouth <- match.arg(missing_mouth)
+  particle_count_source <- match.arg(particle_count_source)
   # warn once here; the per-simulation alignments get "reported"
   mouth_size_source <- resolve_mouth_size_source(mouth_size_source)
 
@@ -2923,7 +3162,8 @@ MC_sim_align_parallel <- function(
     if (!"simulation_id" %in% names(param_all)) {
       param_all$simulation_id <- paste0("sim", seq_len(nrow(param_all)))
     }
-    key <- substr(.pssd_fingerprint(tox_data, param_all, x1D_set, x2D_set, x1M_set, missing_mouth), 1, 12)
+    key <- substr(.pssd_fingerprint(tox_data, param_all, x1D_set, x2D_set, x1M_set, missing_mouth,
+                                    particle_count_source), 1, 12)
     starts <- seq(1, n_sim, by = checkpoint_every)
     chunks <- lapply(starts, function(a) {
       b <- min(a + checkpoint_every - 1, n_sim)
@@ -2936,7 +3176,8 @@ MC_sim_align_parallel <- function(
         tox_data = tox_data, param_matrix = param_all[a:b, , drop = FALSE],
         x1D_set = x1D_set, x2D_set = x2D_set, n_sim = b - a + 1,
         num_cores = num_cores, suppress_warnings = suppress_warnings,
-        x1M_set = x1M_set, missing_mouth = missing_mouth
+        x1M_set = x1M_set, missing_mouth = missing_mouth,
+        particle_count_source = particle_count_source
       )
       .pssd_save_atomic(out, f)
       message(.pssd_green(sprintf("Checkpoint: saved simulations %d-%d", a, b)))
@@ -3022,7 +3263,8 @@ MC_sim_align_parallel <- function(
         x1D_set = x1D_set,
         x2D_set = x2D_set,
         missing_mouth = missing_mouth,
-        mouth_size_source = mouth_size_source
+        mouth_size_source = mouth_size_source,
+        particle_count_source = particle_count_source
       )
     })
 
@@ -3144,6 +3386,7 @@ MC_sim_align_parallel <- function(
       "x2D_set",
       "missing_mouth",
       "mouth_size_source",
+      "particle_count_source",
       "param_matrix",
       "param_df"
     ),
@@ -3204,7 +3447,8 @@ MC_sim_align_parallel <- function(
         x1D_set = x1D_set,
         x2D_set = x2D_set,
         missing_mouth = missing_mouth,
-        mouth_size_source = mouth_size_source
+        mouth_size_source = mouth_size_source,
+        particle_count_source = particle_count_source
       )
     }
 

@@ -1,3 +1,74 @@
+PSSDplusplus 0.4.1
+==================
+
+This release fixes the particle geometry of polydisperse test materials in
+`align_data()` and adds optional inputs for measured test-material size
+distributions and co-dosed mixtures. **Aligned concentrations of polydisperse
+spheres, fibers and (in marine water and sediments) fragments change, and with
+them the thresholds: Food Dilution HC5s rise by about 8-20% and Tissue
+Translocation HC5s by about 4-7%** (deterministic SSDs, below). Monodisperse
+records are unchanged. Tracking: ScottCoffin/ToMEx2.0_EcoToxRisk#8.
+
+Bug fixes (errors in code)
+--------------------------
+- **Smallest particle of polydisperse spheres, fibers and fragments.** The
+  width of the smallest particle was assigned by matching `"sphere"`,
+  `"fiber"` and `"fragment"`, but ToMEx codes shapes as `"Sphere"`, `"Fiber"`,
+  `"Fragment"`, and the assignment had no default, so the width was lost for
+  every polydisperse record of these shapes. The volume and surface-area
+  functions then filled it with `R.ave x length`, which (a) made the smallest
+  sphere an ellipsoid (volume `R.ave` x that of the sphere: 0.67 freshwater,
+  0.77 marine) and (b) filled the smallest particle's height with a fixed
+  0.67 x width instead of the environment's (or the sampled) H:W ratio, so
+  the smallest fragment's volume was 0.87 (marine), 0.89 (marine sediment)
+  and 0.96 (freshwater sediment) of the intended value.
+- **Fiber widths.** The largest bioaccessible fiber kept the database width,
+  which the ToMEx tidying sets to `R.ave x` the *untruncated* maximum length,
+  so a partially ingestible fiber could be several times wider than it was
+  long (9 of 13 such records in `tomex2`), while fibers with no database
+  width got 15 um at the large end and `R.ave x length` at the small end (the
+  smallest fiber wider than the largest: 34 of 221 records). Fibers now have
+  one diameter at both ends: the reported minimum/maximum width, else the
+  reported width, else the existing 15 um fiber default, never more than the fiber's
+  length. "Not Reported" shapes use the fragment rule at both ends (they are
+  excluded from SSDs).
+- Mirrored in the analysis scripts (`scripts/utils/functions.R` and the copy
+  inside `scripts/ToMEx2_EcoTox.Rmd`), which are tested for equivalence.
+
+Effect on results
+-----------------
+Deterministic tiered SSDs (in vivo, red criteria passed, environment-specific
+parameters; particles/L; ratio 0.4.1 / 0.4.0):
+
+| Environment | ERM | Tier 1 | Tier 2 | Tier 3 | Tier 4 |
+|---|---|---|---|---|---|
+| Freshwater | Food Dilution | 21.9 -> 26.2 (1.20) | 59.6 -> 69.5 (1.17) | 254 -> 290 (1.14) | 797 -> 904 (1.14) |
+| Marine | Food Dilution | 0.00234 -> 0.00258 (1.10) | 0.0525 -> 0.0577 (1.10) | 3.27 -> 3.54 (1.08) | 23.2 -> 25.1 (1.08) |
+| Freshwater | Tissue Translocation | 108 -> 115 (1.07) | 914 -> 971 (1.06) | 4490 -> 4680 (1.04) | 9200 -> 9670 (1.05) |
+| Marine | Tissue Translocation | 0.902 -> 0.968 (1.07) | 16.2 -> 17.2 (1.06) | 607 -> 637 (1.05) | 2220 -> 2330 (1.05) |
+
+Species counts are unchanged.
+
+New features (no change to existing results)
+--------------------------------------------
+- **Measured size distributions of test materials.** A polydisperse record can
+  supply a number-based length distribution (`size.dist.family` =
+  `"powerlaw"` with `size.dist.alpha`, or `"lognormal"` with
+  `size.dist.median.um`/`size.dist.gsd` or `size.D10.um`/`size.D50.um`/
+  `size.D90.um`). It then sets the bioaccessible fraction and the mean
+  ingestible volume and translocatable surface area (integrated over the
+  distribution with the particle geometry) instead of the environmental
+  power law, which remains the default because no ToMEx study reports its
+  material's distribution.
+- New output columns `poly_size_method` and `poly_volume_factor_ingest` (mean
+  ingestible / smallest particle volume) to screen or sensitivity-test
+  records whose alignment rests on the assumed distribution.
+- **`align_mixture()`** aligns tests that dose several particle types (shapes,
+  polymers, size ranges) component by component and adds their ERM-aligned
+  concentrations (component shares by number or by mass). ToMEx does not yet
+  record mixtures component by component.
+- `align_data()` warns about `shape_f` values it does not recognise.
+
 PSSDplusplus 0.4.0
 ==================
 

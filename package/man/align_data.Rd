@@ -46,6 +46,7 @@ align_data(
   a.ssa.sediment.marine_input = 2.54,
   missing_mouth = c("exclude", "x2D"),
   mouth_size_source = c("reported", "body_length"),
+  particle_count_source = c("mass", "database"),
   verbose = TRUE
 )
 }
@@ -181,6 +182,16 @@ values the database itself predicted, \code{max.size.ingest.basis} beginning
 \code{"predicted"}). \code{"body_length"} is deprecated: it gives a warning and is
 treated as \code{"reported"}.}
 
+\item{particle_count_source}{For tests dosed by mass, whose particle
+concentration the database converted from the mass concentration
+(\code{dose.particles.mL.master.converted.reported == "converted"}, and the
+sediment equivalent): \code{"mass"} (default) recomputes the particle
+concentration from the dosed mass and the mean particle mass implied by
+this alignment's own particle geometry and size distribution, so the
+aligned volume (or mass) dose equals the dosed mass / density; \code{"database"}
+keeps the database's conversion (PSSDplusplus <= 0.4.0, for comparison
+only). Reported particle concentrations are always used as reported.}
+
 \item{verbose}{Logical; report how many records (and species) were excluded
 from food dilution because their mouth size is unknown, and warn when
 mouth sizes are predicted for animals below the robust range of the
@@ -192,7 +203,12 @@ The input data frame \code{df} augmented with ERM columns including
 \code{EC_env_v.particles.mL_ingest} (surface-water food dilution, p/mL),
 \code{EC_env_sa.particles.kg_trans} (sediment tissue translocation, p/kg),
 \code{EC_env_v.particles.kg_ingest} (sediment food dilution, p/kg), plus
-classification columns \code{translocatable} and \code{ingestible}.
+classification columns \code{translocatable} and \code{ingestible},
+\code{poly_size_method} (\code{"monodisperse"}, \code{"assumed_env_powerlaw"},
+\code{"measured_powerlaw"} or \code{"measured_lognormal"}) and
+\code{poly_volume_factor_ingest} (mean ingestible particle volume / smallest
+particle volume, for polydisperse records: large values flag alignments
+that rest heavily on the assumed size distribution).
 }
 \description{
 Converts laboratory-measured toxicity endpoints (mg/L or mg/kg) into
@@ -224,7 +240,38 @@ robust (tends to over-predict) below 30 mm. \code{jams_domain} classifies each
 record's \code{body.length.cm} as \code{"within"} (>= 30 mm), \code{"less_robust"} (9 to
 < 30 mm) or \code{"outside_calibration"} (< 9 mm); with \code{verbose = TRUE} a
 warning counts records whose mouth size is predicted outside \code{"within"}.
+
+\strong{Particle geometry.} Particles are ellipsoids of length L, width W and
+height H. Spheres: W = H = L. Fragments and unreported shapes: W =
+\code{R.ave} x L and H = \code{H_W_ratio} x W (environment-specific, Kooi et al.
+2021). Fibers: W is the fiber diameter, the reported minimum/maximum width
+(\verb{size.width.\{min,max\}.mm.\{measured,nominal\}}), else the reported width
+(\code{size.width.um.used.for.conversions}), else 15 µm, never more than L; H =
+\code{H_W_ratio} x W. For polydisperse materials the same rules give the smallest
+particle and the largest bioaccessible particle (whose length is truncated at
+the mouth size or translocation limit). \code{shape_f} must be one of \code{"Sphere"},
+\code{"Fiber"}, \code{"Fragment"}, \code{"Not Reported"} (case-sensitive); other shapes keep
+the widths supplied, with a warning. (Before 0.4.1 the smallest particle's
+width was lost for spheres, fibers and fragments; see NEWS.)
+
+\strong{Size distribution of polydisperse test materials.} By default a
+polydisperse material is assumed to follow the environmental power-law
+length distribution between its reported minimum and maximum lengths
+(\code{alpha}, \code{a.v}, \code{a.sa}): no study in ToMEx reports its test material's
+distribution. A record can instead supply a measured, number-based length
+distribution in optional columns: \code{size.dist.family} (\code{"powerlaw"} or
+\code{"lognormal"}), with \code{size.dist.alpha} (power law) or
+\code{size.dist.median.um} and \code{size.dist.gsd} (log-normal; or \code{size.D10.um},
+\code{size.D50.um}, \code{size.D90.um}). The distribution, truncated at the reported
+minimum and maximum lengths, then gives the bioaccessible fraction of
+particles (replacing the power-law correction factor) and the mean
+ingestible volume and translocatable surface area, integrated with the
+geometry above. Records without these columns are aligned exactly as
+before. Tests that dose several particle types together can be aligned
+component by component with \code{\link[=align_mixture]{align_mixture()}}. All these fields (and the
+reported width fields that set fiber diameters) are described in
+\code{docs/test_material_fields.md} of the ToMEx2.0_EcoToxRisk repository.
 }
 \seealso{
-\code{\link[=MC_sim_align_parallel]{MC_sim_align_parallel()}}, \code{\link[=make_tiered_SSDs]{make_tiered_SSDs()}}
+\code{\link[=MC_sim_align_parallel]{MC_sim_align_parallel()}}, \code{\link[=make_tiered_SSDs]{make_tiered_SSDs()}}, \code{\link[=align_mixture]{align_mixture()}}
 }
