@@ -239,8 +239,14 @@ Order matters; each step needs the previous one.
 - [x] Upstream (SCCWRP/ToMEx_AquaticOrganisms#5): app port + tests; data fixes
       (ToMEx 1.0 sphere geometry, Zhou et al. size range, polymer densities,
       ToMEx 1.0 dose conversions) with identical thresholds; data synced here.
-- [ ] "Effect on the conclusions" (correction) and NEWS: author's review;
-      release 0.4.1 (author's decision); merge PR #9.
+- [x] Correction (docs/correction/correction_PSSDpp.{qmd,html,docx}): errors grouped
+      as shared with ToMEx 2.0 (E1-E3, E7-E10, R1; Thornton Hampton et al. 2025
+      correct their article first) vs specific to this article (E4-E6, E11), Table C14;
+      item-by-item changes to the article (Tables C7-C11, `R/article_items.R`); mass-unit
+      thresholds under alternative assumptions (E9, Tables C12-C13, `R/mass_conversion.R`).
+- [x] 0.4.1 merged into `main` via PR #9 (2026-11-05). Open elsewhere:
+      SCCWRP/ToMEx_AquaticOrganisms#5 (maintainer review), the letter to the editor,
+      a better count-to-mass method (E9), Missawi et al. 2021 densities.
 
 ## Open technical debt
 

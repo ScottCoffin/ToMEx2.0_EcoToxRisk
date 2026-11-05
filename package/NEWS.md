@@ -114,6 +114,19 @@ measured particle masses. The correction (E9, Tables C12-C13;
 under each assumption with its caveats; the function's single value is one of
 them and should be read as indicative.
 
+Data
+----
+- `tomex2`, `tomex2_mini` and `inst/extdata/aoc_z_tomex2.RDS` are rebuilt with
+  the data fixes of SCCWRP/ToMEx_AquaticOrganisms#5: the stored volume,
+  surface area and mass of ToMEx 1.0 spheres (computed with width =
+  `R.ave` x length before), the size range of 10.1039/d0en00952k (min = max
+  = 1 um; now 80-130 nm as measured), study-specific polymer densities with
+  missing ones filled from a polymer table before masses and dose conversions
+  are computed (new column `density.source`), particle counts for ToMEx 1.0
+  mass doses that had none, and the optional test-material columns (all
+  `NA`). Aligned particle doses and all thresholds are unchanged by these
+  data fixes (checked for both `particle_count_source` settings).
+
 New features (no change to existing results)
 --------------------------------------------
 - **Measured size distributions of test materials.** A polydisperse record can

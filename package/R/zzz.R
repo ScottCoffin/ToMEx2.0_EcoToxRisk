@@ -1,5 +1,8 @@
 utils::globalVariables(c(
   ".",
+  # columns read by align_data() (mass-dosed particle counts, 0.4.1)
+  "size.length.max.um.used.for.conversions", "dose.mg.kg.sediment.master",
+  "dose.particles.mL.master", "mass.per.particle.mg", "polydispersity",
   "max.size.ingest.um.reported",
   "id",
   "value",

@@ -15,6 +15,11 @@
 ## with the body-length and mouth-size logic of body_length_functions.R and the
 ## row-level corrections in body_length_measured.csv (GitHub issue #6;
 ## SCCWRP/ToMEx_AquaticOrganisms#5).
+##
+## PSSDplusplus 0.4.1 data: rebuilt from SCCWRP/ToMEx_AquaticOrganisms#5 (commit 4d9981b):
+## ToMEx 1.0 sphere geometry, the size range of 10.1039/d0en00952k, study-specific polymer
+## densities (density.source), ToMEx 1.0 dose conversions and the optional test-material
+## columns (docs/test_material_fields.md). Thresholds unchanged by these data fixes.
 
 stopifnot(exists("TOMEX_DB"), dir.exists(TOMEX_DB))
 

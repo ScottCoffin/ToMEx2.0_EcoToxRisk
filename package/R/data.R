@@ -5,8 +5,12 @@
 #' in `inst/extdata/aoc_z_tomex2.RDS`, which is `aoc_z_tomex2.RDS` built by
 #' `ToMEx2.0_Onboarding/ToMEx2.0_Data_Tidying.R` in the ToMEx 2.0 database
 #' repository (SCCWRP/ToMEx_AquaticOrganisms, release v2.0.1 of 2026-06-30,
-#' plus the body-length corrections of PSSDplusplus 0.4.0; see
-#' `data-raw/update_tomex2.R`).
+#' plus the body-length corrections of PSSDplusplus 0.4.0 and the data fixes
+#' of 0.4.1; see `data-raw/update_tomex2.R`). The 0.4.1 data fixes (ToMEx 1.0
+#' sphere geometry, the size range of 10.1039/d0en00952k, study-specific polymer
+#' densities, ToMEx 1.0 dose conversions; SCCWRP/ToMEx_AquaticOrganisms#5)
+#' change stored particle volumes, masses and converted doses, but not the
+#' aligned particle doses or the thresholds.
 #'
 #' Body length and maximum ingestible particle size (mouth size) are resolved
 #' per test record:
@@ -44,6 +48,14 @@
 #'   \item{`ssd_exclusion_reason`}{`NA` (eligible), `"in vitro"`,
 #'     `"vivo status missing"`, or `"food dilution only: unresolved body
 #'     length or mouth size"`.}
+#'   \item{`density.source`}{`"record"` (the study's or ToMEx 1.0 density) or
+#'     `"polymer table"` (filled from the database's polymer density table
+#'     because the record has none).}
+#'   \item{`size.dist.*`, `size.D10.um`, `size.D50.um`, `size.D90.um`,
+#'     `mixture_id`, `component.fraction`, `component.fraction.basis`}{Optional
+#'     test-material fields (measured size distributions, co-dosed mixtures),
+#'     all `NA` in this release; see [align_data()], [align_mixture()] and
+#'     `docs/test_material_fields.md` of the repository.}
 #' }
 #'
 #' @format A data frame with the fields described in the ToMEx 2.0 metadata,
