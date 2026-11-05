@@ -365,3 +365,6 @@ scripts/output/figuresunnamed-chunk-94-1.png
 scripts/output/figuresunnamed-chunk-106-1.png
 scripts/output/figuresunnamed-chunk-107-1.png
 scripts/output/figuresunnamed-chunk-108-1.png
+
+# local Claude Code session notes, run logs and scratch installs
+.claude/
