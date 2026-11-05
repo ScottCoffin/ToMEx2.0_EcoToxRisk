@@ -253,6 +253,10 @@ generate_structure_checks <- function(data) {
 #In this case, the limits LL and UL in $\mu_{x,poly}$ relate to the values of the ERM at the 1 and 5,000 um size limits, respectively (i.e., SA, V, and M), rather than to bioavailability limits. Compartment-specific alpha values are used based on Table S4 of Kooi et al 2021.
 
 #' Convert particles/L thresholds to surface-area, volume, and mass units.
+#' Indicative only: the mean particle surface area, volume and mass over the
+#' default size range extrapolate the environmental power laws far beyond the
+#' size ranges over which they were fitted, and depend strongly on the choice of
+#' exponent and particle shape (see package NEWS 0.4.1 and the correction, E9).
 #' @noRd
 convert_units_fxn <- function(thresholds_df, environment, params,
                               x1D = 1, x2D = 5000) {

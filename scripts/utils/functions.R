@@ -331,6 +331,8 @@ generate_structure_checks <- function(data) {
 #Where $\mu_{x,poly}$ is derived using the following equation: $\mu_{x,poly} = \frac{1 - a_{x}}{2 - a_{x}}  \frac{X^{2-a_x}_{UL} - X^{2-a_x}_{LL}}{X^{1-a_x}_{UL} - X^{1-a_x}_{LL}}$
 #In this case, the limits LL and UL in $\mu_{x,poly}$ relate to the values of the ERM at the 1 and 5,000 um size limits, respectively (i.e., SA, V, and M), rather than to bioavailability limits. Compartment-specific alpha values are used based on Table S4 of Kooi et al 2021.
 
+# Indicative only: the mean particle SA/V/mass over 1-5000 um extrapolates the fitted power laws far
+# beyond their fitted size ranges and depends strongly on the exponent and particle shape (correction, E9).
 convert_units_fxn <- function(thresholds_df, environment, params,
                               x1D = x1D_set, x2D = x2D_set) {
   env <- as.character(environment)

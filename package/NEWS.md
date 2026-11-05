@@ -49,7 +49,8 @@ Bug fixes (errors in code)
   in ug/L, um3/L and um2/L): the power-law means were taken between 1 and 5000
   as if these lengths were masses, volumes and areas; they now use the mass,
   volume and surface area of 1 um and 5000 um particles. Thresholds in
-  particles/L are unaffected.
+  particles/L are unaffected. The converted values are indicative only (see
+  "Effect on results").
 - **SSD size filters** (`process_environment_data()` and the analysis
   scripts) tested the midpoint length of polydisperse records, which could drop
   partially bioaccessible materials; records now enter by their
@@ -100,14 +101,17 @@ PSSD++
 | Freshwater | Tissue Translocation | 2690 -> 2360 (0.88) | 11600 -> 12400 (1.07) |
 | Marine | Tissue Translocation | 417 -> 444 (1.06) | 1040 -> 1110 (1.07) |
 
-Species and data-point counts are unchanged. **Thresholds in mass units change
-by orders of magnitude** (unit-conversion fix): the MC + SSD medians in ug/L
-fall about 4,000-8,000-fold in freshwater and 14-17-fold in marine waters
-(e.g. freshwater food dilution Tier 1: 686 -> 0.12 ug/L; marine tissue
-translocation Tier 3: 87,200 -> 5,400 ug/L), because the mean mass of an
-environmental particle between 1 and 5000 um is about 0.008 ug (freshwater)
-and 9.5 ug (marine), not 35 ug and 164 ug. Volume (um3/L) and surface-area
-(um2/L) conversions change likewise.
+Species and data-point counts are unchanged. **Thresholds in mass, volume
+and surface-area units: indicative only.** The corrected conversion follows
+the method of Kooi et al. (2021), but the mean particle mass over 1-5000 um
+extrapolates the fitted power laws far beyond their fitted size ranges, and it
+changes by one to three orders of magnitude with the choice of exponent
+(length, volume or mass) and particle shape (e.g. 0.001-0.008 ug per particle
+in freshwater, 0.1-10 ug in marine waters, while the measured means of Kooi et
+al. 2021 are 8.4 and 12.1 ug). The published ug/L thresholds were wrong and
+are withdrawn in the correction; no replacement is given until a better
+count-to-mass method is developed (see Zhao et al. 2026, Water Res. 299:125833;
+Chen et al. 2026, Environ. Sci. Technol. 60:1263-1274).
 
 New features (no change to existing results)
 --------------------------------------------
