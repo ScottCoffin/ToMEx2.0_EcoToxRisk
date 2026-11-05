@@ -1,13 +1,15 @@
 PSSDplusplus 0.4.1
 ==================
 
-This release fixes the particle geometry of polydisperse test materials in
-`align_data()` and adds optional inputs for measured test-material size
-distributions and co-dosed mixtures. **Aligned concentrations of polydisperse
-spheres, fibers and (in marine water and sediments) fragments change, and with
-them the thresholds: Food Dilution HC5s rise by about 8-20% and Tissue
-Translocation HC5s by about 4-7%** (deterministic SSDs, below). Monodisperse
-records are unchanged. Tracking: ScottCoffin/ToMEx2.0_EcoToxRisk#8.
+This release fixes how `align_data()` builds the particles of polydisperse
+test materials and fibers, how it obtains the particle concentration of tests
+dosed by mass, and how thresholds are converted to mass, volume and surface
+area. It also adds optional inputs for measured test-material size
+distributions and co-dosed mixtures (`align_mixture()`), documented in
+`docs/test_material_fields.md`. **Aligned concentrations of polydisperse and
+mass-dosed records change, and with them the thresholds** (deterministic SSDs:
+food dilution x0.87-1.17, tissue translocation x0.79-1.07; below).
+Tracking: ScottCoffin/ToMEx2.0_EcoToxRisk#8.
 
 Bug fixes (errors in code)
 --------------------------
@@ -29,25 +31,83 @@ Bug fixes (errors in code)
   width got 15 um at the large end and `R.ave x length` at the small end (the
   smallest fiber wider than the largest: 34 of 221 records). Fibers now have
   one diameter at both ends: the reported minimum/maximum width, else the
-  reported width, else the existing 15 um fiber default, never more than the fiber's
-  length. "Not Reported" shapes use the fragment rule at both ends (they are
-  excluded from SSDs).
-- Mirrored in the analysis scripts (`scripts/utils/functions.R` and the copy
-  inside `scripts/ToMEx2_EcoTox.Rmd`), which are tested for equivalence.
+  reported width, else the existing 15 um default (the fiber diameter of
+  Kooi et al. 2021, Section 3.2), never more than the fiber's length; the cap
+  also applies to monodisperse fibers. "Not Reported" shapes use the fragment
+  rule at both ends (they are excluded from SSDs).
+- **Particle counts of tests dosed by mass.** Counts the database converted
+  from a mass dose (`dose.particles.mL.master.converted.reported ==
+  "converted"`, and the sediment equivalent) used the database's own particle
+  geometry (H:W 0.67; a polydisperse material as one particle of the midpoint
+  length), not the alignment's, so the aligned volume dose was not the dosed
+  mass / density. `align_data()` now recomputes them as dosed mass / mean
+  particle mass under its own geometry and size distribution
+  (`particle_count_source = "mass"`, the default; `"database"` keeps the old
+  counts for comparison). New output columns `particle_count_basis` and
+  `mean.mass.per.particle.mg`. Also passed through `MC_sim_align_parallel()`.
+- **Unit conversions** (`convert_units_fxn()`, used by the MC + SSD outputs
+  in ug/L, um3/L and um2/L): the power-law means were taken between 1 and 5000
+  as if these lengths were masses, volumes and areas; they now use the mass,
+  volume and surface area of 1 um and 5000 um particles. Thresholds in
+  particles/L are unaffected.
+- **SSD size filters** (`process_environment_data()` and the analysis
+  scripts) tested the midpoint length of polydisperse records, which could drop
+  partially bioaccessible materials; records now enter by their
+  bioaccessibility labels (only the lower size limit is applied to the
+  length). No deterministic record changes; MC draws do.
+- Mirrored in the analysis scripts (`scripts/utils/functions.R`,
+  `scripts/utils/ssd_functions.R` and the copy inside
+  `scripts/ToMEx2_EcoTox.Rmd`), which are tested for equivalence, and in the
+  ToMEx app (SCCWRP/ToMEx_AquaticOrganisms#5), whose alignments give the same
+  particle-based ERM doses.
 
 Effect on results
 -----------------
 Deterministic tiered SSDs (in vivo, red criteria passed, environment-specific
-parameters; particles/L; ratio 0.4.1 / 0.4.0):
+parameters; particles/L; 0.4.0 -> 0.4.1, ratio):
 
 | Environment | ERM | Tier 1 | Tier 2 | Tier 3 | Tier 4 |
 |---|---|---|---|---|---|
-| Freshwater | Food Dilution | 21.9 -> 26.2 (1.20) | 59.6 -> 69.5 (1.17) | 254 -> 290 (1.14) | 797 -> 904 (1.14) |
-| Marine | Food Dilution | 0.00234 -> 0.00258 (1.10) | 0.0525 -> 0.0577 (1.10) | 3.27 -> 3.54 (1.08) | 23.2 -> 25.1 (1.08) |
-| Freshwater | Tissue Translocation | 108 -> 115 (1.07) | 914 -> 971 (1.06) | 4490 -> 4680 (1.04) | 9200 -> 9670 (1.05) |
-| Marine | Tissue Translocation | 0.902 -> 0.968 (1.07) | 16.2 -> 17.2 (1.06) | 607 -> 637 (1.05) | 2220 -> 2330 (1.05) |
+| Freshwater | Food Dilution | 21.9 -> 19.1 (0.87) | 59.6 -> 55.1 (0.92) | 254 -> 253 (0.99) | 797 -> 849 (1.07) |
+| Marine | Food Dilution | 0.00234 -> 0.00274 (1.17) | 0.0525 -> 0.0593 (1.13) | 3.27 -> 3.64 (1.11) | 23.2 -> 25.1 (1.08) |
+| Freshwater | Tissue Translocation | 108 -> 98.2 (0.91) | 914 -> 725 (0.79) | 4490 -> 4030 (0.90) | 9200 -> 9030 (0.98) |
+| Marine | Tissue Translocation | 0.902 -> 0.936 (1.04) | 16.2 -> 15.5 (0.96) | 607 -> 650 (1.07) | 2220 -> 2320 (1.05) |
 
-Species counts are unchanged.
+The geometry fix alone raises all of them (food dilution x1.08-1.20, tissue
+translocation x1.04-1.07); recomputing the counts of mass-dosed tests lowers
+the freshwater values again (x0.73-0.94) and changes the marine values by
+x0.90-1.06. Species counts are unchanged.
+
+Production run of the analysis (`scripts/`; 9,400 valid Monte Carlo
+simulations, 300 PSSD++ simulations; same parameter matrix and seeds as
+0.4.0). Median thresholds, particles/L, 0.4.0 -> 0.4.1 (ratio):
+
+MC + SSD
+
+| Environment | ERM | Tier 1 | Tier 2 | Tier 3 | Tier 4 |
+|---|---|---|---|---|---|
+| Freshwater | Food Dilution | 19.9 -> 16.3 (0.82) | 52.6 -> 46.4 (0.88) | 223 -> 211 (0.95) | 683 -> 710 (1.04) |
+| Marine | Food Dilution | 0.00188 -> 0.00237 (1.26) | 0.0404 -> 0.0493 (1.22) | 3.03 -> 3.61 (1.19) | 19.0 -> 22.8 (1.20) |
+| Freshwater | Tissue Translocation | 121 -> 79.9 (0.66) | 789 -> 699 (0.89) | 3950 -> 3940 (1.00) | 8310 -> 9060 (1.09) |
+| Marine | Tissue Translocation | 0.634 -> 0.654 (1.03) | 11.3 -> 11.5 (1.02) | 532 -> 570 (1.07) | 1910 -> 2100 (1.10) |
+
+PSSD++
+
+| Environment | ERM | Tier 3 (HC5) | Tier 4 (HC10) |
+|---|---|---|---|
+| Freshwater | Food Dilution | 220 -> 200 (0.91) | 692 -> 733 (1.06) |
+| Marine | Food Dilution | 1.59 -> 1.83 (1.15) | 10.2 -> 11.5 (1.13) |
+| Freshwater | Tissue Translocation | 2690 -> 2360 (0.88) | 11600 -> 12400 (1.07) |
+| Marine | Tissue Translocation | 417 -> 444 (1.06) | 1040 -> 1110 (1.07) |
+
+Species and data-point counts are unchanged. **Thresholds in mass units change
+by orders of magnitude** (unit-conversion fix): the MC + SSD medians in ug/L
+fall about 4,000-8,000-fold in freshwater and 14-17-fold in marine waters
+(e.g. freshwater food dilution Tier 1: 686 -> 0.12 ug/L; marine tissue
+translocation Tier 3: 87,200 -> 5,400 ug/L), because the mean mass of an
+environmental particle between 1 and 5000 um is about 0.008 ug (freshwater)
+and 9.5 ug (marine), not 35 ug and 164 ug. Volume (um3/L) and surface-area
+(um2/L) conversions change likewise.
 
 New features (no change to existing results)
 --------------------------------------------
@@ -64,9 +124,13 @@ New features (no change to existing results)
   ingestible / smallest particle volume) to screen or sensitivity-test
   records whose alignment rests on the assumed distribution.
 - **`align_mixture()`** aligns tests that dose several particle types (shapes,
-  polymers, size ranges) component by component and adds their ERM-aligned
-  concentrations (component shares by number or by mass). ToMEx does not yet
-  record mixtures component by component.
+  polymers, size ranges) component by component with the whole test's dose,
+  scales each by its share of the dose (number share for reported counts,
+  mass share for counts derived from the dosed mass) and adds the
+  bioaccessible components. The combined record keeps its dominant
+  component's labels and gains `n_components`, `mixture_shapes` and
+  `mixture_polymers`. ToMEx does not yet record mixtures component by
+  component. The same rules are used by the ToMEx app.
 - `align_data()` warns about `shape_f` values it does not recognise.
 
 PSSDplusplus 0.4.0

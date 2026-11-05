@@ -335,6 +335,7 @@ images/
 
 # 0.4.0 re-run: backups and temporary render copy (not tracked)
 output/pssd_cache_pre_issue6/
+output/pssd_cache_v0.4.0/
 scripts/.ToMEx2_EcoTox_rerun.Rmd
 
 # checkpoints of long runs (0.4.0)

@@ -123,7 +123,10 @@ test_that("mass basis: identical halves equal the whole; fractions are normalise
 
 test_that("align_mixture() checks its inputs", {
   rec <- one_record()
+  rec$mixture_id <- NULL # the database has the column (all NA) since 0.4.1
   expect_error(align_mixture(rec), "mixture_id")
+  rec$mixture_id <- NA_character_
+  expect_error(align_mixture(rec), "mixture ids")
   rec$mixture_id <- "a"
   rec$component.fraction <- NA_real_
   expect_error(align_mixture(rec), "fractions")

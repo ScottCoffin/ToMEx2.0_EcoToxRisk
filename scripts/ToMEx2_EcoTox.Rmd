@@ -25,7 +25,7 @@ This markdown script produces (nearly) all of the figures, tables, and data in t
 ## Libraries
 ```{r Libraries, include = FALSE}
 library(tidyverse)
-#library(calecopal)
+library(calecopal) # cal_palette() in the figures below
 library(DT)
 library(plotly)
 library(gridExtra)
@@ -47,7 +47,7 @@ library(Matrix)
 library(mc2d)
 library(trapezoid)
 library(reshape2)
-devtools::install_github("christyray/sciscales")
+if (!requireNamespace("sciscales", quietly = TRUE)) devtools::install_github("christyray/sciscales") # install once, not on every render
 library(sciscales)
 
 #check SSDtools package version is 0.3.7 (and reinstall if necessary)

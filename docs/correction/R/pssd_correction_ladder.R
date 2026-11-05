@@ -18,9 +18,11 @@
 #   S6 + particle-shape uncertainty propagated to tested particles
 #                                                           (code error)
 #   S7 + polydisperse particle geometry fixed (ToMEx2.0_EcoToxRisk#8: smallest
-#      particle's width lost for spheres/fibers/fragments; fiber widths)
+#      particle's width lost for spheres/fibers/fragments; fiber widths, also the
+#      monodisperse 15 um default capped at the length) and SSD size filters by
+#      bioaccessibility labels instead of the midpoint length
 #      [particle counts of mass-dosed tests as converted by the database]
-#                                                           (code error, E7)
+#                                                           (code errors, E7, E10)
 #   S8 + particle counts of mass-dosed tests from the dosed mass with the
 #      alignment's own geometry and size distribution      (code error, E8)
 #
@@ -98,7 +100,7 @@ steps <- tribble(
   "S4", "Database v2.0.1 + record-level corrections",      "data refinement",       "current",        "exclude",      TRUE,          FALSE,        FALSE,         "lognormal",
   "S5", "Body-length model uncertainty propagated",        "code error",            "current",        "exclude",      TRUE,          TRUE,         FALSE,         "lognormal",
   "S6", "Particle-shape uncertainty propagated",           "code error",            "current",        "exclude",      TRUE,          TRUE,         TRUE,          "lognormal",
-  "S7", "Polydisperse particle geometry fixed",            "code error",            "current",        "exclude",      TRUE,          TRUE,         TRUE,          "lognormal",
+  "S7", "Particle geometry and size filters fixed",        "code error",            "current",        "exclude",      TRUE,          TRUE,         TRUE,          "lognormal",
   "S8", "Mass-dosed particle counts from the dosed mass",  "code error",            "current",        "exclude",      TRUE,          TRUE,         TRUE,          "lognormal"
 )
 # the geometry fix (S7) is in the code, not a switch: S0-S6 need 0.4.0, S7-S8 >= 0.4.1;

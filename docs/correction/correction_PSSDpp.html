@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="dcterms.date" content="2026-10-22">
+<meta name="dcterms.date" content="2026-11-04">
 
 <title>Correction: probabilistic (MC + SSD and PSSD++) components</title>
 <style>
@@ -2221,6 +2221,11 @@ vertical-align: -.125em;
   <li><a href="#e4.-body-length-model-uncertainty-was-not-propagated" id="toc-e4.-body-length-model-uncertainty-was-not-propagated" class="nav-link" data-scroll-target="#e4.-body-length-model-uncertainty-was-not-propagated">E4. Body-length model uncertainty was not propagated</a></li>
   <li><a href="#e5.-particle-shape-uncertainty-did-not-reach-tested-particles" id="toc-e5.-particle-shape-uncertainty-did-not-reach-tested-particles" class="nav-link" data-scroll-target="#e5.-particle-shape-uncertainty-did-not-reach-tested-particles">E5. Particle-shape uncertainty did not reach tested particles</a></li>
   <li><a href="#e6.-record-level-mc-statistics-were-merged-to-the-wrong-records" id="toc-e6.-record-level-mc-statistics-were-merged-to-the-wrong-records" class="nav-link" data-scroll-target="#e6.-record-level-mc-statistics-were-merged-to-the-wrong-records">E6. Record-level MC statistics were merged to the wrong records</a></li>
+  <li><a href="#e7.-geometry-of-polydisperse-test-materials" id="toc-e7.-geometry-of-polydisperse-test-materials" class="nav-link" data-scroll-target="#e7.-geometry-of-polydisperse-test-materials">E7. Geometry of polydisperse test materials</a></li>
+  <li><a href="#e8.-particle-counts-of-tests-dosed-by-mass" id="toc-e8.-particle-counts-of-tests-dosed-by-mass" class="nav-link" data-scroll-target="#e8.-particle-counts-of-tests-dosed-by-mass">E8. Particle counts of tests dosed by mass</a></li>
+  <li><a href="#e9.-conversion-of-the-thresholds-to-mass-volume-and-surface-area" id="toc-e9.-conversion-of-the-thresholds-to-mass-volume-and-surface-area" class="nav-link" data-scroll-target="#e9.-conversion-of-the-thresholds-to-mass-volume-and-surface-area">E9. Conversion of the thresholds to mass, volume and surface area</a></li>
+  <li><a href="#e10.-size-filters-of-the-ssd-inputs" id="toc-e10.-size-filters-of-the-ssd-inputs" class="nav-link" data-scroll-target="#e10.-size-filters-of-the-ssd-inputs">E10. Size filters of the SSD inputs</a></li>
+  <li><a href="#e11.-descriptive-summaries-of-the-food-dilution-datasets" id="toc-e11.-descriptive-summaries-of-the-food-dilution-datasets" class="nav-link" data-scroll-target="#e11.-descriptive-summaries-of-the-food-dilution-datasets">E11. Descriptive summaries of the food dilution datasets</a></li>
   </ul></li>
   <li><a href="#refinements" id="toc-refinements" class="nav-link" data-scroll-target="#refinements">Refinements</a>
   <ul class="collapse">
@@ -2256,7 +2261,7 @@ vertical-align: -.125em;
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">October 22, 2026</p>
+      <p class="date">November 4, 2026</p>
     </div>
   </div>
   
@@ -2283,7 +2288,7 @@ Warning
 </div>
 <section id="summary" class="level2">
 <h2 class="anchored" data-anchor-id="summary">Summary</h2>
-<p>While packaging the analysis code of this article as the R package PSSDplusplus (v0.4.0) and responding to a reported issue (<a href="https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/issues/6">ToMEx2.0_EcoToxRisk#6</a>), we found errors in the code that aligned toxicity data to the food dilution and tissue translocation ecologically relevant metrics (ERMs) in the Monte Carlo (MC) simulations, and in the preparation of the input data. These errors affect the MC + SSD and PSSD++ thresholds (Table 2, Figs. 5–7) and the record-level uncertainty statistics derived from the MC simulations. The traditional SSD thresholds are affected by the input-data errors and are corrected in the ToMEx 2.0 database and web application (<a href="https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5">SCCWRP/ToMEx_AquaticOrganisms#5</a>).</p>
+<p>While packaging the analysis code of this article as the R package PSSDplusplus (v0.4.0, with further fixes in v0.4.1) and responding to reported issues (<a href="https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/issues/6">ToMEx2.0_EcoToxRisk#6</a>, <a href="https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/issues/8">#8</a>), we found errors in the code that aligned toxicity data to the food dilution and tissue translocation ecologically relevant metrics (ERMs) in the Monte Carlo (MC) simulations, and in the preparation of the input data. These errors affect the MC + SSD and PSSD++ thresholds (Table 2, Figs. 5–7) and the record-level uncertainty statistics derived from the MC simulations. The traditional SSD thresholds are affected by the input-data errors and are corrected in the ToMEx 2.0 database and web application (<a href="https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5">SCCWRP/ToMEx_AquaticOrganisms#5</a>).</p>
 <p>We separate <strong>errors</strong> (the code did not do what the article describes) from <strong>refinements</strong> (corrections to individual data records that improve, but do not fix, the analysis). The corrected thresholds are given in Table C2 and the conclusions are discussed at the end of this note.</p>
 <p><strong>Table C1.</strong> Corrections, their type, and the results affected.</p>
 <table class="caption-top table">
@@ -2339,6 +2344,36 @@ Warning
 <td>Intraspecies CoV statistics, CoV analyses (SI)</td>
 </tr>
 <tr class="odd">
+<td>E7</td>
+<td>The smallest particle of polydisperse test materials lost its width; fiber widths were inconsistent</td>
+<td>Code error</td>
+<td>Food dilution and tissue translocation: all methods (polydisperse records, fibers)</td>
+</tr>
+<tr class="even">
+<td>E8</td>
+<td>Particle counts of mass-dosed tests used the database’s particle geometry, not the alignment’s</td>
+<td>Code error</td>
+<td>Food dilution and tissue translocation: all methods (mass-dosed records)</td>
+</tr>
+<tr class="odd">
+<td>E9</td>
+<td>Conversions of the thresholds to mass, volume and surface area used the length limits as mass, volume and area limits</td>
+<td>Code error</td>
+<td>Thresholds in µg/L, µm³/L and µm²/L (Fig. S5, mass tables); not particles/L</td>
+</tr>
+<tr class="even">
+<td>E10</td>
+<td>SSD size filters used the midpoint length of polydisperse materials, not their bioaccessibility</td>
+<td>Code error</td>
+<td>MC + SSD and PSSD++ (no record in the deterministic SSDs)</td>
+</tr>
+<tr class="odd">
+<td>E11</td>
+<td>The food dilution datasets used for the descriptive summaries were capped at the translocation limit</td>
+<td>Code error</td>
+<td>Dataset summaries (record, study and species counts)</td>
+</tr>
+<tr class="even">
 <td>R1</td>
 <td>ToMEx 2.0 database v2.0.1 and record-level body-length and in vivo / in vitro corrections</td>
 <td>Data refinement</td>
@@ -2352,7 +2387,7 @@ Warning
 <div class="cell">
 <div class="cell-output-display">
 <table class="caption-top table table-sm table-striped small">
-<caption>Table C0. Median thresholds (particles/L, aligned to 1-5000 um) in Table 2 as published and as corrected (all corrections E1-E6 and R1; current data and code, production run). Tier 1 is the lower 95 % confidence limit of the HC5 (see the note on bootstrap samples below). Uncertainty intervals of the corrected values are in the analysis outputs.</caption>
+<caption>Table C0. Median thresholds (particles/L, aligned to 1-5000 um) in Table 2 as published and as corrected (all corrections E1-E11 and R1; current data and code, production run). Tier 1 is the lower 95 % confidence limit of the HC5 (see the note on bootstrap samples below). Uncertainty intervals of the corrected values are in the analysis outputs.</caption>
 <colgroup>
 <col style="width: 15%">
 <col style="width: 26%">
@@ -2380,8 +2415,8 @@ Warning
 <td style="text-align: left;">Tier1</td>
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">0.000048</td>
-<td style="text-align: left;">0.0023</td>
-<td style="text-align: left;">49</td>
+<td style="text-align: left;">0.0027</td>
+<td style="text-align: left;">57</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marine</td>
@@ -2389,8 +2424,8 @@ Warning
 <td style="text-align: left;">Tier1</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">0.00001</td>
-<td style="text-align: left;">0.002</td>
-<td style="text-align: left;">2e+02</td>
+<td style="text-align: left;">0.0024</td>
+<td style="text-align: left;">2.4e+02</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marine</td>
@@ -2398,8 +2433,8 @@ Warning
 <td style="text-align: left;">Tier2</td>
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">0.0026</td>
-<td style="text-align: left;">0.053</td>
-<td style="text-align: left;">20</td>
+<td style="text-align: left;">0.059</td>
+<td style="text-align: left;">23</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marine</td>
@@ -2407,8 +2442,8 @@ Warning
 <td style="text-align: left;">Tier2</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">0.0026</td>
-<td style="text-align: left;">0.04</td>
-<td style="text-align: left;">15</td>
+<td style="text-align: left;">0.049</td>
+<td style="text-align: left;">19</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marine</td>
@@ -2416,8 +2451,8 @@ Warning
 <td style="text-align: left;">Tier3</td>
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">0.3</td>
-<td style="text-align: left;">3.3</td>
-<td style="text-align: left;">11</td>
+<td style="text-align: left;">3.6</td>
+<td style="text-align: left;">12</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marine</td>
@@ -2425,8 +2460,8 @@ Warning
 <td style="text-align: left;">Tier3</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">0.28</td>
-<td style="text-align: left;">3</td>
-<td style="text-align: left;">11</td>
+<td style="text-align: left;">3.6</td>
+<td style="text-align: left;">13</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marine</td>
@@ -2434,8 +2469,8 @@ Warning
 <td style="text-align: left;">Tier3</td>
 <td style="text-align: left;">PSSD++</td>
 <td style="text-align: left;">0.14</td>
-<td style="text-align: left;">1.6</td>
-<td style="text-align: left;">11</td>
+<td style="text-align: left;">1.8</td>
+<td style="text-align: left;">13</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marine</td>
@@ -2443,8 +2478,8 @@ Warning
 <td style="text-align: left;">Tier4</td>
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">1.5</td>
-<td style="text-align: left;">23</td>
-<td style="text-align: left;">15</td>
+<td style="text-align: left;">25</td>
+<td style="text-align: left;">17</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marine</td>
@@ -2452,8 +2487,8 @@ Warning
 <td style="text-align: left;">Tier4</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">1.3</td>
-<td style="text-align: left;">19</td>
-<td style="text-align: left;">15</td>
+<td style="text-align: left;">23</td>
+<td style="text-align: left;">18</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marine</td>
@@ -2461,8 +2496,8 @@ Warning
 <td style="text-align: left;">Tier4</td>
 <td style="text-align: left;">PSSD++</td>
 <td style="text-align: left;">0.64</td>
-<td style="text-align: left;">10</td>
-<td style="text-align: left;">16</td>
+<td style="text-align: left;">12</td>
+<td style="text-align: left;">18</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marine</td>
@@ -2470,7 +2505,7 @@ Warning
 <td style="text-align: left;">Tier1</td>
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">0.82</td>
-<td style="text-align: left;">0.9</td>
+<td style="text-align: left;">0.94</td>
 <td style="text-align: left;">1.1</td>
 </tr>
 <tr class="even">
@@ -2479,8 +2514,8 @@ Warning
 <td style="text-align: left;">Tier1</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">0.81</td>
-<td style="text-align: left;">0.63</td>
-<td style="text-align: left;">0.78</td>
+<td style="text-align: left;">0.65</td>
+<td style="text-align: left;">0.81</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marine</td>
@@ -2488,7 +2523,7 @@ Warning
 <td style="text-align: left;">Tier2</td>
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">13</td>
-<td style="text-align: left;">16</td>
+<td style="text-align: left;">15</td>
 <td style="text-align: left;">1.2</td>
 </tr>
 <tr class="even">
@@ -2497,8 +2532,8 @@ Warning
 <td style="text-align: left;">Tier2</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">13</td>
-<td style="text-align: left;">11</td>
-<td style="text-align: left;">0.87</td>
+<td style="text-align: left;">12</td>
+<td style="text-align: left;">0.88</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marine</td>
@@ -2506,8 +2541,8 @@ Warning
 <td style="text-align: left;">Tier3</td>
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">490</td>
-<td style="text-align: left;">610</td>
-<td style="text-align: left;">1.2</td>
+<td style="text-align: left;">650</td>
+<td style="text-align: left;">1.3</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marine</td>
@@ -2515,8 +2550,8 @@ Warning
 <td style="text-align: left;">Tier3</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">480</td>
-<td style="text-align: left;">530</td>
-<td style="text-align: left;">1.1</td>
+<td style="text-align: left;">570</td>
+<td style="text-align: left;">1.2</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marine</td>
@@ -2524,8 +2559,8 @@ Warning
 <td style="text-align: left;">Tier3</td>
 <td style="text-align: left;">PSSD++</td>
 <td style="text-align: left;">320</td>
-<td style="text-align: left;">420</td>
-<td style="text-align: left;">1.3</td>
+<td style="text-align: left;">440</td>
+<td style="text-align: left;">1.4</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marine</td>
@@ -2533,8 +2568,8 @@ Warning
 <td style="text-align: left;">Tier4</td>
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">1,600</td>
-<td style="text-align: left;">2,200</td>
-<td style="text-align: left;">1.4</td>
+<td style="text-align: left;">2,300</td>
+<td style="text-align: left;">1.5</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Marine</td>
@@ -2542,8 +2577,8 @@ Warning
 <td style="text-align: left;">Tier4</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">1,600</td>
-<td style="text-align: left;">1,900</td>
-<td style="text-align: left;">1.2</td>
+<td style="text-align: left;">2,100</td>
+<td style="text-align: left;">1.4</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Marine</td>
@@ -2551,8 +2586,8 @@ Warning
 <td style="text-align: left;">Tier4</td>
 <td style="text-align: left;">PSSD++</td>
 <td style="text-align: left;">710</td>
-<td style="text-align: left;">1,000</td>
-<td style="text-align: left;">1.5</td>
+<td style="text-align: left;">1,100</td>
+<td style="text-align: left;">1.6</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Freshwater</td>
@@ -2560,8 +2595,8 @@ Warning
 <td style="text-align: left;">Tier1</td>
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">0.4</td>
-<td style="text-align: left;">22</td>
-<td style="text-align: left;">55</td>
+<td style="text-align: left;">19</td>
+<td style="text-align: left;">48</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Freshwater</td>
@@ -2569,8 +2604,8 @@ Warning
 <td style="text-align: left;">Tier1</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">0.4</td>
-<td style="text-align: left;">20</td>
-<td style="text-align: left;">50</td>
+<td style="text-align: left;">16</td>
+<td style="text-align: left;">41</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Freshwater</td>
@@ -2578,8 +2613,8 @@ Warning
 <td style="text-align: left;">Tier2</td>
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">4.9</td>
-<td style="text-align: left;">60</td>
-<td style="text-align: left;">12</td>
+<td style="text-align: left;">55</td>
+<td style="text-align: left;">11</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Freshwater</td>
@@ -2587,8 +2622,8 @@ Warning
 <td style="text-align: left;">Tier2</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">4.1</td>
-<td style="text-align: left;">53</td>
-<td style="text-align: left;">13</td>
+<td style="text-align: left;">46</td>
+<td style="text-align: left;">11</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Freshwater</td>
@@ -2597,7 +2632,7 @@ Warning
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">42</td>
 <td style="text-align: left;">250</td>
-<td style="text-align: left;">6.1</td>
+<td style="text-align: left;">6</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Freshwater</td>
@@ -2605,8 +2640,8 @@ Warning
 <td style="text-align: left;">Tier3</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">36</td>
-<td style="text-align: left;">220</td>
-<td style="text-align: left;">6.2</td>
+<td style="text-align: left;">210</td>
+<td style="text-align: left;">5.9</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Freshwater</td>
@@ -2614,8 +2649,8 @@ Warning
 <td style="text-align: left;">Tier3</td>
 <td style="text-align: left;">PSSD++</td>
 <td style="text-align: left;">31</td>
-<td style="text-align: left;">220</td>
-<td style="text-align: left;">7.1</td>
+<td style="text-align: left;">200</td>
+<td style="text-align: left;">6.5</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Freshwater</td>
@@ -2623,8 +2658,8 @@ Warning
 <td style="text-align: left;">Tier4</td>
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">140</td>
-<td style="text-align: left;">800</td>
-<td style="text-align: left;">5.7</td>
+<td style="text-align: left;">850</td>
+<td style="text-align: left;">6.1</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Freshwater</td>
@@ -2632,8 +2667,8 @@ Warning
 <td style="text-align: left;">Tier4</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">120</td>
-<td style="text-align: left;">680</td>
-<td style="text-align: left;">5.7</td>
+<td style="text-align: left;">710</td>
+<td style="text-align: left;">5.9</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Freshwater</td>
@@ -2641,8 +2676,8 @@ Warning
 <td style="text-align: left;">Tier4</td>
 <td style="text-align: left;">PSSD++</td>
 <td style="text-align: left;">140</td>
-<td style="text-align: left;">690</td>
-<td style="text-align: left;">4.9</td>
+<td style="text-align: left;">730</td>
+<td style="text-align: left;">5.2</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Freshwater</td>
@@ -2650,8 +2685,8 @@ Warning
 <td style="text-align: left;">Tier1</td>
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">93</td>
-<td style="text-align: left;">110</td>
-<td style="text-align: left;">1.2</td>
+<td style="text-align: left;">98</td>
+<td style="text-align: left;">1.1</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Freshwater</td>
@@ -2659,8 +2694,8 @@ Warning
 <td style="text-align: left;">Tier1</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">100</td>
-<td style="text-align: left;">120</td>
-<td style="text-align: left;">1.2</td>
+<td style="text-align: left;">80</td>
+<td style="text-align: left;">0.8</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Freshwater</td>
@@ -2668,8 +2703,8 @@ Warning
 <td style="text-align: left;">Tier2</td>
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">720</td>
-<td style="text-align: left;">910</td>
-<td style="text-align: left;">1.3</td>
+<td style="text-align: left;">730</td>
+<td style="text-align: left;">1</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Freshwater</td>
@@ -2677,8 +2712,8 @@ Warning
 <td style="text-align: left;">Tier2</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">710</td>
-<td style="text-align: left;">790</td>
-<td style="text-align: left;">1.1</td>
+<td style="text-align: left;">700</td>
+<td style="text-align: left;">0.98</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Freshwater</td>
@@ -2686,8 +2721,8 @@ Warning
 <td style="text-align: left;">Tier3</td>
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">4,800</td>
-<td style="text-align: left;">4,500</td>
-<td style="text-align: left;">0.94</td>
+<td style="text-align: left;">4,000</td>
+<td style="text-align: left;">0.84</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Freshwater</td>
@@ -2695,7 +2730,7 @@ Warning
 <td style="text-align: left;">Tier3</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">4,600</td>
-<td style="text-align: left;">4,000</td>
+<td style="text-align: left;">3,900</td>
 <td style="text-align: left;">0.86</td>
 </tr>
 <tr class="odd">
@@ -2704,8 +2739,8 @@ Warning
 <td style="text-align: left;">Tier3</td>
 <td style="text-align: left;">PSSD++</td>
 <td style="text-align: left;">2,200</td>
-<td style="text-align: left;">2,700</td>
-<td style="text-align: left;">1.3</td>
+<td style="text-align: left;">2,400</td>
+<td style="text-align: left;">1.1</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Freshwater</td>
@@ -2713,8 +2748,8 @@ Warning
 <td style="text-align: left;">Tier4</td>
 <td style="text-align: left;">SSD</td>
 <td style="text-align: left;">9,500</td>
-<td style="text-align: left;">9,200</td>
-<td style="text-align: left;">0.97</td>
+<td style="text-align: left;">9,000</td>
+<td style="text-align: left;">0.95</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Freshwater</td>
@@ -2722,8 +2757,8 @@ Warning
 <td style="text-align: left;">Tier4</td>
 <td style="text-align: left;">MC + SSD</td>
 <td style="text-align: left;">9,500</td>
-<td style="text-align: left;">8,300</td>
-<td style="text-align: left;">0.87</td>
+<td style="text-align: left;">9,100</td>
+<td style="text-align: left;">0.95</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Freshwater</td>
@@ -2732,7 +2767,7 @@ Warning
 <td style="text-align: left;">PSSD++</td>
 <td style="text-align: left;">6,400</td>
 <td style="text-align: left;">12,000</td>
-<td style="text-align: left;">1.8</td>
+<td style="text-align: left;">1.9</td>
 </tr>
 </tbody>
 </table>
@@ -2767,6 +2802,245 @@ Warning
 <p>Of the 577 records, 332 received another record’s statistics and 167 received none.</p>
 <p>The MC + SSD and PSSD++ thresholds were not affected, because they use the per-simulation values directly, but the CoV statistics were (Table C3).</p>
 </section>
+<section id="e7.-geometry-of-polydisperse-test-materials" class="level3">
+<h3 class="anchored" data-anchor-id="e7.-geometry-of-polydisperse-test-materials">E7. Geometry of polydisperse test materials</h3>
+<p>For a polydisperse test material, the alignment needs the mean volume (food dilution) or surface area (tissue translocation) of its bioaccessible particles, computed from the smallest and the largest bioaccessible particle. The code assigned the smallest particle’s width by matching the shape names in lower case (“sphere”, “fiber”, “fragment”), whereas the database codes them capitalised, and had no fallback. The width was therefore lost for every polydisperse sphere, fiber and fragment and later filled with the length-to-width ratio of fragments, so the smallest sphere was treated as an ellipsoid (volume 0.67 of the sphere’s in freshwater, 0.77 in marine waters), and the smallest particle’s height used a fixed 0.67 × width rather than the environment’s (or the sampled) height-to-width ratio (fragment volume 0.87 of the intended value in marine waters). For fibers, the largest bioaccessible particle kept the database width, which is the length-to-width ratio times the <em>untruncated</em> maximum length, so a partially ingestible fiber could be several times wider than long. Fibers now have one diameter at both ends (reported width, else 15 µm), never more than their length; the 15 µm default is also capped at the length for monodisperse fibers (2 SSD records were shorter than 15 µm). The 15 µm value is the fiber diameter used to classify fibers in the environmental data of Kooi et al. (2021, Section 3.2), not a measured mean width. Other monodisperse records are unaffected. This error was found after v0.4.0 and is fixed in v0.4.1.</p>
+</section>
+<section id="e8.-particle-counts-of-tests-dosed-by-mass" class="level3">
+<h3 class="anchored" data-anchor-id="e8.-particle-counts-of-tests-dosed-by-mass">E8. Particle counts of tests dosed by mass</h3>
+<p>Most studies report their dose as a mass concentration; the database converts it to a particle concentration with a mean particle mass. That conversion used the database’s own particle geometry (a fixed height-to-width ratio of 0.67, and a polydisperse material treated as a single particle of the midpoint length; some ToMEx 1.0 conversions match neither), whereas the alignment then built the same particles with its own geometry and size distribution. The aligned volume (or mass) dose was therefore not the dosed mass divided by the polymer density. The alignment now recomputes the particle concentration of every mass-dosed test as the dosed mass divided by the mean particle mass under its own geometry and size distribution (for a polydisperse material, the power-law mean over the whole reported size range), so the aligned particles carry exactly the dosed mass. Reported particle concentrations are used as reported. (PSSDplusplus v0.4.1: <code>align_data(particle_count_source = &quot;mass&quot;)</code>, the default; <code>&quot;database&quot;</code> reproduces the earlier counts.)</p>
+</section>
+<section id="e9.-conversion-of-the-thresholds-to-mass-volume-and-surface-area" class="level3">
+<h3 class="anchored" data-anchor-id="e9.-conversion-of-the-thresholds-to-mass-volume-and-surface-area">E9. Conversion of the thresholds to mass, volume and surface area</h3>
+<p>The particle-based thresholds were converted to µg/L, µm³/L and µm²/L by multiplying with the mean particle mass, volume or surface area of the environmental size distribution between 1 and 5,000 µm. The code passed the length limits (1 and 5,000) as if they were the mass, volume and surface-area limits, instead of the mass, volume and surface area of 1 µm and 5,000 µm particles. The mean mass of an environmental particle between 1 and 5,000 µm is about 0.008 µg in freshwater and 9.5 µg in marine waters (spheres; a<sub>m</sub> = 1.65 and 1.32), not 35 µg and 164 µg. The thresholds in mass units (Fig. S5 and the mass-based tables) are therefore about 4,000- to 8,000-fold lower in freshwater and 14- to 17-fold lower in marine waters (e.g., MC + SSD freshwater food dilution Tier 1: 686 → 0.12 µg/L; marine tissue translocation Tier 3: 87,200 → 5,400 µg/L); volume and surface-area conversions change likewise. Thresholds in particles/L are unaffected.</p>
+</section>
+<section id="e10.-size-filters-of-the-ssd-inputs" class="level3">
+<h3 class="anchored" data-anchor-id="e10.-size-filters-of-the-ssd-inputs">E10. Size filters of the SSD inputs</h3>
+<p>The SSD inputs were filtered on the midpoint length of each record (e.g. at most the translocation limit for tissue translocation), whereas the method uses the bioaccessible fraction of each polydisperse test material (Supplementary Information): a partially bioaccessible material whose midpoint exceeds the limit was dropped. The inputs are now selected by the bioaccessibility labels, with only the lower size limit applied to the length. No record of the deterministic SSDs changes, but Monte Carlo draws of the mouth size do.</p>
+</section>
+<section id="e11.-descriptive-summaries-of-the-food-dilution-datasets" class="level3">
+<h3 class="anchored" data-anchor-id="e11.-descriptive-summaries-of-the-food-dilution-datasets">E11. Descriptive summaries of the food dilution datasets</h3>
+<p>The food dilution datasets summarised in the PSSD++ section of the analysis (record, study and species counts) and saved for other scripts (<code>tier1_2_food.RDS</code>, <code>tier3_4_food.RDS</code>) were capped at the translocation limit (88 µm) instead of the ingestible size. They are now selected as in E10. The thresholds were not affected.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Table C6. Effect of E7-E11 together: ratio of the production thresholds with PSSDplusplus v0.4.1 to those with v0.4.0 (same data, parameter matrix and seeds; E1-E6 and R1 applied in both).</caption>
+<colgroup>
+<col style="width: 29%">
+<col style="width: 30%">
+<col style="width: 8%">
+<col style="width: 7%">
+<col style="width: 13%">
+<col style="width: 10%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Environment</th>
+<th style="text-align: left;">ERM</th>
+<th style="text-align: left;">Tier</th>
+<th style="text-align: left;">SSD</th>
+<th style="text-align: left;">MC + SSD</th>
+<th style="text-align: left;">PSSD++</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Marine</td>
+<td style="text-align: left;">Food dilution</td>
+<td style="text-align: left;">Tier1</td>
+<td style="text-align: left;">1.17</td>
+<td style="text-align: left;">1.26</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Marine</td>
+<td style="text-align: left;">Food dilution</td>
+<td style="text-align: left;">Tier2</td>
+<td style="text-align: left;">1.13</td>
+<td style="text-align: left;">1.22</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Marine</td>
+<td style="text-align: left;">Food dilution</td>
+<td style="text-align: left;">Tier3</td>
+<td style="text-align: left;">1.11</td>
+<td style="text-align: left;">1.19</td>
+<td style="text-align: left;">1.15</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Marine</td>
+<td style="text-align: left;">Food dilution</td>
+<td style="text-align: left;">Tier4</td>
+<td style="text-align: left;">1.08</td>
+<td style="text-align: left;">1.20</td>
+<td style="text-align: left;">1.13</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Marine</td>
+<td style="text-align: left;">Tissue translocation</td>
+<td style="text-align: left;">Tier1</td>
+<td style="text-align: left;">1.04</td>
+<td style="text-align: left;">1.03</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Marine</td>
+<td style="text-align: left;">Tissue translocation</td>
+<td style="text-align: left;">Tier2</td>
+<td style="text-align: left;">0.96</td>
+<td style="text-align: left;">1.02</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Marine</td>
+<td style="text-align: left;">Tissue translocation</td>
+<td style="text-align: left;">Tier3</td>
+<td style="text-align: left;">1.07</td>
+<td style="text-align: left;">1.07</td>
+<td style="text-align: left;">1.06</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Marine</td>
+<td style="text-align: left;">Tissue translocation</td>
+<td style="text-align: left;">Tier4</td>
+<td style="text-align: left;">1.05</td>
+<td style="text-align: left;">1.10</td>
+<td style="text-align: left;">1.07</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Freshwater &amp; Marine</td>
+<td style="text-align: left;">Food dilution</td>
+<td style="text-align: left;">Tier1</td>
+<td style="text-align: left;">1.12</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Freshwater &amp; Marine</td>
+<td style="text-align: left;">Food dilution</td>
+<td style="text-align: left;">Tier2</td>
+<td style="text-align: left;">1.16</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Freshwater &amp; Marine</td>
+<td style="text-align: left;">Food dilution</td>
+<td style="text-align: left;">Tier3</td>
+<td style="text-align: left;">1.10</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Freshwater &amp; Marine</td>
+<td style="text-align: left;">Food dilution</td>
+<td style="text-align: left;">Tier4</td>
+<td style="text-align: left;">1.15</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Freshwater &amp; Marine</td>
+<td style="text-align: left;">Tissue translocation</td>
+<td style="text-align: left;">Tier1</td>
+<td style="text-align: left;">0.92</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Freshwater &amp; Marine</td>
+<td style="text-align: left;">Tissue translocation</td>
+<td style="text-align: left;">Tier2</td>
+<td style="text-align: left;">0.97</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Freshwater &amp; Marine</td>
+<td style="text-align: left;">Tissue translocation</td>
+<td style="text-align: left;">Tier3</td>
+<td style="text-align: left;">1.03</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Freshwater &amp; Marine</td>
+<td style="text-align: left;">Tissue translocation</td>
+<td style="text-align: left;">Tier4</td>
+<td style="text-align: left;">1.07</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Freshwater</td>
+<td style="text-align: left;">Food dilution</td>
+<td style="text-align: left;">Tier1</td>
+<td style="text-align: left;">0.87</td>
+<td style="text-align: left;">0.82</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Freshwater</td>
+<td style="text-align: left;">Food dilution</td>
+<td style="text-align: left;">Tier2</td>
+<td style="text-align: left;">0.92</td>
+<td style="text-align: left;">0.88</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Freshwater</td>
+<td style="text-align: left;">Food dilution</td>
+<td style="text-align: left;">Tier3</td>
+<td style="text-align: left;">0.99</td>
+<td style="text-align: left;">0.95</td>
+<td style="text-align: left;">0.91</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Freshwater</td>
+<td style="text-align: left;">Food dilution</td>
+<td style="text-align: left;">Tier4</td>
+<td style="text-align: left;">1.07</td>
+<td style="text-align: left;">1.04</td>
+<td style="text-align: left;">1.06</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Freshwater</td>
+<td style="text-align: left;">Tissue translocation</td>
+<td style="text-align: left;">Tier1</td>
+<td style="text-align: left;">0.91</td>
+<td style="text-align: left;">0.66</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Freshwater</td>
+<td style="text-align: left;">Tissue translocation</td>
+<td style="text-align: left;">Tier2</td>
+<td style="text-align: left;">0.79</td>
+<td style="text-align: left;">0.89</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Freshwater</td>
+<td style="text-align: left;">Tissue translocation</td>
+<td style="text-align: left;">Tier3</td>
+<td style="text-align: left;">0.90</td>
+<td style="text-align: left;">1.00</td>
+<td style="text-align: left;">0.88</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Freshwater</td>
+<td style="text-align: left;">Tissue translocation</td>
+<td style="text-align: left;">Tier4</td>
+<td style="text-align: left;">0.98</td>
+<td style="text-align: left;">1.09</td>
+<td style="text-align: left;">1.07</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
 </section>
 <section id="refinements" class="level2">
 <h2 class="anchored" data-anchor-id="refinements">Refinements</h2>
@@ -2785,7 +3059,7 @@ Warning
 <colgroup>
 <col style="width: 4%">
 <col style="width: 6%">
-<col style="width: 33%">
+<col style="width: 35%">
 <col style="width: 17%">
 <col style="width: 7%">
 <col style="width: 7%">
@@ -2886,6 +3160,26 @@ Warning
 <td style="text-align: left;">2,600</td>
 </tr>
 <tr class="odd">
+<td style="text-align: left;">Tier3</td>
+<td style="text-align: left;">S7</td>
+<td style="text-align: left;">Particle geometry and size filters fixed</td>
+<td style="text-align: left;">code error</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">450</td>
+<td style="text-align: left;">230</td>
+<td style="text-align: left;">2,500</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tier3</td>
+<td style="text-align: left;">S8</td>
+<td style="text-align: left;">Mass-dosed particle counts from the dosed mass</td>
+<td style="text-align: left;">code error</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">450</td>
+<td style="text-align: left;">200</td>
+<td style="text-align: left;">2,300</td>
+</tr>
+<tr class="odd">
 <td style="text-align: left;">Tier4</td>
 <td style="text-align: left;">Table 2</td>
 <td style="text-align: left;">Published value</td>
@@ -2965,13 +3259,33 @@ Warning
 <td style="text-align: left;">700</td>
 <td style="text-align: left;">12,000</td>
 </tr>
+<tr class="odd">
+<td style="text-align: left;">Tier4</td>
+<td style="text-align: left;">S7</td>
+<td style="text-align: left;">Particle geometry and size filters fixed</td>
+<td style="text-align: left;">code error</td>
+<td style="text-align: left;">12</td>
+<td style="text-align: left;">1,100</td>
+<td style="text-align: left;">800</td>
+<td style="text-align: left;">13,000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tier4</td>
+<td style="text-align: left;">S8</td>
+<td style="text-align: left;">Mass-dosed particle counts from the dosed mass</td>
+<td style="text-align: left;">code error</td>
+<td style="text-align: left;">12</td>
+<td style="text-align: left;">1,100</td>
+<td style="text-align: left;">760</td>
+<td style="text-align: left;">12,000</td>
+</tr>
 </tbody>
 </table>
 </div>
 </div>
 <p><strong>Check of the baseline.</strong> Step S0 reproduces the published PSSD++ medians to within a factor of 0.93-1.35 (median ratio 1.12) across the eight thresholds, which confirms that the attribution starts from the published analysis.</p>
 <p><strong>Check of the reduced simulation count.</strong> Steps S0, S1, S2 were also run with the full 9,424 Monte Carlo simulations; the 24 medians agree with the 1,000-simulation results to within 4% (median difference 1%).</p>
-<p><strong>Check of the end point.</strong> The fully corrected step (S6) reproduces the medians of the production run of the analysis (Table C0) to within 9% (median difference 1%).</p>
+<p><strong>Check of the end point.</strong> The fully corrected step (S8) reproduces the medians of the production run of the analysis (Table C0) to within 9% (median difference 2%).</p>
 <p><strong>Notes.</strong> In vitro exclusion (S2) changes the PSSD++ thresholds only through <em>P. huttoni</em>, which the database then coded as in vitro; the rainbow trout cell-culture records do not reach Tiers 3 and 4, which require organism- or population-level endpoints. The record is corrected to in vivo in R1 (S4). Propagating particle-shape uncertainty (S6) changes the aligned values of freshwater fragments, which are mostly not among the most sensitive species. In steps S1-S3 the freshwater food dilution Tier 3 and Tier 4 values are equal: removing the 5 mm default leaves six freshwater species with a known mouth size, too few for the HC5 and HC10 to differ (see the note on the quantile method below); the record-level corrections in R1 (S4) restore eight species.</p>
 <div class="cell">
 <div class="cell-output-display">
@@ -2980,7 +3294,7 @@ Warning
 <colgroup>
 <col style="width: 5%">
 <col style="width: 4%">
-<col style="width: 42%">
+<col style="width: 44%">
 <col style="width: 13%">
 <col style="width: 9%">
 <col style="width: 13%">
@@ -3053,6 +3367,24 @@ Warning
 <td style="text-align: left;">1.00</td>
 </tr>
 <tr class="odd">
+<td style="text-align: left;">Tier3</td>
+<td style="text-align: left;">S7</td>
+<td style="text-align: left;">Particle geometry and size filters fixed</td>
+<td style="text-align: left;">1.01</td>
+<td style="text-align: left;">1.15</td>
+<td style="text-align: left;">0.96</td>
+<td style="text-align: left;">1.07</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tier3</td>
+<td style="text-align: left;">S8</td>
+<td style="text-align: left;">Mass-dosed particle counts from the dosed mass</td>
+<td style="text-align: left;">0.90</td>
+<td style="text-align: left;">1.00</td>
+<td style="text-align: left;">0.92</td>
+<td style="text-align: left;">1.00</td>
+</tr>
+<tr class="odd">
 <td style="text-align: left;">Tier4</td>
 <td style="text-align: left;">S1</td>
 <td style="text-align: left;">No 5 mm default for missing mouth sizes</td>
@@ -3106,10 +3438,29 @@ Warning
 <td style="text-align: left;">1.00</td>
 <td style="text-align: left;">1.00</td>
 </tr>
+<tr class="odd">
+<td style="text-align: left;">Tier4</td>
+<td style="text-align: left;">S7</td>
+<td style="text-align: left;">Particle geometry and size filters fixed</td>
+<td style="text-align: left;">1.14</td>
+<td style="text-align: left;">1.11</td>
+<td style="text-align: left;">1.13</td>
+<td style="text-align: left;">1.07</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tier4</td>
+<td style="text-align: left;">S8</td>
+<td style="text-align: left;">Mass-dosed particle counts from the dosed mass</td>
+<td style="text-align: left;">0.94</td>
+<td style="text-align: left;">1.00</td>
+<td style="text-align: left;">0.95</td>
+<td style="text-align: left;">1.01</td>
+</tr>
 </tbody>
 </table>
 </div>
 </div>
+<p>Fixing the particle geometry and the size filters (S7; E7, E10) raises the food dilution thresholds by 1–15 % and changes the tissue translocation thresholds by −4 to +13 %. Recomputing the particle counts of mass-dosed tests from the dosed mass (S8; E8) lowers the freshwater thresholds by 5–10 % and leaves the marine thresholds unchanged (within 1 %).</p>
 </section>
 <section id="impact-of-e4-and-e5-on-the-mc-ssd-thresholds" class="level2">
 <h2 class="anchored" data-anchor-id="impact-of-e4-and-e5-on-the-mc-ssd-thresholds">Impact of E4 and E5 on the MC + SSD thresholds</h2>
@@ -3733,25 +4084,27 @@ Warning
 </section>
 <section id="effect-on-the-conclusions" class="level2">
 <h2 class="anchored" data-anchor-id="effect-on-the-conclusions">Effect on the conclusions</h2>
-<p>The corrections change the food dilution thresholds substantially and the tissue translocation thresholds little (Table C0). Food dilution thresholds increase for every method, tier and environment: by about 5- to 55-fold in freshwater and 11- to 50-fold in marine waters (more for the marine MC + SSD Tier 1 value). The published food dilution thresholds were therefore too low, i.e. more protective than the data support. The largest contribution is the removal of the 5 mm default ingestible size for organisms without a mouth size (E1), which had assigned the most sensitive small species very low aligned effect concentrations (about 21-fold in freshwater and 4-fold in marine waters at Tier 3; Table C2). The database refinements (R1) partly offset this in freshwater, where documented body lengths return sensitive species such as <em>Moina macrocopa</em> to the food dilution SSD, and increase the marine values; the other corrections change the PSSD++ thresholds by up to about 30 %. Tissue translocation thresholds change by less than 2-fold.</p>
-<p>Most qualitative conclusions are unchanged: marine thresholds remain lower than freshwater thresholds, and food dilution thresholds remain lower than tissue translocation thresholds, for all tiers and methods. Two comparisons between methods change in degree. Traditional SSD and MC + SSD medians are within about 10–20 % of each other at Tiers 3 and 4, but up to about 45 % apart in marine waters at Tiers 1 and 2 (e.g. marine tissue translocation Tier 2: 16 vs 11 particles/L), because the MC + SSD now propagates the uncertainty of predicted mouth sizes (E4). PSSD++ gives the lowest median in six of the eight Tier 3 and 4 cases rather than all; the exceptions are freshwater food dilution Tier 4 (essentially equal to MC + SSD) and freshwater tissue translocation Tier 4 (12,000 vs 8,300–9,200 particles/L). Statements that quote threshold values or ratios, in particular for food dilution (e.g. the range “1 × 10⁻⁵ to 137 particles/L” and “PSSD++ thresholds were consistently lower by up to 2-fold” in Section 3.3, the marine-to-freshwater ratios in Section 3.4.2, and “0.5–2.5 orders of magnitude” in Section 4.3.3), should be replaced with values from the corrected results. Risk characterisations that used the published food dilution thresholds overstate the risk from food dilution by the factors in Table C0.</p>
+<p>The corrections change the food dilution thresholds substantially and the tissue translocation thresholds little (Table C0). Food dilution thresholds increase for every method, tier and environment: by about 5- to 50-fold in freshwater and 12- to 60-fold in marine waters (more for the marine MC + SSD Tier 1 value). The published food dilution thresholds were therefore too low, i.e. more protective than the data support. The largest contribution is the removal of the 5 mm default ingestible size for organisms without a mouth size (E1), which had assigned the most sensitive small species very low aligned effect concentrations (about 21-fold in freshwater and 4-fold in marine waters at Tier 3; Table C2). The database refinements (R1) partly offset this in freshwater, where documented body lengths return sensitive species such as <em>Moina macrocopa</em> to the food dilution SSD, and increase the marine values; the other corrections change the PSSD++ thresholds by up to about 30 % (the particle-geometry and particle-count corrections E7, E8 and E10 together by 0.88- to 1.15-fold; Table C2). Tissue translocation thresholds change by less than 2-fold.</p>
+<p>Most qualitative conclusions are unchanged: marine thresholds remain lower than freshwater thresholds, and food dilution thresholds remain lower than tissue translocation thresholds, for all tiers and methods. Two comparisons between methods change in degree. Traditional SSD and MC + SSD medians are within about 10–20 % of each other at Tiers 3 and 4, but up to about 45 % apart in marine waters at Tiers 1 and 2 (e.g. marine tissue translocation Tier 1: 0.94 vs 0.65 particles/L), because the MC + SSD now propagates the uncertainty of predicted mouth sizes (E4). PSSD++ gives the lowest median in six of the eight Tier 3 and 4 cases rather than all; the exceptions are freshwater food dilution Tier 4 (essentially equal to MC + SSD) and freshwater tissue translocation Tier 4 (12,400 vs 9,000–9,100 particles/L). Statements that quote threshold values or ratios, in particular for food dilution (e.g. the range “1 × 10⁻⁵ to 137 particles/L” and “PSSD++ thresholds were consistently lower by up to 2-fold” in Section 3.3, the marine-to-freshwater ratios in Section 3.4.2, and “0.5–2.5 orders of magnitude” in Section 4.3.3), should be replaced with values from the corrected results. Risk characterisations that used the published food dilution thresholds overstate the risk from food dilution by the factors in Table C0. Thresholds expressed as mass, volume or surface-area concentrations are, in addition, affected by the unit conversion (E9): the corrected conversion alone lowers the mass-based thresholds (Fig. S5 and the mass-based tables) by about 4,000- to 8,000-fold in freshwater and 14- to 17-fold in marine waters, so comparisons with mass-based environmental concentrations must use the corrected values.</p>
 </section>
 <section id="reproducibility" class="level2">
 <h2 class="anchored" data-anchor-id="reproducibility">Reproducibility</h2>
-<p>All corrections are implemented in PSSDplusplus v0.4.0 and in the analysis scripts of <a href="https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk" class="uri">https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk</a>; the database corrections are in <a href="https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5">SCCWRP/ToMEx_AquaticOrganisms#5</a>. From the repository root:</p>
+<p>All corrections are implemented in PSSDplusplus v0.4.1 (E1-E6 and R1 already in v0.4.0; E7-E11 in v0.4.1) and in the analysis scripts of <a href="https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk" class="uri">https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk</a>; the database corrections are in <a href="https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5">SCCWRP/ToMEx_AquaticOrganisms#5</a>. From the repository root:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># stepwise attribution (Table C2): one step per process (steps are independent</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># and can run in parallel, a few GB each); re-running a command resumes from</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># its checkpoints</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> s <span class="kw">in</span> S0 S1 S2 S3 S4 S5 S6<span class="kw">;</span> <span class="cf">do</span> <span class="ex">Rscript</span> docs/correction/R/pssd_correction_ladder.R 1000 300 <span class="va">$s</span><span class="kw">;</span> <span class="cf">done</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># bootstrap sample size (Table C4)</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="ex">Rscript</span> docs/correction/R/nboot_impact.R 20 4</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># record-level CoV statistics as published and correctly merged (Table C3)</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="ex">Rscript</span> docs/correction/R/cov_misjoin_impact.R</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> render docs/correction/correction_PSSDpp.qmd</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># S0-S6 with PSSDplusplus 0.4.0 (release v0.4.0), S7-S8 with 0.4.1</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> s <span class="kw">in</span> S0 S1 S2 S3 S4 S5 S6<span class="kw">;</span> <span class="cf">do</span> <span class="ex">Rscript</span> docs/correction/R/pssd_correction_ladder.R 1000 300 <span class="va">$s</span><span class="kw">;</span> <span class="cf">done</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> s <span class="kw">in</span> S7 S8<span class="kw">;</span> <span class="cf">do</span> <span class="ex">Rscript</span> docs/correction/R/pssd_correction_ladder.R 1000 300 <span class="va">$s</span><span class="kw">;</span> <span class="cf">done</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># bootstrap sample size (Table C4)</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="ex">Rscript</span> docs/correction/R/nboot_impact.R 20 4</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co"># record-level CoV statistics as published and correctly merged (Table C3)</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="ex">Rscript</span> docs/correction/R/cov_misjoin_impact.R</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> render docs/correction/correction_PSSDpp.qmd</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The attribution reads the published input data from the repository history (commit <code>0d44be7</code>), the input with reported mouth sizes restored (<code>3bcc930</code>), and the current input (<code>data/input/aoc_z_tomex2.RDS</code>). The CoV comparison reads the published MC output. The intermediate outputs of the published analysis (Monte Carlo results and PSSD++ results, December 2025), which are too large for the code repository, are archived at Zenodo: <a href="https://doi.org/10.5281/zenodo.23582905" class="uri">https://doi.org/10.5281/zenodo.23582905</a>; unpack <code>monte_carlo_output_published/</code> to <code>scripts/monte carlo/output/pre_issue6/</code> to rerun the comparison.</p>
 <div class="cell">
 <div class="cell-output cell-output-stdout">
-<pre><code>Attribution run: PSSDplusplus 0.4.0, 1000 MC and 300 PSSD++ simulations, 444 min, 2026-10-22.</code></pre>
+<pre><code>Attribution run: PSSDplusplus 0.4.0 (S0-S6), 0.4.1 (S7-S8), 1000 MC and 300 PSSD++ simulations, 528 min, 2026-11-04.</code></pre>
 </div>
 </div>
 </section>

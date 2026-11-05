@@ -30,7 +30,7 @@ mg/kg for mass.
 | `size.width.{min,max}.mm.{measured,nominal}` | **reported** minimum/maximum widths | fiber diameters (below) |
 | `size.width.um.used.for.conversions` | **reported** single width (measured, else nominal; mean of min and max if only those are given) | monodisperse width; fiber diameter |
 | `size.width.{min,max}.um.used.for.conversions` | **not measurements**: the tidying sets them to R.ave × length (spheres: length) | nothing in the alignment (it recomputes widths) |
-| `density.g.cm3` | polymer density (reported, else the polymer median) | particle mass |
+| `density.g.cm3` | polymer density: the record's own value (template, or ToMEx 1.0), else the polymer table `polymer_densities.csv` of the database repository (literature values, or the median of the ToMEx 2.0 v2.0.1 template densities); `density.source` says which ("record", "polymer table") | particle mass |
 | `dose.particles.mL.master`, `dose.mg.L.master` (+ sediment `dose.particles.kg.sediment.master`, `dose.mg.kg.sediment.master`) | the test's dose as particles and as mass | dose |
 | `dose.particles.mL.master.converted.reported` (+ sediment equivalent) | `"reported"`: the study gave a particle count; `"converted"`: the database derived it from the dosed mass | particle counts (below) |
 

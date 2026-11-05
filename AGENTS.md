@@ -50,6 +50,12 @@ exist).
 | `functions.R::generate_plots_and_summary()`, `prep_data()`, `prepare_plot_data()` | `functions.R` same names; `scripts/PSSD/{rmore,do.pssd}.r` |
 | `vivo.R::ssd_eligible()`, `normalize_vivo()` | `vivo_functions.R` |
 
+The tidying of the ToMEx 2.0 database is upstream (`ToMEx2.0_Onboarding/ToMEx2.0_Data_Tidying.R`);
+`data/input/aoc_z_tomex2.RDS` is built there. `scripts/utils/ToMEx2.0_Data_Tidying_functions.R::ToMEx2.0fxn()`
+mirrors only its body-length and mouth-size logic (tested by `scripts/tests/test_tomex2_tidying.R`);
+its geometry, density and dose-conversion steps are older than the upstream ones (sphere
+geometry, `polymer_densities.csv`, ToMEx 1.0 conversions, 0.4.1) and are not used by the analysis.
+
 `align_data()` also has a third copy *inside* `scripts/ToMEx2_EcoTox.Rmd`
 (used for the deterministic thresholds until `utils/functions.R` is re-sourced);
 `scripts/tests/test_align_data_equivalence.R` tests all three.
@@ -213,22 +219,28 @@ Order matters; each step needs the previous one.
       2026-10-23. Still open elsewhere: SCCWRP/ToMEx_AquaticOrganisms#5 (draft;
       needs a maintainer review and merge).
 
-### 0.4.1 (issue #8, polydisperse particle geometry)
+### 0.4.1 (issue #8: particle geometry, mass-dosed counts, unit conversions)
 
-- [x] Geometry fix in package + both script copies; tests; deterministic effect
-      in `package/NEWS.md` (FD +8-20%, TT +4-7%). Upstream PR #5 updated
-      (commit b6cc264, step G in its tables).
+- [x] Errors E7-E11 fixed in package + both script copies (geometry, monodisperse
+      fiber cap, mass-dosed particle counts `particle_count_source`, unit
+      conversions `convert_units_fxn()`, size filters by bioaccessibility labels,
+      descriptive datasets); tests; equivalence tests.
 - [x] Design additions, no threshold change: `size.dist.*` inputs,
-      `poly_size_method`, `poly_volume_factor_ingest`, `align_mixture()`.
-- [ ] Production: MC re-run (0.4.0 outputs kept in
-      `scripts/monte carlo/output/v0.4.0/`), PSSD++ combinations in separate
-      processes (`.claude/runs/pssd_split.R`; archive
-      `output/pssd_cache/lognormal_300sims` to `output/pssd_cache_v0.4.0/`
-      first), render `ToMEx2_EcoTox.Rmd`.
-- [ ] Attribution step S7 (`pssd_correction_ladder.R 1000 300 S7`, needs
-      PSSDplusplus 0.4.1; S0-S6 stay 0.4.0) and correction re-render (E7,
-      Table C6); "Effect on the conclusions" needs the author's review.
-- [ ] NEWS: MC + SSD and PSSD++ effects; release 0.4.1 (author's decision).
+      `poly_size_method`, `poly_volume_factor_ingest`, `align_mixture()`
+      (shares by count basis; shared `combine_mixture_components()` with the app).
+      Fields: `docs/test_material_fields.md` (identical upstream).
+- [x] Production 2026-11-04: MC (0.4.0 outputs in `scripts/monte carlo/output/v0.4.0/`),
+      PSSD++ combinations in separate processes (0.4.0 cache in
+      `output/pssd_cache_v0.4.0/`), render `ToMEx2_EcoTox.Rmd`. Driver:
+      `.claude/runs/production_041.sh` (resumable; Windows paths for R_LIBS).
+      Rmd launch fixes: `sciscales` installed only if missing; `library(calecopal)`.
+- [x] Attribution S7 (E7, E10) and S8 (E8), PSSDplusplus 0.4.1; S8 reproduces
+      the production render within 9 %. Correction re-rendered (E7-E11, Table C6).
+- [x] Upstream (SCCWRP/ToMEx_AquaticOrganisms#5): app port + tests; data fixes
+      (ToMEx 1.0 sphere geometry, Zhou et al. size range, polymer densities,
+      ToMEx 1.0 dose conversions) with identical thresholds; data synced here.
+- [ ] "Effect on the conclusions" (correction) and NEWS: author's review;
+      release 0.4.1 (author's decision); merge PR #9.
 
 ## Open technical debt
 
