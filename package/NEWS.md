@@ -102,16 +102,17 @@ PSSD++
 | Marine | Tissue Translocation | 417 -> 444 (1.06) | 1040 -> 1110 (1.07) |
 
 Species and data-point counts are unchanged. **Thresholds in mass, volume
-and surface-area units: indicative only.** The corrected conversion follows
-the method of Kooi et al. (2021), but the mean particle mass over 1-5000 um
-extrapolates the fitted power laws far beyond their fitted size ranges, and it
-changes by one to three orders of magnitude with the choice of exponent
-(length, volume or mass) and particle shape (e.g. 0.001-0.008 ug per particle
-in freshwater, 0.1-10 ug in marine waters, while the measured means of Kooi et
-al. 2021 are 8.4 and 12.1 ug). The published ug/L thresholds were wrong and
-are withdrawn in the correction; no replacement is given until a better
-count-to-mass method is developed (see Zhao et al. 2026, Water Res. 299:125833;
-Chen et al. 2026, Environ. Sci. Technol. 60:1263-1274).
+and surface-area units depend strongly on assumptions.** The corrected
+conversion (`convert_units_fxn()`) follows the method of Kooi et al. (2021),
+but the mean particle mass over 1-5000 um must be extrapolated beyond the
+measurable size range, and it changes by three to five orders of magnitude with
+the assumed size distribution (length, volume or mass exponent; Zhao et al.
+2026, Water Res. 299:125833), particle shape (e.g. fixed fragment thickness;
+Chen et al. 2026, Environ. Sci. Technol. 60:1263-1274) and anchoring to
+measured particle masses. The correction (E9, Tables C12-C13;
+`docs/correction/results/mass_thresholds.csv`) gives the thresholds in ug/L
+under each assumption with its caveats; the function's single value is one of
+them and should be read as indicative.
 
 New features (no change to existing results)
 --------------------------------------------

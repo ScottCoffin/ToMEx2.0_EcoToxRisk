@@ -85,7 +85,7 @@ We separate **errors** (the code did not do what the article describes) from **r
 | E6 | Record-level MC statistics were merged to the wrong records | Code error | Intraspecies CoV statistics, CoV analyses (SI) |
 | E7 | The smallest particle of polydisperse test materials lost its width; fiber widths were inconsistent | Code error | Food dilution and tissue translocation: all methods (polydisperse records, fibers) |
 | E8 | Particle counts of mass-dosed tests used the database's particle geometry, not the alignment's | Code error | Food dilution and tissue translocation: all methods (mass-dosed records) |
-| E9 | Conversions of the thresholds to mass, volume and surface area used the length limits as mass, volume and area limits | Code error | Thresholds in µg/L, µm³/L and µm²/L (Fig. S5, mass tables; withdrawn); not particles/L |
+| E9 | Conversions of the thresholds to mass, volume and surface area used the length limits as mass, volume and area limits | Code error | Thresholds in µg/L, µm³/L and µm²/L (Fig. S5, mass tables; corrected under alternative assumptions, Tables C12-C13); not particles/L |
 | E10 | SSD size filters used the midpoint length of polydisperse materials, not their bioaccessibility | Code error | MC + SSD and PSSD++ (no record in the deterministic SSDs) |
 | E11 | The food dilution datasets used for the descriptive summaries were capped at the translocation limit | Code error | Dataset summaries (record, study and species counts) |
 | R1 | ToMEx 2.0 database v2.0.1 and record-level body-length and in vivo / in vitro corrections | Data refinement | All methods |
@@ -171,15 +171,56 @@ Most studies report their dose as a mass concentration; the database converts it
 
 ### E9. Conversion of the thresholds to mass, volume and surface area
 
-The particle-based thresholds were converted to µg/L, µm³/L and µm²/L (Fig. S5 and the mass-based tables) by multiplying them by the mean particle mass, volume or surface area of the environmental size distribution between 1 and 5,000 µm. The code passed the length limits (1 and 5,000) as if they were the mass, volume and surface-area limits of the distribution. The correct limits are the mass, volume and surface area of 1 µm and 5,000 µm particles, as in the worked example of Kooi et al. (2021, Supplementary Information). The published thresholds in mass, volume and surface-area units are therefore incorrect and are withdrawn; the thresholds in particles/L are unaffected.
+The particle-based thresholds were converted to µg/L, µm³/L and µm²/L (Fig. S5 and the mass-based tables) by multiplying them by the mean particle mass, volume or surface area of the environmental size distribution between 1 and 5,000 µm. The code passed the length limits (1 and 5,000) as if they were the mass, volume and surface-area limits of that distribution. The correct limits are the mass, volume and surface area of 1 µm and 5,000 µm particles, as in the worked example of Kooi et al. (2021, Supplementary Information). The published thresholds in these units are therefore incorrect. The thresholds in particles/L are unaffected.
 
-The corrected conversion is dimensionally consistent, but its result is not robust enough to replace them:
+**Corrected thresholds in mass units depend on assumptions.** A threshold in particles/L refers to all particles between 1 and 5,000 µm, so its mass equivalent requires the mean mass of an environmental particle over that whole range. That mean cannot be measured: spectroscopic detection limits are about 10–20 µm, and the mean is dominated by the rare largest particles. It must therefore be extrapolated, and the result depends on how. Table C12 gives the mean particle mass under seven defensible assumptions (B–H) besides the published conversion (A), and Table C13 the corresponding MC + SSD thresholds in µg/L. The values for all three methods are in `docs/correction/results/mass_thresholds.csv`. The assumptions and their main caveats:
 
-- **It extrapolates the fitted power laws far beyond their fitted ranges.** The mean particle mass over 1 to 5,000 µm is set by exponents that Kooi et al. (2021) fitted over much narrower ranges. For example, the freshwater surface-water mass distribution was fitted only above 18 µg, a sphere of about 320 µm.
-- **It depends strongly on assumptions.** Depending on which exponent (length, volume or mass) and which particle shape is used, the mean mass is about 0.001–0.008 µg per particle in freshwater and 0.1–10 µg in marine waters. By contrast, the measured mean masses of the particles analysed by Kooi et al. (2021, Table S3) are similar in both: 8.4 µg (freshwater) and 12.1 µg (marine), for particles of at least 11–20 µm.
-- **Recent work points to better practice.** Zhao et al. (2026) restrict such power laws to the empirically supported size range (10–5,000 µm). Chen et al. (2026) show that particle shapes whose height scales with length overestimate the mass of large particles.
+- **B. The method of the published framework.** A power law of particle mass with exponent α~M~ between the masses of 1 µm and 5,000 µm spheres, following the worked example of Kooi et al. (2021); this is the corrected conversion in PSSDplusplus v0.4.1 and the ToMEx web application. Kooi et al. (2021) fitted α~M~ only above a minimum mass: 18 µg (a sphere of about 320 µm) in freshwater surface water and 0.03 µg (about 37 µm) in marine surface water. The extrapolation below these sizes is large, particularly for freshwater.
+- **C and D. The alignment's particle shape.** As B, but with the ellipsoids used in the alignment (width = R × length; height = H:W × width; C), or with the volume exponent α~V~ multiplied by density (D). Kooi et al. (2021) fitted the length, volume and mass exponents independently, and they are not mutually consistent. For particles of constant shape and density, α~M~ should equal α~V~, but in marine surface water α~M~ = 1.32 and α~V~ = 1.48.
+- **E. The length distribution used to rescale the counts.** The number-based length power law (α~L~) is the distribution that the alignment uses to rescale particle counts between size ranges. It is integrated over the alignment's particle shape, so this scenario is the one most consistent with the particles/L thresholds themselves.
+- **F. Fixed particle thickness.** As E, with particle thickness limited to 20 µm. Chen et al. (2026) found that a fixed thickness of about 20 µm reproduces measured fragment masses better than shapes whose height scales with length. Shapes of the latter kind overestimate the mass of large particles: the heaviest particle Chen et al. (2026) weighed was 0.61 mg at 2.52 mm, against about 7.7 mg for a sphere of that length. Fibers, modelled separately by Chen et al. (2026) as hollow cylinders, are not distinguished here.
+- **G. A broader size distribution.** As E, with α~L~ = 1.53, the mean exponent of 45 surface-water studies corrected for mesh selectivity (Zhao et al., 2026). Zhao et al. (2026) validated it only for 10–5,000 µm and caution that extrapolation below 10 µm is exploratory. With α~L~ < 4, the mean particle mass is set by the largest particles, so this flatter distribution gives the highest masses.
+- **H. Anchored to measured particle masses.** The mean mass of the particles measured by Kooi et al. (2021, Table S3; 8.4 µg in freshwater and 12.1 µg in marine surface water, for particles of at least 20 and 11 µm, respectively), multiplied by the share of particles above that detection limit (from α~L~). This assumes that particles below the detection limit carry negligible mass. The measured means come from a limited number of studies and are themselves dominated by few large particles (the medians are about 1,000 times lower in freshwater and 20,000 times lower in marine surface water).
 
-A conversion method that addresses these issues will be developed separately. Until then, no corrected thresholds in mass, volume or surface-area units are given. PSSDplusplus v0.4.1 and the ToMEx web application retain the corrected conversion for indicative use only.
+```{r e9-tables}
+f2 <- function(x) trimws(formatC(signif(x, 2), format = "fg", big.mark = ",", digits = 2))
+ms <- readRDS(here("docs/correction/results/mass_scenarios.rds"))
+mm <- ms$mean_mass %>% pivot_wider(names_from = Environment, values_from = mean_mass_ug) %>%
+  left_join(ms$scenarios, by = "scenario") %>%
+  transmute(Scenario = scenario, Assumption = label, Basis = basis,
+            `Freshwater (ug)` = signif(Freshwater, 2), `Marine (ug)` = signif(Marine, 2))
+kable(mm, caption = "Table C12. Mean mass of an environmental particle between 1 and 5,000 um (surface waters) under the alternative assumptions. Parameters: Kooi et al. (2021) Table S4, as used in the alignments. A is the published (incorrect) conversion.")
+pubm <- ms$published_mc_mass
+names(pubm) <- c("Tier", "Freshwater_FD", "Freshwater_TT", "Marine_FD", "Marine_TT")
+pubm <- pubm %>% pivot_longer(-Tier, names_to = c("Environment", "ERM"), names_sep = "_", values_to = "published") %>%
+  mutate(published = f2(as.numeric(gsub(",", "", sub(" .*", "", published)))))
+mt <- ms$thresholds %>% filter(Method == "MC + SSD", scenario != "A") %>%
+  select(Environment, ERM, Tier, particles_L, scenario, ug_L) %>%
+  group_by(Environment, ERM, Tier) %>% mutate(lo = min(ug_L), hi = max(ug_L)) %>% ungroup() %>%
+  mutate(ug_L = f2(ug_L)) %>% pivot_wider(names_from = scenario, values_from = ug_L) %>%
+  left_join(pubm, by = c("Environment", "ERM", "Tier")) %>%
+  transmute(Environment, ERM = recode(ERM, FD = "Food dilution", TT = "Tissue translocation"), Tier,
+            `Particles/L` = f2(particles_L), `Published ug/L` = published, B, C, D, E, F, G, H,
+            `Range (B-H)` = paste(f2(lo), "to", f2(hi))) %>%
+  arrange(desc(Environment), ERM, Tier)
+kable(mt, caption = "Table C13. Corrected MC + SSD thresholds (medians) in ug/L under the assumptions of Table C12 (corrected particles/L threshold x mean particle mass). 'Published' is the published MC + SSD value (A). The intervals of the particle thresholds (Table C8) scale by the same factors.")
+```
+
+```{r e9-range, results = "asis"}
+r <- ms$mean_mass %>% filter(scenario != "A") %>% group_by(Environment) %>%
+  summarise(lo = min(mean_mass_ug), hi = max(mean_mass_ug), .groups = "drop")
+cat(sprintf(paste0(
+  "Across assumptions B-H, the mean particle mass spans %s to %s µg in freshwater and %s to %s µg in marine waters, ",
+  "i.e. %.1f and %.1f orders of magnitude; the thresholds in µg/L inherit this range. ",
+  "Mass-based thresholds should therefore be reported as a range with the assumption stated, used only to compare with mass-based monitoring data, and replaced by conversions based on site-specific size, shape and density distributions where these are available. ",
+  "A conversion matched to the monitoring method (for example, limited to the size range measured, as in Zhao et al. 2026, or calibrated against weighed particles, as in Chen et al. 2026) is preferable to any generic value. ",
+  "The same considerations apply to the conversions to volume (µm³/L) and surface area (µm²/L). ",
+  "Figure S5 is replaced by Tables C12 and C13.\n\n"),
+  f2(r$lo[r$Environment == "Freshwater"]), f2(r$hi[r$Environment == "Freshwater"]),
+  f2(r$lo[r$Environment == "Marine"]), f2(r$hi[r$Environment == "Marine"]),
+  log10(r$hi[r$Environment == "Freshwater"] / r$lo[r$Environment == "Freshwater"]),
+  log10(r$hi[r$Environment == "Marine"] / r$lo[r$Environment == "Marine"])))
+```
 
 References: Kooi, M., et al. (2021). *Water Research* 202, 117429. Zhao, B., et al. (2026). *Water Research* 299, 125833. Chen, H., et al. (2026). *Environmental Science & Technology* 60, 1263–1274.
 
@@ -415,7 +456,7 @@ The Supplementary Information states that using quantile type 8 instead of type 
 
 The corrections change the food dilution thresholds substantially and the tissue translocation thresholds little (Table C0). Food dilution thresholds increase for every method, tier and environment: by about 5- to 50-fold in freshwater and 12- to 60-fold in marine waters (more for the marine MC + SSD Tier 1 value). The published food dilution thresholds were therefore too low, i.e. more protective than the data support. The largest contribution is the removal of the 5 mm default ingestible size for organisms without a mouth size (E1), which had assigned the most sensitive small species very low aligned effect concentrations (about 21-fold in freshwater and 4-fold in marine waters at Tier 3; Table C2). The database refinements (R1) partly offset this in freshwater, where documented body lengths return sensitive species such as *Moina macrocopa* to the food dilution SSD, and increase the marine values; the other corrections change the PSSD++ thresholds by up to about 30 % (the particle-geometry and particle-count corrections E7, E8 and E10 together by 0.88- to 1.15-fold; Table C2). Tissue translocation thresholds change by less than 2-fold.
 
-Most qualitative conclusions are unchanged: marine thresholds remain lower than freshwater thresholds, and food dilution thresholds remain lower than tissue translocation thresholds, for all tiers and methods. Two comparisons between methods change in degree. Traditional SSD and MC + SSD medians are within about 10–20 % of each other at Tiers 3 and 4, but up to about 45 % apart in marine waters at Tiers 1 and 2 (e.g. marine tissue translocation Tier 1: 0.94 vs 0.65 particles/L), because the MC + SSD now propagates the uncertainty of predicted mouth sizes (E4). PSSD++ gives the lowest median in six of the eight Tier 3 and 4 cases rather than all; the exceptions are freshwater food dilution Tier 4 (essentially equal to MC + SSD) and freshwater tissue translocation Tier 4 (12,400 vs 9,000–9,100 particles/L). Statements that quote threshold values or ratios, in particular for food dilution (e.g. the range "1 × 10⁻⁵ to 137 particles/L" and "PSSD++ thresholds were consistently lower by up to 2-fold" in Section 3.3, the marine-to-freshwater ratios in Section 3.4.2, and "0.5–2.5 orders of magnitude" in Section 4.3.3), should be replaced with values from the corrected results. Risk characterisations that used the published food dilution thresholds overstate the risk from food dilution by the factors in Table C0. The published thresholds expressed as mass, volume or surface-area concentrations (Fig. S5 and the mass-based tables) are withdrawn (E9); no corrected values in these units are given.
+Most qualitative conclusions are unchanged: marine thresholds remain lower than freshwater thresholds, and food dilution thresholds remain lower than tissue translocation thresholds, for all tiers and methods. Two comparisons between methods change in degree. Traditional SSD and MC + SSD medians are within about 10–20 % of each other at Tiers 3 and 4, but up to about 45 % apart in marine waters at Tiers 1 and 2 (e.g. marine tissue translocation Tier 1: 0.94 vs 0.65 particles/L), because the MC + SSD now propagates the uncertainty of predicted mouth sizes (E4). PSSD++ gives the lowest median in six of the eight Tier 3 and 4 cases rather than all; the exceptions are freshwater food dilution Tier 4 (essentially equal to MC + SSD) and freshwater tissue translocation Tier 4 (12,400 vs 9,000–9,100 particles/L). Statements that quote threshold values or ratios, in particular for food dilution (e.g. the range "1 × 10⁻⁵ to 137 particles/L" and "PSSD++ thresholds were consistently lower by up to 2-fold" in Section 3.3, the marine-to-freshwater ratios in Section 3.4.2, and "0.5–2.5 orders of magnitude" in Section 4.3.3), should be replaced with values from the corrected results. Risk characterisations that used the published food dilution thresholds overstate the risk from food dilution by the factors in Table C0. The published thresholds expressed as mass, volume or surface-area concentrations (Fig. S5 and the mass-based tables) were incorrect (E9); the corrected values depend strongly on the assumed particle size, shape and density distribution and are given as a range of scenarios (Tables C12 and C13).
 
 ## Changes to the published article, item by item
 
@@ -610,7 +651,7 @@ cat(sprintf(paste0(
   "- Table S5 (relative standard deviations of the MC + SSD thresholds) is replaced by Table C11. *\"ranged from 26 %% to 160 %%\"* becomes %.0f %% to %.0f %%; tissue translocation thresholds still vary less than food dilution thresholds, and freshwater thresholds less than marine ones.\n",
   "- Table S7: Table C10. Table S8 (PSSD++ summary statistics): Table C0 and the PSSD++ summary in the analysis outputs (`data/output/PNEC_summary_table_wide.rds`). Table S10: Table C9.\n",
   "- Table S9 and Figures S1-S3 (coefficients of variation): see E6 and Table C3.\n",
-  "- Figure S5 (thresholds in mass units, ug/L) is withdrawn (E9); no corrected mass-unit thresholds are given (see E9).\n",
+  "- Figure S5 and the mass-based tables (thresholds in ug/L) are replaced by Tables C12 and C13 (E9): corrected values under alternative assumptions, with their caveats.\n",
   "- Figures S4 and S6-S11 are regenerated by the corrected analysis (`output/Manuscript_Figs`).\n"),
   min(rv), max(rv)))
 ```
@@ -635,6 +676,8 @@ for s in S0 S1 S2 S3 S4 S5 S6; do Rscript docs/correction/R/pssd_correction_ladd
 for s in S7 S8; do Rscript docs/correction/R/pssd_correction_ladder.R 1000 300 $s; done
 # bootstrap sample size (Table C4)
 Rscript docs/correction/R/nboot_impact.R 20 4
+# thresholds in mass units under alternative assumptions (Tables C12-C13, mass_thresholds.csv)
+Rscript docs/correction/R/mass_conversion.R
 # published vs corrected values of the article's statements, tables and figures (Tables C7-C11)
 Rscript docs/correction/R/article_items.R
 # record-level CoV statistics as published and correctly merged (Table C3)

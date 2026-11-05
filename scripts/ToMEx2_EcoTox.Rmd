@@ -3138,35 +3138,26 @@ leave_one_out_ggplot <- ggplot() +
              aes(x = median_fold_change, y = tier),
              color = "black",
              size = 5, shape = 2, alpha = 1) +
-  # add label for min and max HCx
+  # labels: min HCx left of the whisker, max HCx right of it, median HCx above the triangle;
+  # ggrepel keeps labels apart when whiskers are short (labels overlapped before)
+  ggrepel::geom_text_repel(data = summary_diff_df,
+                 aes(x = min_fold_change, label = signif(min_hcx, 2), y = tier, color = tier),
+            size = 3.3, direction = "x", nudge_x = -0.35, hjust = 1, min.segment.length = Inf,
+            box.padding = 0.15, seed = 1) +
+  ggrepel::geom_text_repel(data = summary_diff_df,
+                 aes(x = max_fold_change, label = signif(max_hcx, 2), y = tier, color = tier),
+            size = 3.3, direction = "x", nudge_x = 0.35, hjust = 0, min.segment.length = Inf,
+            box.padding = 0.15, seed = 1) +
   geom_text(data = summary_diff_df,
-                 aes(x = min_fold_change, label = signif(min_hcx,2), y = tier, color = tier),
-            vjust = -2) +
-  geom_text(data = summary_diff_df,
-                 aes(x = max_fold_change, label = signif(max_hcx,2), y = tier, color = tier),
-            vjust = -2) +
-  #add label for median hcx
-  geom_text(data = summary_diff_df,
-                 aes(x = median_fold_change, label = signif(median_hcx,2), y = tier), # color = tier), 
-            color = "black",
-            vjust = +2.5) +
+                 aes(x = median_fold_change, label = signif(median_hcx, 2), y = tier),
+            color = "black", size = 3.3, vjust = -1.6) +
   
     scale_color_manual(values = tier_colors) +  # Apply manual colors for lines
 scale_x_continuous(
   trans = pseudo_log_trans(base = 2),
   breaks = c(0.01, 1, 2, 4, 8, 16, 32, 64, 128),
-  limits = c(0.01, 130),  # slightly higher than 128 to ensure it appears
-  labels = function(x) {
-    sapply(x, function(v) {
-      if (is.na(v)) {
-        NA
-      } else if (isTRUE(all.equal(v, 0.01))) {
-        "0.01"
-      } else {
-        as.character(as.integer(v))
-      }
-    })
-  }
+  limits = c(-1.5, 130),  # room left of 0.01 for the min labels; slightly higher than 128 to ensure it appears
+  labels = function(x) ifelse(is.na(x), NA, ifelse(x < 1, format(signif(x, 2)), format(round(x)))) # as.integer() truncated 7.999 to 7
 ) + 
   xlab("Fold Change") +
   coord_cartesian(clip = "off") +
