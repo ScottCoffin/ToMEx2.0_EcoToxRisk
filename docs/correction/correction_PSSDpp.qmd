@@ -1,5 +1,5 @@
 ---
-title: "Correction: probabilistic (MC + SSD and PSSD++) components"
+title: "Correction"
 subtitle: "Coffin et al. (2026) A probabilistic risk framework for microplastics integrating uncertainty across toxicological and environmental variability. J. Hazard. Mater. 503, 141021"
 date: today
 format:
@@ -28,6 +28,16 @@ if (length(ladder_files)) {
   ladder <- parts[[1]]
   ladder$results <- bind_rows(lapply(parts, `[[`, "results")) %>% distinct(step, Tier, Environment, ERM, .keep_all = TRUE)
   ladder$run_time_min <- sum(sapply(parts, `[[`, "run_time_min"))
+  vers <- sapply(parts, function(x) as.character(x$package_version))
+  stp <- lapply(parts, function(x) unique(x$results$step))
+  ladder$package_version <- paste(sapply(unique(vers), function(v) sprintf("%s (%s)", v,
+    paste(range(unlist(stp[vers == v])), collapse = "-"))), collapse = ", ")
+  ladder$date <- max(do.call(c, lapply(parts, `[[`, "date")))
+}
+# MC + SSD medians at full precision (the formatted table rounds them)
+read_mc_medians <- function(f) {
+  readRDS(f) %>% filter(Metric %in% c("Food Dilution (Default)", "Tissue Translocation (Default)")) %>%
+    transmute(Environment, Tier, ERM = ifelse(grepl("Food", Metric), "FD", "TT"), value = Median, Method = "MC")
 }
 mcssd <- if (file.exists(file.path(res_dir, "mcssd_attribution.rds"))) readRDS(file.path(res_dir, "mcssd_attribution.rds")) else NULL
 nboot <- if (file.exists(file.path(res_dir, "nboot_impact.rds"))) readRDS(file.path(res_dir, "nboot_impact.rds")) else NULL
@@ -59,28 +69,35 @@ if (production) {
 
 ## Summary
 
-While packaging the analysis code of this article as the R package PSSDplusplus (v0.4.0) and responding to a reported issue ([ToMEx2.0_EcoToxRisk#6](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/issues/6)), we found errors in the code that aligned toxicity data to the food dilution and tissue translocation ecologically relevant metrics (ERMs) in the Monte Carlo (MC) simulations, and in the preparation of the input data. These errors affect the MC + SSD and PSSD++ thresholds (Table 2, Figs. 5–7) and the record-level uncertainty statistics derived from the MC simulations. The traditional SSD thresholds are affected by the input-data errors and are corrected in the ToMEx 2.0 database and web application ([SCCWRP/ToMEx_AquaticOrganisms#5](https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5)).
+While packaging the analysis code of this article as the R package PSSDplusplus (v0.4.0, with further fixes in v0.4.1) and responding to reported issues ([ToMEx2.0_EcoToxRisk#6](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/issues/6), [#8](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/issues/8)), we found errors in the code that aligned toxicity data to the food dilution and tissue translocation ecologically relevant metrics (ERMs), in the preparation of the input data, and in the Monte Carlo (MC) code of this article. They affect the thresholds of all three methods (Table 2, Figs. 5-8) and the record-level uncertainty statistics derived from the MC simulations.
+
+**Two groups of errors.** Most of the errors (E1-E3, E7-E10) and the data refinement R1 originate in code and data that this analysis shares with the ToMEx 2.0 database and its web application (Thornton Hampton, L. M., Briggs Wyler, D., Carney Almroth, B., et al. (2025). The Toxicity of Microplastics Explorer (ToMEx) 2.0. *Microplastics and Nanoplastics* 5, 38. <https://doi.org/10.1186/s43591-025-00145-6>). The ToMEx 2.0 authors will publish a correction to that article first; the same fixes are submitted to the database and application ([SCCWRP/ToMEx_AquaticOrganisms#5](https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5)) and are applied here. Four errors (E4, E5, E6, E11) are specific to the Monte Carlo and summary code of this article and independent of ToMEx 2.0. This note keeps the two groups apart (Table C1) and reports the effect of each on the thresholds (Table C14). Almost all of the change in the thresholds comes from the shared errors; the errors specific to this article change the thresholds little.
 
 We separate **errors** (the code did not do what the article describes) from **refinements** (corrections to individual data records that improve, but do not fix, the analysis). The corrected thresholds are given in Table C2 and the conclusions are discussed at the end of this note.
 
-**Table C1.** Corrections, their type, and the results affected.
+**Table C1.** Corrections, their type, their origin (shared with the ToMEx 2.0 database and web application, or specific to this article), and the results affected.
 
-| ID | Correction | Type | Affects |
-|---|---|---|---|
-| E1 | Records without a mouth size were assumed to ingest particles up to 5 mm | Code error | Food dilution: SSD, MC + SSD, PSSD++ |
-| E2 | In vitro (cell culture) records were included in SSDs | Code error | Tissue translocation (freshwater): all methods |
-| E3 | Reported mouth sizes were replaced by body-length predictions | Data-preparation error | Food dilution and tissue translocation: all methods |
-| E4 | Sampled body-length model coefficients were never applied | Code error | MC + SSD and PSSD++ uncertainty; Fig. 1B, Fig. 7 |
-| E5 | Sampled particle shape ratios were not applied to tested particles | Code error | MC + SSD and PSSD++ (freshwater fragments) |
-| E6 | Record-level MC statistics were merged to the wrong records | Code error | Intraspecies CoV statistics, CoV analyses (SI) |
-| R1 | ToMEx 2.0 database v2.0.1 and record-level body-length and in vivo / in vitro corrections | Data refinement | All methods |
+| ID | Correction | Type | Origin | Affects |
+|---|---|---|---|---|
+| E1 | Records without a mouth size were assumed to ingest particles up to 5 mm | Code error | Shared with ToMEx 2.0 | Food dilution: SSD, MC + SSD, PSSD++ |
+| E2 | In vitro (cell culture) records were included in SSDs | Code error | Shared with ToMEx 2.0 | Tissue translocation (freshwater): all methods |
+| E3 | Reported mouth sizes were replaced by body-length predictions | Data-preparation error | Shared with ToMEx 2.0 | Food dilution and tissue translocation: all methods |
+| E4 | Sampled body-length model coefficients were never applied | Code error | Specific to this article | MC + SSD and PSSD++ uncertainty; Fig. 1B, Fig. 7 |
+| E5 | Sampled particle shape ratios were not applied to tested particles | Code error | Specific to this article | MC + SSD and PSSD++ (freshwater fragments) |
+| E6 | Record-level MC statistics were merged to the wrong records | Code error | Specific to this article | Intraspecies CoV statistics, CoV analyses (SI) |
+| E7 | The smallest particle of polydisperse test materials lost its width; fiber widths were inconsistent | Code error | Shared with ToMEx 2.0 | Food dilution and tissue translocation: all methods (polydisperse records, fibers) |
+| E8 | Particle counts of mass-dosed tests used the database's particle geometry, not the alignment's | Code error | Shared with ToMEx 2.0 | Food dilution and tissue translocation: all methods (mass-dosed records) |
+| E9 | Conversions of the thresholds to mass, volume and surface area used the length limits as mass, volume and area limits | Code error | Shared with ToMEx 2.0 | Thresholds in µg/L, µm³/L and µm²/L (Fig. S5, mass tables; corrected under alternative assumptions, Tables C12-C13); not particles/L |
+| E10 | SSD size filters used the midpoint length of polydisperse materials, not their bioaccessibility | Code error | Shared with ToMEx 2.0 | MC + SSD and PSSD++ (no record in the deterministic SSDs) |
+| E11 | The food dilution datasets used for the descriptive summaries were capped at the translocation limit | Code error | Specific to this article | Dataset summaries (record, study and species counts) |
+| R1 | ToMEx 2.0 database v2.0.1 and record-level body-length and in vivo / in vitro corrections | Data refinement | Shared with ToMEx 2.0 (database) | All methods |
 
 ## Corrected Table 2
 
 ```{r table2}
 root <- here()
 f_ssd <- file.path(root, "output/data/all_thresholds_combined_quality.csv")
-f_mc <- file.path(root, "scripts/monte carlo/output/simple_thresholds_table_sobol.csv")
+f_mc <- file.path(root, "scripts/monte carlo/output/summary_stats_base_thresholds_sobol.rds")
 f_pssd <- file.path(root, "data/output/PNEC_summary_table_wide.rds")
 if (all(file.exists(c(f_ssd, f_mc, f_pssd)))) {
   published <- tribble(
@@ -97,12 +114,7 @@ if (all(file.exists(c(f_ssd, f_mc, f_pssd)))) {
   ssd <- read.csv(f_ssd, check.names = FALSE, row.names = 1) %>% filter(label == "risk and tech") %>%
     transmute(Environment, Tier, FD = `Food Dilution (Default)`, TT = `Tissue Translocation (Default)`) %>%
     pivot_longer(c(FD, TT), names_to = "ERM", values_to = "corrected") %>% mutate(Method = "SSD")
-  mcw <- read.csv(f_mc, check.names = FALSE, row.names = 1)
-  mc <- mcw %>% pivot_longer(-Tier, names_to = "col", values_to = "txt") %>%
-    mutate(Environment = ifelse(grepl("Marine", col), "Marine", "Freshwater"),
-           ERM = ifelse(grepl("Food", col), "FD", "TT"),
-           corrected = as.numeric(gsub(",", "", sub(" .*", "", txt))), Method = "MC") %>%
-    select(Environment, Tier, ERM, corrected, Method)
+  mc <- read_mc_medians(f_mc) %>% rename(corrected = value)
   ps <- readRDS(f_pssd) %>% transmute(Environment, Tier, ERM = ifelse(grepl("Food", ERM), "FD", "TT"),
                                       corrected = Median, Method = "PSSD")
   t2 <- published %>% left_join(bind_rows(ssd, mc, ps), by = c("Environment", "Tier", "ERM", "Method")) %>%
@@ -113,33 +125,110 @@ if (all(file.exists(c(f_ssd, f_mc, f_pssd)))) {
     arrange(desc(Environment), ERM, Tier, factor(Method, c("SSD", "MC + SSD", "PSSD++")))
   kable(t2 %>% transmute(Environment, ERM, Tier, Method, Published = fmt(published), Corrected = fmt(corrected),
                          `Fold change` = ifelse(is.na(fold), "", sprintf("%.2g", fold))),
-        caption = "Table C0. Median thresholds (particles/L, aligned to 1-5000 um) in Table 2 as published and as corrected (all corrections E1-E6 and R1; current data and code, production run). Tier 1 is the lower 95 % confidence limit of the HC5 (see the note on bootstrap samples below). Uncertainty intervals of the corrected values are in the analysis outputs.")
+        caption = "Table C0. Median thresholds (particles/L, aligned to 1-5000 um) in Table 2 as published and as corrected (all corrections E1-E11 and R1; current data and code, production run). Tier 1 is the lower 95 % confidence limit of the HC5 (see the note on bootstrap samples below). Uncertainty intervals of the corrected values are in the analysis outputs.")
 }
 ```
 
 ## Errors
 
-### E1. Missing mouth sizes defaulted to 5 mm
+
+
+### Errors shared with the ToMEx 2.0 database and web application
+
+These errors are in code and data that this analysis reuses from ToMEx 2.0 (Thornton Hampton et al., 2025): the deterministic ERM alignment, the SSD input filters and the preparation of the database. They are corrected in ToMEx 2.0 ([SCCWRP/ToMEx_AquaticOrganisms#5](https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5)) and the same fixes are applied here.
+
+#### E1. Missing mouth sizes defaulted to 5 mm
 
 The food dilution ERM integrates the volume of ingestible particles from the lower size limit (1 µm) up to the largest particle an organism can ingest, its mouth size. For records with neither a reported mouth size nor a body length from which to predict one, the alignment code set the mouth size to the upper limit of the assessed size range (`x2D_set`, 5,000 µm). Particle volume spans about 11 orders of magnitude over 1–5,000 µm, so this assumption inflated the mean ingestible particle volume by orders of magnitude for small animals and drove their aligned food dilution concentrations, and therefore the thresholds, down. Several of the most sensitive species were affected (e.g., *Moina macrocopa*, larval *Pseudechinus huttoni*, the ciliate *Strombidium sulcatum*). Assuming that a rotifer or a ciliate ingests 5 mm particles is not defensible. These records are now excluded from the food dilution SSDs and reported; tissue translocation is unaffected. Where a body length could be documented, it was added to the database (R1), so the species are retained.
 
-### E2. In vitro records entered the SSDs
+#### E2. In vitro records entered the SSDs
 
 No SSD code path filtered on the in vivo / in vitro field, so records from cell cultures (e.g., rainbow trout anterior-kidney cells; 10.1016/j.fsi.2021.04.014) entered the freshwater tissue translocation SSD. Cell cultures are not organisms and do not belong in an SSD of species sensitivities. All SSD inputs are now restricted to in vivo records. One study coded "In Vitro" in the database exposed whole live larvae (*P. huttoni*, Richardson et al. 2021) and was corrected to in vivo.
 
-### E3. Reported mouth sizes were overwritten
+#### E3. Reported mouth sizes were overwritten
 
 The ToMEx 2.0 data preparation recomputed every mouth size from body length with the allometric model of Jâms et al. (2020), replacing the measured mouth sizes compiled in ToMEx 1.0 (Koelmans et al. 2020) for 13 species and life stages (2,769 records in v2.0.1; predicted → reported, e.g., *Danio rerio* 1.53 → 0.40 mm, adult *Daphnia magna* 0.341 → 0.115 mm, *Gammarus fossarum* 0.56 → 0.125 mm). A measured value is better evidence than a prediction, and the model is not calibrated for animals below 9 mm. Reported mouth sizes are now always used, and the model only when none is reported.
 
-### E4. Body-length model uncertainty was not propagated
+#### E7. Geometry of polydisperse test materials
+
+For a polydisperse test material, the alignment needs the mean volume (food dilution) or surface area (tissue translocation) of its bioaccessible particles, computed from the smallest and the largest bioaccessible particle. The code assigned the smallest particle's width by matching the shape names in lower case ("sphere", "fiber", "fragment"), whereas the database codes them capitalised, and had no fallback. The width was therefore lost for every polydisperse sphere, fiber and fragment and later filled with the length-to-width ratio of fragments, so the smallest sphere was treated as an ellipsoid (volume 0.67 of the sphere's in freshwater, 0.77 in marine waters), and the smallest particle's height used a fixed 0.67 × width rather than the environment's (or the sampled) height-to-width ratio (fragment volume 0.87 of the intended value in marine waters). For fibers, the largest bioaccessible particle kept the database width, which is the length-to-width ratio times the *untruncated* maximum length, so a partially ingestible fiber could be several times wider than long. Fibers now have one diameter at both ends (reported width, else 15 µm), never more than their length; the 15 µm default is also capped at the length for monodisperse fibers (2 SSD records were shorter than 15 µm). The 15 µm value is the fiber diameter used to classify fibers in the environmental data of Kooi et al. (2021, Section 3.2), not a measured mean width. Other monodisperse records are unaffected. This error was found after v0.4.0 and is fixed in v0.4.1.
+
+#### E8. Particle counts of tests dosed by mass
+
+Most studies report their dose as a mass concentration; the database converts it to a particle concentration with a mean particle mass. That conversion used the database's own particle geometry (a fixed height-to-width ratio of 0.67, and a polydisperse material treated as a single particle of the midpoint length; some ToMEx 1.0 conversions match neither), whereas the alignment then built the same particles with its own geometry and size distribution. The aligned volume (or mass) dose was therefore not the dosed mass divided by the polymer density. The alignment now recomputes the particle concentration of every mass-dosed test as the dosed mass divided by the mean particle mass under its own geometry and size distribution (for a polydisperse material, the power-law mean over the whole reported size range), so the aligned particles carry exactly the dosed mass. Reported particle concentrations are used as reported. (PSSDplusplus v0.4.1: `align_data(particle_count_source = "mass")`, the default; `"database"` reproduces the earlier counts.)
+
+#### E9. Conversion of the thresholds to mass, volume and surface area
+
+The particle-based thresholds were converted to µg/L, µm³/L and µm²/L (Fig. S5 and the mass-based tables) by multiplying them by the mean particle mass, volume or surface area of the environmental size distribution between 1 and 5,000 µm. The code passed the length limits (1 and 5,000) as if they were the mass, volume and surface-area limits of that distribution. The correct limits are the mass, volume and surface area of 1 µm and 5,000 µm particles, as in the worked example of Kooi et al. (2021, Supplementary Information). The published thresholds in these units are therefore incorrect. The thresholds in particles/L are unaffected.
+
+**Corrected thresholds in mass units depend on assumptions.** A threshold in particles/L refers to all particles between 1 and 5,000 µm, so its mass equivalent requires the mean mass of an environmental particle over that whole range. That mean cannot be measured: spectroscopic detection limits are about 10–20 µm, and the mean is dominated by the rare largest particles. It must therefore be extrapolated, and the result depends on how. Table C12 gives the mean particle mass under seven defensible assumptions (B–H) besides the published conversion (A), and Table C13 the corresponding MC + SSD thresholds in µg/L. The values for all three methods are in `docs/correction/results/mass_thresholds.csv`. The assumptions and their main caveats:
+
+- **B. The method of the published framework.** A power law of particle mass with exponent α~M~ between the masses of 1 µm and 5,000 µm spheres, following the worked example of Kooi et al. (2021); this is the corrected conversion in PSSDplusplus v0.4.1 and the ToMEx web application. Kooi et al. (2021) fitted α~M~ only above a minimum mass: 18 µg (a sphere of about 320 µm) in freshwater surface water and 0.03 µg (about 37 µm) in marine surface water. The extrapolation below these sizes is large, particularly for freshwater.
+- **C and D. The alignment's particle shape.** As B, but with the ellipsoids used in the alignment (width = R × length; height = H:W × width; C), or with the volume exponent α~V~ multiplied by density (D). Kooi et al. (2021) fitted the length, volume and mass exponents independently, and they are not mutually consistent. For particles of constant shape and density, α~M~ should equal α~V~, but in marine surface water α~M~ = 1.32 and α~V~ = 1.48.
+- **E. The length distribution used to rescale the counts.** The number-based length power law (α~L~) is the distribution that the alignment uses to rescale particle counts between size ranges. It is integrated over the alignment's particle shape, so this scenario is the one most consistent with the particles/L thresholds themselves.
+- **F. Fixed particle thickness.** As E, with particle thickness limited to 20 µm. Chen et al. (2026) found that a fixed thickness of about 20 µm reproduces measured fragment masses better than shapes whose height scales with length. Shapes of the latter kind overestimate the mass of large particles: the heaviest particle Chen et al. (2026) weighed was 0.61 mg at 2.52 mm, against about 7.7 mg for a sphere of that length. Fibers, modelled separately by Chen et al. (2026) as hollow cylinders, are not distinguished here.
+- **G. A broader size distribution.** As E, with α~L~ = 1.53, the mean exponent of 45 surface-water studies corrected for mesh selectivity (Zhao et al., 2026). Zhao et al. (2026) validated it only for 10–5,000 µm and caution that extrapolation below 10 µm is exploratory. With α~L~ < 4, the mean particle mass is set by the largest particles, so this flatter distribution gives the highest masses.
+- **H. Anchored to measured particle masses.** The mean mass of the particles measured by Kooi et al. (2021, Table S3; 8.4 µg in freshwater and 12.1 µg in marine surface water, for particles of at least 20 and 11 µm, respectively), multiplied by the share of particles above that detection limit (from α~L~). This assumes that particles below the detection limit carry negligible mass. The measured means come from a limited number of studies and are themselves dominated by few large particles (the medians are about 1,000 times lower in freshwater and 20,000 times lower in marine surface water).
+
+```{r e9-tables}
+f2 <- function(x) trimws(formatC(signif(x, 2), format = "fg", big.mark = ",", digits = 2))
+ms <- readRDS(here("docs/correction/results/mass_scenarios.rds"))
+mm <- ms$mean_mass %>% pivot_wider(names_from = Environment, values_from = mean_mass_ug) %>%
+  left_join(ms$scenarios, by = "scenario") %>%
+  transmute(Scenario = scenario, Assumption = label, Basis = basis,
+            `Freshwater (ug)` = signif(Freshwater, 2), `Marine (ug)` = signif(Marine, 2))
+kable(mm, caption = "Table C12. Mean mass of an environmental particle between 1 and 5,000 um (surface waters) under the alternative assumptions. Parameters: Kooi et al. (2021) Table S4, as used in the alignments. A is the published (incorrect) conversion.")
+pubm <- ms$published_mc_mass
+names(pubm) <- c("Tier", "Freshwater_FD", "Freshwater_TT", "Marine_FD", "Marine_TT")
+pubm <- pubm %>% pivot_longer(-Tier, names_to = c("Environment", "ERM"), names_sep = "_", values_to = "published") %>%
+  mutate(published = f2(as.numeric(gsub(",", "", sub(" .*", "", published)))))
+mt <- ms$thresholds %>% filter(Method == "MC + SSD", scenario != "A") %>%
+  select(Environment, ERM, Tier, particles_L, scenario, ug_L) %>%
+  group_by(Environment, ERM, Tier) %>% mutate(lo = min(ug_L), hi = max(ug_L)) %>% ungroup() %>%
+  mutate(ug_L = f2(ug_L)) %>% pivot_wider(names_from = scenario, values_from = ug_L) %>%
+  left_join(pubm, by = c("Environment", "ERM", "Tier")) %>%
+  transmute(Environment, ERM = recode(ERM, FD = "Food dilution", TT = "Tissue translocation"), Tier,
+            `Particles/L` = f2(particles_L), `Published ug/L` = published, B, C, D, E, F, G, H,
+            `Range (B-H)` = paste(f2(lo), "to", f2(hi))) %>%
+  arrange(desc(Environment), ERM, Tier)
+kable(mt, caption = "Table C13. Corrected MC + SSD thresholds (medians) in ug/L under the assumptions of Table C12 (corrected particles/L threshold x mean particle mass). 'Published' is the published MC + SSD value (A). The intervals of the particle thresholds (Table C8) scale by the same factors.")
+```
+
+```{r e9-range, results = "asis"}
+r <- ms$mean_mass %>% filter(scenario != "A") %>% group_by(Environment) %>%
+  summarise(lo = min(mean_mass_ug), hi = max(mean_mass_ug), .groups = "drop")
+cat(sprintf(paste0(
+  "Across assumptions B-H, the mean particle mass spans %s to %s µg in freshwater and %s to %s µg in marine waters, ",
+  "i.e. %.1f and %.1f orders of magnitude; the thresholds in µg/L inherit this range. ",
+  "Mass-based thresholds should therefore be reported as a range with the assumption stated, used only to compare with mass-based monitoring data, and replaced by conversions based on site-specific size, shape and density distributions where these are available. ",
+  "A conversion matched to the monitoring method (for example, limited to the size range measured, as in Zhao et al. 2026, or calibrated against weighed particles, as in Chen et al. 2026) is preferable to any generic value. ",
+  "The same considerations apply to the conversions to volume (µm³/L) and surface area (µm²/L). ",
+  "Figure S5 is replaced by Tables C12 and C13.\n\n"),
+  f2(r$lo[r$Environment == "Freshwater"]), f2(r$hi[r$Environment == "Freshwater"]),
+  f2(r$lo[r$Environment == "Marine"]), f2(r$hi[r$Environment == "Marine"]),
+  log10(r$hi[r$Environment == "Freshwater"] / r$lo[r$Environment == "Freshwater"]),
+  log10(r$hi[r$Environment == "Marine"] / r$lo[r$Environment == "Marine"])))
+```
+
+References: Kooi, M., et al. (2021). *Water Research* 202, 117429. Zhao, B., et al. (2026). *Water Research* 299, 125833. Chen, H., et al. (2026). *Environmental Science & Technology* 60, 1263–1274.
+
+#### E10. Size filters of the SSD inputs
+
+The SSD inputs were filtered on the midpoint length of each record (e.g. at most the translocation limit for tissue translocation), whereas the method uses the bioaccessible fraction of each polydisperse test material (Supplementary Information): a partially bioaccessible material whose midpoint exceeds the limit was dropped. The inputs are now selected by the bioaccessibility labels, with only the lower size limit applied to the length. No record of the deterministic SSDs changes, but Monte Carlo draws of the mouth size do.
+
+### Errors specific to this article
+
+These errors are in the Monte Carlo and summary code written for this article and are independent of ToMEx 2.0.
+
+#### E4. Body-length model uncertainty was not propagated
 
 The MC simulations were described as sampling the coefficients of the body-length to mouth-size model (Fig. 1B), and their influence was shown in Fig. 7. In the code, the sampled coefficients never reached the alignment: the alignment function ignored them (ToMEx2.0_EcoToxRisk#6), and the simulation wrapper also read them under names that did not exist in the parameter matrix, so every simulation used the fixed coefficients. Any relationship between these parameters and the thresholds in Fig. 7 therefore reflects sampling noise, not an effect, and the statement in Section 3.4.1 that they "had weak negative relationships to the threshold" is withdrawn. The corrected simulations propagate the coefficient uncertainty to predicted mouth sizes only; reported (measured) mouth sizes are used as is in every simulation.
 
-### E5. Particle-shape uncertainty did not reach tested particles
+#### E5. Particle-shape uncertainty did not reach tested particles
 
 For tested fragments without a reported width, the width is estimated from the length and the length-to-width ratio (R), and the height from the width and the height-to-width ratio. The MC simulations sampled both ratios but re-aligned data that had already been aligned with the default ratios; because widths and heights are only estimated when missing, they kept their default values in every simulation. The sampled ratios therefore did not affect the tested particles (freshwater fragments: up to about 2-fold per simulation), and their influence on the freshwater thresholds in Fig. 7 was understated. Each simulation now aligns the original records.
 
-### E6. Record-level MC statistics were merged to the wrong records
+#### E6. Record-level MC statistics were merged to the wrong records
 
 To summarise the uncertainty of each aligned toxicity value, the per-record mean, standard deviation and coefficient of variation (CoV) over the MC simulations were merged back to the records by an identifier. Because of the re-alignment in E5, the MC output numbered records 1 to *n* over the aligned subset while the record table kept the original row numbers, so the merge attached each record's statistics to a different record.
 
@@ -150,6 +239,40 @@ if (!is.null(cov)) cat(sprintf(
 ```
 
 The MC + SSD and PSSD++ thresholds were not affected, because they use the per-simulation values directly, but the CoV statistics were (Table C3).
+
+#### E11. Descriptive summaries of the food dilution datasets
+
+The food dilution datasets summarised in the PSSD++ section of the analysis (record, study and species counts) and saved for other scripts (`tier1_2_food.RDS`, `tier3_4_food.RDS`) were capped at the translocation limit (88 µm) instead of the ingestible size. They are now selected as in E10. The thresholds were not affected.
+
+```{r e7-table}
+v040 <- here("docs/correction/results/v0.4.0_production")
+f_new <- c(SSD = here("output/data/all_thresholds_combined_quality.csv"),
+           MC = here("scripts/monte carlo/output/summary_stats_base_thresholds_sobol.rds"),
+           PSSD = here("data/output/PNEC_summary_table_wide.rds"))
+f_old <- c(SSD = file.path(v040, "all_thresholds_combined_quality.csv"),
+           MC = file.path(v040, "summary_stats_base_thresholds_sobol.rds"),
+           PSSD = file.path(v040, "PNEC_summary_table_wide.rds"))
+read_thr <- function(f) {
+  ssd <- read.csv(f["SSD"], check.names = FALSE, row.names = 1) %>% filter(label == "risk and tech") %>%
+    transmute(Environment, Tier, FD = `Food Dilution (Default)`, TT = `Tissue Translocation (Default)`) %>%
+    pivot_longer(c(FD, TT), names_to = "ERM", values_to = "value") %>% mutate(Method = "SSD")
+  mc <- read_mc_medians(f["MC"])
+  ps <- readRDS(f["PSSD"]) %>% transmute(Environment, Tier, ERM = ifelse(grepl("Food", ERM), "FD", "TT"), value = Median, Method = "PSSD")
+  bind_rows(ssd, mc, ps)
+}
+if (all(file.exists(c(f_new, f_old)))) {
+  e7 <- inner_join(read_thr(f_old), read_thr(f_new), by = c("Environment", "Tier", "ERM", "Method"), suffix = c(".old", ".new")) %>%
+    mutate(ratio = value.new / value.old,
+           Method = recode(Method, SSD = "SSD", MC = "MC + SSD", PSSD = "PSSD++"),
+           ERM = recode(ERM, FD = "Food dilution", TT = "Tissue translocation")) %>%
+    select(Environment, ERM, Tier, Method, ratio) %>%
+    pivot_wider(names_from = Method, values_from = ratio) %>%
+    arrange(desc(Environment), ERM, Tier) %>%
+    mutate(across(where(is.numeric), ~ ifelse(is.na(.x), "", sprintf("%.2f", .x))))
+  kable(e7, caption = "Table C6. Effect of E7-E11 together: ratio of the production thresholds with PSSDplusplus v0.4.1 to those with v0.4.0 (same data, parameter matrix and seeds; E1-E6 and R1 applied in both).")
+}
+```
+
 
 ## Refinements
 
@@ -209,12 +332,13 @@ if (!is.null(ladder)) {
                 100 * max(abs(chk$Median.att / chk$Median.full - 1)), 100 * median(abs(chk$Median.att / chk$Median.full - 1))))
   }
   f_render <- here("data/output/PNEC_summary_table_wide.rds")
-  if (file.exists(f_render) && "S6" %in% ladder$results$step) {
-    rr6 <- ladder$results %>% filter(step == "S6") %>%
+  last_step <- max(ladder$results$step)
+  if (file.exists(f_render) && last_step %in% c("S6", "S7", "S8")) {
+    rr6 <- ladder$results %>% filter(step == last_step) %>%
       inner_join(readRDS(f_render) %>% select(Tier, Environment, ERM, Median), by = c("Tier", "Environment", "ERM"),
                  suffix = c("", ".render"))
-    cat(sprintf(paste0("**Check of the end point.** The fully corrected step (S6) reproduces the medians of the production ",
-                       "run of the analysis (Table C0) to within %.0f%% (median difference %.0f%%).\n\n"),
+    cat(sprintf(paste0("**Check of the end point.** The fully corrected step (%s) reproduces the medians of the production ",
+                       "run of the analysis (Table C0) to within %.0f%% (median difference %.0f%%).\n\n"), last_step,
                 100 * max(abs(rr6$Median / rr6$Median.render - 1)), 100 * median(abs(rr6$Median / rr6$Median.render - 1))))
   }
   cat(paste0("**Notes.** In vitro exclusion (S2) changes the PSSD++ thresholds only through *P. huttoni*, which the database ",
@@ -236,6 +360,34 @@ if (!is.null(ladder)) {
     select(Tier, step, label, col, fold) %>% pivot_wider(names_from = col, values_from = fold) %>%
     arrange(Tier, step) %>% mutate(across(where(is.numeric), ~ sprintf("%.2f", .x)))
   kable(r, caption = "Fold change of the median threshold caused by each step (relative to the previous step).")
+}
+```
+
+Fixing the particle geometry and the size filters (S7; E7, E10) raises the food dilution thresholds by 1–15 % and changes the tissue translocation thresholds by −4 to +13 %. Recomputing the particle counts of mass-dosed tests from the dosed mass (S8; E8) lowers the freshwater thresholds by 5–10 % and leaves the marine thresholds unchanged (within 1 %).
+
+```{r split-table}
+if (!is.null(ladder)) {
+  sw <- ladder$results %>% select(step, Tier, Environment, ERM, Median) %>%
+    pivot_wider(names_from = step, values_from = Median) %>%
+    mutate(shared = (S4 / S0) * (S8 / S6), own = S6 / S4, total = S8 / S0)
+  kable(sw %>% transmute(Tier, Environment, ERM,
+                         `Shared with ToMEx 2.0 (E1-E3, R1, E7, E8, E10)` = sprintf("%.2f", shared),
+                         `Specific to this article (E4, E5)` = sprintf("%.2f", own),
+                         `All corrections` = sprintf("%.2f", total)),
+        caption = "Table C14. Fold change of the median PSSD++ thresholds (Tier 3 = HC5, Tier 4 = HC10) from the published configuration (S0) to the fully corrected analysis (S8), split into the corrections shared with ToMEx 2.0 (steps S1-S4, S7, S8) and those specific to this article (S5, S6). The product of the two equals the total. E6 and E11 do not change thresholds; E9 affects only thresholds in mass, volume and surface-area units.")
+}
+```
+
+```{r split-text, results = "asis"}
+if (!is.null(ladder)) {
+  fd <- sw$ERM == "Food Dilution"
+  cat(sprintf(paste0(
+    "The corrections shared with ToMEx 2.0 change the PSSD++ thresholds by %.1f- to %.0f-fold for food dilution and %.2f- to %.2f-fold for tissue translocation; ",
+    "the errors specific to this article change them by %.2f- to %.2f-fold. For the MC + SSD thresholds, the errors specific to this article (E4, E5) change the medians by %.2f- to %.2f-fold (Table C5).\n\n"),
+    min(sw$shared[fd]), max(sw$shared[fd]), min(sw$shared[!fd]), max(sw$shared[!fd]), min(sw$own), max(sw$own),
+    if (!is.null(mcssd)) { s <- mcssd$summary; b <- s %>% filter(coef == "fixed", shape == "frozen") %>% select(Tier, environment, ERM, base = median);
+      r <- s %>% filter(coef == "sampled", shape == "propagated") %>% inner_join(b, by = c("Tier", "environment", "ERM")) %>% mutate(r = median / base); min(r$r) } else NA,
+    if (!is.null(mcssd)) max(r$r) else NA))
 }
 ```
 
@@ -341,21 +493,232 @@ The Supplementary Information states that using quantile type 8 instead of type 
 
 ## Effect on the conclusions
 
-The corrections change the food dilution thresholds substantially and the tissue translocation thresholds little (Table C0). Food dilution thresholds increase for every method, tier and environment: by about 5- to 55-fold in freshwater and 11- to 50-fold in marine waters (more for the marine MC + SSD Tier 1 value). The published food dilution thresholds were therefore too low, i.e. more protective than the data support. The largest contribution is the removal of the 5 mm default ingestible size for organisms without a mouth size (E1), which had assigned the most sensitive small species very low aligned effect concentrations (about 21-fold in freshwater and 4-fold in marine waters at Tier 3; Table C2). The database refinements (R1) partly offset this in freshwater, where documented body lengths return sensitive species such as *Moina macrocopa* to the food dilution SSD, and increase the marine values; the other corrections change the PSSD++ thresholds by up to about 30 %. Tissue translocation thresholds change by less than 2-fold.
+The corrections change the food dilution thresholds substantially and the tissue translocation thresholds little (Table C0). Almost all of this change comes from the errors shared with ToMEx 2.0 (Table C14); the errors specific to this article change the thresholds by at most about 35 % (PSSD++: 0.95- to 1.30-fold; MC + SSD: 0.65- to 1.03-fold). Food dilution thresholds increase for every method, tier and environment: by about 5- to 50-fold in freshwater and 12- to 60-fold in marine waters (more for the marine MC + SSD Tier 1 value). The published food dilution thresholds were therefore too low, i.e. more protective than the data support. The largest contribution is the removal of the 5 mm default ingestible size for organisms without a mouth size (E1), which had assigned the most sensitive small species very low aligned effect concentrations (about 21-fold in freshwater and 4-fold in marine waters at Tier 3; Table C2). The database refinements (R1) partly offset this in freshwater, where documented body lengths return sensitive species such as *Moina macrocopa* to the food dilution SSD, and increase the marine values; the other corrections change the PSSD++ thresholds by up to about 30 % (the particle-geometry and particle-count corrections E7, E8 and E10 together by 0.88- to 1.15-fold; Table C2). Tissue translocation thresholds change by less than 2-fold.
 
-Most qualitative conclusions are unchanged: marine thresholds remain lower than freshwater thresholds, and food dilution thresholds remain lower than tissue translocation thresholds, for all tiers and methods. Two comparisons between methods change in degree. Traditional SSD and MC + SSD medians are within about 10–20 % of each other at Tiers 3 and 4, but up to about 45 % apart in marine waters at Tiers 1 and 2 (e.g. marine tissue translocation Tier 2: 16 vs 11 particles/L), because the MC + SSD now propagates the uncertainty of predicted mouth sizes (E4). PSSD++ gives the lowest median in six of the eight Tier 3 and 4 cases rather than all; the exceptions are freshwater food dilution Tier 4 (essentially equal to MC + SSD) and freshwater tissue translocation Tier 4 (12,000 vs 8,300–9,200 particles/L). Statements that quote threshold values or ratios, in particular for food dilution (e.g. the range "1 × 10⁻⁵ to 137 particles/L" and "PSSD++ thresholds were consistently lower by up to 2-fold" in Section 3.3, the marine-to-freshwater ratios in Section 3.4.2, and "0.5–2.5 orders of magnitude" in Section 4.3.3), should be replaced with values from the corrected results. Risk characterisations that used the published food dilution thresholds overstate the risk from food dilution by the factors in Table C0.
+Most qualitative conclusions are unchanged: marine thresholds remain lower than freshwater thresholds, and food dilution thresholds remain lower than tissue translocation thresholds, for all tiers and methods. Two comparisons between methods change in degree. Traditional SSD and MC + SSD medians are within about 10–20 % of each other at Tiers 3 and 4, but up to about 45 % apart in marine waters at Tiers 1 and 2 (e.g. marine tissue translocation Tier 1: 0.94 vs 0.65 particles/L), because the MC + SSD now propagates the uncertainty of predicted mouth sizes (E4). PSSD++ gives the lowest median in six of the eight Tier 3 and 4 cases rather than all; the exceptions are freshwater food dilution Tier 4 (essentially equal to MC + SSD) and freshwater tissue translocation Tier 4 (12,400 vs 9,000–9,100 particles/L). Statements that quote threshold values or ratios, in particular for food dilution (e.g. the range "1 × 10⁻⁵ to 137 particles/L" and "PSSD++ thresholds were consistently lower by up to 2-fold" in Section 3.3, the marine-to-freshwater ratios in Section 3.4.2, and "0.5–2.5 orders of magnitude" in Section 4.3.3), should be replaced with values from the corrected results. Risk characterisations that used the published food dilution thresholds overstate the risk from food dilution by the factors in Table C0. The published thresholds expressed as mass, volume or surface-area concentrations (Fig. S5 and the mass-based tables) were incorrect (E9); the corrected values depend strongly on the assumed particle size, shape and density distribution and are given as a range of scenarios (Tables C12 and C13).
+
+## Changes to the published article, item by item
+
+This section lists every table, figure and statement of the article and its Supplementary Information whose content changes, with the corrected value or text. Corrected values come from the production run of the corrected analysis (PSSDplusplus v0.4.1). Published values are those printed in the article; where a statistic is not printed, it comes from the outputs of the published analysis (December 2025), which reproduce the printed SSD and MC + SSD values of Table 2 and Table S5 (`docs/correction/R/article_items.R`). Statements that are not listed are unchanged.
+
+```{r items-setup}
+items <- readRDS(here("docs/correction/results/article_items.rds"))
+s_pub <- items$statements$pub
+s_cor <- items$statements$corr
+f2 <- function(x) trimws(formatC(signif(x, 2), format = "fg", big.mark = ",", digits = 2))
+rng <- function(x) paste(f2(x[1]), "to", f2(x[2]))
+pc <- function(x) sprintf("%.0f %%", 100 * x)
+num <- function(x) as.numeric(gsub(",", "", sub(" .*", "", x)))
+```
+
+### Highlights and Abstract
+
+```{r items-abstract, results = "asis"}
+env_sens <- items$envsens$corr
+names(env_sens) <- c("Tier", "FW_sp_mar_FD", "FW_sp_mar_TT", "FW_sp_FW_FD", "FW_sp_FW_TT",
+                     "Mar_sp_FW_FD", "Mar_sp_FW_TT", "Mar_sp_mar_FD", "Mar_sp_mar_TT")
+es <- env_sens %>% mutate(across(-Tier, num))
+param_effect <- c(es$Mar_sp_FW_FD / es$Mar_sp_mar_FD, es$Mar_sp_FW_TT / es$Mar_sp_mar_TT,
+                  es$FW_sp_FW_FD / es$FW_sp_mar_FD, es$FW_sp_FW_TT / es$FW_sp_mar_TT)
+param_effect <- param_effect[is.finite(param_effect)]
+cat(sprintf(paste0(
+  "- *\"PSSD++ consistently produced the most health-protective median thresholds and lowest 5th-percentile values\"* (Abstract; also Highlights, Sections 3.3 and 5). ",
+  "PSSD++ gives the lowest median in %d of the 8 Tier 3 and 4 cases (the published values: %d of 8) and the lowest 5th percentile in %d of 8. ",
+  "Corrected text: \"PSSD++ produced the most health-protective median thresholds in most cases and the lowest 5th-percentile values\".\n"),
+  s_cor$n_pssd_lowest_median, s_pub$n_pssd_lowest_median, s_cor$n_pssd_lowest_q5))
+cat(sprintf(paste0(
+  "- *\"Uncertainty was greater for food dilution than for tissue translocation, and greater for freshwater environments than marine\"*: unchanged for the PSSD++ relative confidence intervals (RCIs; Table S10 below). ",
+  "For the MC + SSD relative standard deviations (Table S5), freshwater thresholds vary less than marine ones, as stated in the Supplementary Information.\n")))
+cat(sprintf(paste0(
+  "- *\"ERM-alignment parameters ... contributing up to two orders of magnitude difference\"*: applying the other environment's alignment parameters changes the corrected Tier 2-4 thresholds by %s-fold, i.e. up to about %.1f orders of magnitude (Section 3.4.2 below).\n"),
+  rng(range(param_effect)), log10(max(param_effect))))
+```
+
+### Section 3.1.1 (database coverage) and Table S1
+
+The numbers of data points, studies and species used in the thresholds change with E1-E3 and R1 (Table C7). In the text, "16 studies for freshwater species (10 species; 140 data points), and 16 studies for marine species (17 species; 235 data points)" and the percentages of chronic data and of data requiring uncertainty factors should be replaced with the corrected values; the taxa listed in Section 3.1.1 follow the corrected species lists (e.g., the in vitro rainbow trout records are removed; *Moina macrocopa*, *Pseudechinus huttoni* and *Centropristis striata* are included).
+
+```{r items-db}
+db_rows <- c("Number of Data Points", "Number of Studies", "Number of Species", "% Chronic")
+dbt <- function(d, v) d %>% filter(Factor %in% db_rows) %>%
+  select(Factor, `Freshwater (Tier 1/2)`, `Freshwater (Tier 3/4)`, `Marine (Tier 1/2)`, `Marine (Tier 3/4)`) %>%
+  mutate(Version = v)
+uf <- function(d, v) {
+  g <- function(col) { x <- suppressWarnings(as.numeric(d[[col]])); names(x) <- d$Factor
+    sum(x[c("UF:2", "UF:10", "UF:20", "UF:100")], na.rm = TRUE) / x["Number of Data Points"] }
+  tibble(Factor = "% requiring an uncertainty factor of 2-100",
+         `Freshwater (Tier 1/2)` = pc(g("Freshwater (Tier 1/2)")), `Freshwater (Tier 3/4)` = pc(g("Freshwater (Tier 3/4)")),
+         `Marine (Tier 1/2)` = pc(g("Marine (Tier 1/2)")), `Marine (Tier 3/4)` = pc(g("Marine (Tier 3/4)")), Version = v)
+}
+db <- bind_rows(dbt(items$dbsum$pub, "published"), uf(items$dbsum$pub, "published"),
+                dbt(items$dbsum$corr, "corrected"), uf(items$dbsum$corr, "corrected")) %>%
+  mutate(across(everything(), as.character)) %>% arrange(factor(Factor, c(db_rows, "% requiring an uncertainty factor of 2-100")), desc(Version))
+kable(db, caption = "Table C7. Data used in the thresholds (Section 3.1.1, Table S1), by environment and tier group, in the published and the corrected analysis.")
+```
+
+### Table 2 and Section 3.3
+
+Table 2 is replaced by Table C8, which gives the corrected medians with their 95 % intervals (summary in Table C0).
+
+```{r items-table2}
+t2 <- items$table2 %>%
+  mutate(Method = recode(Method, SSD = "SSD", MC = "MC + SSD", PSSD = "PSSD++"),
+         ERM = recode(ERM, FD = "Food dilution", TT = "Tissue translocation"),
+         Published = ifelse(is.na(lower.pub), f2(median.pub), sprintf("%s (%s-%s)", f2(median.pub), f2(lower.pub), f2(upper.pub))),
+         Corrected = ifelse(is.na(lower.corr), f2(median.corr), sprintf("%s (%s-%s)", f2(median.corr), f2(lower.corr), f2(upper.corr)))) %>%
+  select(Environment, ERM, Tier, Method, Published, Corrected)
+kable(t2, caption = "Table C8. Corrected Table 2: median thresholds (particles/L, aligned to 1-5000 um) with 95 % intervals (SSD: bootstrap; MC + SSD: 5th-95th percentiles over the simulations; PSSD++: 5th-95th percentiles). Tier 1 SSD values are themselves lower confidence limits.")
+```
+
+```{r items-33, results = "asis"}
+w34 <- items$table2 %>% filter(Tier >= 3) %>% select(Environment, ERM, Tier, Method, median.corr) %>%
+  pivot_wider(names_from = Method, values_from = median.corr) %>% mutate(r = PSSD / pmin(SSD, MC))
+lab <- function(d) paste(sprintf("%s %s Tier %d (%.2f-fold)", tolower(d$Environment),
+  ifelse(d$ERM == "FD", "food dilution", "tissue translocation"), d$Tier, d$r), collapse = " and ")
+higher_txt <- if (any(w34$r > 1)) lab(w34 %>% filter(r > 1)) else "none"
+wid <- s_cor$widest_rci %>% filter(widest != "SSD")
+widest_txt <- if (nrow(wid)) paste(sprintf("Tier %d %s %s", wid$Tier, tolower(wid$Environment),
+  ifelse(wid$ERM == "FD", "food dilution", "tissue translocation")), collapse = " and ") else "no case"
+cat(sprintf(paste0(
+  "- *\"ranged from 1 x 10^-5^ to 137 particles/L for food dilution, and from 0.81 to 9510 particles/L for tissue translocation\"*: corrected, %s particles/L for food dilution and %s particles/L for tissue translocation.\n",
+  "- *\"SSD and MC + SSD results were within 20 %% of one another\"*: corrected, within %s at Tiers 3 and 4 and %s across all tiers.\n",
+  "- *\"PSSD++ thresholds were consistently lower by up to 2-fold\"*: corrected, the PSSD++ medians are %s times the lower of the SSD and MC + SSD medians at Tiers 3 and 4: lower in %d of the 8 cases (by up to %s-fold) and higher in %s.\n",
+  "- *\"SSD-derived thresholds exhibited the widest relative confidence intervals (RCIs), except for Tier 3 freshwater food dilution\"*: corrected, SSD has the widest RCI except for %s (PSSD++; Table C9). The 5th percentile is lowest for PSSD++ in %d of the 8 Tier 3 and 4 cases.\n",
+  "- *\"Freshwater thresholds had higher RCIs (8-59) than marine thresholds (3-9) ... food dilution thresholds had higher uncertainty (RCIs: 8-59) than tissue translocation thresholds (RCIs: 3-18)\"* (PSSD++): corrected RCIs are %s (freshwater) and %s (marine), and %s (food dilution) and %s (tissue translocation). Tier 4 RCIs remain lower than Tier 3 RCIs in every case.\n"),
+  rng(s_cor$range_FD), rng(s_cor$range_TT), pc(max(s_cor$ssd_vs_mc_34)), pc(max(s_cor$ssd_vs_mc, na.rm = TRUE)),
+  rng(range(s_cor$pssd_vs_min)), sum(s_cor$pssd_vs_min < 1), f2(1 / min(s_cor$pssd_vs_min)), higher_txt, widest_txt,
+  s_cor$n_pssd_lowest_q5,
+  rng(range(s_cor$rci_pssd$rci[s_cor$rci_pssd$Environment == "Freshwater"])),
+  rng(range(s_cor$rci_pssd$rci[s_cor$rci_pssd$Environment == "Marine"])),
+  rng(range(s_cor$rci_pssd$rci[s_cor$rci_pssd$ERM == "FD"])), rng(range(s_cor$rci_pssd$rci[s_cor$rci_pssd$ERM == "TT"]))))
+```
+
+```{r items-s10}
+s10 <- items$table2 %>% filter(Tier >= 2) %>%
+  mutate(Method = recode(Method, SSD = "SSD", MC = "MC + SSD", PSSD = "PSSD++"),
+         ERM = recode(ERM, FD = "Food dilution", TT = "Tissue translocation")) %>%
+  transmute(Environment, ERM, Tier, Method, Published = sprintf("%.3g", rci.pub), Corrected = sprintf("%.3g", rci.corr))
+kable(s10, caption = "Table C9. Corrected Table S10: relative confidence intervals ((upper - lower) / median) by method. Published values are recomputed from the printed (rounded) Table 2 and can differ slightly from the printed Table S10. Tier 1 (SSD) has no interval; PSSD++ gives Tiers 3 and 4 only.")
+```
+
+### Figures 5 and 6 (PSSD++ distributions and method comparison)
+
+Figures 5 and 6 are replaced by their corrected versions (Figures C1 and C2); the species and their positions change with E1-E8 and R1, as described above.
+
+![Figure C1. Corrected Fig. 5: PSSD++ distributions for tissue translocation (top) and food dilution (bottom), marine (left) and freshwater (right).](../../output/Manuscript_Figs/Figure5.jpg){width=100%}
+
+![Figure C2. Corrected Fig. 6: Tier 3 thresholds by method (MC + SSD, PSSD++ and SSD).](../../output/Manuscript_Figs/Figure6_PNEC_compare_arranged_plot.jpg){width=100%}
+
+### Section 3.4.1 and Figure 7 (alignment sensitivity)
+
+Figure 7 is replaced by Figure C3. The statement that the body-length to mouth-size model parameters *"had weak negative relationships to the threshold"* is withdrawn (E4): in the published simulations these parameters were not applied. With E5, the sampled length-to-width ratio now changes the tested particles as well, so its influence on the freshwater thresholds is shown correctly in Figure C3.
+
+![Figure C3. Corrected Fig. 7: alignment parameters and Tier 3 thresholds over the Monte Carlo simulations.](../../output/Manuscript_Figs/sobol_scatterplots.jpg){width=100%}
+
+### Section 3.4.2 (environment) and Table S7
+
+```{r items-342, results = "asis"}
+er_p <- s_pub$env_ratio_MC; er_c <- s_cor$env_ratio_MC
+g <- function(e, erm, tier) e$ratio[e$ERM == erm & e$Tier == tier]
+cat(sprintf(paste0(
+  "- *\"the marine food dilution threshold for tier 1 was ~ 40,000 times lower than its freshwater counterpart, compared to ~100 times lower for tier 4 ... the marine [tissue translocation] threshold being ~ 100 times lower for tier 1, and just ~ 6 times lower for tier 4\"*: corrected (MC + SSD medians), about %s and %s times lower for food dilution (Tiers 1 and 4) and %s and %s times lower for tissue translocation.\n"),
+  f2(g(er_c, "FD", 1)), f2(g(er_c, "FD", 4)), f2(g(er_c, "TT", 1)), f2(g(er_c, "TT", 4))))
+cat(sprintf(paste0(
+  "- *\"marine Tier 2 thresholds for food dilution (2.6 x 10^-3^ particles/L) and tissue translocation (13 particles/L) increased ~ 10-100 times when freshwater parameters were applied (0.25 and 110 particles/L, respectively)\"*: corrected, %s and %s particles/L increase to %s and %s particles/L (%s- and %s-fold).\n"),
+  f2(es$Mar_sp_mar_FD[2]), f2(es$Mar_sp_mar_TT[2]), f2(es$Mar_sp_FW_FD[2]), f2(es$Mar_sp_FW_TT[2]),
+  f2(es$Mar_sp_FW_FD[2] / es$Mar_sp_mar_FD[2]), f2(es$Mar_sp_FW_TT[2] / es$Mar_sp_mar_TT[2])))
+r_sp <- c(es$FW_sp_mar_FD / es$Mar_sp_mar_FD, es$FW_sp_mar_TT / es$Mar_sp_mar_TT)
+r_sp <- r_sp[is.finite(r_sp)]
+cat(sprintf(paste0(
+  "- *\"freshwater thresholds remained 1.3- to 300-fold higher than marine thresholds ... freshwater species showed 300 x higher food dilution and 19 x higher tissue translocation thresholds for Tier 1, but only 4.3 x and 1.3 x higher for Tier 4\"*: corrected, with the marine parameters the freshwater species' thresholds are %s times the marine ones (Tiers 2-4): %s and %s times for food dilution and tissue translocation at Tier 2, and %s and %s times at Tier 4. ",
+  "The difference still decreases with the tier, but at Tier 4 the tissue translocation threshold of the freshwater species is %s.\n"),
+  rng(range(r_sp)), f2(es$FW_sp_mar_FD[2] / es$Mar_sp_mar_FD[2]), f2(es$FW_sp_mar_TT[2] / es$Mar_sp_mar_TT[2]),
+  f2(es$FW_sp_mar_FD[4] / es$Mar_sp_mar_FD[4]), f2(es$FW_sp_mar_TT[4] / es$Mar_sp_mar_TT[4]),
+  ifelse(es$FW_sp_mar_TT[4] < es$Mar_sp_mar_TT[4], "lower than that of the marine species", "higher than that of the marine species")))
+cat("\nTable S7 is replaced by Table C10. Tier 1 values are not compared above because the published Tier 1 entries of Table S7 have no interval and come from a different statistic (lower confidence limit).\n\n")
+```
+
+```{r items-s7}
+s7 <- bind_rows(items$envsens$pub %>% mutate(Version = "published"), items$envsens$corr %>% mutate(Version = "corrected")) %>%
+  relocate(Version, .after = Tier) %>% arrange(Tier, desc(Version))
+kable(s7, caption = "Table C10. Corrected Table S7: thresholds (particles/L, median and 95 % interval) for freshwater and marine species with freshwater and marine alignment parameters.")
+```
+
+### Section 3.4.3, Section 4.4 and Figure 8 (individual studies)
+
+```{r items-loo, results = "asis"}
+lc <- items$loo$corr
+top <- lc$top %>% arrange(desc(diff))
+pick <- function(env, erm, tier) top %>% filter(environment == env, ERM == erm, tier == !!tier)
+cfd1 <- pick("Marine", "Food Dilution", "Tier 1"); cfd2 <- pick("Marine", "Food Dilution", "Tier 2")
+ctt1 <- pick("Marine", "Tissue Translocation", "Tier 1"); kfd1 <- pick("Freshwater", "Food Dilution", "Tier 1")
+fwtt <- lc$top %>% filter(environment == "Freshwater", ERM == "Tissue Translocation") %>% arrange(desc(diff))
+kim <- lc$all %>% filter(grepl("Kim", authoryear), environment == "Freshwater", ERM == "Food Dilution")
+cat(sprintf(paste0(
+  "- *\"15 %% of studies would increase the threshold by more than double when they were removed, with 2.4 %% of studies causing more than a + 10-fold change ... 7.8 %% of studies that would have caused the thresholds to decrease by more than one-half\"*: corrected, %s, %s and %s (fold change > +1, > +10 and < -0.5; the published outputs give 15.5 %%, 2.5 %% and 8.0 %% with these definitions).\n",
+  "- *\"a maximum fold-change of + 83 and + 18 for food dilution (Tiers 1 and 2, respectively) and + 15 for tissue translocation (Tier 1) when Capolupo et al. [58]'s study ... is removed\"* (also Section 4.4, *\"83-fold for marine food dilution Tier 1\"*): corrected, %s, %s and %s (%s).\n",
+  "- *\"Kim & Rhee et al. [59]'s study on Moina macrocopa (+34-fold change for freshwater food dilution tier 1)\"*: corrected, %s (%s); its influence is much smaller because *M. macrocopa* is now aligned with its measured body length instead of the 5 mm default (E1, R1). The *\"7-14-fold difference in freshwater food dilution thresholds\"* attributed to this study in Section 4.4 becomes %s-fold (fold changes of %s across Tiers 1-4).\n",
+  "- Freshwater tissue translocation: the largest increase is now %s (%s, %s; published: +3.7-fold, Mizukami-Murata et al.); *\"(2.7-3.7-fold change)\"* in Section 4.4 becomes up to %s.\n",
+  "- *\"Beiras et al. [61]'s study ... resulting in a 0.4-fold change for Tier 2\"*: corrected, the largest decrease is %s (%s, marine %s %s).\n"),
+  pc(lc$more_than_double), pc(lc$more_than_10fold), pc(lc$less_than_half),
+  sprintf("+%.0f", cfd1$diff), sprintf("+%.0f", cfd2$diff), sprintf("+%.0f", ctt1$diff), cfd1$authoryear,
+  sprintf("+%.1f", kfd1$diff), kfd1$authoryear, rng(range(kim$diff + 1)),
+  paste(sprintf("%+.1f", kim$diff[order(kim$tier)]), collapse = ", "),
+  sprintf("+%.1f", fwtt$diff[1]), fwtt$authoryear[1], fwtt$tier[1], sprintf("+%.1f", fwtt$diff[1]),
+  sprintf("%.2f", min(lc$bottom$diff)), lc$bottom$authoryear[which.min(lc$bottom$diff)],
+  lc$bottom$ERM[which.min(lc$bottom$diff)], lc$bottom$tier[which.min(lc$bottom$diff)]))
+```
+
+![Figure C4. Corrected Fig. 8: leave-one-study-out fold changes of the thresholds.](../../output/Manuscript_Figs/leave_one_out.jpg){width=100%}
+
+### Discussion
+
+```{r items-disc, results = "asis"}
+cat(sprintf(paste0(
+  "- Section 4.3.1, *\"a wide range of particle sizes (8-70,273 um)\"* (ingestible sizes in the food dilution data): corrected, %s um; no ingestible size exceeds the 5 mm assessment limit and none is assumed (E1, E3).\n",
+  "- Section 4.3.3, *\"marine thresholds were consistently lower than freshwater thresholds - by approximately 0.5-2.5 orders of magnitude across all tiers and ERMs\"*: corrected, by %s orders of magnitude (all methods, tiers and ERMs; marine thresholds remain lower in every case).\n",
+  "- Sections 4.3.1 and 5: food dilution thresholds remain lower than tissue translocation thresholds for every method, tier and environment, and food dilution remains the more uncertain ERM; the conclusions of Section 4.3.2 are unchanged.\n"),
+  rng(items$ingest_range), rng(s_cor$env_log10)))
+```
+
+### Supplementary Information
+
+```{r items-si, results = "asis"}
+rs <- items$rsd$corr
+rv <- as.numeric(sub("%", "", unlist(rs[, -1])))
+cat(sprintf(paste0(
+  "- Table S5 (relative standard deviations of the MC + SSD thresholds) is replaced by Table C11. *\"ranged from 26 %% to 160 %%\"* becomes %.0f %% to %.0f %%; tissue translocation thresholds still vary less than food dilution thresholds, and freshwater thresholds less than marine ones.\n",
+  "- Table S7: Table C10. Table S8 (PSSD++ summary statistics): Table C0 and the PSSD++ summary in the analysis outputs (`data/output/PNEC_summary_table_wide.rds`). Table S10: Table C9.\n",
+  "- Table S9 and Figures S1-S3 (coefficients of variation): see E6 and Table C3.\n",
+  "- Figure S5 and the mass-based tables (thresholds in ug/L) are replaced by Tables C12 and C13 (E9): corrected values under alternative assumptions, with their caveats.\n",
+  "- Figures S4 and S6-S11 are regenerated by the corrected analysis (`output/Manuscript_Figs`).\n"),
+  min(rv), max(rv)))
+```
+
+```{r items-s5}
+kable(bind_rows(items$rsd$pub %>% mutate(Version = "published"), items$rsd$corr %>% mutate(Version = "corrected")) %>%
+        relocate(Version, .after = Tier) %>% arrange(Tier, desc(Version)),
+      col.names = c("Tier", "Version", "Food dilution, freshwater", "Tissue translocation, freshwater", "Food dilution, marine", "Tissue translocation, marine"),
+      caption = "Table C11. Corrected Table S5: relative standard deviation of the MC + SSD thresholds.")
+```
 
 ## Reproducibility
 
-All corrections are implemented in PSSDplusplus v0.4.0 and in the analysis scripts of <https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk>; the database corrections are in [SCCWRP/ToMEx_AquaticOrganisms#5](https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5). From the repository root:
+All corrections are implemented in PSSDplusplus v0.4.1 (E1-E6 and R1 already in v0.4.0; E7-E11 in v0.4.1) and in the analysis scripts of <https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk>; the database corrections are in [SCCWRP/ToMEx_AquaticOrganisms#5](https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5). From the repository root:
 
 ```sh
 # stepwise attribution (Table C2): one step per process (steps are independent
 # and can run in parallel, a few GB each); re-running a command resumes from
 # its checkpoints
+# S0-S6 with PSSDplusplus 0.4.0 (release v0.4.0), S7-S8 with 0.4.1
 for s in S0 S1 S2 S3 S4 S5 S6; do Rscript docs/correction/R/pssd_correction_ladder.R 1000 300 $s; done
+for s in S7 S8; do Rscript docs/correction/R/pssd_correction_ladder.R 1000 300 $s; done
 # bootstrap sample size (Table C4)
 Rscript docs/correction/R/nboot_impact.R 20 4
+# thresholds in mass units under alternative assumptions (Tables C12-C13, mass_thresholds.csv)
+Rscript docs/correction/R/mass_conversion.R
+# published vs corrected values of the article's statements, tables and figures (Tables C7-C11)
+Rscript docs/correction/R/article_items.R
 # record-level CoV statistics as published and correctly merged (Table C3)
 Rscript docs/correction/R/cov_misjoin_impact.R
 quarto render docs/correction/correction_PSSDpp.qmd

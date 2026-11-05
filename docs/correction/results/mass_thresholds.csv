@@ -1,0 +1,321 @@
+"Method","Environment","ERM","Tier","particles_L","scenario","assumption","mean_mass_ug","ug_L"
+"SSD","Marine","FD","Tier1",0.00274365333606338,"A","Published conversion (incorrect)",164.452206214526,0.451199844203467
+"SSD","Marine","FD","Tier1",0.00274365333606338,"B","Mass power law, spheres",9.52913112113317,0.0261446323902824
+"SSD","Marine","FD","Tier1",0.00274365333606338,"C","Mass power law, ellipsoids",4.35036281812429,0.0119358874590328
+"SSD","Marine","FD","Tier1",0.00274365333606338,"D","Volume power law x density",0.143052645705483,0.00039248686862254
+"SSD","Marine","FD","Tier1",0.00274365333606338,"E","Length power law, ellipsoids",2.00793607133788,0.00550908050072816
+"SSD","Marine","FD","Tier1",0.00274365333606338,"F","Length power law, thickness <= 20 um",0.0279731304316335,7.67485726288873e-05
+"SSD","Marine","FD","Tier1",0.00274365333606338,"G","Pooled surface-water exponent",78.105482859088,0.214294368611178
+"SSD","Marine","FD","Tier1",0.00274365333606338,"H","Measured mean mass, detected share",0.928795388247452,0.0025482925654854
+"SSD","Marine","TT","Tier1",0.936015256134164,"A","Published conversion (incorrect)",164.452206214526,153.929773921718
+"SSD","Marine","TT","Tier1",0.936015256134164,"B","Mass power law, spheres",9.52913112113317,8.9194121070835
+"SSD","Marine","TT","Tier1",0.936015256134164,"C","Mass power law, ellipsoids",4.35036281812429,4.07200596748315
+"SSD","Marine","TT","Tier1",0.936015256134164,"D","Volume power law x density",0.143052645705483,0.133899458810687
+"SSD","Marine","TT","Tier1",0.936015256134164,"E","Length power law, ellipsoids",2.00793607133788,1.87945879611435
+"SSD","Marine","TT","Tier1",0.936015256134164,"F","Length power law, thickness <= 20 um",0.0279731304316335,0.0261832768458398
+"SSD","Marine","TT","Tier1",0.936015256134164,"G","Pooled surface-water exponent",78.105482859088,73.1079235438318
+"SSD","Marine","TT","Tier1",0.936015256134164,"H","Measured mean mass, detected share",0.928795388247452,0.869366653226669
+"SSD","Marine","FD","Tier2",0.0593498317375618,"A","Published conversion (incorrect)",164.452206214526,9.76021076770294
+"SSD","Marine","FD","Tier2",0.0593498317375618,"B","Mass power law, spheres",9.52913112113317,0.565552328644417
+"SSD","Marine","FD","Tier2",0.0593498317375618,"C","Mass power law, ellipsoids",4.35036281812429,0.258193301253022
+"SSD","Marine","FD","Tier2",0.0593498317375618,"D","Volume power law x density",0.143052645705483,0.00849015045223343
+"SSD","Marine","FD","Tier2",0.0593498317375618,"E","Length power law, ellipsoids",2.00793607133788,0.119170667973684
+"SSD","Marine","FD","Tier2",0.0593498317375618,"F","Length power law, thickness <= 20 um",0.0279731304316335,0.00166020058429032
+"SSD","Marine","FD","Tier2",0.0593498317375618,"G","Pooled surface-water exponent",78.105482859088,4.63554726546789
+"SSD","Marine","FD","Tier2",0.0593498317375618,"H","Measured mean mass, detected share",0.928795388247452,0.0551238500111096
+"SSD","Marine","TT","Tier2",15.4760469365738,"A","Published conversion (incorrect)",164.452206214526,2545.07006219912
+"SSD","Marine","TT","Tier2",15.4760469365738,"B","Mass power law, spheres",9.52913112113317,147.473280495423
+"SSD","Marine","TT","Tier2",15.4760469365738,"C","Mass power law, ellipsoids",4.35036281812429,67.3264191644169
+"SSD","Marine","TT","Tier2",15.4760469365738,"D","Volume power law x density",0.143052645705483,2.21388945933911
+"SSD","Marine","TT","Tier2",15.4760469365738,"E","Length power law, ellipsoids",2.00793607133788,31.0749128856646
+"SSD","Marine","TT","Tier2",15.4760469365738,"F","Length power law, thickness <= 20 um",0.0279731304316335,0.432913479522861
+"SSD","Marine","TT","Tier2",15.4760469365738,"G","Pooled surface-water exponent",78.105482859088,1208.76411873101
+"SSD","Marine","TT","Tier2",15.4760469365738,"H","Measured mean mass, detected share",0.928795388247452,14.3740810229908
+"SSD","Marine","FD","Tier3",3.64003274964595,"A","Published conversion (incorrect)",164.452206214526,598.611416372404
+"SSD","Marine","FD","Tier3",3.64003274964595,"B","Mass power law, spheres",9.52913112113317,34.6863493565952
+"SSD","Marine","FD","Tier3",3.64003274964595,"C","Mass power law, ellipsoids",4.35036281812429,15.8354631308145
+"SSD","Marine","FD","Tier3",3.64003274964595,"D","Volume power law x density",0.143052645705483,0.520716315291456
+"SSD","Marine","FD","Tier3",3.64003274964595,"E","Length power law, ellipsoids",2.00793607133788,7.30895305886529
+"SSD","Marine","FD","Tier3",3.64003274964595,"F","Length power law, thickness <= 20 um",0.0279731304316335,0.101823110881264
+"SSD","Marine","FD","Tier3",3.64003274964595,"G","Pooled surface-water exponent",78.105482859088,284.306515533991
+"SSD","Marine","FD","Tier3",3.64003274964595,"H","Measured mean mass, detected share",0.928795388247452,3.38084563094085
+"SSD","Marine","TT","Tier3",649.622208848703,"A","Published conversion (incorrect)",164.452206214526,106831.805451123
+"SSD","Marine","TT","Tier3",649.622208848703,"B","Mass power law, spheres",9.52913112113317,6190.33520731945
+"SSD","Marine","TT","Tier3",649.622208848703,"C","Mass power law, ellipsoids",4.35036281812429,2826.09230320317
+"SSD","Marine","TT","Tier3",649.622208848703,"D","Volume power law x density",0.143052645705483,92.9301756848465
+"SSD","Marine","TT","Tier3",649.622208848703,"E","Length power law, ellipsoids",2.00793607133788,1304.3998658895
+"SSD","Marine","TT","Tier3",649.622208848703,"F","Length power law, thickness <= 20 um",0.0279731304316335,18.1719667794106
+"SSD","Marine","TT","Tier3",649.622208848703,"G","Pooled surface-water exponent",78.105482859088,50739.0562981153
+"SSD","Marine","TT","Tier3",649.622208848703,"H","Measured mean mass, detected share",0.928795388247452,603.366111681798
+"SSD","Marine","FD","Tier4",25.1169431690256,"A","Published conversion (incorrect)",164.452206214526,4130.53671751113
+"SSD","Marine","FD","Tier4",25.1169431690256,"B","Mass power law, spheres",9.52913112113317,239.342644819695
+"SSD","Marine","FD","Tier4",25.1169431690256,"C","Mass power law, ellipsoids",4.35036281812429,109.26781566747
+"SSD","Marine","FD","Tier4",25.1169431690256,"D","Volume power law x density",0.143052645705483,3.59304517236336
+"SSD","Marine","FD","Tier4",25.1169431690256,"E","Length power law, ellipsoids",2.00793607133788,50.43321619083
+"SSD","Marine","FD","Tier4",25.1169431690256,"F","Length power law, thickness <= 20 um",0.0279731304316335,0.702599527311079
+"SSD","Marine","FD","Tier4",25.1169431690256,"G","Pooled surface-water exponent",78.105482859088,1961.77097416102
+"SSD","Marine","FD","Tier4",25.1169431690256,"H","Measured mean mass, detected share",0.928795388247452,23.3285009822643
+"SSD","Marine","TT","Tier4",2322.27543833723,"A","Published conversion (incorrect)",164.452206214526,381903.319272363
+"SSD","Marine","TT","Tier4",2322.27543833723,"B","Mass power law, spheres",9.52913112113317,22129.2671513025
+"SSD","Marine","TT","Tier4",2322.27543833723,"C","Mass power law, ellipsoids",4.35036281812429,10102.7407203856
+"SSD","Marine","TT","Tier4",2322.27543833723,"D","Volume power law x density",0.143052645705483,332.207645511
+"SSD","Marine","TT","Tier4",2322.27543833723,"E","Length power law, ellipsoids",2.00793607133788,4662.9806202193
+"SSD","Marine","TT","Tier4",2322.27543833723,"F","Length power law, thickness <= 20 um",0.0279731304316335,64.9613137347862
+"SSD","Marine","TT","Tier4",2322.27543833723,"G","Pooled surface-water exponent",78.105482859088,181382.44444313
+"SSD","Marine","TT","Tier4",2322.27543833723,"H","Measured mean mass, detected share",0.928795388247452,2156.91871736795
+"SSD","Freshwater","FD","Tier1",19.1185574727553,"A","Published conversion (incorrect)",34.8806559824259,666.867826087415
+"SSD","Freshwater","FD","Tier1",19.1185574727553,"B","Mass power law, spheres",0.00773996620479237,0.147976988723507
+"SSD","Freshwater","FD","Tier1",19.1185574727553,"C","Mass power law, ellipsoids",0.00232789545565197,0.0445060030594481
+"SSD","Freshwater","FD","Tier1",19.1185574727553,"D","Volume power law x density",0.00123738369006855,0.0236569911944255
+"SSD","Freshwater","FD","Tier1",19.1185574727553,"E","Length power law, ellipsoids",0.0211912629577259,0.405146378777552
+"SSD","Freshwater","FD","Tier1",19.1185574727553,"F","Length power law, thickness <= 20 um",0.00061727886719078,0.0118014814991042
+"SSD","Freshwater","FD","Tier1",19.1185574727553,"G","Pooled surface-water exponent",48.6490549718178,930.099753473931
+"SSD","Freshwater","FD","Tier1",19.1185574727553,"H","Measured mean mass, detected share",0.0615891878834487,1.17749642825004
+"SSD","Freshwater","TT","Tier1",98.208385904849,"A","Published conversion (incorrect)",34.8806559824259,3425.57292333636
+"SSD","Freshwater","TT","Tier1",98.208385904849,"B","Mass power law, spheres",0.00773996620479237,0.760129587930739
+"SSD","Freshwater","TT","Tier1",98.208385904849,"C","Mass power law, ellipsoids",0.00232789545565197,0.228618855254813
+"SSD","Freshwater","TT","Tier1",98.208385904849,"D","Volume power law x density",0.00123738369006855,0.121521454946618
+"SSD","Freshwater","TT","Tier1",98.208385904849,"E","Length power law, ellipsoids",0.0211912629577259,2.08115973036347
+"SSD","Freshwater","TT","Tier1",98.208385904849,"F","Length power law, thickness <= 20 um",0.00061727886719078,0.0606219611999802
+"SSD","Freshwater","TT","Tier1",98.208385904849,"G","Pooled surface-water exponent",48.6490549718178,4777.7451645785
+"SSD","Freshwater","TT","Tier1",98.208385904849,"H","Measured mean mass, detected share",0.0615891878834487,6.04857473122398
+"SSD","Freshwater","FD","Tier2",55.0897877448508,"A","Published conversion (incorrect)",34.8806559824259,1921.567934473
+"SSD","Freshwater","FD","Tier2",55.0897877448508,"B","Mass power law, spheres",0.00773996620479237,0.42639309537433
+"SSD","Freshwater","FD","Tier2",55.0897877448508,"C","Mass power law, ellipsoids",0.00232789545565197,0.12824326654407
+"SSD","Freshwater","FD","Tier2",55.0897877448508,"D","Volume power law x density",0.00123738369006855,0.0681672048448164
+"SSD","Freshwater","FD","Tier2",55.0897877448508,"E","Length power law, ellipsoids",0.0211912629577259,1.16742217838644
+"SSD","Freshwater","FD","Tier2",55.0897877448508,"F","Length power law, thickness <= 20 um",0.00061727886719078,0.034005761772922
+"SSD","Freshwater","FD","Tier2",55.0897877448508,"G","Pooled surface-water exponent",48.6490549718178,2680.06611238502
+"SSD","Freshwater","FD","Tier2",55.0897877448508,"H","Measured mean mass, detected share",0.0615891878834487,3.39293528787693
+"SSD","Freshwater","TT","Tier2",725.320722240568,"A","Published conversion (incorrect)",34.8806559824259,25299.6625893979
+"SSD","Freshwater","TT","Tier2",725.320722240568,"B","Mass power law, spheres",0.00773996620479237,5.61395787777759
+"SSD","Freshwater","TT","Tier2",725.320722240568,"C","Mass power law, ellipsoids",0.00232789545565197,1.68847081319402
+"SSD","Freshwater","TT","Tier2",725.320722240568,"D","Volume power law x density",0.00123738369006855,0.897500031769217
+"SSD","Freshwater","TT","Tier2",725.320722240568,"E","Length power law, ellipsoids",0.0211912629577259,15.3704621536875
+"SSD","Freshwater","TT","Tier2",725.320722240568,"F","Length power law, thickness <= 20 um",0.00061727886719078,0.447725153774656
+"SSD","Freshwater","TT","Tier2",725.320722240568,"G","Pooled surface-water exponent",48.6490549718178,35286.16768848
+"SSD","Freshwater","TT","Tier2",725.320722240568,"H","Measured mean mass, detected share",0.0615891878834487,44.6719142378331
+"SSD","Freshwater","FD","Tier3",252.597889747457,"A","Published conversion (incorrect)",34.8806559824259,8810.78009416779
+"SSD","Freshwater","FD","Tier3",252.597889747457,"B","Mass power law, spheres",0.00773996620479237,1.95509913004719
+"SSD","Freshwater","FD","Tier3",252.597889747457,"C","Mass power law, ellipsoids",0.00232789545565197,0.588021479650382
+"SSD","Freshwater","FD","Tier3",252.597889747457,"D","Volume power law x density",0.00123738369006855,0.312560508919236
+"SSD","Freshwater","FD","Tier3",252.597889747457,"E","Length power law, ellipsoids",0.0211912629577259,5.352868304205
+"SSD","Freshwater","FD","Tier3",252.597889747457,"F","Length power law, thickness <= 20 um",0.00061727886719078,0.155923339238092
+"SSD","Freshwater","FD","Tier3",252.597889747457,"G","Pooled surface-water exponent",48.6490549718178,12288.6486240892
+"SSD","Freshwater","FD","Tier3",252.597889747457,"H","Measured mean mass, detected share",0.0615891878834487,15.5572988906188
+"SSD","Freshwater","TT","Tier3",4031.06433197466,"A","Published conversion (incorrect)",34.8806559824259,140606.168206636
+"SSD","Freshwater","TT","Tier3",4031.06433197466,"B","Mass power law, spheres",0.00773996620479237,31.2003016988278
+"SSD","Freshwater","TT","Tier3",4031.06433197466,"C","Mass power law, ellipsoids",0.00232789545565197,9.38389633984455
+"SSD","Freshwater","TT","Tier3",4031.06433197466,"D","Volume power law x density",0.00123738369006855,4.9879732580025
+"SSD","Freshwater","TT","Tier3",4031.06433197466,"E","Length power law, ellipsoids",0.0211912629577259,85.4233442583845
+"SSD","Freshwater","TT","Tier3",4031.06433197466,"F","Length power law, thickness <= 20 um",0.00061727886719078,2.48829082441448
+"SSD","Freshwater","TT","Tier3",4031.06433197466,"G","Pooled surface-water exponent",48.6490549718178,196107.470281169
+"SSD","Freshwater","TT","Tier3",4031.06433197466,"H","Measured mean mass, detected share",0.0615891878834487,248.269978512256
+"SSD","Freshwater","FD","Tier4",849.007437794603,"A","Published conversion (incorrect)",34.8806559824259,29613.9363642344
+"SSD","Freshwater","FD","Tier4",849.007437794603,"B","Mass power law, spheres",0.00773996620479237,6.57128887614759
+"SSD","Freshwater","FD","Tier4",849.007437794603,"C","Mass power law, ellipsoids",0.00232789545565197,1.97640055625678
+"SSD","Freshwater","FD","Tier4",849.007437794603,"D","Volume power law x density",0.00123738369006855,1.05054795627393
+"SSD","Freshwater","FD","Tier4",849.007437794603,"E","Length power law, ellipsoids",0.0211912629577259,17.9915398673705
+"SSD","Freshwater","FD","Tier4",849.007437794603,"F","Length power law, thickness <= 20 um",0.00061727886719078,0.524074349438399
+"SSD","Freshwater","FD","Tier4",849.007437794603,"G","Pooled surface-water exponent",48.6490549718178,41303.4095127519
+"SSD","Freshwater","FD","Tier4",849.007437794603,"H","Measured mean mass, detected share",0.0615891878834487,52.2896786007772
+"SSD","Freshwater","TT","Tier4",9031.25189778423,"A","Published conversion (incorrect)",34.8806559824259,315015.990537243
+"SSD","Freshwater","TT","Tier4",9031.25189778423,"B","Mass power law, spheres",0.00773996620479237,69.9015844758169
+"SSD","Freshwater","TT","Tier4",9031.25189778423,"C","Mass power law, ellipsoids",0.00232789545565197,21.0238102517001
+"SSD","Freshwater","TT","Tier4",9031.25189778423,"D","Volume power law x density",0.00123738369006855,11.1751237992188
+"SSD","Freshwater","TT","Tier4",9031.25189778423,"E","Length power law, ellipsoids",0.0211912629577259,191.383633803406
+"SSD","Freshwater","TT","Tier4",9031.25189778423,"F","Length power law, thickness <= 20 um",0.00061727886719078,5.57480094077883
+"SSD","Freshwater","TT","Tier4",9031.25189778423,"G","Pooled surface-water exponent",48.6490549718178,439361.870039639
+"SSD","Freshwater","TT","Tier4",9031.25189778423,"H","Measured mean mass, detected share",0.0615891878834487,556.227469955386
+"MC + SSD","Freshwater","FD","Tier1",16.3,"A","Published conversion (incorrect)",34.8806559824259,568.554692513542
+"MC + SSD","Freshwater","FD","Tier1",16.3,"B","Mass power law, spheres",0.00773996620479237,0.126161449138116
+"MC + SSD","Freshwater","FD","Tier1",16.3,"C","Mass power law, ellipsoids",0.00232789545565197,0.0379446959271271
+"MC + SSD","Freshwater","FD","Tier1",16.3,"D","Volume power law x density",0.00123738369006855,0.0201693541481173
+"MC + SSD","Freshwater","FD","Tier1",16.3,"E","Length power law, ellipsoids",0.0211912629577259,0.345417586210931
+"MC + SSD","Freshwater","FD","Tier1",16.3,"F","Length power law, thickness <= 20 um",0.00061727886719078,0.0100616455352097
+"MC + SSD","Freshwater","FD","Tier1",16.3,"G","Pooled surface-water exponent",48.6490549718178,792.979596040631
+"MC + SSD","Freshwater","FD","Tier1",16.3,"H","Measured mean mass, detected share",0.0615891878834487,1.00390376250021
+"MC + SSD","Freshwater","TT","Tier1",79.9,"A","Published conversion (incorrect)",34.8806559824259,2786.96441299583
+"MC + SSD","Freshwater","TT","Tier1",79.9,"B","Mass power law, spheres",0.00773996620479237,0.618423299762911
+"MC + SSD","Freshwater","TT","Tier1",79.9,"C","Mass power law, ellipsoids",0.00232789545565197,0.185998846906592
+"MC + SSD","Freshwater","TT","Tier1",79.9,"D","Volume power law x density",0.00123738369006855,0.0988669568364768
+"MC + SSD","Freshwater","TT","Tier1",79.9,"E","Length power law, ellipsoids",0.0211912629577259,1.6931819103223
+"MC + SSD","Freshwater","TT","Tier1",79.9,"F","Length power law, thickness <= 20 um",0.00061727886719078,0.0493205814885433
+"MC + SSD","Freshwater","TT","Tier1",79.9,"G","Pooled surface-water exponent",48.6490549718178,3887.05949224825
+"MC + SSD","Freshwater","TT","Tier1",79.9,"H","Measured mean mass, detected share",0.0615891878834487,4.92097611188756
+"MC + SSD","Marine","FD","Tier1",0.00237,"A","Published conversion (incorrect)",164.452206214526,0.389751728728427
+"MC + SSD","Marine","FD","Tier1",0.00237,"B","Mass power law, spheres",9.52913112113317,0.0225840407570856
+"MC + SSD","Marine","FD","Tier1",0.00237,"C","Mass power law, ellipsoids",4.35036281812429,0.0103103598789546
+"MC + SSD","Marine","FD","Tier1",0.00237,"D","Volume power law x density",0.143052645705483,0.000339034770321994
+"MC + SSD","Marine","FD","Tier1",0.00237,"E","Length power law, ellipsoids",2.00793607133788,0.00475880848907077
+"MC + SSD","Marine","FD","Tier1",0.00237,"F","Length power law, thickness <= 20 um",0.0279731304316335,6.62963191229714e-05
+"MC + SSD","Marine","FD","Tier1",0.00237,"G","Pooled surface-water exponent",78.105482859088,0.185109994376039
+"MC + SSD","Marine","FD","Tier1",0.00237,"H","Measured mean mass, detected share",0.928795388247452,0.00220124507014646
+"MC + SSD","Marine","TT","Tier1",0.654,"A","Published conversion (incorrect)",164.452206214526,107.5517428643
+"MC + SSD","Marine","TT","Tier1",0.654,"B","Mass power law, spheres",9.52913112113317,6.23205175322109
+"MC + SSD","Marine","TT","Tier1",0.654,"C","Mass power law, ellipsoids",4.35036281812429,2.84513728305328
+"MC + SSD","Marine","TT","Tier1",0.654,"D","Volume power law x density",0.143052645705483,0.0935564302913856
+"MC + SSD","Marine","TT","Tier1",0.654,"E","Length power law, ellipsoids",2.00793607133788,1.31319019065497
+"MC + SSD","Marine","TT","Tier1",0.654,"F","Length power law, thickness <= 20 um",0.0279731304316335,0.0182944273022883
+"MC + SSD","Marine","TT","Tier1",0.654,"G","Pooled surface-water exponent",78.105482859088,51.0809857898436
+"MC + SSD","Marine","TT","Tier1",0.654,"H","Measured mean mass, detected share",0.928795388247452,0.607432183913833
+"MC + SSD","Freshwater","FD","Tier2",46.4,"A","Published conversion (incorrect)",34.8806559824259,1618.46243758456
+"MC + SSD","Freshwater","FD","Tier2",46.4,"B","Mass power law, spheres",0.00773996620479237,0.359134431902366
+"MC + SSD","Freshwater","FD","Tier2",46.4,"C","Mass power law, ellipsoids",0.00232789545565197,0.108014349142251
+"MC + SSD","Freshwater","FD","Tier2",46.4,"D","Volume power law x density",0.00123738369006855,0.0574146032191805
+"MC + SSD","Freshwater","FD","Tier2",46.4,"E","Length power law, ellipsoids",0.0211912629577259,0.98327460123848
+"MC + SSD","Freshwater","FD","Tier2",46.4,"F","Length power law, thickness <= 20 um",0.00061727886719078,0.0286417394376522
+"MC + SSD","Freshwater","FD","Tier2",46.4,"G","Pooled surface-water exponent",48.6490549718178,2257.31615069235
+"MC + SSD","Freshwater","FD","Tier2",46.4,"H","Measured mean mass, detected share",0.0615891878834487,2.85773831779202
+"MC + SSD","Freshwater","TT","Tier2",699,"A","Published conversion (incorrect)",34.8806559824259,24381.5785317157
+"MC + SSD","Freshwater","TT","Tier2",699,"B","Mass power law, spheres",0.00773996620479237,5.41023637714987
+"MC + SSD","Freshwater","TT","Tier2",699,"C","Mass power law, ellipsoids",0.00232789545565197,1.62719892350073
+"MC + SSD","Freshwater","TT","Tier2",699,"D","Volume power law x density",0.00123738369006855,0.864931199357913
+"MC + SSD","Freshwater","TT","Tier2",699,"E","Length power law, ellipsoids",0.0211912629577259,14.8126928074504
+"MC + SSD","Freshwater","TT","Tier2",699,"F","Length power law, thickness <= 20 um",0.00061727886719078,0.431477928166355
+"MC + SSD","Freshwater","TT","Tier2",699,"G","Pooled surface-water exponent",48.6490549718178,34005.6894253007
+"MC + SSD","Freshwater","TT","Tier2",699,"H","Measured mean mass, detected share",0.0615891878834487,43.0508423305307
+"MC + SSD","Marine","FD","Tier2",0.0493,"A","Published conversion (incorrect)",164.452206214526,8.10749376637613
+"MC + SSD","Marine","FD","Tier2",0.0493,"B","Mass power law, spheres",9.52913112113317,0.469786164271865
+"MC + SSD","Marine","FD","Tier2",0.0493,"C","Mass power law, ellipsoids",4.35036281812429,0.214472886933527
+"MC + SSD","Marine","FD","Tier2",0.0493,"D","Volume power law x density",0.143052645705483,0.00705249543328029
+"MC + SSD","Marine","FD","Tier2",0.0493,"E","Length power law, ellipsoids",2.00793607133788,0.0989912483169573
+"MC + SSD","Marine","FD","Tier2",0.0493,"F","Length power law, thickness <= 20 um",0.0279731304316335,0.00137907533027953
+"MC + SSD","Marine","FD","Tier2",0.0493,"G","Pooled surface-water exponent",78.105482859088,3.85060030495304
+"MC + SSD","Marine","FD","Tier2",0.0493,"H","Measured mean mass, detected share",0.928795388247452,0.0457896126405994
+"MC + SSD","Marine","TT","Tier2",11.5,"A","Published conversion (incorrect)",164.452206214526,1891.20037146705
+"MC + SSD","Marine","TT","Tier2",11.5,"B","Mass power law, spheres",9.52913112113317,109.585007893031
+"MC + SSD","Marine","TT","Tier2",11.5,"C","Mass power law, ellipsoids",4.35036281812429,50.0291724084293
+"MC + SSD","Marine","TT","Tier2",11.5,"D","Volume power law x density",0.143052645705483,1.64510542561305
+"MC + SSD","Marine","TT","Tier2",11.5,"E","Length power law, ellipsoids",2.00793607133788,23.0912648203856
+"MC + SSD","Marine","TT","Tier2",11.5,"F","Length power law, thickness <= 20 um",0.0279731304316335,0.321690999963785
+"MC + SSD","Marine","TT","Tier2",11.5,"G","Pooled surface-water exponent",78.105482859088,898.213052879512
+"MC + SSD","Marine","TT","Tier2",11.5,"H","Measured mean mass, detected share",0.928795388247452,10.6811469648457
+"MC + SSD","Freshwater","FD","Tier3",211,"A","Published conversion (incorrect)",34.8806559824259,7359.81841229186
+"MC + SSD","Freshwater","FD","Tier3",211,"B","Mass power law, spheres",0.00773996620479237,1.63313286921119
+"MC + SSD","Freshwater","FD","Tier3",211,"C","Mass power law, ellipsoids",0.00232789545565197,0.491185941142566
+"MC + SSD","Freshwater","FD","Tier3",211,"D","Volume power law x density",0.00123738369006855,0.261087958604463
+"MC + SSD","Freshwater","FD","Tier3",211,"E","Length power law, ellipsoids",0.0211912629577259,4.47135648408015
+"MC + SSD","Freshwater","FD","Tier3",211,"F","Length power law, thickness <= 20 um",0.00061727886719078,0.130245840977255
+"MC + SSD","Freshwater","FD","Tier3",211,"G","Pooled surface-water exponent",48.6490549718178,10264.9505990536
+"MC + SSD","Freshwater","FD","Tier3",211,"H","Measured mean mass, detected share",0.0615891878834487,12.9953186434077
+"MC + SSD","Freshwater","TT","Tier3",3940,"A","Published conversion (incorrect)",34.8806559824259,137429.784570758
+"MC + SSD","Freshwater","TT","Tier3",3940,"B","Mass power law, spheres",0.00773996620479237,30.495466846882
+"MC + SSD","Freshwater","TT","Tier3",3940,"C","Mass power law, ellipsoids",0.00232789545565197,9.17190809526876
+"MC + SSD","Freshwater","TT","Tier3",3940,"D","Volume power law x density",0.00123738369006855,4.87529173887007
+"MC + SSD","Freshwater","TT","Tier3",3940,"E","Length power law, ellipsoids",0.0211912629577259,83.4935760534399
+"MC + SSD","Freshwater","TT","Tier3",3940,"F","Length power law, thickness <= 20 um",0.00061727886719078,2.43207873673167
+"MC + SSD","Freshwater","TT","Tier3",3940,"G","Pooled surface-water exponent",48.6490549718178,191677.276588962
+"MC + SSD","Freshwater","TT","Tier3",3940,"H","Measured mean mass, detected share",0.0615891878834487,242.661400260788
+"MC + SSD","Marine","FD","Tier3",3.61,"A","Published conversion (incorrect)",164.452206214526,593.672464434439
+"MC + SSD","Marine","FD","Tier3",3.61,"B","Mass power law, spheres",9.52913112113317,34.4001633472907
+"MC + SSD","Marine","FD","Tier3",3.61,"C","Mass power law, ellipsoids",4.35036281812429,15.7048097734287
+"MC + SSD","Marine","FD","Tier3",3.61,"D","Volume power law x density",0.143052645705483,0.516420050996792
+"MC + SSD","Marine","FD","Tier3",3.61,"E","Length power law, ellipsoids",2.00793607133788,7.24864921752973
+"MC + SSD","Marine","FD","Tier3",3.61,"F","Length power law, thickness <= 20 um",0.0279731304316335,0.100983000858197
+"MC + SSD","Marine","FD","Tier3",3.61,"G","Pooled surface-water exponent",78.105482859088,281.960793121308
+"MC + SSD","Marine","FD","Tier3",3.61,"H","Measured mean mass, detected share",0.928795388247452,3.3529513515733
+"MC + SSD","Marine","TT","Tier3",570,"A","Published conversion (incorrect)",164.452206214526,93737.7575422799
+"MC + SSD","Marine","TT","Tier3",570,"B","Mass power law, spheres",9.52913112113317,5431.60473904591
+"MC + SSD","Marine","TT","Tier3",570,"C","Mass power law, ellipsoids",4.35036281812429,2479.70680633084
+"MC + SSD","Marine","TT","Tier3",570,"D","Volume power law x density",0.143052645705483,81.5400080521251
+"MC + SSD","Marine","TT","Tier3",570,"E","Length power law, ellipsoids",2.00793607133788,1144.52356066259
+"MC + SSD","Marine","TT","Tier3",570,"F","Length power law, thickness <= 20 um",0.0279731304316335,15.9446843460311
+"MC + SSD","Marine","TT","Tier3",570,"G","Pooled surface-water exponent",78.105482859088,44520.1252296802
+"MC + SSD","Marine","TT","Tier3",570,"H","Measured mean mass, detected share",0.928795388247452,529.413371301048
+"MC + SSD","Freshwater","FD","Tier4",710,"A","Published conversion (incorrect)",34.8806559824259,24765.2657475224
+"MC + SSD","Freshwater","FD","Tier4",710,"B","Mass power law, spheres",0.00773996620479237,5.49537600540259
+"MC + SSD","Freshwater","FD","Tier4",710,"C","Mass power law, ellipsoids",0.00232789545565197,1.6528057735129
+"MC + SSD","Freshwater","FD","Tier4",710,"D","Volume power law x density",0.00123738369006855,0.878542419948667
+"MC + SSD","Freshwater","FD","Tier4",710,"E","Length power law, ellipsoids",0.0211912629577259,15.0457966999854
+"MC + SSD","Freshwater","FD","Tier4",710,"F","Length power law, thickness <= 20 um",0.00061727886719078,0.438267995705454
+"MC + SSD","Freshwater","FD","Tier4",710,"G","Pooled surface-water exponent",48.6490549718178,34540.8290299907
+"MC + SSD","Freshwater","FD","Tier4",710,"H","Measured mean mass, detected share",0.0615891878834487,43.7283233972486
+"MC + SSD","Freshwater","TT","Tier4",9060,"A","Published conversion (incorrect)",34.8806559824259,316018.743200779
+"MC + SSD","Freshwater","TT","Tier4",9060,"B","Mass power law, spheres",0.00773996620479237,70.1240938154189
+"MC + SSD","Freshwater","TT","Tier4",9060,"C","Mass power law, ellipsoids",0.00232789545565197,21.0907328282068
+"MC + SSD","Freshwater","TT","Tier4",9060,"D","Volume power law x density",0.00123738369006855,11.210696232021
+"MC + SSD","Freshwater","TT","Tier4",9060,"E","Length power law, ellipsoids",0.0211912629577259,191.992842396996
+"MC + SSD","Freshwater","TT","Tier4",9060,"F","Length power law, thickness <= 20 um",0.00061727886719078,5.59254653674847
+"MC + SSD","Freshwater","TT","Tier4",9060,"G","Pooled surface-water exponent",48.6490549718178,440760.43804467
+"MC + SSD","Freshwater","TT","Tier4",9060,"H","Measured mean mass, detected share",0.0615891878834487,557.998042224046
+"MC + SSD","Marine","FD","Tier4",22.8,"A","Published conversion (incorrect)",164.452206214526,3749.51030169119
+"MC + SSD","Marine","FD","Tier4",22.8,"B","Mass power law, spheres",9.52913112113317,217.264189561836
+"MC + SSD","Marine","FD","Tier4",22.8,"C","Mass power law, ellipsoids",4.35036281812429,99.1882722532337
+"MC + SSD","Marine","FD","Tier4",22.8,"D","Volume power law x density",0.143052645705483,3.261600322085
+"MC + SSD","Marine","FD","Tier4",22.8,"E","Length power law, ellipsoids",2.00793607133788,45.7809424265036
+"MC + SSD","Marine","FD","Tier4",22.8,"F","Length power law, thickness <= 20 um",0.0279731304316335,0.637787373841244
+"MC + SSD","Marine","FD","Tier4",22.8,"G","Pooled surface-water exponent",78.105482859088,1780.80500918721
+"MC + SSD","Marine","FD","Tier4",22.8,"H","Measured mean mass, detected share",0.928795388247452,21.1765348520419
+"MC + SSD","Marine","TT","Tier4",2100,"A","Published conversion (incorrect)",164.452206214526,345349.633050505
+"MC + SSD","Marine","TT","Tier4",2100,"B","Mass power law, spheres",9.52913112113317,20011.1753543797
+"MC + SSD","Marine","TT","Tier4",2100,"C","Mass power law, ellipsoids",4.35036281812429,9135.761918061
+"MC + SSD","Marine","TT","Tier4",2100,"D","Volume power law x density",0.143052645705483,300.410555981513
+"MC + SSD","Marine","TT","Tier4",2100,"E","Length power law, ellipsoids",2.00793607133788,4216.66574980954
+"MC + SSD","Marine","TT","Tier4",2100,"F","Length power law, thickness <= 20 um",0.0279731304316335,58.7435739064303
+"MC + SSD","Marine","TT","Tier4",2100,"G","Pooled surface-water exponent",78.105482859088,164021.514004085
+"MC + SSD","Marine","TT","Tier4",2100,"H","Measured mean mass, detected share",0.928795388247452,1950.47031531965
+"PSSD++","Freshwater","FD","Tier3",200,"A","Published conversion (incorrect)",34.8806559824259,6976.13119648518
+"PSSD++","Freshwater","FD","Tier3",200,"B","Mass power law, spheres",0.00773996620479237,1.54799324095847
+"PSSD++","Freshwater","FD","Tier3",200,"C","Mass power law, ellipsoids",0.00232789545565197,0.465579091130394
+"PSSD++","Freshwater","FD","Tier3",200,"D","Volume power law x density",0.00123738369006855,0.247476738013709
+"PSSD++","Freshwater","FD","Tier3",200,"E","Length power law, ellipsoids",0.0211912629577259,4.23825259154517
+"PSSD++","Freshwater","FD","Tier3",200,"F","Length power law, thickness <= 20 um",0.00061727886719078,0.123455773438156
+"PSSD++","Freshwater","FD","Tier3",200,"G","Pooled surface-water exponent",48.6490549718178,9729.81099436357
+"PSSD++","Freshwater","FD","Tier3",200,"H","Measured mean mass, detected share",0.0615891878834487,12.3178375766897
+"PSSD++","Freshwater","FD","Tier4",733,"A","Published conversion (incorrect)",34.8806559824259,25567.5208351182
+"PSSD++","Freshwater","FD","Tier4",733,"B","Mass power law, spheres",0.00773996620479237,5.67339522811281
+"PSSD++","Freshwater","FD","Tier4",733,"C","Mass power law, ellipsoids",0.00232789545565197,1.70634736899289
+"PSSD++","Freshwater","FD","Tier4",733,"D","Volume power law x density",0.00123738369006855,0.907002244820244
+"PSSD++","Freshwater","FD","Tier4",733,"E","Length power law, ellipsoids",0.0211912629577259,15.533195748013
+"PSSD++","Freshwater","FD","Tier4",733,"F","Length power law, thickness <= 20 um",0.00061727886719078,0.452465409650842
+"PSSD++","Freshwater","FD","Tier4",733,"G","Pooled surface-water exponent",48.6490549718178,35659.7572943425
+"PSSD++","Freshwater","FD","Tier4",733,"H","Measured mean mass, detected share",0.0615891878834487,45.1448747185679
+"PSSD++","Freshwater","TT","Tier3",2360,"A","Published conversion (incorrect)",34.8806559824259,82318.3481185251
+"PSSD++","Freshwater","TT","Tier3",2360,"B","Mass power law, spheres",0.00773996620479237,18.26632024331
+"PSSD++","Freshwater","TT","Tier3",2360,"C","Mass power law, ellipsoids",0.00232789545565197,5.49383327533865
+"PSSD++","Freshwater","TT","Tier3",2360,"D","Volume power law x density",0.00123738369006855,2.92022550856177
+"PSSD++","Freshwater","TT","Tier3",2360,"E","Length power law, ellipsoids",0.0211912629577259,50.011380580233
+"PSSD++","Freshwater","TT","Tier3",2360,"F","Length power law, thickness <= 20 um",0.00061727886719078,1.45677812657024
+"PSSD++","Freshwater","TT","Tier3",2360,"G","Pooled surface-water exponent",48.6490549718178,114811.76973349
+"PSSD++","Freshwater","TT","Tier3",2360,"H","Measured mean mass, detected share",0.0615891878834487,145.350483404939
+"PSSD++","Freshwater","TT","Tier4",12400,"A","Published conversion (incorrect)",34.8806559824259,432520.134182081
+"PSSD++","Freshwater","TT","Tier4",12400,"B","Mass power law, spheres",0.00773996620479237,95.9755809394255
+"PSSD++","Freshwater","TT","Tier4",12400,"C","Mass power law, ellipsoids",0.00232789545565197,28.8659036500844
+"PSSD++","Freshwater","TT","Tier4",12400,"D","Volume power law x density",0.00123738369006855,15.34355775685
+"PSSD++","Freshwater","TT","Tier4",12400,"E","Length power law, ellipsoids",0.0211912629577259,262.771660675801
+"PSSD++","Freshwater","TT","Tier4",12400,"F","Length power law, thickness <= 20 um",0.00061727886719078,7.65425795316568
+"PSSD++","Freshwater","TT","Tier4",12400,"G","Pooled surface-water exponent",48.6490549718178,603248.281650541
+"PSSD++","Freshwater","TT","Tier4",12400,"H","Measured mean mass, detected share",0.0615891878834487,763.705929754764
+"PSSD++","Marine","FD","Tier3",1.83,"A","Published conversion (incorrect)",164.452206214526,300.947537372583
+"PSSD++","Marine","FD","Tier3",1.83,"B","Mass power law, spheres",9.52913112113317,17.4383099516737
+"PSSD++","Marine","FD","Tier3",1.83,"C","Mass power law, ellipsoids",4.35036281812429,7.96116395716745
+"PSSD++","Marine","FD","Tier3",1.83,"D","Volume power law x density",0.143052645705483,0.261786341641033
+"PSSD++","Marine","FD","Tier3",1.83,"E","Length power law, ellipsoids",2.00793607133788,3.67452301054831
+"PSSD++","Marine","FD","Tier3",1.83,"F","Length power law, thickness <= 20 um",0.0279731304316335,0.0511908286898893
+"PSSD++","Marine","FD","Tier3",1.83,"G","Pooled surface-water exponent",78.105482859088,142.933033632131
+"PSSD++","Marine","FD","Tier3",1.83,"H","Measured mean mass, detected share",0.928795388247452,1.69969556049284
+"PSSD++","Marine","FD","Tier4",11.5,"A","Published conversion (incorrect)",164.452206214526,1891.20037146705
+"PSSD++","Marine","FD","Tier4",11.5,"B","Mass power law, spheres",9.52913112113317,109.585007893031
+"PSSD++","Marine","FD","Tier4",11.5,"C","Mass power law, ellipsoids",4.35036281812429,50.0291724084293
+"PSSD++","Marine","FD","Tier4",11.5,"D","Volume power law x density",0.143052645705483,1.64510542561305
+"PSSD++","Marine","FD","Tier4",11.5,"E","Length power law, ellipsoids",2.00793607133788,23.0912648203856
+"PSSD++","Marine","FD","Tier4",11.5,"F","Length power law, thickness <= 20 um",0.0279731304316335,0.321690999963785
+"PSSD++","Marine","FD","Tier4",11.5,"G","Pooled surface-water exponent",78.105482859088,898.213052879512
+"PSSD++","Marine","FD","Tier4",11.5,"H","Measured mean mass, detected share",0.928795388247452,10.6811469648457
+"PSSD++","Marine","TT","Tier3",444,"A","Published conversion (incorrect)",164.452206214526,73016.7795592496
+"PSSD++","Marine","TT","Tier3",444,"B","Mass power law, spheres",9.52913112113317,4230.93421778313
+"PSSD++","Marine","TT","Tier3",444,"C","Mass power law, ellipsoids",4.35036281812429,1931.56109124718
+"PSSD++","Marine","TT","Tier3",444,"D","Volume power law x density",0.143052645705483,63.5153746932343
+"PSSD++","Marine","TT","Tier3",444,"E","Length power law, ellipsoids",2.00793607133788,891.523615674017
+"PSSD++","Marine","TT","Tier3",444,"F","Length power law, thickness <= 20 um",0.0279731304316335,12.4200699116453
+"PSSD++","Marine","TT","Tier3",444,"G","Pooled surface-water exponent",78.105482859088,34678.8343894351
+"PSSD++","Marine","TT","Tier3",444,"H","Measured mean mass, detected share",0.928795388247452,412.385152381869
+"PSSD++","Marine","TT","Tier4",1110,"A","Published conversion (incorrect)",164.452206214526,182541.948898124
+"PSSD++","Marine","TT","Tier4",1110,"B","Mass power law, spheres",9.52913112113317,10577.3355444578
+"PSSD++","Marine","TT","Tier4",1110,"C","Mass power law, ellipsoids",4.35036281812429,4828.90272811796
+"PSSD++","Marine","TT","Tier4",1110,"D","Volume power law x density",0.143052645705483,158.788436733086
+"PSSD++","Marine","TT","Tier4",1110,"E","Length power law, ellipsoids",2.00793607133788,2228.80903918504
+"PSSD++","Marine","TT","Tier4",1110,"F","Length power law, thickness <= 20 um",0.0279731304316335,31.0501747791132
+"PSSD++","Marine","TT","Tier4",1110,"G","Pooled surface-water exponent",78.105482859088,86697.0859735877
+"PSSD++","Marine","TT","Tier4",1110,"H","Measured mean mass, detected share",0.928795388247452,1030.96288095467

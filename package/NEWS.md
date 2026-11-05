@@ -1,3 +1,156 @@
+PSSDplusplus 0.4.1
+==================
+
+This release fixes how `align_data()` builds the particles of polydisperse
+test materials and fibers, how it obtains the particle concentration of tests
+dosed by mass, and how thresholds are converted to mass, volume and surface
+area. It also adds optional inputs for measured test-material size
+distributions and co-dosed mixtures (`align_mixture()`), documented in
+`docs/test_material_fields.md`. **Aligned concentrations of polydisperse and
+mass-dosed records change, and with them the thresholds** (deterministic SSDs:
+food dilution x0.87-1.17, tissue translocation x0.79-1.07; below).
+Tracking: ScottCoffin/ToMEx2.0_EcoToxRisk#8.
+
+Bug fixes (errors in code)
+--------------------------
+- **Smallest particle of polydisperse spheres, fibers and fragments.** The
+  width of the smallest particle was assigned by matching `"sphere"`,
+  `"fiber"` and `"fragment"`, but ToMEx codes shapes as `"Sphere"`, `"Fiber"`,
+  `"Fragment"`, and the assignment had no default, so the width was lost for
+  every polydisperse record of these shapes. The volume and surface-area
+  functions then filled it with `R.ave x length`, which (a) made the smallest
+  sphere an ellipsoid (volume `R.ave` x that of the sphere: 0.67 freshwater,
+  0.77 marine) and (b) filled the smallest particle's height with a fixed
+  0.67 x width instead of the environment's (or the sampled) H:W ratio, so
+  the smallest fragment's volume was 0.87 (marine), 0.89 (marine sediment)
+  and 0.96 (freshwater sediment) of the intended value.
+- **Fiber widths.** The largest bioaccessible fiber kept the database width,
+  which the ToMEx tidying sets to `R.ave x` the *untruncated* maximum length,
+  so a partially ingestible fiber could be several times wider than it was
+  long (9 of 13 such records in `tomex2`), while fibers with no database
+  width got 15 um at the large end and `R.ave x length` at the small end (the
+  smallest fiber wider than the largest: 34 of 221 records). Fibers now have
+  one diameter at both ends: the reported minimum/maximum width, else the
+  reported width, else the existing 15 um default (the fiber diameter of
+  Kooi et al. 2021, Section 3.2), never more than the fiber's length; the cap
+  also applies to monodisperse fibers. "Not Reported" shapes use the fragment
+  rule at both ends (they are excluded from SSDs).
+- **Particle counts of tests dosed by mass.** Counts the database converted
+  from a mass dose (`dose.particles.mL.master.converted.reported ==
+  "converted"`, and the sediment equivalent) used the database's own particle
+  geometry (H:W 0.67; a polydisperse material as one particle of the midpoint
+  length), not the alignment's, so the aligned volume dose was not the dosed
+  mass / density. `align_data()` now recomputes them as dosed mass / mean
+  particle mass under its own geometry and size distribution
+  (`particle_count_source = "mass"`, the default; `"database"` keeps the old
+  counts for comparison). New output columns `particle_count_basis` and
+  `mean.mass.per.particle.mg`. Also passed through `MC_sim_align_parallel()`.
+- **Unit conversions** (`convert_units_fxn()`, used by the MC + SSD outputs
+  in ug/L, um3/L and um2/L): the power-law means were taken between 1 and 5000
+  as if these lengths were masses, volumes and areas; they now use the mass,
+  volume and surface area of 1 um and 5000 um particles. Thresholds in
+  particles/L are unaffected. The converted values are indicative only (see
+  "Effect on results").
+- **SSD size filters** (`process_environment_data()` and the analysis
+  scripts) tested the midpoint length of polydisperse records, which could drop
+  partially bioaccessible materials; records now enter by their
+  bioaccessibility labels (only the lower size limit is applied to the
+  length). No deterministic record changes; MC draws do.
+- Mirrored in the analysis scripts (`scripts/utils/functions.R`,
+  `scripts/utils/ssd_functions.R` and the copy inside
+  `scripts/ToMEx2_EcoTox.Rmd`), which are tested for equivalence, and in the
+  ToMEx app (SCCWRP/ToMEx_AquaticOrganisms#5), whose alignments give the same
+  particle-based ERM doses.
+
+Effect on results
+-----------------
+Deterministic tiered SSDs (in vivo, red criteria passed, environment-specific
+parameters; particles/L; 0.4.0 -> 0.4.1, ratio):
+
+| Environment | ERM | Tier 1 | Tier 2 | Tier 3 | Tier 4 |
+|---|---|---|---|---|---|
+| Freshwater | Food Dilution | 21.9 -> 19.1 (0.87) | 59.6 -> 55.1 (0.92) | 254 -> 253 (0.99) | 797 -> 849 (1.07) |
+| Marine | Food Dilution | 0.00234 -> 0.00274 (1.17) | 0.0525 -> 0.0593 (1.13) | 3.27 -> 3.64 (1.11) | 23.2 -> 25.1 (1.08) |
+| Freshwater | Tissue Translocation | 108 -> 98.2 (0.91) | 914 -> 725 (0.79) | 4490 -> 4030 (0.90) | 9200 -> 9030 (0.98) |
+| Marine | Tissue Translocation | 0.902 -> 0.936 (1.04) | 16.2 -> 15.5 (0.96) | 607 -> 650 (1.07) | 2220 -> 2320 (1.05) |
+
+The geometry fix alone raises all of them (food dilution x1.08-1.20, tissue
+translocation x1.04-1.07); recomputing the counts of mass-dosed tests lowers
+the freshwater values again (x0.73-0.94) and changes the marine values by
+x0.90-1.06. Species counts are unchanged.
+
+Production run of the analysis (`scripts/`; 9,400 valid Monte Carlo
+simulations, 300 PSSD++ simulations; same parameter matrix and seeds as
+0.4.0). Median thresholds, particles/L, 0.4.0 -> 0.4.1 (ratio):
+
+MC + SSD
+
+| Environment | ERM | Tier 1 | Tier 2 | Tier 3 | Tier 4 |
+|---|---|---|---|---|---|
+| Freshwater | Food Dilution | 19.9 -> 16.3 (0.82) | 52.6 -> 46.4 (0.88) | 223 -> 211 (0.95) | 683 -> 710 (1.04) |
+| Marine | Food Dilution | 0.00188 -> 0.00237 (1.26) | 0.0404 -> 0.0493 (1.22) | 3.03 -> 3.61 (1.19) | 19.0 -> 22.8 (1.20) |
+| Freshwater | Tissue Translocation | 121 -> 79.9 (0.66) | 789 -> 699 (0.89) | 3950 -> 3940 (1.00) | 8310 -> 9060 (1.09) |
+| Marine | Tissue Translocation | 0.634 -> 0.654 (1.03) | 11.3 -> 11.5 (1.02) | 532 -> 570 (1.07) | 1910 -> 2100 (1.10) |
+
+PSSD++
+
+| Environment | ERM | Tier 3 (HC5) | Tier 4 (HC10) |
+|---|---|---|---|
+| Freshwater | Food Dilution | 220 -> 200 (0.91) | 692 -> 733 (1.06) |
+| Marine | Food Dilution | 1.59 -> 1.83 (1.15) | 10.2 -> 11.5 (1.13) |
+| Freshwater | Tissue Translocation | 2690 -> 2360 (0.88) | 11600 -> 12400 (1.07) |
+| Marine | Tissue Translocation | 417 -> 444 (1.06) | 1040 -> 1110 (1.07) |
+
+Species and data-point counts are unchanged. **Thresholds in mass, volume
+and surface-area units depend strongly on assumptions.** The corrected
+conversion (`convert_units_fxn()`) follows the method of Kooi et al. (2021),
+but the mean particle mass over 1-5000 um must be extrapolated beyond the
+measurable size range, and it changes by three to five orders of magnitude with
+the assumed size distribution (length, volume or mass exponent; Zhao et al.
+2026, Water Res. 299:125833), particle shape (e.g. fixed fragment thickness;
+Chen et al. 2026, Environ. Sci. Technol. 60:1263-1274) and anchoring to
+measured particle masses. The correction (E9, Tables C12-C13;
+`docs/correction/results/mass_thresholds.csv`) gives the thresholds in ug/L
+under each assumption with its caveats; the function's single value is one of
+them and should be read as indicative.
+
+Data
+----
+- `tomex2`, `tomex2_mini` and `inst/extdata/aoc_z_tomex2.RDS` are rebuilt with
+  the data fixes of SCCWRP/ToMEx_AquaticOrganisms#5: the stored volume,
+  surface area and mass of ToMEx 1.0 spheres (computed with width =
+  `R.ave` x length before), the size range of 10.1039/d0en00952k (min = max
+  = 1 um; now 80-130 nm as measured), study-specific polymer densities with
+  missing ones filled from a polymer table before masses and dose conversions
+  are computed (new column `density.source`), particle counts for ToMEx 1.0
+  mass doses that had none, and the optional test-material columns (all
+  `NA`). Aligned particle doses and all thresholds are unchanged by these
+  data fixes (checked for both `particle_count_source` settings).
+
+New features (no change to existing results)
+--------------------------------------------
+- **Measured size distributions of test materials.** A polydisperse record can
+  supply a number-based length distribution (`size.dist.family` =
+  `"powerlaw"` with `size.dist.alpha`, or `"lognormal"` with
+  `size.dist.median.um`/`size.dist.gsd` or `size.D10.um`/`size.D50.um`/
+  `size.D90.um`). It then sets the bioaccessible fraction and the mean
+  ingestible volume and translocatable surface area (integrated over the
+  distribution with the particle geometry) instead of the environmental
+  power law, which remains the default because no ToMEx study reports its
+  material's distribution.
+- New output columns `poly_size_method` and `poly_volume_factor_ingest` (mean
+  ingestible / smallest particle volume) to screen or sensitivity-test
+  records whose alignment rests on the assumed distribution.
+- **`align_mixture()`** aligns tests that dose several particle types (shapes,
+  polymers, size ranges) component by component with the whole test's dose,
+  scales each by its share of the dose (number share for reported counts,
+  mass share for counts derived from the dosed mass) and adds the
+  bioaccessible components. The combined record keeps its dominant
+  component's labels and gains `n_components`, `mixture_shapes` and
+  `mixture_polymers`. ToMEx does not yet record mixtures component by
+  component. The same rules are used by the ToMEx app.
+- `align_data()` warns about `shape_f` values it does not recognise.
+
 PSSDplusplus 0.4.0
 ==================
 

@@ -17,8 +17,12 @@ Data are bundled as a plain data frame identical to the source RDS shipped
 in \code{inst/extdata/aoc_z_tomex2.RDS}, which is \code{aoc_z_tomex2.RDS} built by
 \code{ToMEx2.0_Onboarding/ToMEx2.0_Data_Tidying.R} in the ToMEx 2.0 database
 repository (SCCWRP/ToMEx_AquaticOrganisms, release v2.0.1 of 2026-06-30,
-plus the body-length corrections of PSSDplusplus 0.4.0; see
-\code{data-raw/update_tomex2.R}).
+plus the body-length corrections of PSSDplusplus 0.4.0 and the data fixes
+of 0.4.1; see \code{data-raw/update_tomex2.R}). The 0.4.1 data fixes (ToMEx 1.0
+sphere geometry, the size range of 10.1039/d0en00952k, study-specific polymer
+densities, ToMEx 1.0 dose conversions; SCCWRP/ToMEx_AquaticOrganisms#5)
+change stored particle volumes, masses and converted doses, but not the
+aligned particle doses or the thresholds.
 }
 \details{
 Body length and maximum ingestible particle size (mouth size) are resolved
@@ -56,6 +60,14 @@ before record-level corrections. Only in vivo records are eligible for
 SSDs (\code{\link[=ssd_eligible]{ssd_eligible()}}).}
 \item{\code{ssd_exclusion_reason}}{\code{NA} (eligible), \code{"in vitro"},
 \code{"vivo status missing"}, or \code{"food dilution only: unresolved body length or mouth size"}.}
+\item{\code{density.source}}{\code{"record"} (the study's or ToMEx 1.0 density) or
+\code{"polymer table"} (filled from the database's polymer density table
+because the record has none).}
+\item{\verb{size.dist.*}, \code{size.D10.um}, \code{size.D50.um}, \code{size.D90.um},
+\code{mixture_id}, \code{component.fraction}, \code{component.fraction.basis}}{Optional
+test-material fields (measured size distributions, co-dosed mixtures),
+all \code{NA} in this release; see \code{\link[=align_data]{align_data()}}, \code{\link[=align_mixture]{align_mixture()}} and
+\code{docs/test_material_fields.md} of the repository.}
 }
 }
 \keyword{datasets}

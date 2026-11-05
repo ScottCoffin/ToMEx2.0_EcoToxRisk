@@ -42,6 +42,7 @@ vignettes/*.pdf
 # pkgdown site (none at the root); keep the correction materials
 docs/*
 !docs/correction/
+!docs/test_material_fields.md
 
 # translation temp files
 po/*~
@@ -334,9 +335,33 @@ images/
 
 # 0.4.0 re-run: backups and temporary render copy (not tracked)
 output/pssd_cache_pre_issue6/
+output/pssd_cache_v0.4.0/
 scripts/.ToMEx2_EcoTox_rerun.Rmd
 
 # checkpoints of long runs (0.4.0)
 scripts/monte carlo/output/sobol_checkpoints/
 docs/correction/results/checkpoints/
 docs/correction/results/*.log
+.claude/body_length_corrections.md
+.claude/updated_corrections.md
+data/output/det_thresholds_v040.rds
+.claude/bitstream_53864.pdf
+scripts/Rplots.pdf
+scripts/monte carlo/Rplots.pdf
+scripts/output/figuresunnamed-chunk-4-1.png
+scripts/output/figuresunnamed-chunk-31-1.png
+scripts/output/figuresunnamed-chunk-50-1.png
+scripts/output/figuresunnamed-chunk-54-1.png
+scripts/output/figuresunnamed-chunk-64-1.png
+scripts/output/figuresunnamed-chunk-66-1.png
+scripts/output/figuresunnamed-chunk-67-1.png
+scripts/output/figuresunnamed-chunk-68-1.png
+scripts/output/figuresunnamed-chunk-69-1.png
+scripts/output/figuresunnamed-chunk-74-1.png
+scripts/output/figuresunnamed-chunk-76-1.png
+scripts/output/figuresunnamed-chunk-81-1.png
+scripts/output/figuresunnamed-chunk-85-1.png
+scripts/output/figuresunnamed-chunk-94-1.png
+scripts/output/figuresunnamed-chunk-106-1.png
+scripts/output/figuresunnamed-chunk-107-1.png
+scripts/output/figuresunnamed-chunk-108-1.png

@@ -15,6 +15,7 @@ MC_sim_align_parallel(
   x1M_set = x1D_set,
   missing_mouth = c("exclude", "x2D"),
   mouth_size_source = c("reported", "body_length"),
+  particle_count_source = c("mass", "database"),
   checkpoint_dir = NULL,
   checkpoint_every = 500
 )
@@ -53,6 +54,9 @@ simulation's sampled body-length coefficients.}
 \item{mouth_size_source}{Passed to \link[=align_data]{align_data()}. Only
 \code{"reported"} is supported; \code{"body_length"} is deprecated (warning, then
 treated as \code{"reported"}). Reported mouth sizes are never perturbed.}
+
+\item{particle_count_source}{Passed to \link[=align_data]{align_data()}:
+\code{"mass"} (default) or \code{"database"} (comparison only).}
 
 \item{checkpoint_dir}{Optional directory for checkpoints. When given, the
 simulations run in chunks of \code{checkpoint_every}; each finished chunk is

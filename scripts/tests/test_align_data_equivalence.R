@@ -110,3 +110,43 @@ test_that("script MC wrappers read the matrix_function() column names", {
     expect_match(body, "sim.body.length.intercept", fixed = TRUE)
   }
 })
+
+test_that("ToMEx2_EcoTox.Rmd's inline align_data() agrees with the package (geometry columns too)", {
+  # The Rmd defines its own align_data() (used for the deterministic thresholds
+  # until utils/functions.R is re-sourced), so it is a third mirror.
+  rmd <- readLines(file.path(root, "scripts/ToMEx2_EcoTox.Rmd"), warn = FALSE)
+  start <- which(startsWith(rmd, "align_data <- function(df,"))
+  expect_length(start, 1)
+  end <- start - 1 + which(rmd[start:length(rmd)] == "}")[1]
+  rmd_env <- new.env(parent = script_env)
+  eval(parse(text = rmd[start:end]), envir = rmd_env)
+  r <- suppressWarnings(rmd_env$align_data(aoc_z))
+  p <- suppressWarnings(PSSDplusplus::align_data(aoc_z, verbose = FALSE))
+  key <- intersect(r$rowid, p$rowid)
+  expect_gt(length(key), 1000)
+  r <- r[match(key, r$rowid), ]
+  p <- p[match(key, p$rowid), ]
+  # the Rmd copy leaves an unknown mouth size as NA, the package labels it
+  # "unknown"; neither reaches a food-dilution SSD
+  r$ingestible <- dplyr::coalesce(r$ingestible, "unknown")
+  geometry_cols <- c(
+    "size.width.min.um.used.for.conversions", "size.width.max.um.ingest",
+    "size.width.max.um.trans", "particle.volume.um3.min",
+    "particle.volume.um3.max.ingest", "particle.surface.area.um2.min"
+  )
+  for (col in c(compare_cols, geometry_cols)) {
+    expect_equal(as.vector(r[[col]]), as.vector(p[[col]]), label = col)
+  }
+})
+
+test_that("script and package agree on polydisperse geometry (issue #8)", {
+  out <- align_both(aoc_z)
+  key <- intersect(out$script$rowid, out$package$rowid)
+  s <- out$script[match(key, out$script$rowid), ]
+  p <- out$package[match(key, out$package$rowid), ]
+  for (col in c("size.width.min.um.used.for.conversions", "size.width.max.um.ingest",
+                "size.width.max.um.trans", "particle.volume.um3.min",
+                "particle.surface.area.um2.min")) {
+    expect_equal(as.vector(s[[col]]), as.vector(p[[col]]), label = col)
+  }
+})

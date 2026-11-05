@@ -168,7 +168,7 @@ filter_environment_data <- function(data, env_filter, upper.tissue.trans.size.um
     drop_na(dose_new) %>%
     filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
-    filter(between(size.length.um.used.for.conversions, x1D_set, upper.tissue.trans.size.um),
+    filter(size.length.um.used.for.conversions >= x1D_set, # upper size: bioaccessibility labels (partially bioaccessible polydisperse records stay)
            shape_f != "Not Reported",
            poly_f != "Not Reported",
            environment %in% env_filter,
@@ -190,7 +190,7 @@ filter_environment_data <- function(data, env_filter, upper.tissue.trans.size.um
     drop_na(dose_new) %>%
     filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
-    filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
+    filter(size.length.um.used.for.conversions >= x1D_set, # upper size: bioaccessibility labels (partially bioaccessible polydisperse records stay)
            shape_f != "Not Reported",
            poly_f != "Not Reported",
            environment %in% env_filter,
@@ -243,7 +243,7 @@ process_environment_data <- function(data,
     filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
     filter(
-          between(size.length.um.used.for.conversions, x1D_set, upper.tissue.trans.size.um),
+          size.length.um.used.for.conversions >= x1D_set, # upper size: bioaccessibility labels (partially bioaccessible polydisperse records stay)
           translocatable != "not translocatable",
           shape_f != "Not Reported",
            poly_f != "Not Reported",
@@ -271,7 +271,7 @@ process_environment_data <- function(data,
     drop_na(dose_new) %>%
     filter(dose_new > 0) %>% #ensure no zeros every included in final values!
     mutate(dose_new = dose_new * 1000) %>% # Convert particles/mL to particles/L
-    filter(between(size.length.um.used.for.conversions, x1D_set, x2D_set),
+    filter(size.length.um.used.for.conversions >= x1D_set, # upper size: bioaccessibility labels (partially bioaccessible polydisperse records stay)
            ingestible != "not ingestible",
            poly_f != "Not Reported",
            shape_f != "Not Reported",

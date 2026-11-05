@@ -50,6 +50,28 @@ exist).
 | `functions.R::generate_plots_and_summary()`, `prep_data()`, `prepare_plot_data()` | `functions.R` same names; `scripts/PSSD/{rmore,do.pssd}.r` |
 | `vivo.R::ssd_eligible()`, `normalize_vivo()` | `vivo_functions.R` |
 
+The tidying of the ToMEx 2.0 database is upstream (`ToMEx2.0_Onboarding/ToMEx2.0_Data_Tidying.R`);
+`data/input/aoc_z_tomex2.RDS` is built there. `scripts/utils/ToMEx2.0_Data_Tidying_functions.R::ToMEx2.0fxn()`
+mirrors only its body-length and mouth-size logic (tested by `scripts/tests/test_tomex2_tidying.R`);
+its geometry, density and dose-conversion steps are older than the upstream ones (sphere
+geometry, `polymer_densities.csv`, ToMEx 1.0 conversions, 0.4.1) and are not used by the analysis.
+
+`align_data()` also has a third copy *inside* `scripts/ToMEx2_EcoTox.Rmd`
+(used for the deterministic thresholds until `utils/functions.R` is re-sourced);
+`scripts/tests/test_align_data_equivalence.R` tests all three.
+
+Package-only (no script mirror; the publication data never use them):
+`align_mixture()` and the optional measured size-distribution inputs of
+`align_data()` (`size.dist.*` columns, `R/poly_size_dist.R`). Without those
+columns package and scripts give identical numbers; the scripts ignore them.
+The fields are documented in `docs/test_material_fields.md` (identical copy
+in the upstream app repo). The upstream app's `test_material_functions.R` is
+a **verbatim** copy of `R/poly_size_dist.R` plus `combine_mixture_components()`
+from `R/align_mixture.R`: change them here, then regenerate that file
+(upstream `tests/test_alignment_erms.R` checks the copy and, with
+PSSDplusplus >= 0.4.1 on the library path, compares the app's alignments with
+`align_data()`).
+
 Known, intended difference: the package's PSSD++ plotting grid
 (`$quantiles$iv`) spans the observed range instead of 10^-5–10^10 (plots
 only). Both seed each PSSD++ combination with `2026 + sum(utf8ToInt(combo_id))`
@@ -109,11 +131,32 @@ identical results; repeat it if you touch those paths.
   al. 2020) > unresolved (excluded from Food Dilution; never 5 mm). In
   `tomex2`, `max.size.ingest.um` also stores the database's own predictions;
   use `max.size.ingest.basis` to tell reported from predicted.
+- **Particle geometry (issue #8).** ToMEx codes shapes `"Sphere"`, `"Fiber"`,
+  `"Fragment"`, `"Not Reported"` (capitalised): never match lower case (the
+  legacy ToMEx 1.0 scripts `alignment_functions.R`/`RDAmaker*` use lower-case
+  `shape` values of their own data). Every `case_when()` that assigns a size
+  needs a `TRUE ~` fallback, or the value silently becomes `NA` and
+  `volumefnx()`/`SAfnx()` refill it with defaults (R.ave x L; H = 0.67 x W).
+  The database's `size.width.{min,max}.um.used.for.conversions` are NOT
+  measurements: the ToMEx tidying sets them to R.ave x length. Reported widths
+  are in `size.width.{min,max}.mm.{measured,nominal}` and
+  `size.width.um.used.for.conversions`.
 - **`align_data()` drops rows** (12,797 → ~9,500 for `tomex2`); match on
   `rowid`, not position.
 - **renv** is active only inside `package/`; the user library outside it has
   different versions (e.g. ssdtools 2.5.0). The Rmd's `check_pckg.R` may try
-  to install pinned versions.
+  to install pinned versions. If `package/renv/library` is empty, run
+  `renv::restore(prompt = FALSE)` in `package/` (links from the local cache).
+  pkgload/testthat/roxygen2 are not in the lockfile: append the user library
+  (`.libPaths(c(.libPaths(), <user lib>))`). To render the Rmds from the repo
+  root with ssdtools 0.3.7, set `R_LIBS=<renv library path>` (shown by
+  `.libPaths()[1]` inside `package/`).
+- **The MC checkpoint key includes the code** (deparsed `align_data()`,
+  wrapper and SSD functions) since 0.4.1; before that a code fix silently
+  reused old checkpoints. The Sobol chunk is skipped if
+  `scripts/monte carlo/output/sobol_results.rds` exists: move it away to
+  re-run. The MC Rmd must source `vivo_functions.R` before `ssd_functions.R`
+  (the latter's `sys.frame(1)$ofile` fallback fails under `render()`).
 - **Runtimes:** MC Sobol ~6.5 h on 12 cores. PSSD++ with `rmore_method =
   "lognormal"` (the published method, see the SI) takes ~40 min per
   combination at `sim = 300`; the trapezoidal `"step"` method took >8.5 h for
@@ -175,6 +218,35 @@ Order matters; each step needs the previous one.
       closes #6) and published as GitHub release `v0.4.0` (tarball attached),
       2026-10-23. Still open elsewhere: SCCWRP/ToMEx_AquaticOrganisms#5 (draft;
       needs a maintainer review and merge).
+
+### 0.4.1 (issue #8: particle geometry, mass-dosed counts, unit conversions)
+
+- [x] Errors E7-E11 fixed in package + both script copies (geometry, monodisperse
+      fiber cap, mass-dosed particle counts `particle_count_source`, unit
+      conversions `convert_units_fxn()`, size filters by bioaccessibility labels,
+      descriptive datasets); tests; equivalence tests.
+- [x] Design additions, no threshold change: `size.dist.*` inputs,
+      `poly_size_method`, `poly_volume_factor_ingest`, `align_mixture()`
+      (shares by count basis; shared `combine_mixture_components()` with the app).
+      Fields: `docs/test_material_fields.md` (identical upstream).
+- [x] Production 2026-11-04: MC (0.4.0 outputs in `scripts/monte carlo/output/v0.4.0/`),
+      PSSD++ combinations in separate processes (0.4.0 cache in
+      `output/pssd_cache_v0.4.0/`), render `ToMEx2_EcoTox.Rmd`. Driver:
+      `.claude/runs/production_041.sh` (resumable; Windows paths for R_LIBS).
+      Rmd launch fixes: `sciscales` installed only if missing; `library(calecopal)`.
+- [x] Attribution S7 (E7, E10) and S8 (E8), PSSDplusplus 0.4.1; S8 reproduces
+      the production render within 9 %. Correction re-rendered (E7-E11, Table C6).
+- [x] Upstream (SCCWRP/ToMEx_AquaticOrganisms#5): app port + tests; data fixes
+      (ToMEx 1.0 sphere geometry, Zhou et al. size range, polymer densities,
+      ToMEx 1.0 dose conversions) with identical thresholds; data synced here.
+- [x] Correction (docs/correction/correction_PSSDpp.{qmd,html,docx}): errors grouped
+      as shared with ToMEx 2.0 (E1-E3, E7-E10, R1; Thornton Hampton et al. 2025
+      correct their article first) vs specific to this article (E4-E6, E11), Table C14;
+      item-by-item changes to the article (Tables C7-C11, `R/article_items.R`); mass-unit
+      thresholds under alternative assumptions (E9, Tables C12-C13, `R/mass_conversion.R`).
+- [x] 0.4.1 merged into `main` via PR #9 (2026-11-05). Open elsewhere:
+      SCCWRP/ToMEx_AquaticOrganisms#5 (maintainer review), the letter to the editor,
+      a better count-to-mass method (E9), Missawi et al. 2021 densities.
 
 ## Open technical debt
 
