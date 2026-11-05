@@ -69,26 +69,28 @@ if (production) {
 
 ## Summary
 
-While packaging the analysis code of this article as the R package PSSDplusplus (v0.4.0, with further fixes in v0.4.1) and responding to reported issues ([ToMEx2.0_EcoToxRisk#6](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/issues/6), [#8](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/issues/8)), we found errors in the code that aligned toxicity data to the food dilution and tissue translocation ecologically relevant metrics (ERMs) in the Monte Carlo (MC) simulations, and in the preparation of the input data. These errors affect the MC + SSD and PSSD++ thresholds (Table 2, Figs. 5–7) and the record-level uncertainty statistics derived from the MC simulations. The traditional SSD thresholds are affected by the input-data errors and are corrected in the ToMEx 2.0 database and web application ([SCCWRP/ToMEx_AquaticOrganisms#5](https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5)).
+While packaging the analysis code of this article as the R package PSSDplusplus (v0.4.0, with further fixes in v0.4.1) and responding to reported issues ([ToMEx2.0_EcoToxRisk#6](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/issues/6), [#8](https://github.com/ScottCoffin/ToMEx2.0_EcoToxRisk/issues/8)), we found errors in the code that aligned toxicity data to the food dilution and tissue translocation ecologically relevant metrics (ERMs), in the preparation of the input data, and in the Monte Carlo (MC) code of this article. They affect the thresholds of all three methods (Table 2, Figs. 5-8) and the record-level uncertainty statistics derived from the MC simulations.
+
+**Two groups of errors.** Most of the errors (E1-E3, E7-E10) and the data refinement R1 originate in code and data that this analysis shares with the ToMEx 2.0 database and its web application (Thornton Hampton, L. M., Briggs Wyler, D., Carney Almroth, B., et al. (2025). The Toxicity of Microplastics Explorer (ToMEx) 2.0. *Microplastics and Nanoplastics* 5, 38. <https://doi.org/10.1186/s43591-025-00145-6>). The ToMEx 2.0 authors will publish a correction to that article first; the same fixes are submitted to the database and application ([SCCWRP/ToMEx_AquaticOrganisms#5](https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5)) and are applied here. Four errors (E4, E5, E6, E11) are specific to the Monte Carlo and summary code of this article and independent of ToMEx 2.0. This note keeps the two groups apart (Table C1) and reports the effect of each on the thresholds (Table C14). Almost all of the change in the thresholds comes from the shared errors; the errors specific to this article change the thresholds little.
 
 We separate **errors** (the code did not do what the article describes) from **refinements** (corrections to individual data records that improve, but do not fix, the analysis). The corrected thresholds are given in Table C2 and the conclusions are discussed at the end of this note.
 
-**Table C1.** Corrections, their type, and the results affected.
+**Table C1.** Corrections, their type, their origin (shared with the ToMEx 2.0 database and web application, or specific to this article), and the results affected.
 
-| ID | Correction | Type | Affects |
-|---|---|---|---|
-| E1 | Records without a mouth size were assumed to ingest particles up to 5 mm | Code error | Food dilution: SSD, MC + SSD, PSSD++ |
-| E2 | In vitro (cell culture) records were included in SSDs | Code error | Tissue translocation (freshwater): all methods |
-| E3 | Reported mouth sizes were replaced by body-length predictions | Data-preparation error | Food dilution and tissue translocation: all methods |
-| E4 | Sampled body-length model coefficients were never applied | Code error | MC + SSD and PSSD++ uncertainty; Fig. 1B, Fig. 7 |
-| E5 | Sampled particle shape ratios were not applied to tested particles | Code error | MC + SSD and PSSD++ (freshwater fragments) |
-| E6 | Record-level MC statistics were merged to the wrong records | Code error | Intraspecies CoV statistics, CoV analyses (SI) |
-| E7 | The smallest particle of polydisperse test materials lost its width; fiber widths were inconsistent | Code error | Food dilution and tissue translocation: all methods (polydisperse records, fibers) |
-| E8 | Particle counts of mass-dosed tests used the database's particle geometry, not the alignment's | Code error | Food dilution and tissue translocation: all methods (mass-dosed records) |
-| E9 | Conversions of the thresholds to mass, volume and surface area used the length limits as mass, volume and area limits | Code error | Thresholds in µg/L, µm³/L and µm²/L (Fig. S5, mass tables; corrected under alternative assumptions, Tables C12-C13); not particles/L |
-| E10 | SSD size filters used the midpoint length of polydisperse materials, not their bioaccessibility | Code error | MC + SSD and PSSD++ (no record in the deterministic SSDs) |
-| E11 | The food dilution datasets used for the descriptive summaries were capped at the translocation limit | Code error | Dataset summaries (record, study and species counts) |
-| R1 | ToMEx 2.0 database v2.0.1 and record-level body-length and in vivo / in vitro corrections | Data refinement | All methods |
+| ID | Correction | Type | Origin | Affects |
+|---|---|---|---|---|
+| E1 | Records without a mouth size were assumed to ingest particles up to 5 mm | Code error | Shared with ToMEx 2.0 | Food dilution: SSD, MC + SSD, PSSD++ |
+| E2 | In vitro (cell culture) records were included in SSDs | Code error | Shared with ToMEx 2.0 | Tissue translocation (freshwater): all methods |
+| E3 | Reported mouth sizes were replaced by body-length predictions | Data-preparation error | Shared with ToMEx 2.0 | Food dilution and tissue translocation: all methods |
+| E4 | Sampled body-length model coefficients were never applied | Code error | Specific to this article | MC + SSD and PSSD++ uncertainty; Fig. 1B, Fig. 7 |
+| E5 | Sampled particle shape ratios were not applied to tested particles | Code error | Specific to this article | MC + SSD and PSSD++ (freshwater fragments) |
+| E6 | Record-level MC statistics were merged to the wrong records | Code error | Specific to this article | Intraspecies CoV statistics, CoV analyses (SI) |
+| E7 | The smallest particle of polydisperse test materials lost its width; fiber widths were inconsistent | Code error | Shared with ToMEx 2.0 | Food dilution and tissue translocation: all methods (polydisperse records, fibers) |
+| E8 | Particle counts of mass-dosed tests used the database's particle geometry, not the alignment's | Code error | Shared with ToMEx 2.0 | Food dilution and tissue translocation: all methods (mass-dosed records) |
+| E9 | Conversions of the thresholds to mass, volume and surface area used the length limits as mass, volume and area limits | Code error | Shared with ToMEx 2.0 | Thresholds in µg/L, µm³/L and µm²/L (Fig. S5, mass tables; corrected under alternative assumptions, Tables C12-C13); not particles/L |
+| E10 | SSD size filters used the midpoint length of polydisperse materials, not their bioaccessibility | Code error | Shared with ToMEx 2.0 | MC + SSD and PSSD++ (no record in the deterministic SSDs) |
+| E11 | The food dilution datasets used for the descriptive summaries were capped at the translocation limit | Code error | Specific to this article | Dataset summaries (record, study and species counts) |
+| R1 | ToMEx 2.0 database v2.0.1 and record-level body-length and in vivo / in vitro corrections | Data refinement | Shared with ToMEx 2.0 (database) | All methods |
 
 ## Corrected Table 2
 
@@ -129,47 +131,33 @@ if (all(file.exists(c(f_ssd, f_mc, f_pssd)))) {
 
 ## Errors
 
-### E1. Missing mouth sizes defaulted to 5 mm
+
+
+### Errors shared with the ToMEx 2.0 database and web application
+
+These errors are in code and data that this analysis reuses from ToMEx 2.0 (Thornton Hampton et al., 2025): the deterministic ERM alignment, the SSD input filters and the preparation of the database. They are corrected in ToMEx 2.0 ([SCCWRP/ToMEx_AquaticOrganisms#5](https://github.com/SCCWRP/ToMEx_AquaticOrganisms/pull/5)) and the same fixes are applied here.
+
+#### E1. Missing mouth sizes defaulted to 5 mm
 
 The food dilution ERM integrates the volume of ingestible particles from the lower size limit (1 µm) up to the largest particle an organism can ingest, its mouth size. For records with neither a reported mouth size nor a body length from which to predict one, the alignment code set the mouth size to the upper limit of the assessed size range (`x2D_set`, 5,000 µm). Particle volume spans about 11 orders of magnitude over 1–5,000 µm, so this assumption inflated the mean ingestible particle volume by orders of magnitude for small animals and drove their aligned food dilution concentrations, and therefore the thresholds, down. Several of the most sensitive species were affected (e.g., *Moina macrocopa*, larval *Pseudechinus huttoni*, the ciliate *Strombidium sulcatum*). Assuming that a rotifer or a ciliate ingests 5 mm particles is not defensible. These records are now excluded from the food dilution SSDs and reported; tissue translocation is unaffected. Where a body length could be documented, it was added to the database (R1), so the species are retained.
 
-### E2. In vitro records entered the SSDs
+#### E2. In vitro records entered the SSDs
 
 No SSD code path filtered on the in vivo / in vitro field, so records from cell cultures (e.g., rainbow trout anterior-kidney cells; 10.1016/j.fsi.2021.04.014) entered the freshwater tissue translocation SSD. Cell cultures are not organisms and do not belong in an SSD of species sensitivities. All SSD inputs are now restricted to in vivo records. One study coded "In Vitro" in the database exposed whole live larvae (*P. huttoni*, Richardson et al. 2021) and was corrected to in vivo.
 
-### E3. Reported mouth sizes were overwritten
+#### E3. Reported mouth sizes were overwritten
 
 The ToMEx 2.0 data preparation recomputed every mouth size from body length with the allometric model of Jâms et al. (2020), replacing the measured mouth sizes compiled in ToMEx 1.0 (Koelmans et al. 2020) for 13 species and life stages (2,769 records in v2.0.1; predicted → reported, e.g., *Danio rerio* 1.53 → 0.40 mm, adult *Daphnia magna* 0.341 → 0.115 mm, *Gammarus fossarum* 0.56 → 0.125 mm). A measured value is better evidence than a prediction, and the model is not calibrated for animals below 9 mm. Reported mouth sizes are now always used, and the model only when none is reported.
 
-### E4. Body-length model uncertainty was not propagated
-
-The MC simulations were described as sampling the coefficients of the body-length to mouth-size model (Fig. 1B), and their influence was shown in Fig. 7. In the code, the sampled coefficients never reached the alignment: the alignment function ignored them (ToMEx2.0_EcoToxRisk#6), and the simulation wrapper also read them under names that did not exist in the parameter matrix, so every simulation used the fixed coefficients. Any relationship between these parameters and the thresholds in Fig. 7 therefore reflects sampling noise, not an effect, and the statement in Section 3.4.1 that they "had weak negative relationships to the threshold" is withdrawn. The corrected simulations propagate the coefficient uncertainty to predicted mouth sizes only; reported (measured) mouth sizes are used as is in every simulation.
-
-### E5. Particle-shape uncertainty did not reach tested particles
-
-For tested fragments without a reported width, the width is estimated from the length and the length-to-width ratio (R), and the height from the width and the height-to-width ratio. The MC simulations sampled both ratios but re-aligned data that had already been aligned with the default ratios; because widths and heights are only estimated when missing, they kept their default values in every simulation. The sampled ratios therefore did not affect the tested particles (freshwater fragments: up to about 2-fold per simulation), and their influence on the freshwater thresholds in Fig. 7 was understated. Each simulation now aligns the original records.
-
-### E6. Record-level MC statistics were merged to the wrong records
-
-To summarise the uncertainty of each aligned toxicity value, the per-record mean, standard deviation and coefficient of variation (CoV) over the MC simulations were merged back to the records by an identifier. Because of the re-alignment in E5, the MC output numbered records 1 to *n* over the aligned subset while the record table kept the original row numbers, so the merge attached each record's statistics to a different record.
-
-```{r cov-text, results = "asis"}
-if (!is.null(cov)) cat(sprintf(
-  "Of the %d records, %d received another record's statistics and %d received none. ",
-  cov$n_records, cov$published_join_wrong_species, cov$published_join_unmatched))
-```
-
-The MC + SSD and PSSD++ thresholds were not affected, because they use the per-simulation values directly, but the CoV statistics were (Table C3).
-
-### E7. Geometry of polydisperse test materials
+#### E7. Geometry of polydisperse test materials
 
 For a polydisperse test material, the alignment needs the mean volume (food dilution) or surface area (tissue translocation) of its bioaccessible particles, computed from the smallest and the largest bioaccessible particle. The code assigned the smallest particle's width by matching the shape names in lower case ("sphere", "fiber", "fragment"), whereas the database codes them capitalised, and had no fallback. The width was therefore lost for every polydisperse sphere, fiber and fragment and later filled with the length-to-width ratio of fragments, so the smallest sphere was treated as an ellipsoid (volume 0.67 of the sphere's in freshwater, 0.77 in marine waters), and the smallest particle's height used a fixed 0.67 × width rather than the environment's (or the sampled) height-to-width ratio (fragment volume 0.87 of the intended value in marine waters). For fibers, the largest bioaccessible particle kept the database width, which is the length-to-width ratio times the *untruncated* maximum length, so a partially ingestible fiber could be several times wider than long. Fibers now have one diameter at both ends (reported width, else 15 µm), never more than their length; the 15 µm default is also capped at the length for monodisperse fibers (2 SSD records were shorter than 15 µm). The 15 µm value is the fiber diameter used to classify fibers in the environmental data of Kooi et al. (2021, Section 3.2), not a measured mean width. Other monodisperse records are unaffected. This error was found after v0.4.0 and is fixed in v0.4.1.
 
-### E8. Particle counts of tests dosed by mass
+#### E8. Particle counts of tests dosed by mass
 
 Most studies report their dose as a mass concentration; the database converts it to a particle concentration with a mean particle mass. That conversion used the database's own particle geometry (a fixed height-to-width ratio of 0.67, and a polydisperse material treated as a single particle of the midpoint length; some ToMEx 1.0 conversions match neither), whereas the alignment then built the same particles with its own geometry and size distribution. The aligned volume (or mass) dose was therefore not the dosed mass divided by the polymer density. The alignment now recomputes the particle concentration of every mass-dosed test as the dosed mass divided by the mean particle mass under its own geometry and size distribution (for a polydisperse material, the power-law mean over the whole reported size range), so the aligned particles carry exactly the dosed mass. Reported particle concentrations are used as reported. (PSSDplusplus v0.4.1: `align_data(particle_count_source = "mass")`, the default; `"database"` reproduces the earlier counts.)
 
-### E9. Conversion of the thresholds to mass, volume and surface area
+#### E9. Conversion of the thresholds to mass, volume and surface area
 
 The particle-based thresholds were converted to µg/L, µm³/L and µm²/L (Fig. S5 and the mass-based tables) by multiplying them by the mean particle mass, volume or surface area of the environmental size distribution between 1 and 5,000 µm. The code passed the length limits (1 and 5,000) as if they were the mass, volume and surface-area limits of that distribution. The correct limits are the mass, volume and surface area of 1 µm and 5,000 µm particles, as in the worked example of Kooi et al. (2021, Supplementary Information). The published thresholds in these units are therefore incorrect. The thresholds in particles/L are unaffected.
 
@@ -224,11 +212,35 @@ cat(sprintf(paste0(
 
 References: Kooi, M., et al. (2021). *Water Research* 202, 117429. Zhao, B., et al. (2026). *Water Research* 299, 125833. Chen, H., et al. (2026). *Environmental Science & Technology* 60, 1263–1274.
 
-### E10. Size filters of the SSD inputs
+#### E10. Size filters of the SSD inputs
 
 The SSD inputs were filtered on the midpoint length of each record (e.g. at most the translocation limit for tissue translocation), whereas the method uses the bioaccessible fraction of each polydisperse test material (Supplementary Information): a partially bioaccessible material whose midpoint exceeds the limit was dropped. The inputs are now selected by the bioaccessibility labels, with only the lower size limit applied to the length. No record of the deterministic SSDs changes, but Monte Carlo draws of the mouth size do.
 
-### E11. Descriptive summaries of the food dilution datasets
+### Errors specific to this article
+
+These errors are in the Monte Carlo and summary code written for this article and are independent of ToMEx 2.0.
+
+#### E4. Body-length model uncertainty was not propagated
+
+The MC simulations were described as sampling the coefficients of the body-length to mouth-size model (Fig. 1B), and their influence was shown in Fig. 7. In the code, the sampled coefficients never reached the alignment: the alignment function ignored them (ToMEx2.0_EcoToxRisk#6), and the simulation wrapper also read them under names that did not exist in the parameter matrix, so every simulation used the fixed coefficients. Any relationship between these parameters and the thresholds in Fig. 7 therefore reflects sampling noise, not an effect, and the statement in Section 3.4.1 that they "had weak negative relationships to the threshold" is withdrawn. The corrected simulations propagate the coefficient uncertainty to predicted mouth sizes only; reported (measured) mouth sizes are used as is in every simulation.
+
+#### E5. Particle-shape uncertainty did not reach tested particles
+
+For tested fragments without a reported width, the width is estimated from the length and the length-to-width ratio (R), and the height from the width and the height-to-width ratio. The MC simulations sampled both ratios but re-aligned data that had already been aligned with the default ratios; because widths and heights are only estimated when missing, they kept their default values in every simulation. The sampled ratios therefore did not affect the tested particles (freshwater fragments: up to about 2-fold per simulation), and their influence on the freshwater thresholds in Fig. 7 was understated. Each simulation now aligns the original records.
+
+#### E6. Record-level MC statistics were merged to the wrong records
+
+To summarise the uncertainty of each aligned toxicity value, the per-record mean, standard deviation and coefficient of variation (CoV) over the MC simulations were merged back to the records by an identifier. Because of the re-alignment in E5, the MC output numbered records 1 to *n* over the aligned subset while the record table kept the original row numbers, so the merge attached each record's statistics to a different record.
+
+```{r cov-text, results = "asis"}
+if (!is.null(cov)) cat(sprintf(
+  "Of the %d records, %d received another record's statistics and %d received none. ",
+  cov$n_records, cov$published_join_wrong_species, cov$published_join_unmatched))
+```
+
+The MC + SSD and PSSD++ thresholds were not affected, because they use the per-simulation values directly, but the CoV statistics were (Table C3).
+
+#### E11. Descriptive summaries of the food dilution datasets
 
 The food dilution datasets summarised in the PSSD++ section of the analysis (record, study and species counts) and saved for other scripts (`tier1_2_food.RDS`, `tier3_4_food.RDS`) were capped at the translocation limit (88 µm) instead of the ingestible size. They are now selected as in E10. The thresholds were not affected.
 
@@ -260,6 +272,7 @@ if (all(file.exists(c(f_new, f_old)))) {
   kable(e7, caption = "Table C6. Effect of E7-E11 together: ratio of the production thresholds with PSSDplusplus v0.4.1 to those with v0.4.0 (same data, parameter matrix and seeds; E1-E6 and R1 applied in both).")
 }
 ```
+
 
 ## Refinements
 
@@ -351,6 +364,32 @@ if (!is.null(ladder)) {
 ```
 
 Fixing the particle geometry and the size filters (S7; E7, E10) raises the food dilution thresholds by 1–15 % and changes the tissue translocation thresholds by −4 to +13 %. Recomputing the particle counts of mass-dosed tests from the dosed mass (S8; E8) lowers the freshwater thresholds by 5–10 % and leaves the marine thresholds unchanged (within 1 %).
+
+```{r split-table}
+if (!is.null(ladder)) {
+  sw <- ladder$results %>% select(step, Tier, Environment, ERM, Median) %>%
+    pivot_wider(names_from = step, values_from = Median) %>%
+    mutate(shared = (S4 / S0) * (S8 / S6), own = S6 / S4, total = S8 / S0)
+  kable(sw %>% transmute(Tier, Environment, ERM,
+                         `Shared with ToMEx 2.0 (E1-E3, R1, E7, E8, E10)` = sprintf("%.2f", shared),
+                         `Specific to this article (E4, E5)` = sprintf("%.2f", own),
+                         `All corrections` = sprintf("%.2f", total)),
+        caption = "Table C14. Fold change of the median PSSD++ thresholds (Tier 3 = HC5, Tier 4 = HC10) from the published configuration (S0) to the fully corrected analysis (S8), split into the corrections shared with ToMEx 2.0 (steps S1-S4, S7, S8) and those specific to this article (S5, S6). The product of the two equals the total. E6 and E11 do not change thresholds; E9 affects only thresholds in mass, volume and surface-area units.")
+}
+```
+
+```{r split-text, results = "asis"}
+if (!is.null(ladder)) {
+  fd <- sw$ERM == "Food Dilution"
+  cat(sprintf(paste0(
+    "The corrections shared with ToMEx 2.0 change the PSSD++ thresholds by %.1f- to %.0f-fold for food dilution and %.2f- to %.2f-fold for tissue translocation; ",
+    "the errors specific to this article change them by %.2f- to %.2f-fold. For the MC + SSD thresholds, the errors specific to this article (E4, E5) change the medians by %.2f- to %.2f-fold (Table C5).\n\n"),
+    min(sw$shared[fd]), max(sw$shared[fd]), min(sw$shared[!fd]), max(sw$shared[!fd]), min(sw$own), max(sw$own),
+    if (!is.null(mcssd)) { s <- mcssd$summary; b <- s %>% filter(coef == "fixed", shape == "frozen") %>% select(Tier, environment, ERM, base = median);
+      r <- s %>% filter(coef == "sampled", shape == "propagated") %>% inner_join(b, by = c("Tier", "environment", "ERM")) %>% mutate(r = median / base); min(r$r) } else NA,
+    if (!is.null(mcssd)) max(r$r) else NA))
+}
+```
 
 ## Impact of E4 and E5 on the MC + SSD thresholds
 
@@ -454,7 +493,7 @@ The Supplementary Information states that using quantile type 8 instead of type 
 
 ## Effect on the conclusions
 
-The corrections change the food dilution thresholds substantially and the tissue translocation thresholds little (Table C0). Food dilution thresholds increase for every method, tier and environment: by about 5- to 50-fold in freshwater and 12- to 60-fold in marine waters (more for the marine MC + SSD Tier 1 value). The published food dilution thresholds were therefore too low, i.e. more protective than the data support. The largest contribution is the removal of the 5 mm default ingestible size for organisms without a mouth size (E1), which had assigned the most sensitive small species very low aligned effect concentrations (about 21-fold in freshwater and 4-fold in marine waters at Tier 3; Table C2). The database refinements (R1) partly offset this in freshwater, where documented body lengths return sensitive species such as *Moina macrocopa* to the food dilution SSD, and increase the marine values; the other corrections change the PSSD++ thresholds by up to about 30 % (the particle-geometry and particle-count corrections E7, E8 and E10 together by 0.88- to 1.15-fold; Table C2). Tissue translocation thresholds change by less than 2-fold.
+The corrections change the food dilution thresholds substantially and the tissue translocation thresholds little (Table C0). Almost all of this change comes from the errors shared with ToMEx 2.0 (Table C14); the errors specific to this article change the thresholds by at most about 35 % (PSSD++: 0.95- to 1.30-fold; MC + SSD: 0.65- to 1.03-fold). Food dilution thresholds increase for every method, tier and environment: by about 5- to 50-fold in freshwater and 12- to 60-fold in marine waters (more for the marine MC + SSD Tier 1 value). The published food dilution thresholds were therefore too low, i.e. more protective than the data support. The largest contribution is the removal of the 5 mm default ingestible size for organisms without a mouth size (E1), which had assigned the most sensitive small species very low aligned effect concentrations (about 21-fold in freshwater and 4-fold in marine waters at Tier 3; Table C2). The database refinements (R1) partly offset this in freshwater, where documented body lengths return sensitive species such as *Moina macrocopa* to the food dilution SSD, and increase the marine values; the other corrections change the PSSD++ thresholds by up to about 30 % (the particle-geometry and particle-count corrections E7, E8 and E10 together by 0.88- to 1.15-fold; Table C2). Tissue translocation thresholds change by less than 2-fold.
 
 Most qualitative conclusions are unchanged: marine thresholds remain lower than freshwater thresholds, and food dilution thresholds remain lower than tissue translocation thresholds, for all tiers and methods. Two comparisons between methods change in degree. Traditional SSD and MC + SSD medians are within about 10–20 % of each other at Tiers 3 and 4, but up to about 45 % apart in marine waters at Tiers 1 and 2 (e.g. marine tissue translocation Tier 1: 0.94 vs 0.65 particles/L), because the MC + SSD now propagates the uncertainty of predicted mouth sizes (E4). PSSD++ gives the lowest median in six of the eight Tier 3 and 4 cases rather than all; the exceptions are freshwater food dilution Tier 4 (essentially equal to MC + SSD) and freshwater tissue translocation Tier 4 (12,400 vs 9,000–9,100 particles/L). Statements that quote threshold values or ratios, in particular for food dilution (e.g. the range "1 × 10⁻⁵ to 137 particles/L" and "PSSD++ thresholds were consistently lower by up to 2-fold" in Section 3.3, the marine-to-freshwater ratios in Section 3.4.2, and "0.5–2.5 orders of magnitude" in Section 4.3.3), should be replaced with values from the corrected results. Risk characterisations that used the published food dilution thresholds overstate the risk from food dilution by the factors in Table C0. The published thresholds expressed as mass, volume or surface-area concentrations (Fig. S5 and the mass-based tables) were incorrect (E9); the corrected values depend strongly on the assumed particle size, shape and density distribution and are given as a range of scenarios (Tables C12 and C13).
 
